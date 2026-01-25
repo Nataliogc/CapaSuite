@@ -66,11 +66,12 @@
         }
 
         .app-container {
-            max-width: 1600px;
+            max-width: 1300px;
             margin: 0 auto;
             display: flex;
             flex-direction: column;
             gap: 20px;
+            width: 98%;
         }
 
         /* HEADER */
@@ -392,14 +393,22 @@
         /* TOP NAVIGATION */
         .top-nav {
             background: #1e293b;
-            padding: 6px 20px;
+            padding: 0 40px;
             display: flex;
-            justify-content: center;
-            gap: 25px;
+            align-items: center;
+            justify-content: space-between;
             position: sticky;
             top: 0;
             z-index: 99999;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            height: 45px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 25px;
+            height: 100%;
+            align-items: center;
         }
 
         .top-nav a {
@@ -413,30 +422,65 @@
             align-items: center;
             gap: 6px;
             transition: all 0.2s;
-            padding: 4px 0;
+            height: 100%;
+            border-bottom: 2px solid transparent;
             font-family: 'Inter', sans-serif;
         }
 
         .top-nav a:hover {
             color: #ffffff;
-            transform: translateY(-1px);
         }
 
         .top-nav a.active {
             color: #818cf8;
             border-bottom: 2px solid #818cf8;
         }
+
+        .nav-user {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            color: white;
+            font-size: 0.75rem;
+        }
+
+        .nav-user .user-email {
+            font-weight: 500;
+            opacity: 0.9;
+        }
+
+        .nav-user .logout-btn {
+            color: #ef4444;
+            cursor: pointer;
+            text-decoration: underline;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        .nav-user .dot {
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+        }
     </style>
 </head>
 
 <body style="padding: 0;">
     <nav class="top-nav">
-        <a href="index.html">🏠 Inicio</a>
-        <a href="AnalisisProduccion.html">📈 Producción</a>
-        <a href="AnalisisSegmentos.html">👥 Segmentos</a>
-        <a href="AnalisisCompetencia.html">⚖️ Competencia</a>
-        <a href="CalculadoraPresupuesto.html" class="active">💰 Presupuesto</a>
-        <a href="CargarDatos.html">⚙️ Config</a>
+        <div class="nav-links">
+            <a href="index.html">🏠 Inicio</a>
+            <a href="AnalisisProduccion.html">📈 Producción</a>
+            <a href="AnalisisSegmentos.html">👥 Segmentos</a>
+            <a href="AnalisisCompetencia.html">⚖️ Competencia</a>
+            <a href="CalculadoraPresupuesto.html" class="active">💰 Presupuesto</a>
+            <a href="CargarDatos.html">⚙️ Config</a>
+        </div>
+        <div class="nav-user">
+            <span class="dot"></span>
+            <span class="user-email" id="userEmailNav">Cargando...</span>
+            <span class="logout-btn" onclick="auth.signOut()">Cerrar Sesión</span>
+        </div>
     </nav>
     <div class="app-container" style="padding: 20px;">
 
@@ -1030,6 +1074,12 @@
             if (n === 0 || n === null || n === undefined) return "0";
             return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
         };
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                const navEmail = document.getElementById('userEmailNav');
+                if (navEmail) navEmail.innerText = user.email;
+            }
+        });
         window.onload = init;
 
     </script>

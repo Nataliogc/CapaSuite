@@ -111,14 +111,22 @@
         /* TOP NAVIGATION */
         .top-nav {
             background: #1e293b;
-            padding: 6px 20px;
+            padding: 0 40px;
             display: flex;
-            justify-content: center;
-            gap: 25px;
+            align-items: center;
+            justify-content: space-between;
             position: sticky;
             top: 0;
             z-index: 99999;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            height: 45px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 25px;
+            height: 100%;
+            align-items: center;
         }
 
         .top-nav a {
@@ -132,17 +140,45 @@
             align-items: center;
             gap: 6px;
             transition: all 0.2s;
-            padding: 4px 0;
+            height: 100%;
+            border-bottom: 2px solid transparent;
         }
 
         .top-nav a:hover {
             color: #ffffff;
-            transform: translateY(-1px);
         }
 
         .top-nav a.active {
             color: #818cf8;
             border-bottom: 2px solid #818cf8;
+        }
+
+        .nav-user {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            color: white;
+            font-size: 0.75rem;
+        }
+
+        .nav-user .user-email {
+            font-weight: 500;
+            opacity: 0.9;
+        }
+
+        .nav-user .logout-btn {
+            color: #ef4444;
+            cursor: pointer;
+            text-decoration: underline;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        .nav-user .dot {
+            width: 8px;
+            height: 8px;
+            background: var(--secondary);
+            border-radius: 50%;
         }
 
         /* MAIN */
@@ -442,11 +478,6 @@
                 <img src="Imagen/logo-cumbria.svg" alt="Cumbria">
             </div>
         </div>
-        <div class="user-badge">
-            <span class="dot"></span>
-            <span id="userEmail">Cargando...</span>
-            <span class="logout-link" onclick="auth.signOut()">Cerrar Sesión</span>
-        </div>
     </header>
 
     <div id="login-container" class="login-overlay">
@@ -454,8 +485,8 @@
             <img src="Imagen/logo, CapaSuite.png" alt="CapaSuite" style="height: 50px; margin-bottom: 20px;">
             <h2>Acceso a CapaSuite</h2>
             <div class="login-field">
-                <label>Email Profesional</label>
-                <input type="email" id="email" placeholder="usuario@empresa.com">
+                <label>Usuario o Email</label>
+                <input type="text" id="email" placeholder="Admin o usuario@empresa.com">
             </div>
             <div class="login-field">
                 <label>Clave de Acceso</label>
@@ -468,9 +499,13 @@
 
     <script>
         async function handleLogin() {
-            const email = document.getElementById('email').value;
+            let email = document.getElementById('email').value;
             const pass = document.getElementById('password').value;
             const errorEl = document.getElementById('login-error');
+
+            if (email.toLowerCase() === 'admin') {
+                email = 'admin@capasuite.com';
+            }
 
             try {
                 await auth.signInWithEmailAndPassword(email, pass);
@@ -491,7 +526,10 @@
                 mainContent.style.display = 'flex';
                 mainHeader.style.display = 'flex';
                 mainNav.style.display = 'flex';
-                document.getElementById('userEmail').innerText = user.email;
+
+                let displayEmail = user.email;
+                if (displayEmail === 'admin@capasuite.com') displayEmail = 'Administrador CapaSuite';
+                document.getElementById('userEmail').innerText = displayEmail;
 
                 // 1. Intentar descargar datos de la nube
                 const hasCloudData = await downloadFromCloud();
@@ -514,12 +552,19 @@
     </script>
 
     <nav class="top-nav" id="mainNav" style="display: none;">
-        <a href="index.html" class="active">🏠 Inicio</a>
-        <a href="AnalisisProduccion.html">📈 Producción</a>
-        <a href="AnalisisSegmentos.html">👥 Segmentos</a>
-        <a href="AnalisisCompetencia.html">⚖️ Competencia</a>
-        <a href="CalculadoraPresupuesto.html">💰 Presupuesto</a>
-        <a href="CargarDatos.html">⚙️ Config</a>
+        <div class="nav-links">
+            <a href="index.html" class="active">🏠 Inicio</a>
+            <a href="AnalisisProduccion.html">📈 Producción</a>
+            <a href="AnalisisSegmentos.html">👥 Segmentos</a>
+            <a href="AnalisisCompetencia.html">⚖️ Competencia</a>
+            <a href="CalculadoraPresupuesto.html">💰 Presupuesto</a>
+            <a href="CargarDatos.html">⚙️ Config</a>
+        </div>
+        <div class="nav-user">
+            <span class="dot"></span>
+            <span class="user-email" id="userEmail">Cargando...</span>
+            <span class="logout-btn" onclick="auth.signOut()">Cerrar Sesión</span>
+        </div>
     </nav>
 
     <main id="dashboard-main" style="display: none;">

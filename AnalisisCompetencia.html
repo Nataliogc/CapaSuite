@@ -15,6 +15,10 @@
     <script src="js/xlsx.full.min.js"></script>
     <script src="js/chart.js"></script>
     <script src="js/storage.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="js/firebase-auth.js"></script>
 
     <style>
         :root {
@@ -52,14 +56,15 @@
             background: var(--bg-body);
             color: var(--text-main);
             margin: 0;
-            padding: 30px;
+            padding: 0;
             font-size: 14px;
             -webkit-font-smoothing: antialiased;
         }
 
         .container {
-            max-width: 1800px;
+            max-width: 1300px;
             margin: 0 auto;
+            width: 95%;
         }
 
         /* HEADER */
@@ -102,6 +107,81 @@
             cursor: pointer;
             transition: all 0.2s;
             outline: none;
+        }
+
+        /* TOP NAVIGATION */
+        .top-nav {
+            background: #1e293b;
+            padding: 0 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 99999;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            height: 45px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 25px;
+            height: 100%;
+            align-items: center;
+        }
+
+        .top-nav a {
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+            height: 100%;
+            border-bottom: 2px solid transparent;
+        }
+
+        .top-nav a:hover {
+            color: #ffffff;
+        }
+
+        .top-nav a.active {
+            color: #818cf8;
+            border-bottom: 2px solid #818cf8;
+        }
+
+        .nav-user {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            color: white;
+            font-size: 0.75rem;
+        }
+
+        .nav-user .user-email {
+            font-weight: 500;
+            opacity: 0.9;
+        }
+
+        .nav-user .logout-btn {
+            color: #ef4444;
+            cursor: pointer;
+            text-decoration: underline;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        .nav-user .dot {
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
         }
 
         .form-select:hover,
@@ -280,8 +360,8 @@
             overflow-x: auto;
             border-radius: 0 0 var(--radius) var(--radius);
             display: block;
-            max-width: calc(100vw - 380px);
-            /* Limit container width */
+            max-width: 100%;
+            width: 100%;
         }
 
         @media (max-width: 1000px) {
@@ -491,38 +571,6 @@
             animation: highlightFade 3s ease-out;
         }
 
-        /* TOP NAVIGATION */
-        .top-nav {
-            background: #1e293b;
-            padding: 6px 20px;
-            display: flex;
-            justify-content: center;
-            gap: 25px;
-            position: sticky;
-            top: 0;
-            z-index: 99999;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .top-nav a {
-            color: #94a3b8;
-            text-decoration: none;
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            transition: all 0.2s;
-            padding: 4px 0;
-        }
-
-        .top-nav a:hover {
-            color: #ffffff;
-            transform: translateY(-1px);
-        }
-
         .top-nav a.active {
             color: #818cf8;
             border-bottom: 2px solid #818cf8;
@@ -532,12 +580,19 @@
 
 <body style="padding: 0;">
     <nav class="top-nav">
-        <a href="index.html">🏠 Inicio</a>
-        <a href="AnalisisProduccion.html">📈 Producción</a>
-        <a href="AnalisisSegmentos.html">👥 Segmentos</a>
-        <a href="AnalisisCompetencia.html" class="active">⚖️ Competencia</a>
-        <a href="CalculadoraPresupuesto.html">💰 Presupuesto</a>
-        <a href="CargarDatos.html">⚙️ Config</a>
+        <div class="nav-links">
+            <a href="index.html">🏠 Inicio</a>
+            <a href="AnalisisProduccion.html">📈 Producción</a>
+            <a href="AnalisisSegmentos.html">👥 Segmentos</a>
+            <a href="AnalisisCompetencia.html" class="active">⚖️ Competencia</a>
+            <a href="CalculadoraPresupuesto.html">💰 Presupuesto</a>
+            <a href="CargarDatos.html">⚙️ Config</a>
+        </div>
+        <div class="nav-user">
+            <span class="dot"></span>
+            <span class="user-email" id="userEmailNav">Cargando...</span>
+            <span class="logout-btn" onclick="auth.signOut()">Cerrar Sesión</span>
+        </div>
     </nav>
 
     <div class="container" style="padding: 30px;">
@@ -1351,6 +1406,9 @@
             });
         }
 
+        auth.onAuthStateChanged(user => {
+            if (user) document.getElementById('userEmailNav').innerText = user.email;
+        });
     </script>
 </body>
 
