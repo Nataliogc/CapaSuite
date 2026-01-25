@@ -382,7 +382,16 @@
             updateView();
         }
 
-        function updateView() { currentYear = document.getElementById('yearSelector').value; render(); }
+        function updateView() {
+            currentYear = document.getElementById('yearSelector').value;
+            const midx = document.getElementById('monthSelector').value === "All" ? -1 : parseInt(document.getElementById('monthSelector').value);
+            const monthText = midx === -1 ? "Anual" : MONTH_ORDER[midx];
+
+            // Update the title and subtitle to be more prominent
+            document.querySelector('.title h1').innerText = `Revenue Assistant | ${currentYear}`;
+            document.querySelector('.title p').innerText = `Análisis Pace y Producción Detallada: ${monthText}`;
+            render();
+        }
 
         function normalizeStr(str) { return String(str || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim(); }
 
@@ -394,7 +403,6 @@
             const eventKeywords = ["COFFEE", "SALA", "SALON", "EVENTO", "ALQUILER", "AUDIOVISUAL", "OFICINA"];
 
             for (const [id, g] of Object.entries(PRODUCTION_GROUPS)) {
-                // Priority exclusion: Restaurant should not pick up Event-related keywords
                 if (id === "RESTAURANTE" && eventKeywords.some(k => norm.includes(k))) continue;
                 if (g.keys.some(k => norm.includes(normalizeStr(k)))) return id;
             }
@@ -402,28 +410,29 @@
         }
 
         function render() {
-            const data = db[currentHotel][currentYear]; if (!data) return;
+            if (!db[currentHotel] || !db[currentHotel][currentYear]) return;
+            const data = db[currentHotel][currentYear];
             const prevYear = String(parseInt(currentYear) - 1);
             const dataPrev = db[currentHotel][prevYear];
 
             const midx = document.getElementById('monthSelector').value === "All" ? -1 : parseInt(document.getElementById('monthSelector').value);
             const getV = (item, m) => {
                 if (!item || !item.revenue) return 0;
-                return m === -1 ? item.revenue.reduce((a, b) => a + b, 0) : item.revenue[m];
+                return m === -1 ? item.revenue.reduce((a, b) => (a || 0) + (b || 0), 0) : (item.revenue[m] || 0);
             };
             const getR = (item, m) => {
                 if (!item || !item.rooms) return 0;
-                return m === -1 ? item.rooms.reduce((a, b) => a + b, 0) : item.rooms[m];
+                return m === -1 ? item.rooms.reduce((a, b) => (a || 0) + (b || 0), 0) : (item.rooms[m] || 0);
             };
             const getP = (item, m) => {
                 if (!item || !item.pax) return 0;
-                return m === -1 ? item.pax.reduce((a, b) => a + b, 0) : item.pax[m];
+                return m === -1 ? item.pax.reduce((a, b) => (a || 0) + (b || 0), 0) : (item.pax[m] || 0);
             };
 
-            const totalTY = data.service["TOTAL_MASTER"] || { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0), pax: new Array(12).fill(0) };
+            const totalTY = (data.service && data.service["TOTAL_MASTER"]) || { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0), pax: new Array(12).fill(0) };
             const revTY = getV(totalTY, midx), rmsTY = getR(totalTY, midx), paxTY = getP(totalTY, midx);
 
-            const totalLY = dataPrev ? (dataPrev.service["TOTAL_MASTER"] || { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0), pax: new Array(12).fill(0) }) : null;
+            const totalLY = dataPrev ? ((dataPrev.service && dataPrev.service["TOTAL_MASTER"]) || { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0), pax: new Array(12).fill(0) }) : null;
             const revLY = totalLY ? getV(totalLY, midx) : 0;
             const rmsLY = totalLY ? getR(totalLY, midx) : 0;
             const paxLY = totalLY ? getP(totalLY, midx) : 0;
@@ -431,22 +440,24 @@
             // Grouping logic
             const groupedTY = {};
             Object.keys(PRODUCTION_GROUPS).forEach(id => { groupedTY[id] = { name: PRODUCTION_GROUPS[id].name, revenue: new Array(12).fill(0), details: [] }; });
-            Object.values(data.service).forEach(s => {
-                if (s.name !== "TOTAL" && s.name !== "TOTAL_MASTER") {
-                    const gid = getGroupID(s.name);
-                    if (gid && gid !== "OMIT" && groupedTY[gid]) {
-                        for (let i = 0; i < 12; i++) {
-                            if (s.revenue && s.revenue[i] !== undefined) {
-                                groupedTY[gid].revenue[i] += s.revenue[i];
+            if (data.service) {
+                Object.values(data.service).forEach(s => {
+                    if (s.name !== "TOTAL" && s.name !== "TOTAL_MASTER") {
+                        const gid = getGroupID(s.name);
+                        if (gid && gid !== "OMIT" && groupedTY[gid]) {
+                            for (let i = 0; i < 12; i++) {
+                                if (s.revenue && s.revenue[i] !== undefined) {
+                                    groupedTY[gid].revenue[i] += (s.revenue[i] || 0);
+                                }
                             }
+                            groupedTY[gid].details.push(s);
                         }
-                        groupedTY[gid].details.push(s);
                     }
-                }
-            });
+                });
+            }
 
             const groupedLY = {};
-            if (dataPrev) {
+            if (dataPrev && dataPrev.service) {
                 Object.keys(PRODUCTION_GROUPS).forEach(id => { groupedLY[id] = { revenue: new Array(12).fill(0) }; });
                 Object.values(dataPrev.service).forEach(s => {
                     if (s.name !== "TOTAL" && s.name !== "TOTAL_MASTER") {
@@ -454,7 +465,7 @@
                         if (gid && gid !== "OMIT" && groupedLY[gid]) {
                             for (let i = 0; i < 12; i++) {
                                 if (s.revenue && s.revenue[i] !== undefined) {
-                                    groupedLY[gid].revenue[i] += s.revenue[i];
+                                    groupedLY[gid].revenue[i] += (s.revenue[i] || 0);
                                 }
                             }
                         }
@@ -464,9 +475,6 @@
 
             const compTY = (getV(groupedTY.SPA, midx) + getV(groupedTY.PARKING, midx) + getV(groupedTY.MINIBAR, midx) + getV(groupedTY.VARIOS, midx) + getV(groupedTY.OFICINAS, midx) + getV(groupedTY.CAFETERIA, midx));
             const compLY = dataPrev ? (getV(groupedLY.SPA, midx) + getV(groupedLY.PARKING, midx) + getV(groupedLY.MINIBAR, midx) + getV(groupedLY.VARIOS, midx) + getV(groupedLY.OFICINAS, midx) + getV(groupedLY.CAFETERIA, midx)) : 0;
-
-            const desTY = getV(groupedTY.DESAYUNOS, midx);
-            const desLY = dataPrev ? getV(groupedLY.DESAYUNOS, midx) : 0;
 
             const habRevTY = getV(groupedTY.HABITACION, midx);
             const habRevLY = dataPrev ? getV(groupedLY.HABITACION, midx) : 0;
@@ -492,10 +500,12 @@
             document.getElementById('kpi-revpac').innerText = revpacTY.toFixed(1) + " €";
             document.getElementById('trend-revpac').innerHTML = trend(revpacTY, revpacLY);
 
-            const tktDesTY = paxTY > 0 ? desTY / paxTY : 0;
-            const tktDesLY = paxLY > 0 ? desLY / paxLY : 0;
-            if (document.getElementById('kpi-ticketdes')) document.getElementById('kpi-ticketdes').innerText = tktDesTY.toFixed(1) + " €";
-            if (document.getElementById('trend-ticketdes')) document.getElementById('trend-ticketdes').innerHTML = trend(tktDesTY, tktDesLY);
+            // Room Production KPI
+            if (document.getElementById('kpi-ticketdes')) {
+                document.getElementById('kpi-ticketdes').innerText = fmt(habRevTY);
+                document.querySelector('#kpi-ticketdes').previousElementSibling.innerText = "Prod. Habitación";
+                document.getElementById('trend-ticketdes').innerHTML = trend(habRevTY, habRevLY);
+            }
 
             const comppaxTY = paxTY > 0 ? compTY / paxTY : 0;
             const comppaxLY = paxLY > 0 ? compLY / paxLY : 0;
@@ -515,23 +525,40 @@
         }
 
         function renderTable(grouped, midx, total, fmt) {
-            const thead = document.getElementById('tableHead'); thead.innerHTML = midx === -1 ? '<tr><th>Categoría / Concepto</th>' + SHORT_MONTHS.map(m => `<th>${m}</th>`).join('') + '<th>Total</th></tr>' : '<tr><th>Categoría / Concepto</th><th>Ingreso</th><th>% Mix</th></tr>';
+            const thead = document.getElementById('tableHead');
+            thead.innerHTML = midx === -1 ?
+                '<tr><th>Categoría / Concepto</th>' + SHORT_MONTHS.map(m => `<th>${m}</th>`).join('') + '<th>Total</th><th>% Mix Total</th></tr>' :
+                '<tr><th>Categoría / Concepto</th><th>Valor Ingreso</th><th>% Mix Total</th><th>% Contrib. Grupo</th></tr>';
+
             const tbody = document.getElementById('tableBody'); tbody.innerHTML = '';
 
-            const getV = (arr) => midx === -1 ? arr.reduce((a, b) => a + b, 0) : arr[midx];
+            const getV = (arr) => midx === -1 ? arr.reduce((a, b) => (a || 0) + (b || 0), 0) : (arr[midx] || 0);
 
             Object.values(grouped).sort((a, b) => parseInt(a.name) - parseInt(b.name)).forEach(g => {
                 const gVal = getV(g.revenue); if (gVal === 0 && g.details.length === 0) return;
+                const percTotal = total > 0 ? (gVal / total * 100).toFixed(1) : "0.0";
+
                 let row = `<tr class="row-group"><td>${g.name}</td>`;
-                if (midx === -1) { row += g.revenue.map(v => `<td>${v ? new Intl.NumberFormat('es-ES').format(v) : '-'}</td>`).join('') + `<td>${fmt(gVal)}</td>`; }
-                else { row += `<td>${fmt(gVal)}</td><td>${(gVal / total * 100).toFixed(1)}%</td>`; }
+                if (midx === -1) {
+                    row += g.revenue.map(v => `<td>${v ? new Intl.NumberFormat('es-ES').format(v) : '-'}</td>`).join('') + `<td>${fmt(gVal)}</td><td>${percTotal}%</td>`;
+                }
+                else {
+                    row += `<td style="font-weight:700;">${fmt(gVal)}</td><td style="font-weight:700;">${percTotal}%</td><td>-</td>`;
+                }
                 tbody.innerHTML += row + '</tr>';
 
                 g.details.sort((a, b) => getV(b.revenue) - getV(a.revenue)).forEach(s => {
                     const sVal = getV(s.revenue); if (sVal === 0) return;
-                    let sRow = `<tr><td style="padding-left:15px; font-size: 0.8rem; color: #475569;">${s.name}</td>`;
-                    if (midx === -1) { sRow += s.revenue.map(v => `<td>${v ? new Intl.NumberFormat('es-ES').format(v) : '-'}</td>`).join('') + `<td>${new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }).format(sVal)} €</td>`; }
-                    else { sRow += `<td>${new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }).format(sVal)} €</td><td>${(sVal / total * 100).toFixed(1)}%</td>`; }
+                    const sPercTotal = total > 0 ? (sVal / total * 100).toFixed(1) : "0.0";
+                    const sPercGroup = gVal > 0 ? (sVal / gVal * 100).toFixed(1) : "0.0";
+
+                    let sRow = `<tr><td style="padding-left:25px; font-size: 0.85rem; color: #475569;">${s.name}</td>`;
+                    if (midx === -1) {
+                        sRow += s.revenue.map(v => `<td>${v ? new Intl.NumberFormat('es-ES').format(v) : '-'}</td>`).join('') + `<td>${new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }).format(sVal)} €</td><td>${sPercTotal}%</td>`;
+                    }
+                    else {
+                        sRow += `<td>${new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }).format(sVal)} €</td><td style="color:#64748b;">${sPercTotal}%</td><td style="font-weight:600; color:var(--primary);">${sPercGroup}%</td>`;
+                    }
                     tbody.innerHTML += sRow + '</tr>';
                 });
             });
@@ -541,7 +568,7 @@
             // Mix Chart
             const mixData = [], mixLabels = [];
             Object.values(groupedTY).forEach(g => {
-                const val = midx === -1 ? g.revenue.reduce((a, b) => a + b, 0) : g.revenue[midx];
+                const val = midx === -1 ? g.revenue.reduce((a, b) => (a || 0) + (b || 0), 0) : (g.revenue[midx] || 0);
                 if (val > 0) { mixData.push(val); mixLabels.push(g.name.split('. ')[1]); }
             });
 
@@ -558,14 +585,14 @@
 
             const months = midx === -1 ? [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] : [midx];
             months.forEach(m => {
-                const paxTY = totalTY.pax[m] || 0;
-                const compTY = groupedTY.SPA.revenue[m] + groupedTY.PARKING.revenue[m] + groupedTY.MINIBAR.revenue[m] + groupedTY.VARIOS.revenue[m];
-                tyPace.push(paxTY > 0 ? (compTY / paxTY).toFixed(2) : 0);
+                const pTY = (totalTY.pax && totalTY.pax[m]) || 0;
+                const cTY = (groupedTY.SPA.revenue[m] || 0) + (groupedTY.PARKING.revenue[m] || 0) + (groupedTY.MINIBAR.revenue[m] || 0) + (groupedTY.VARIOS.revenue[m] || 0);
+                tyPace.push(pTY > 0 ? (cTY / pTY).toFixed(2) : 0);
 
-                if (groupedLY && totalLY) {
-                    const paxLY = totalLY.pax[m] || 0;
-                    const compLY = groupedLY.SPA.revenue[m] + groupedLY.PARKING.revenue[m] + groupedLY.MINIBAR.revenue[m] + groupedLY.VARIOS.revenue[m];
-                    lyPace.push(paxLY > 0 ? (compLY / paxLY).toFixed(2) : 0);
+                if (groupedLY && groupedLY.SPA && totalLY && totalLY.pax) {
+                    const pLY = (totalLY.pax[m]) || 0;
+                    const cLY = (groupedLY.SPA.revenue[m] || 0) + (groupedLY.PARKING.revenue[m] || 0) + (groupedLY.MINIBAR.revenue[m] || 0) + (groupedLY.VARIOS.revenue[m] || 0);
+                    lyPace.push(pLY > 0 ? (cLY / pLY).toFixed(2) : 0);
                 } else {
                     lyPace.push(0);
                 }

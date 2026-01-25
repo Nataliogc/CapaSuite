@@ -620,9 +620,13 @@
                     rowHab = data[1]; rowPax = data[2]; rowPro = data[3]; rowFechas = data[0];
                 }
 
-                let hasData = false;
                 const headerRow = rowFechas || [];
+                const foundMonths = headerRow.some(cell => {
+                    const h = normalizeStr(cell);
+                    return Object.keys(SHORT_MONTHS_MAP).some(m => h.startsWith(m));
+                });
 
+                let hasData = false;
                 for (let c = 1; c < headerRow.length; c++) {
                     const header = normalizeStr(headerRow[c]);
                     if (!header) continue;
@@ -632,7 +636,12 @@
                         if (header.startsWith(name)) { mIdx = index; break; }
                     }
 
-                    if (mIdx === -1 && header.includes("TOTAL")) mIdx = dateInfo ? dateInfo.month : 0;
+                    // Only use TOTAL if no month was found in the header row for other columns
+                    if (mIdx === -1 && header.includes("TOTAL")) {
+                        if (!foundMonths) mIdx = dateInfo ? dateInfo.month : 0;
+                        else continue; // Skip the TOTAL column if we have specific months
+                    }
+
                     if (mIdx === -1) {
                         const cell = headerRow[c];
                         if (cell instanceof Date) mIdx = cell.getMonth();
@@ -645,7 +654,6 @@
                         applyVal("TOTAL_MASTER", parseVal(rowPro ? rowPro[c] : 0), mIdx, 'rev');
                         hasData = true;
 
-                        // Detalles: Procesamos TODAS las filas que no sean maestras ni cabeceras
                         for (let r = 0; r < data.length; r++) {
                             if (masterIndices.has(r)) continue;
                             const rowItem = data[r];
