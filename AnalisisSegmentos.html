@@ -545,6 +545,8 @@
             const dbYear = db[currentHotel][detectedYear];
 
             let currentSeg = null;
+            let filledHab = false;
+            let filledPro = false;
 
             // 2. Iterate through rows
             for (let r = 0; r < data.length; r++) {
@@ -554,16 +556,28 @@
                 let col0 = String(row[0] || "").trim();
                 let col1 = String(row[1] || "").trim().toUpperCase();
 
-                // If col0 has value, it's a new segment. 
-                if (col0 && col0 !== "HAB" && col0 !== "PRO") {
-                    currentSeg = col0;
+                const isHab = col1.includes("HAB") || col1.includes("RMS");
+                const isPro = col1.includes("PRO") || col1.includes("REV") || col1.includes("ING");
+
+                if (col0) {
+                    const col0Upper = col0.toUpperCase();
+                    if (col0Upper === "XXXX" || col0Upper === "SEG.") {
+                        currentSeg = "S/S";
+                    } else {
+                        currentSeg = col0;
+                    }
+                    filledHab = false;
+                    filledPro = false;
+                } else if (!col0 && (isHab || isPro)) {
+                    // Deteción de TOTAL
+                    if ((isHab && filledHab) || (isPro && filledPro)) {
+                        currentSeg = "TOTAL";
+                        filledHab = false;
+                        filledPro = false;
+                    }
                 }
 
                 if (!currentSeg) continue;
-
-                // Typical labels: "Hab", "Pro", "Hab.", "Pro."
-                const isHab = col1.includes("HAB") || col1.includes("RMS");
-                const isPro = col1.includes("PRO") || col1.includes("REV") || col1.includes("ING");
 
                 if (isHab || isPro) {
                     if (!dbYear.segment[currentSeg]) {
@@ -581,8 +595,13 @@
                         if (midx > 11) break;
 
                         let val = parseVal(row[c]);
-                        if (isHab) segObj.rooms[midx] = val;
-                        else if (isPro) segObj.revenue[midx] = val;
+                        if (isHab) {
+                            segObj.rooms[midx] = val;
+                            filledHab = true;
+                        } else if (isPro) {
+                            segObj.revenue[midx] = val;
+                            filledPro = true;
+                        }
                     }
                 }
             }
@@ -646,8 +665,11 @@
             let totalRN = midx === -1 ? mRooms.reduce((a, b) => a + b, 0) : mRooms[midx];
 
             const fmt = (n) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
+            const fmtNum = (n) => new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }).format(n);
+            const fmtVal = (n) => currentMetric === 'revenue' ? fmt(n) : (currentMetric === 'adr' ? n.toFixed(2) + " €" : fmtNum(n));
+
             document.getElementById('kpi-prod').innerText = fmt(totalRev);
-            document.getElementById('kpi-rooms').innerText = totalRN;
+            document.getElementById('kpi-rooms').innerText = fmtNum(totalRN);
             document.getElementById('kpi-adr').innerText = (totalRN > 0 ? (totalRev / totalRN).toFixed(2) : "0") + " €";
 
             // Table
@@ -655,23 +677,32 @@
             const thead = document.getElementById('tableHead');
             let body = '';
 
+            // Filter out empty segments and handle TOTAL uniquely
+            const activeConcepts = concepts.filter(c => c.revenue.some(v => v > 0) || c.rooms.some(v => v > 0));
+
             if (midx === -1) {
-                thead.innerHTML = '<tr><th>Segmento</th>' + SHORT_MONTHS.map(m => `<th>${m}</th>`).join('') + '<th>Total</th><th>%</th></tr>';
-                concepts.sort((a, b) => b.revenue.reduce((x, y) => x + y, 0) - a.revenue.reduce((x, y) => x + y, 0)).forEach(c => {
+                thead.innerHTML = '<tr><th>Segmento</th>' + SHORT_MONTHS.map(m => `<th>${m}</th>`).join('') + '<th>Total</th><th>% Mix</th></tr>';
+                activeConcepts.sort((a, b) => b.revenue.reduce((x, y) => x + y, 0) - a.revenue.reduce((x, y) => x + y, 0)).forEach(c => {
+                    if (c.name === "TOTAL") return; // We handle total specially or skip if it's already in the header/KPIs
                     const rowRev = c.revenue.reduce((a, b) => a + b, 0);
                     const rowRooms = c.rooms.reduce((a, b) => a + b, 0);
-                    const val = currentMetric === 'revenue' ? rowRev : (currentMetric === 'rooms' ? rowRooms : (rowRooms > 0 ? rowRev / rowRooms : 0));
-                    if (rowRev === 0) return;
-                    body += `<tr><td>${c.name}</td>` + c.revenue.map((v, idx) => `<td>${(currentMetric === 'revenue' ? v : (currentMetric === 'rooms' ? c.rooms[idx] : (c.rooms[idx] > 0 ? v / c.rooms[idx] : 0))) || '-'}</td>`).join('') + `<td>${currentMetric === 'revenue' ? fmt(val) : val.toFixed(0)}</td><td>${(rowRev / totalRev * 100).toFixed(1)}%</td></tr>`;
+                    const valTotal = currentMetric === 'revenue' ? rowRev : (currentMetric === 'rooms' ? rowRooms : (rowRooms > 0 ? rowRev / rowRooms : 0));
+
+                    const cells = c.revenue.map((v, idx) => {
+                        const vCell = currentMetric === 'revenue' ? v : (currentMetric === 'rooms' ? c.rooms[idx] : (c.rooms[idx] > 0 ? v / c.rooms[idx] : 0));
+                        return `<td>${vCell ? fmtVal(vCell) : '-'}</td>`;
+                    }).join('');
+
+                    body += `<tr><td style="font-weight:600;">${c.name}</td>${cells}<td style="font-weight:700;">${fmtVal(valTotal)}</td><td>${(rowRev / totalRev * 100).toFixed(1)}%</td></tr>`;
                 });
             } else {
-                thead.innerHTML = '<tr><th>Segmento</th><th>Valor</th><th>%</th></tr>';
-                concepts.sort((a, b) => b.revenue[midx] - a.revenue[midx]).forEach(c => {
+                thead.innerHTML = '<tr><th>Segmento</th><th>Valor Detalle</th><th>% Mix Total</th></tr>';
+                activeConcepts.sort((a, b) => b.revenue[midx] - a.revenue[midx]).forEach(c => {
+                    if (c.name === "TOTAL") return;
                     const rev = c.revenue[midx];
                     const rooms = c.rooms[midx];
-                    if (rev === 0) return;
                     const val = currentMetric === 'revenue' ? rev : (currentMetric === 'rooms' ? rooms : (rooms > 0 ? rev / rooms : 0));
-                    body += `<tr><td>${c.name}</td><td>${currentMetric === 'revenue' ? fmt(val) : val.toFixed(1)}</td><td>${(rev / totalRev * 100).toFixed(1)}%</td></tr>`;
+                    body += `<tr><td style="font-weight:600;">${c.name}</td><td>${fmtVal(val)}</td><td>${(rev / totalRev * 100).toFixed(1)}%</td></tr>`;
                 });
             }
             tbody.innerHTML = body;

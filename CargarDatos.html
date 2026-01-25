@@ -750,17 +750,41 @@
                 const dbYear = db[hotel][detectedYear];
 
                 let currentSeg = null;
+                let filledHab = false;
+                let filledPro = false;
+
                 for (let r = 0; r < data.length; r++) {
                     const row = data[r];
                     if (!row || row.length < 2) continue;
 
-                    const col0 = String(row[0] || "").trim();
+                    let col0 = String(row[0] || "").trim();
                     const col1 = String(row[1] || "").trim().toUpperCase();
 
-                    if (col0 && col0 !== "HAB" && col0 !== "PRO") currentSeg = col0;
+                    const isHab = col1 === "HAB" || col1 === "RMS";
+                    const isPro = col1 === "PRO" || col1 === "REV";
+
+                    if (col0) {
+                        const col0Upper = col0.toUpperCase();
+                        if (col0Upper === "XXXX" || col0Upper === "SEG.") {
+                            currentSeg = "S/S";
+                        } else {
+                            currentSeg = col0;
+                        }
+                        filledHab = false;
+                        filledPro = false;
+                    } else if (!col0 && (isHab || isPro)) {
+                        // Si la primera columna está vacía pero es una fila de métricas,
+                        // comprobamos si hemos iniciado un nuevo bloque (posiblemente TOTAL)
+                        if ((isHab && filledHab) || (isPro && filledPro)) {
+                            currentSeg = "TOTAL";
+                            filledHab = false;
+                            filledPro = false;
+                        }
+                    }
+
                     if (!currentSeg) continue;
 
-                    if (col1 === "HAB" || col1 === "PRO" || col1 === "RMS" || col1 === "REV") {
+                    if (isHab || isPro) {
                         if (!dbYear.segment[currentSeg]) {
                             dbYear.segment[currentSeg] = { name: currentSeg, revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) };
                         }
@@ -769,8 +793,13 @@
                             const mIdx = c - 2;
                             if (mIdx < 0 || mIdx > 11) continue;
                             const val = parseVal(row[c]);
-                            if (col1 === "HAB" || col1 === "RMS") segObj.rooms[mIdx] = val;
-                            else segObj.revenue[mIdx] = val;
+                            if (isHab) {
+                                segObj.rooms[mIdx] = val;
+                                filledHab = true;
+                            } else {
+                                segObj.revenue[mIdx] = val;
+                                filledPro = true;
+                            }
                         }
                     }
                 }
