@@ -749,6 +749,9 @@
                 if (!db[hotel][detectedYear]) db[hotel][detectedYear] = { service: {}, segment: {}, lastUpdate: "" };
                 const dbYear = db[hotel][detectedYear];
 
+                // Clear existing segments for this specific year to avoid ghost data/duplicates
+                dbYear.segment = {};
+
                 let currentSeg = null;
                 let filledHab = false;
                 let filledPro = false;
@@ -765,20 +768,19 @@
 
                     if (col0) {
                         const col0Upper = col0.toUpperCase();
-                        if (col0Upper === "XXXX" || col0Upper === "SEG.") {
+                        if (col0Upper === "XXXX" || col0Upper === "SEG." || col0Upper === "S/S") {
                             currentSeg = "S/S";
+                        } else if (col0Upper.includes("TOTAL")) {
+                            currentSeg = "TOTAL";
                         } else {
                             currentSeg = col0;
                         }
                         filledHab = false;
                         filledPro = false;
                     } else if (!col0 && (isHab || isPro)) {
-                        // Si la primera columna está vacía pero es una fila de métricas,
-                        // comprobamos si hemos iniciado un nuevo bloque (posiblemente TOTAL)
+                        // Switch to TOTAL if we see metrics again but no name
                         if ((isHab && filledHab) || (isPro && filledPro)) {
                             currentSeg = "TOTAL";
-                            filledHab = false;
-                            filledPro = false;
                         }
                     }
 

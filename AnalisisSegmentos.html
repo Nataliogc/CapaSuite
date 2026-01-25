@@ -544,6 +544,9 @@
             if (!db[currentHotel][detectedYear]) db[currentHotel][detectedYear] = { segment: {}, service: {}, lastUpdate: "" };
             const dbYear = db[currentHotel][detectedYear];
 
+            // Clear existing segments for this specific year
+            dbYear.segment = {};
+
             let currentSeg = null;
             let filledHab = false;
             let filledPro = false;
@@ -561,8 +564,10 @@
 
                 if (col0) {
                     const col0Upper = col0.toUpperCase();
-                    if (col0Upper === "XXXX" || col0Upper === "SEG.") {
+                    if (col0Upper === "XXXX" || col0Upper === "SEG." || col0Upper === "S/S") {
                         currentSeg = "S/S";
+                    } else if (col0Upper.includes("TOTAL")) {
+                        currentSeg = "TOTAL";
                     } else {
                         currentSeg = col0;
                     }
@@ -572,8 +577,6 @@
                     // Deteción de TOTAL
                     if ((isHab && filledHab) || (isPro && filledPro)) {
                         currentSeg = "TOTAL";
-                        filledHab = false;
-                        filledPro = false;
                     }
                 }
 
@@ -661,8 +664,18 @@
             });
 
             const midx = currentMonthFilter === "All" ? -1 : parseInt(currentMonthFilter);
-            let totalRev = midx === -1 ? mTotals.reduce((a, b) => a + b, 0) : mTotals[midx];
-            let totalRN = midx === -1 ? mRooms.reduce((a, b) => a + b, 0) : mRooms[midx];
+
+            // Prioritize the explicit "TOTAL" object from Excel if it exists
+            const totalObj = data.segment["TOTAL"];
+            let totalRev, totalRN;
+
+            if (totalObj) {
+                totalRev = midx === -1 ? totalObj.revenue.reduce((a, b) => a + b, 0) : totalObj.revenue[midx];
+                totalRN = midx === -1 ? totalObj.rooms.reduce((a, b) => a + b, 0) : totalObj.rooms[midx];
+            } else {
+                totalRev = midx === -1 ? mTotals.reduce((a, b) => a + b, 0) : mTotals[midx];
+                totalRN = midx === -1 ? mRooms.reduce((a, b) => a + b, 0) : mRooms[midx];
+            }
 
             const fmt = (n) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
             const fmtNum = (n) => new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }).format(n);

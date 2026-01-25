@@ -633,6 +633,7 @@
 
             // KPIs
             const fmt = (n) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
+            const fmtNum = (n) => new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }).format(n);
             const trend = (ty, ly, lm) => {
                 let res = '';
                 if (ly) {
@@ -652,10 +653,10 @@
             document.getElementById('kpi-prod-hab').innerText = fmt(habRevTY);
             document.getElementById('trend-prod-hab').innerHTML = trend(habRevTY, habRevLY, habRevLM);
 
-            document.getElementById('kpi-rn').innerText = rmsTY;
+            document.getElementById('kpi-rn').innerText = fmtNum(rmsTY);
             document.getElementById('trend-rn').innerHTML = trend(rmsTY, rmsLY, rmsLM);
 
-            document.getElementById('kpi-pax').innerText = paxTY;
+            document.getElementById('kpi-pax').innerText = fmtNum(paxTY);
             document.getElementById('trend-pax').innerHTML = trend(paxTY, paxLY, paxLM);
 
             const adrTY = rmsTY > 0 ? habRevTY / rmsTY : 0;
@@ -705,7 +706,7 @@
 
                 let row = `<tr class="row-group"><td>${g.name}</td>`;
                 if (midx === -1) {
-                    row += g.revenue.map(v => `<td>${v ? new Intl.NumberFormat('es-ES').format(v) : '-'}</td>`).join('') + `<td>${fmt(gVal)}</td><td>${percTotal}%</td>`;
+                    row += g.revenue.map(v => `<td>${v ? fmt(v) : '-'}</td>`).join('') + `<td>${fmt(gVal)}</td><td>${percTotal}%</td>`;
                 }
                 else {
                     row += `<td style="font-weight:700;">${fmt(gVal)}</td><td style="font-weight:700;">${percTotal}%</td><td>-</td>`;
@@ -719,10 +720,10 @@
 
                     let sRow = `<tr><td style="padding-left:25px; font-size: 0.85rem; color: #475569;">${s.name}</td>`;
                     if (midx === -1) {
-                        sRow += s.revenue.map(v => `<td>${v ? new Intl.NumberFormat('es-ES').format(v) : '-'}</td>`).join('') + `<td>${new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }).format(sVal)} €</td><td>${sPercTotal}%</td>`;
+                        sRow += s.revenue.map(v => `<td>${v ? fmt(v) : '-'}</td>`).join('') + `<td>${fmt(sVal)}</td><td>${sPercTotal}%</td>`;
                     }
                     else {
-                        sRow += `<td>${new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }).format(sVal)} €</td><td style="color:#64748b;">${sPercTotal}%</td><td style="font-weight:600; color:var(--primary);">${sPercGroup}%</td>`;
+                        sRow += `<td>${fmt(sVal)}</td><td style="color:#64748b;">${sPercTotal}%</td><td style="font-weight:600; color:var(--primary);">${sPercGroup}%</td>`;
                     }
                     tbody.innerHTML += sRow + '</tr>';
                 });
