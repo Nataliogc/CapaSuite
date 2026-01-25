@@ -872,24 +872,63 @@
                 dbYear.otb.revenue.fill(0);
                 dbYear.otb.rooms.fill(0);
 
+                // 1. First, find the header row to detect where months are
+                let monthCols = {};
+                const SHORT_MONTHS_MAP = { "ENE": 0, "JAN": 0, "FEB": 1, "MAR": 2, "ABR": 3, "APR": 3, "MAY": 4, "JUN": 5, "JUL": 6, "AGO": 7, "AUG": 7, "SEP": 8, "OCT": 9, "NOV": 10, "DIC": 11, "DEC": 11 };
+
+                for (let r = 0; r < Math.min(data.length, 50); r++) {
+                    const row = data[r] || [];
+                    for (let c = 0; c < row.length; c++) {
+                        const cell = normalizeStr(row[c]);
+                        for (const [mName, mIdx] of Object.entries(SHORT_MONTHS_MAP)) {
+                            if (cell.startsWith(mName)) {
+                                monthCols[mIdx] = c;
+                            }
+                        }
+                    }
+                    if (Object.keys(monthCols).length >= 1) break; // Found header row
+                }
+
+                // If no header found, default to columns 1-12
+                if (Object.keys(monthCols).length === 0) {
+                    for (let i = 0; i < 12; i++) monthCols[i] = i + 1;
+                }
+
                 for (let r = 0; r < data.length; r++) {
                     const row = data[r];
                     if (!row || row.length < 2) continue;
-                    const first = String(row[0] || "").toUpperCase();
 
-                    // Detect Rooms row
-                    if (first.includes("HAB") || first === "RN") {
-                        for (let c = 1; c < row.length; c++) {
-                            const mIdx = c - 1;
-                            if (mIdx < 12) dbYear.otb.rooms[mIdx] = parseVal(row[c]);
+                    // Identify row by scanning first 10 columns for keywords
+                    let rowType = null;
+                    for (let c = 0; c < Math.min(row.length, 10); c++) {
+                        const cell = normalizeStr(row[c]);
+                        if (!cell) continue;
+
+                        if (cell.includes("HAB") || cell === "RN" || cell === "ESTANCIAS" || cell.includes("NIGHTS")) {
+                            rowType = 'rms';
+                            break;
+                        }
+                        if (cell.includes("TOTAL") || cell.includes("PRODUCCION") || cell.includes("INGRESOS") || cell.includes("IMPORTES") || cell.includes("VALORADAS") || cell.includes("REVENUE")) {
+                            rowType = 'rev';
+                            break;
                         }
                     }
-                    // Detect Total row (usually the last conceptual item or a explicit total)
-                    // If it matches concept names like "TOTAL" or occurs at the end of revenues
-                    if (first.includes("TOTAL") || first.includes("PRODUCCION")) {
-                        for (let c = 1; c < row.length; c++) {
-                            const mIdx = c - 1;
-                            if (mIdx < 12) dbYear.otb.revenue[mIdx] = parseVal(row[c]);
+
+                    if (rowType === 'rms') {
+                        for (let mIdx = 0; mIdx < 12; mIdx++) {
+                            const col = monthCols[mIdx];
+                            if (col !== undefined && row[col] !== undefined) {
+                                dbYear.otb.rooms[mIdx] = parseVal(row[col]);
+                            }
+                        }
+                    }
+
+                    if (rowType === 'rev') {
+                        for (let mIdx = 0; mIdx < 12; mIdx++) {
+                            const col = monthCols[mIdx];
+                            if (col !== undefined && row[col] !== undefined) {
+                                dbYear.otb.revenue[mIdx] = parseVal(row[col]);
+                            }
                         }
                     }
                 }

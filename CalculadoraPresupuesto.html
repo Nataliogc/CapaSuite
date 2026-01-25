@@ -459,9 +459,10 @@
                     style="font-weight: 500; font-size: 0.9rem; margin-left: 10px;">Estrategia:</label>
                 <div class="select-wrapper">
                     <select id="strategySelector" onchange="loadStrategy()">
-                        <option value="original">🔴 Propuesta Central (Original)</option>
+                        <option value="original">Propuesta Central (Original)</option>
                         <option value="optionB" selected>✅ Opción B: Lógica (Recomendada)</option>
                         <option value="optionC">💰 Opción C: Maximizar Precio</option>
+                        <option value="optionD">🚀 Opción D: OTB + Yield Histórico</option>
                     </select>
                 </div>
             </div>
@@ -635,9 +636,14 @@
                     optionC: {
                         rev: [66127, 69000, 100000, 130251, 140000, 118652, 121962, 125000, 148593, 164020, 114738, 95813],
                         adr: [64.64, 62.00, 78.00, 72.00, 80.00, 70.50, 69.10, 62.00, 63.00, 63.00, 65.00, 63.00]
+                    },
+                    optionD: {
+                        rev: [68500, 72500, 105000, 138500, 142000, 118652, 121962, 131039, 148593, 164020, 114738, 95813],
+                        adr: [66.00, 63.00, 72.00, 74.00, 78.00, 70.50, 69.10, 61.09, 62.91, 62.20, 64.28, 62.20]
                     }
                 }
-            },
+            }
+        },
             Cumbria: {
                 logo: 'Imagen/logo-cumbria.svg',
                 capacity: [3720, 3360, 3720, 3600, 3720, 3600, 3720, 3720, 3600, 3720, 3600, 3720],
@@ -659,6 +665,10 @@
                     optionC: {
                         rev: [84000, 90000, 115000, 138000, 162000, 148000, 172000, 162000, 158000, 152000, 132000, 118000],
                         adr: [73.00, 76.00, 83.00, 86.00, 96.00, 91.00, 101.00, 96.00, 93.00, 91.00, 86.00, 83.00]
+                    },
+                    optionD: {
+                        rev: [88000, 94000, 118000, 142000, 165000, 148000, 172000, 162000, 158000, 152000, 132000, 118000],
+                        adr: [74.00, 77.00, 85.00, 88.00, 98.00, 91.00, 101.00, 96.00, 93.00, 91.00, 86.00, 83.00]
                     }
                 }
             }
