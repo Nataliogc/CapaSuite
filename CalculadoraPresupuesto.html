@@ -441,14 +441,21 @@
                 <a href="index.html" title="Volver al Inicio" style="display:flex; align-items:center;">
                     <img src="Imagen/logo, CapaSuite.png" alt="CapaSuite" style="height: 40px; width: auto;">
                 </a>
-                <img src="Imagen/logo-guadiana.svg" alt="Hotel Guadiana" style="height: 35px; width: auto;">
+                <img id="hotelLogo" src="Imagen/logo-guadiana.svg" alt="Hotel" style="height: 35px; width: auto;">
                 <div class="header-title">
                     <h1>Presupuestos 2026</h1>
                     <p>Panel Avanzado de Presupuestos y Control</p>
                 </div>
             </div>
             <div class="strategy-control">
-                <label for="strategySelector" style="font-weight: 500; font-size: 0.9rem;">Estrategia:</label>
+                <div class="select-wrapper">
+                    <select id="hotelSelector" onchange="switchHotel()">
+                        <option value="Guadiana">Hotel Guadiana</option>
+                        <option value="Cumbria">Hotel Cumbria</option>
+                    </select>
+                </div>
+                <label for="strategySelector"
+                    style="font-weight: 500; font-size: 0.9rem; margin-left: 10px;">Estrategia:</label>
                 <div class="select-wrapper">
                     <select id="strategySelector" onchange="loadStrategy()">
                         <option value="original">🔴 Propuesta Central (Original)</option>
@@ -604,49 +611,74 @@
     </div>
 
     <script>
-        // --- DATOS PRINCIPALES ---
-        const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-        const capacity = [3162, 2856, 3162, 3060, 3162, 3060, 3162, 3162, 3060, 3162, 3060, 3162];
-
-        // Real 2025
-        const real2025 = {
-            rev: [46629, 65367, 84793, 115352, 160450, 107417, 129720, 124567, 140798, 156106, 111396, 92671],
-            adr: [59.55, 58.89, 60.65, 66.33, 80.87, 67.52, 70.58, 58.18, 59.91, 59.20, 62.41, 60.49],
-            rn: [783, 1110, 1398, 1739, 1984, 1591, 1838, 2141, 2350, 2637, 1785, 1532]
-        };
-
-        // Datos OTB (Real Ene + OTB Feb-Dic)
-        const otbData = [66127, 37552, 97753, 130646, 49692, 44094, 21440, 4151, 21767, 36394, 828, 10448];
-
-        // Estrategias
-        const strategies = {
-            original: {
-                rev: [66789, 71441, 106875, 130251, 125309, 118652, 121962, 131039, 148593, 163911, 114738, 95813],
-                adr: [61.50, 61.80, 75.00, 70.33, 69.50, 70.50, 69.10, 61.09, 62.91, 62.16, 64.28, 62.50]
+        // --- DATOS POR HOTEL ---
+        const hotelData = {
+            Guadiana: {
+                logo: 'Imagen/logo-guadiana.svg',
+                capacity: [3162, 2856, 3162, 3060, 3162, 3060, 3162, 3162, 3060, 3162, 3060, 3162],
+                real2025: {
+                    rev: [46629, 65367, 84793, 115352, 160450, 107417, 129720, 124567, 140798, 156106, 111396, 92671],
+                    adr: [59.55, 58.89, 60.65, 66.33, 80.87, 67.52, 70.58, 58.18, 59.91, 59.20, 62.41, 60.49],
+                    rn: [783, 1110, 1398, 1739, 1984, 1591, 1838, 2141, 2350, 2637, 1785, 1532]
+                },
+                otbData: [66127, 37552, 97753, 130646, 49692, 44094, 21440, 4151, 21767, 36394, 828, 10448],
+                strategies: {
+                    original: {
+                        rev: [66789, 71441, 106875, 130251, 125309, 118652, 121962, 131039, 148593, 163911, 114738, 95813],
+                        adr: [61.50, 61.80, 75.00, 70.33, 69.50, 70.50, 69.10, 61.09, 62.91, 62.16, 64.28, 62.50]
+                    },
+                    optionB: {
+                        rev: [66127, 69000, 96875, 130251, 138309, 118652, 121962, 131039, 148593, 164020, 114738, 95813],
+                        adr: [64.64, 61.83, 68.03, 70.33, 76.04, 70.50, 69.10, 61.09, 62.91, 62.20, 64.28, 62.20]
+                    },
+                    optionC: {
+                        rev: [66127, 69000, 100000, 130251, 140000, 118652, 121962, 125000, 148593, 164020, 114738, 95813],
+                        adr: [64.64, 62.00, 78.00, 72.00, 80.00, 70.50, 69.10, 62.00, 63.00, 63.00, 65.00, 63.00]
+                    }
+                }
             },
-            optionB: {
-                rev: [66127, 69000, 96875, 130251, 138309, 118652, 121962, 131039, 148593, 164020, 114738, 95813],
-                adr: [64.64, 61.83, 68.03, 70.33, 76.04, 70.50, 69.10, 61.09, 62.91, 62.20, 64.28, 62.50]
-            },
-            optionC: {
-                rev: [66127, 69000, 100000, 130251, 140000, 118652, 121962, 125000, 148593, 164020, 114738, 95813],
-                adr: [64.64, 62.00, 78.00, 72.00, 80.00, 70.50, 69.10, 62.00, 63.00, 63.00, 65.00, 63.00]
+            Cumbria: {
+                logo: 'Imagen/logo-cumbria.svg',
+                capacity: [3720, 3360, 3720, 3600, 3720, 3600, 3720, 3720, 3600, 3720, 3600, 3720],
+                real2025: {
+                    rev: [78000, 85000, 98000, 125000, 148000, 135000, 155000, 145000, 140000, 135000, 115000, 98000],
+                    adr: [66.00, 69.00, 73.00, 76.00, 86.00, 83.00, 89.00, 85.00, 83.00, 79.00, 75.00, 71.00],
+                    rn: [1182, 1232, 1342, 1645, 1721, 1627, 1742, 1706, 1687, 1709, 1533, 1380]
+                },
+                otbData: [84000, 48000, 115000, 138000, 158000, 145000, 165000, 155000, 148000, 138000, 98000, 88000],
+                strategies: {
+                    original: {
+                        rev: [88000, 92000, 108000, 135000, 158000, 145000, 168000, 158000, 155000, 148000, 128000, 115000],
+                        adr: [71.00, 73.00, 76.00, 79.00, 89.00, 86.00, 93.00, 89.00, 86.00, 83.00, 79.00, 76.00]
+                    },
+                    optionB: {
+                        rev: [84000, 90000, 105000, 132000, 155000, 142000, 165000, 155000, 152000, 145000, 125000, 112000],
+                        adr: [72.00, 74.00, 77.00, 81.00, 91.00, 88.00, 96.00, 92.00, 89.00, 86.00, 81.00, 79.00]
+                    },
+                    optionC: {
+                        rev: [84000, 90000, 115000, 138000, 162000, 148000, 172000, 162000, 158000, 152000, 132000, 118000],
+                        adr: [73.00, 76.00, 83.00, 86.00, 96.00, 91.00, 101.00, 96.00, 93.00, 91.00, 86.00, 83.00]
+                    }
+                }
             }
         };
 
-        // Estado Reactivo
+        const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+        let currentHotel = "Guadiana";
         let currentRev = [];
         let currentAdr = [];
         let chartInstance = null;
         let pieInstance = null;
 
-        // --- UTILS ---
-        const formatMoney = (n) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
-        const formatNum = (n) => new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }).format(n);
-        const formatPct = (n) => n.toFixed(1) + '%';
-
-        // --- CORE ---
         function init() {
+            switchHotel();
+        }
+
+        function switchHotel() {
+            currentHotel = document.getElementById('hotelSelector').value;
+            const h = hotelData[currentHotel];
+            document.getElementById('hotelLogo').src = h.logo;
             loadStrategy();
         }
 

@@ -515,15 +515,29 @@
         }
 
         function processData(data, fileName) {
-            // 1. Detect Year from headers (e.g., "Ene.22" -> 2022)
+            // 1. Detect Year
             let detectedYear = "2026";
-            const headerRow = data[2] || []; // Row 3
-            for (let c = 2; c < headerRow.length; c++) {
-                const h = String(headerRow[c]);
-                const yrMatch = h.match(/\.(\d{2})$/);
-                if (yrMatch) {
-                    detectedYear = "20" + yrMatch[1];
+            let headerRow = null;
+            // Scan first 10 rows for month headers
+            for (let r = 0; r < 10; r++) {
+                const row = data[r] || [];
+                if (row.some(c => {
+                    const s = String(c).toUpperCase();
+                    return s.includes("ENE") || s.includes("JAN") || s.includes("TOTAL");
+                })) {
+                    headerRow = row;
                     break;
+                }
+            }
+
+            if (headerRow) {
+                for (let c = 0; c < headerRow.length; c++) {
+                    const h = String(headerRow[c]);
+                    const yrMatch = h.match(/[.\-\/ ](\d{2,4})$/);
+                    if (yrMatch) {
+                        detectedYear = yrMatch[1].length === 2 ? "20" + yrMatch[1] : yrMatch[1];
+                        break;
+                    }
                 }
             }
 
@@ -532,68 +546,61 @@
 
             let currentSeg = null;
 
-            // 2. Iterate through rows (Starting from row 4)
-            for (let r = 3; r < data.length; r++) {
+            // 2. Iterate through rows
+            for (let r = 0; r < data.length; r++) {
                 let row = data[r];
                 if (!row || row.length < 2) continue;
 
-                let segNameInCol = String(row[0] || "").trim();
-                let metricType = String(row[1] || "").trim().toUpperCase(); // "Hab" or "Pro"
+                let col0 = String(row[0] || "").trim();
+                let col1 = String(row[1] || "").trim().toUpperCase();
 
-                // If col0 has value, it's a new segment. If not, but it's a metric row, 
-                // we check if we already have a currentSeg or assign "S/N"
-                if (segNameInCol) {
-                    currentSeg = segNameInCol;
-                } else if (metricType && !currentSeg) {
-                    currentSeg = "S/N";
+                // If col0 has value, it's a new segment. 
+                if (col0 && col0 !== "HAB" && col0 !== "PRO") {
+                    currentSeg = col0;
                 }
 
-                if (!currentSeg || !metricType) continue;
+                if (!currentSeg) continue;
 
-                // Initialize segment if new
-                if (!dbYear.segment[currentSeg]) {
-                    dbYear.segment[currentSeg] = {
-                        name: currentSeg,
-                        revenue: new Array(12).fill(0),
-                        rooms: new Array(12).fill(0)
-                    };
-                }
+                // Typical labels: "Hab", "Pro", "Hab.", "Pro."
+                const isHab = col1.includes("HAB") || col1.includes("RMS");
+                const isPro = col1.includes("PRO") || col1.includes("REV") || col1.includes("ING");
 
-                const segObj = dbYear.segment[currentSeg];
-
-                // 3. Map columns C+ to months (0-11)
-                // We assume Col C = Ene, D = Feb...
-                for (let c = 2; c < row.length; c++) {
-                    const midx = c - 2;
-                    if (midx > 11) break;
-
-                    let rawVal = row[c];
-                    let val = 0;
-                    if (typeof rawVal === 'number') {
-                        val = rawVal;
-                    } else if (rawVal) {
-                        val = parseFloat(String(rawVal).replace(/[€\s]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+                if (isHab || isPro) {
+                    if (!dbYear.segment[currentSeg]) {
+                        dbYear.segment[currentSeg] = {
+                            name: currentSeg,
+                            revenue: new Array(12).fill(0),
+                            rooms: new Array(12).fill(0)
+                        };
                     }
+                    const segObj = dbYear.segment[currentSeg];
 
-                    if (metricType === "HAB") {
-                        segObj.rooms[midx] = val;
-                    } else if (metricType === "PRO") {
-                        segObj.revenue[midx] = val;
+                    // 3. Map columns C+ to months (0-11)
+                    for (let c = 2; c < row.length; c++) {
+                        const midx = c - 2;
+                        if (midx > 11) break;
+
+                        let val = parseVal(row[c]);
+                        if (isHab) segObj.rooms[midx] = val;
+                        else if (isPro) segObj.revenue[midx] = val;
                     }
-                }
-
-                // Reset currentSeg for the next potential block if the next row is empty or new
-                // Actually, in this Excel, a segment is a block of 2 rows. 
-                // We'll keep currentSeg until a NEW one appears.
-                const nextRow = data[r + 1];
-                if (nextRow && String(nextRow[0] || "").trim()) {
-                    currentSeg = null; // Prepare for next name
                 }
             }
 
-            // Set last update as the current day for reference
-            const today = new Date();
-            dbYear.lastUpdate = today.toLocaleDateString('es-ES');
+            dbYear.lastUpdate = new Date().toLocaleDateString('es-ES');
+        }
+
+        function parseVal(val) {
+            if (val === null || val === undefined || val === "") return 0;
+            if (typeof val === 'number') return val;
+            let s = String(val).replace(/[€$\s\u00a0]/g, "").trim();
+            const lastComma = s.lastIndexOf(',');
+            const lastDot = s.lastIndexOf('.');
+            if (lastComma > lastDot) s = s.replace(/\./g, "").replace(",", ".");
+            else if (lastDot > lastComma && lastComma !== -1) s = s.replace(/,/g, "");
+            else if (lastComma !== -1) s = s.replace(",", ".");
+            const num = parseFloat(s);
+            return isNaN(num) ? 0 : num;
         }
 
         function initControls() {
