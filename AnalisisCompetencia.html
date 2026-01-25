@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análisis de Mercado | CapaSuite</title>
+    <link rel="icon" type="image/png" href="Imagen/Icono_CapaSuite.png">
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- SheetJS & Chart.js -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/storage.js"></script>
+
+    <style>
+        :root {
+            --primary: #4f46e5;
+            /* Indigo 600 */
+            --primary-dark: #3730a3;
+            /* Indigo 800 */
+            --primary-light: #eef2ff;
+            /* Indigo 50 */
+            --bg-body: #f8fafc;
+            /* Slate 50 */
+            --bg-surface: #ffffff;
+            --text-main: #1e293b;
+            /* Slate 800 */
+            --text-light: #64748b;
+            /* Slate 500 */
+            --border: #e2e8f0;
+            /* Slate 200 */
+
+            --success: #10b981;
+            --success-bg: #d1fae5;
+            --warning: #f59e0b;
+            --warning-bg: #fef3c7;
+            --danger: #ef4444;
+            --danger-bg: #fee2e2;
+
+            --radius: 12px;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-body);
+            color: var(--text-main);
+            margin: 0;
+            padding: 30px;
+            font-size: 14px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        /* HEADER */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .app-title h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+            color: var(--primary-dark);
+        }
+
+        .app-title p {
+            margin: 4px 0 0 0;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        /* ACTIONS */
+        .controls {
+            display: flex;
+            gap: 12px;
+        }
+
+        .form-select,
+        .btn {
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg-surface);
+            font-family: inherit;
+            font-size: 0.9rem;
+            color: var(--text-main);
+            box-shadow: var(--shadow-sm);
+            cursor: pointer;
+            transition: all 0.2s;
+            outline: none;
+        }
+
+        .form-select:hover,
+        .btn:hover {
+            border-color: var(--primary);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            border: none;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        /* UPLOAD ZONE */
+        .upload-section {
+            background: var(--bg-surface);
+            border: 2px dashed #cbd5e1;
+            border-radius: 16px;
+            padding: 60px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+            max-width: 600px;
+            margin: 50px auto;
+        }
+
+        .upload-section:hover {
+            border-color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        /* LAYOUT GRID */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 320px minmax(0, 1fr);
+            /* Prevent blowout */
+            gap: 24px;
+            width: 100%;
+            max-width: 100%;
+        }
+
+        @media (max-width: 1000px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Prevent grid items from overflowing */
+        main {
+            min-width: 0;
+            max-width: 100%;
+        }
+
+        /* CARDS */
+        .card {
+            background: var(--bg-surface);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-heading {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+            color: var(--text-main);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #fafafa;
+        }
+
+        .panel-body {
+            padding: 20px;
+        }
+
+        /* KPI CARDS */
+        .kpi-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .kpi-item {
+            background: var(--bg-surface);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .kpi-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: var(--primary);
+        }
+
+        .kpi-label {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .kpi-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-main);
+            line-height: 1;
+        }
+
+        .kpi-sub {
+            font-size: 0.85rem;
+            margin-top: 8px;
+            font-weight: 500;
+        }
+
+        .kpi-trend-pos {
+            color: var(--success);
+        }
+
+        .kpi-trend-neg {
+            color: var(--danger);
+        }
+
+        /* INSIGHTS list style */
+        .insight-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .insight-box {
+            background: #f8fafc;
+            border-left: 3px solid var(--primary);
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: var(--text-main);
+        }
+
+        .insight-box.high {
+            border-left-color: var(--danger);
+            background: var(--danger-bg);
+            color: #991b1b;
+        }
+
+        .insight-box.opp {
+            border-left-color: var(--success);
+            background: var(--success-bg);
+            color: #065f46;
+        }
+
+        /* TABLE */
+        .table-wrap {
+            width: 100%;
+            overflow-x: auto;
+            border-radius: 0 0 var(--radius) var(--radius);
+            display: block;
+            max-width: calc(100vw - 380px);
+            /* Limit container width */
+        }
+
+        @media (max-width: 1000px) {
+            .table-wrap {
+                max-width: 90vw;
+            }
+        }
+
+        table {
+            width: auto;
+            min-width: 100%;
+            border-collapse: collapse;
+            white-space: nowrap;
+            table-layout: fixed;
+        }
+
+        thead th {
+            background: #f1f5f9;
+            color: var(--text-light);
+            font-weight: 600;
+            font-size: 0.65rem;
+            /* Smaller font */
+            text-transform: uppercase;
+            letter-spacing: 0em;
+            /* Tighter letters */
+            padding: 8px 2px;
+            /* Minimal padding */
+            text-align: center;
+            /* Center align */
+            border-bottom: 2px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+
+            /* STRICT DIMENSIONS */
+            width: 70px;
+            min-width: 70px;
+            max-width: 70px;
+
+            /* Allow Wrapping */
+            white-space: normal;
+            line-height: 1.1;
+            vertical-align: bottom;
+            overflow: hidden;
+            /* text-overflow: ellipsis; REMOVED */
+            word-break: break-word;
+            /* Break long words if needed */
+        }
+
+        thead th:first-child {
+            text-align: left;
+            position: sticky;
+            left: 0;
+            z-index: 20;
+            background: #f1f5f9;
+            border-right: 1px solid var(--border);
+            width: 95px;
+            min-width: 95px;
+            max-width: 95px;
+        }
+
+        tbody td {
+            padding: 6px 4px;
+            border-bottom: 1px solid var(--border);
+            text-align: center;
+            font-size: 0.8rem;
+            font-variant-numeric: tabular-nums;
+            color: var(--text-main);
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Sticky Date Column */
+        tbody td:first-child {
+            text-align: left;
+            position: sticky;
+            left: 0;
+            background: var(--bg-surface);
+            border-right: 1px solid var(--border);
+            font-weight: 500;
+            z-index: 5;
+            width: 95px;
+            min-width: 95px;
+            max-width: 95px;
+        }
+
+        tbody tr:hover td {
+            background-color: #f8fafc;
+        }
+
+        tbody tr:hover td:first-child {
+            background-color: #f8fafc;
+        }
+
+        /* BADGES & PILLS */
+        .date-pill {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .date-day {
+            font-weight: 700;
+            color: var(--text-main);
+            font-size: 0.9rem;
+            width: 18px;
+            text-align: center;
+        }
+
+        .date-meta {
+            display: flex;
+            flex-direction: column;
+            line-height: 1;
+            font-size: 0.65rem;
+            color: var(--text-light);
+        }
+
+        .gap-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 99px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            min-width: 48px;
+            text-align: center;
+        }
+
+        .gap-high {
+            background: var(--danger-bg);
+            color: #dc2626;
+        }
+
+        /* Much higher than market (Risk) */
+        .gap-low {
+            background: var(--warning-bg);
+            color: #d97706;
+        }
+
+        /* Much lower (Opportunity) */
+        .gap-ok {
+            background: var(--success-bg);
+            color: #059669;
+        }
+
+        /* Balanced */
+
+        .price-sold {
+            color: #dc2626;
+            background: #fee2e2;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-size: 0.75rem;
+        }
+
+        .price-minstay {
+            color: #2563eb;
+            background: #dbeafe;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-size: 0.75rem;
+            cursor: help;
+        }
+
+        .price-val {
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .price-comp {
+            color: var(--text-light);
+        }
+
+        /* CHART CONTAINER */
+        .chart-container {
+            height: 350px;
+            width: 100%;
+            position: relative;
+            /* Critical for Chart.js */
+            padding: 20px;
+            max-width: 100%;
+        }
+
+        /* ACTIONS */
+        .action-link {
+            text-decoration: underline;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .action-link:hover {
+            color: var(--primary-dark);
+        }
+
+        @keyframes highlightFade {
+            0% {
+                background-color: #fef08a;
+            }
+
+            100% {
+                background-color: transparent;
+            }
+        }
+
+        .highlight-row {
+            animation: highlightFade 3s ease-out;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+
+        <!-- HEADER -->
+        <header class="app-header">
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <a href="index.html" title="Volver al Inicio" style="display:flex; align-items:center;">
+                    <img src="Imagen/logo, CapaSuite.png" alt="CapaSuite" style="height: 45px; width: auto;">
+                </a>
+                <img id="hotelLogo" src="Imagen/logo-cumbria.svg" alt="Hotel" style="height: 40px; width: auto;">
+                <div class="app-title">
+                    <h1>Centro de Inteligencia de Precios</h1>
+                    <p>Análisis de competitividad y tendencias de mercado</p>
+                </div>
+            </div>
+            <div class="controls" id="dashboard-controls" style="display:none;">
+                <select id="hotelSelector" class="form-select" onchange="updateHotelLogo(); renderAll()">
+                    <option value="Cumbria">Cumbria Spa & Hotel</option>
+                    <option value="Guadiana">Sercotel Guadiana</option>
+                </select>
+                <select id="monthSelector" class="form-select" onchange="renderAll()">
+                    <option value="all">📅 Todo el Año</option>
+                </select>
+                <button id="updateBtn" class="btn btn-primary" onclick="clearData()">↺ Nuevo Archivo</button>
+            </div>
+    </div>
+    </header>
+
+    <!-- UPLOAD VIEW -->
+    <div id="view-upload">
+        <div class="upload-section" id="dropZone">
+            <div style="font-size: 4rem; margin-bottom: 20px;">📊</div>
+            <h2 style="margin: 0 0 10px 0; color: var(--primary-dark);">Sube tu archivo Expedia</h2>
+            <p style="color: var(--text-light);">Arrastra aquí el archivo .xlsx para generar el informe</p>
+            <input type="file" id="fileInput" hidden accept=".xlsx">
+        </div>
+    </div>
+
+    <!-- DASHBOARD VIEW -->
+    <div id="view-dashboard" class="dashboard-grid" style="display:none;">
+
+        <!-- LEFT COLUMN -->
+        <aside class="kpi-wrapper">
+
+            <!-- KPI CARD 1 -->
+            <div class="kpi-item">
+                <div class="kpi-label">Tu Tarifa Promedio (BAR)</div>
+                <div class="kpi-value" id="kpi-avg">0€</div>
+            </div>
+
+            <!-- KPI CARD 2 -->
+            <div class="kpi-item" style="border-left: 4px solid #64748b;"> <!-- Neutral Color -->
+                <div class="kpi-label">Tarifa Media Mercado</div>
+                <div class="kpi-value" id="kpi-market">0€</div>
+            </div>
+
+            <!-- KPI CARD 3 -->
+            <div class="kpi-item" id="kpi-card-pos">
+                <div class="kpi-label">Índice Competitivo (Gap)</div>
+                <div class="kpi-value" id="kpi-pos">0%</div>
+                <div class="kpi-sub" id="kpi-pos-text">En línea con el mercado</div>
+            </div>
+
+            <!-- INSIGHTS -->
+            <div class="card">
+                <div class="panel-heading">⚡ Análisis Experto</div>
+                <div class="panel-body">
+                    <div id="insights-container" class="insight-list">
+                        <!-- JS injected -->
+                    </div>
+                </div>
+            </div>
+
+        </aside>
+
+
+        <!-- RIGHT COLUMN -->
+        <main>
+            <!-- CHART -->
+            <div class="card" style="margin-bottom: 24px;">
+                <div class="panel-heading">
+                    <span>📈 Evolución de Tarifas</span>
+                    <div style="display:flex; gap:10px; font-size:0.8rem; align-items:center;">
+                        <span
+                            style="display:inline-block; width:10px; height:10px; background:#4f46e5; border-radius:50%;"></span>
+                        Tu Hotel
+                        <span
+                            style="display:inline-block; width:10px; height:10px; background:#94a3b8; border-radius:50%;"></span>
+                        Mercado
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="mainChart"></canvas>
+                </div>
+            </div>
+
+            <!-- TABLE -->
+            <div class="card">
+                <div class="panel-heading">
+                    <span>📋 Detalle Diario</span>
+                    <span id="record-count" style="font-size:0.8rem; color:var(--text-light); font-weight:400;">0
+                        registros</span>
+                </div>
+                <div class="table-wrap">
+                    <table id="dataTable">
+                        <thead>
+                            <tr id="tableHeader">
+                                <!-- Dynamic -->
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <!-- Dynamic -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+
+    </div>
+
+    </div>
+
+    <script>
+        // --- LOGIC & STATE ---
+        let rawData = [];
+        let processedData = [];
+        let competitorsList = [];
+        let activeHotel = "Cumbria";
+        let chartInstance = null;
+        let distinctMonths = [];
+
+        // --- UPDATE HOTEL LOGO ---
+        function updateHotelLogo() {
+            const hotel = document.getElementById('hotelSelector').value;
+            const logoImg = document.getElementById('hotelLogo');
+            if (hotel === 'Guadiana') logoImg.src = 'Imagen/logo-guadiana.svg';
+            else logoImg.src = 'Imagen/logo-cumbria.svg';
+            activeHotel = hotel;
+        }
+
+        // --- ACTIONS ---
+        function focusRow(idx) {
+            const row = document.getElementById(`row-${idx}`);
+            if (row) {
+                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                row.classList.remove('highlight-row');
+                void row.offsetWidth; // trigger reflow
+                row.classList.add('highlight-row');
+            }
+        }
+
+        function filterTable(type) {
+            const activeMonth = document.getElementById('monthSelector').value;
+            let baseData = processedData;
+            if (activeMonth !== 'all') baseData = baseData.filter(d => d.month === activeMonth);
+
+            let filtered = [];
+            const globalAvg = processedData.reduce((a, b) => a + b.compAvg, 0) / processedData.length;
+
+            if (type === 'opp') {
+                filtered = baseData.filter(d => {
+                    const my = d.hotels[activeHotel];
+                    return my && !my.sold && my.price > 0 && my.price < d.compAvg * 0.85;
+                });
+            } else if (type === 'risk') {
+                filtered = baseData.filter(d => {
+                    const my = d.hotels[activeHotel];
+                    return my && !my.sold && my.price > 0 && my.price > d.compAvg * 1.25;
+                });
+            } else if (type === 'compression') {
+                filtered = baseData.filter(d => d.compAvg > globalAvg * 1.4);
+            }
+
+            renderTable(filtered);
+            document.getElementById('record-count').innerText = `${filtered.length} fechas filtradas (${type})`;
+            document.getElementById('record-count').style.color = 'var(--primary)';
+        }
+
+        // Month Dictionary - Full Spanish names
+        const MONTH_MAP = {
+            "january": "Enero", "enero": "Enero", "jan": "Enero", "ene": "Enero",
+            "february": "Febrero", "febrero": "Febrero", "feb": "Febrero",
+            "march": "Marzo", "marzo": "Marzo", "mar": "Marzo",
+            "april": "Abril", "abril": "Abril", "apr": "Abril", "abr": "Abril",
+            "may": "Mayo", "mayo": "Mayo",
+            "june": "Junio", "junio": "Junio", "jun": "Junio",
+            "july": "Julio", "julio": "Julio", "jul": "Julio",
+            "august": "Agosto", "agosto": "Agosto", "aug": "Agosto", "ago": "Agosto",
+            "september": "Septiembre", "septiembre": "Septiembre", "sep": "Septiembre", "set": "Septiembre",
+            "october": "Octubre", "octubre": "Octubre", "oct": "Octubre",
+            "november": "Noviembre", "noviembre": "Noviembre", "nov": "Noviembre",
+            "december": "Diciembre", "diciembre": "Diciembre", "dec": "Diciembre", "dic": "Diciembre"
+        };
+
+        // --- PERSISTENCE ---
+        // Month conversion for old data
+        const MONTH_CONVERT = {
+            "Jan": "Enero 2025", "Feb": "Febrero 2025", "Mar": "Marzo 2025", "Apr": "Abril 2025",
+            "May": "Mayo 2025", "Jun": "Junio 2025", "Jul": "Julio 2025", "Aug": "Agosto 2025",
+            "Sep": "Septiembre 2025", "Oct": "Octubre 2025", "Nov": "Noviembre 2025", "Dec": "Diciembre 2025",
+            "Ene": "Enero 2025", "Abr": "Abril 2025", "Ago": "Agosto 2025", "Dic": "Diciembre 2025"
+        };
+
+        function migrateMonths(months) {
+            return months.map(m => {
+                // If already has year, return as is
+                if (/\d{4}$/.test(m)) return m;
+                // Convert old format
+                return MONTH_CONVERT[m] || m + " 2025";
+            });
+        }
+
+        window.addEventListener('load', () => {
+            const saved = CapaStorage.getItem('revenue_data_v2');
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    processedData = parsed.data;
+                    competitorsList = parsed.competitors;
+
+                    // Migrate old month format to Spanish with year
+                    distinctMonths = migrateMonths(parsed.months || []);
+                    activeHotel = parsed.activeHotel || "Cumbria";
+
+                    // Restore View
+                    populateMonths();
+                    document.getElementById('view-upload').style.display = 'none';
+                    document.getElementById('view-dashboard').style.display = 'grid';
+                    document.getElementById('dashboard-controls').style.display = 'flex';
+
+                    // Set selectors
+                    const hSel = document.getElementById('hotelSelector');
+                    if (hSel) hSel.value = activeHotel;
+                    updateHotelLogo();
+
+                    renderAll();
+                    updateOutdatedStatus();
+                } catch (e) {
+                    console.error("Error loading saved data", e);
+                    CapaStorage.removeItem('revenue_data_v2');
+                }
+            }
+        });
+
+        function clearData() {
+            if (confirm('¿Subir nuevo archivo? Se perderán los datos actuales.')) {
+                CapaStorage.removeItem('revenue_data_v2');
+                location.reload();
+            }
+        }
+
+        function saveData() {
+            const payload = {
+                data: processedData,
+                competitors: competitorsList,
+                months: distinctMonths,
+                activeHotel: activeHotel,
+                lastUpdate: new Date().toISOString()
+            };
+            try {
+                CapaStorage.setItem('revenue_data_v2', JSON.stringify(payload));
+                updateOutdatedStatus();
+            } catch (e) {
+                console.warn("Quota exceeded, cannot save state");
+            }
+        }
+
+        function updateOutdatedStatus() {
+            const saved = CapaStorage.getItem('revenue_data_v2');
+            const btn = document.getElementById('updateBtn');
+            if (!btn) return;
+
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    if (parsed.lastUpdate) {
+                        const lastDate = new Date(parsed.lastUpdate);
+                        const today = new Date();
+                        // Reset hours to compare just dates
+                        today.setHours(0, 0, 0, 0);
+                        const compareDate = new Date(lastDate);
+                        compareDate.setHours(0, 0, 0, 0);
+                        const diffTime = today - compareDate;
+                        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+                        if (diffDays <= 0) {
+                            btn.innerHTML = '✅ Actualizado hoy';
+                            btn.style.background = '#10b981';
+                        } else if (diffDays === 1) {
+                            btn.innerHTML = '⚠️ Desactualizado 1 día';
+                            btn.style.background = '#f59e0b';
+                        } else {
+                            btn.innerHTML = `⚠️ Desactualizado ${diffDays} días`;
+                            btn.style.background = '#ef4444';
+                        }
+                    } else {
+                        // No lastUpdate saved - data from old format, needs re-upload
+                        btn.innerHTML = '⚠️ Fecha desconocida - Subir nuevo';
+                        btn.style.background = '#ef4444';
+                    }
+                } catch (e) { }
+            }
+        }
+
+        // --- INIT ---
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+
+        dropZone.onclick = () => fileInput.click();
+        dropZone.ondragover = (e) => { e.preventDefault(); dropZone.style.background = '#eef2ff'; dropZone.style.borderColor = '#4f46e5'; };
+        dropZone.ondragleave = (e) => { e.preventDefault(); dropZone.style.background = '#ffffff'; dropZone.style.borderColor = '#cbd5e1'; };
+        dropZone.ondrop = (e) => { e.preventDefault(); if (e.dataTransfer.files.length) processFile(e.dataTransfer.files[0]); };
+        fileInput.onchange = (e) => { if (e.target.files.length) processFile(e.target.files[0]); };
+
+        function processFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const wb = XLSX.read(e.target.result, { type: 'array' });
+                const sheet = wb.Sheets[wb.SheetNames[0]];
+                rawData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                analyze();
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // --- PARSING ---
+        function analyze() {
+            let guadianaRow = -1;
+            let cumbriaRow = -1;
+
+            // Find Anchors
+            for (let r = 0; r < rawData.length; r++) {
+                const first = String(rawData[r][0] || "").toLowerCase();
+                if (first.includes("sercotel guadiana")) guadianaRow = r;
+                if (first.includes("cumbria spa")) cumbriaRow = r;
+            }
+
+            if (guadianaRow === -1) { alert("Error: No se encontró 'Sercotel Guadiana' en la primera columna."); return; }
+
+            // Metadata Rows
+            const dateNumRow = guadianaRow - 1;
+            const dayNameRow = guadianaRow - 2;
+            let monthRow = -1;
+            // According to Expedia format, row 10 (index 9) contains month/year like "JANUARY 2027"
+            if (rawData[9]) {
+                const row9Str = JSON.stringify(rawData[9] || []).toLowerCase();
+                if (row9Str.includes("january") || row9Str.includes("february") || row9Str.includes("march") ||
+                    row9Str.includes("april") || row9Str.includes("may") || row9Str.includes("june") ||
+                    row9Str.includes("july") || row9Str.includes("august") || row9Str.includes("september") ||
+                    row9Str.includes("october") || row9Str.includes("november") || row9Str.includes("december")) {
+                    monthRow = 9;
+                }
+            }
+            // Fallback: Scan up for Month if not found in row 9
+            if (monthRow === -1) {
+                for (let r = dayNameRow - 1; r >= Math.max(0, dayNameRow - 12); r--) {
+                    const str = JSON.stringify(rawData[r] || []).toLowerCase();
+                    if (str.includes("enero") || str.includes("jan") || str.includes("feb")) {
+                        monthRow = r; break;
+                    }
+                }
+            }
+
+            // Start Column
+            let startCol = 1;
+            const gRowData = rawData[guadianaRow];
+            for (let c = 1; c < gRowData.length; c++) {
+                const val = gRowData[c];
+                if (!isNaN(parseFloat(val)) || String(val).toUpperCase() === 'S') {
+                    startCol = c; break;
+                }
+            }
+
+            // Competitors
+            competitorsList = [];
+            const scanStart = (cumbriaRow !== -1 ? cumbriaRow : guadianaRow) + 1;
+            const totalCols = gRowData.length;
+            let consecutiveInvalid = 0;
+
+            for (let r = scanStart; r < rawData.length; r++) {
+                // Safety: Avoid scanning infinite empty rows
+                if (consecutiveInvalid > 20) break;
+
+                const row = rawData[r];
+                if (!row || !row[0]) {
+                    consecutiveInvalid++;
+                    continue;
+                }
+
+                const name = String(row[0]).trim();
+
+                if (name.length < 3) {
+                    consecutiveInvalid++;
+                    continue;
+                }
+
+                const nLow = name.toLowerCase();
+                // Expanded blacklist
+                if (nLow.includes("tarifas medias") || nLow.includes("interés") || nLow.includes("interes") ||
+                    nLow.includes("año anterior") || nLow.includes("rank") || nLow.includes("clasificación") ||
+                    nLow.includes("promedio") || nLow.includes("media") || nLow.includes("total") ||
+                    nLow.includes("min") || nLow.includes("max") || nLow.includes("var") || nLow.includes("cv ")) {
+                    consecutiveInvalid++; // These are valid text rows but not competitors, effectively separating blocks
+                    continue;
+                }
+
+                // VALIDATION: Check for DATA DENSITY
+                // A valid hotel row must have multiple price points, not just one random number
+                let validPoints = 0;
+                for (let checkC = startCol; checkC < Math.min(startCol + 30, totalCols); checkC++) {
+                    const cell = row[checkC];
+                    if (!isNaN(parseFloat(cell)) || String(cell).toUpperCase() === 'S') {
+                        validPoints++;
+                    }
+                }
+
+                // STRICT RULE: Must have at least 5 valid data points in the first 30 days
+                if (validPoints >= 5) {
+                    competitorsList.push({ name: name, rowIdx: r });
+                    consecutiveInvalid = 0; // Reset counter on valid hit
+                } else {
+                    consecutiveInvalid++;
+                }
+            }
+
+            // Build Data
+            processedData = [];
+            distinctMonths = [];
+            let currentMonth = "";
+            const maxCols = gRowData.length;
+
+            for (let c = startCol; c < maxCols; c++) {
+                // Month Update
+                if (monthRow !== -1 && rawData[monthRow] && rawData[monthRow][c]) {
+                    currentMonth = String(rawData[monthRow][c]).trim();
+                }
+
+                let dNum = "";
+                if (dateNumRow !== -1 && rawData[dateNumRow]) dNum = String(rawData[dateNumRow][c] || "").trim();
+                if (!dNum) continue;
+
+                let dName = "";
+                if (dayNameRow !== -1 && rawData[dayNameRow]) dName = String(rawData[dayNameRow][c] || "").trim();
+
+                // Format Date
+                const dateInfo = parseDate(currentMonth, dNum, dName);
+                if (dateInfo.month && !distinctMonths.includes(dateInfo.month)) distinctMonths.push(dateInfo.month);
+
+                const dayObj = {
+                    dayIndex: c,
+                    dateHtml: dateInfo.html,
+                    label: `${dNum} ${dateInfo.month}`,
+                    month: dateInfo.month,
+                    hotels: {},
+                    compAvg: 0
+                };
+
+                let compPrices = [];
+                competitorsList.forEach(comp => {
+                    const val = parseVal(rawData[comp.rowIdx][c]);
+                    dayObj.hotels[comp.name] = val;
+                    if (val.price > 0 && !val.sold) compPrices.push(val.price);
+                });
+
+                if (cumbriaRow !== -1) dayObj.hotels["Cumbria"] = parseVal(rawData[cumbriaRow][c]);
+                if (guadianaRow !== -1) dayObj.hotels["Guadiana"] = parseVal(rawData[guadianaRow][c]);
+
+                if (compPrices.length) {
+                    dayObj.compAvg = compPrices.reduce((a, b) => a + b, 0) / compPrices.length;
+                }
+
+                processedData.push(dayObj);
+            }
+
+            populateMonths();
+            document.getElementById('view-upload').style.display = 'none';
+            document.getElementById('view-dashboard').style.display = 'grid';
+            document.getElementById('dashboard-controls').style.display = 'flex';
+
+            saveData(); // <--- SAVE
+            renderAll();
+        }
+
+        function parseVal(val) {
+            const S = String(val).trim().toUpperCase();
+            // S = Completo (Sold out)
+            if (S === 'S') return { price: 0, sold: true, status: 'sold' };
+            // M = Estancia mínima requerida
+            if (S === 'M') return { price: 0, sold: false, status: 'minStay' };
+            // - = Sin datos disponibles
+            if (S === '-' || S === '') return { price: 0, sold: false, status: 'noData' };
+
+            const p = parseFloat(val);
+            return { price: isNaN(p) ? 0 : p, sold: false, status: 'available' };
+        }
+
+        function parseDate(mRaw, dNum, dayNameRaw) {
+            let m = String(mRaw || "").trim();
+
+            // Extract year if present (e.g., "JANUARY 2027")
+            let yearFromData = null;
+            const yearMatch = m.match(/\b(20\d{2})\b/);
+            if (yearMatch) {
+                yearFromData = yearMatch[1];
+                m = m.replace(yearMatch[0], '').trim(); // Remove year from month string
+            }
+
+            m = m.toLowerCase().replace(".", "");
+
+            // Always convert to Spanish full name
+            let mShort = MONTH_MAP[m];
+            if (!mShort) {
+                // Try matching first 3 chars
+                const m3 = m.substring(0, 3);
+                mShort = MONTH_MAP[m3] || m3;
+            }
+            if (mShort) mShort = mShort.charAt(0).toUpperCase() + mShort.slice(1).toLowerCase();
+
+            // Use year from data if available, otherwise calculate
+            let year = yearFromData;
+            if (!year) {
+                const currentYear = new Date().getFullYear();
+                const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+                    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+                const monthIndex = monthNames.indexOf(mShort);
+                const currentMonthIndex = new Date().getMonth();
+                year = currentYear;
+                if (monthIndex < currentMonthIndex - 1) {
+                    year = currentYear + 1;
+                }
+            }
+
+            const monthWithYear = `${mShort} ${year}`;
+
+            let d = String(dayNameRaw || "").toLowerCase().trim().replace(".", "");
+            let dShort = d.length > 2 ? d.substring(0, 2) : d;
+            dShort = dShort.charAt(0).toUpperCase() + dShort.slice(1);
+
+            // Pretty HTML
+            const html = `
+                <div class="date-pill">
+                    <div class="date-day">${dNum}</div>
+                    <div class="date-meta">
+                        <span>${dShort}</span>
+                        <span>${mShort}</span>
+                    </div>
+                </div>
+            `;
+
+            return { html: html, month: monthWithYear };
+        }
+
+        function populateMonths() {
+            const sel = document.getElementById('monthSelector');
+            sel.innerHTML = '<option value="all">📅 Todo el Año</option>';
+            distinctMonths.forEach(m => sel.innerHTML += `<option value="${m}">${m}</option>`);
+        }
+
+        // --- RENDER ---
+        function renderAll() {
+            activeHotel = document.getElementById('hotelSelector').value;
+            const selectedMonth = document.getElementById('monthSelector').value;
+
+            let data = processedData;
+            if (selectedMonth !== 'all') {
+                data = processedData.filter(d => d.month === selectedMonth);
+            }
+
+            document.getElementById('record-count').innerText = `${data.length} días analizados`;
+
+            renderKPIs(data);
+            renderChart(data);
+            renderTable(data);
+        }
+
+        function renderKPIs(data) {
+            const container = document.getElementById('insights-container');
+            container.innerHTML = '';
+
+            if (data.length === 0) return;
+
+            let mySum = 0, compSum = 0, count = 0;
+            let opps = 0, risks = 0;
+
+            const globalAvg = data.reduce((a, b) => a + b.compAvg, 0) / data.length;
+
+            data.forEach(d => {
+                const my = d.hotels[activeHotel];
+                if (!my || my.sold || my.price === 0) return;
+
+                count++;
+                mySum += my.price;
+                compSum += d.compAvg;
+
+                if (my.price < d.compAvg * 0.85) opps++;
+                if (my.price > d.compAvg * 1.25) risks++;
+            });
+
+            // Compression
+            const compression = data.filter(d => d.compAvg > globalAvg * 1.4);
+            if (compression.length > 0) {
+                const links = compression.slice(0, 3).map(d =>
+                    `<span class="action-link" onclick="focusRow(${d.dayIndex})">${d.label}</span>`
+                ).join(", ");
+
+                addInsight('high', `🔥 <strong>Demanda Pico:</strong> Fechas calientes (${links}) detectadas. <span class="action-link" onclick="filterTable('compression')">Ver todas (${compression.length})</span>`);
+            }
+
+            if (opps > 0) {
+                addInsight('opp', `💰 <strong>Oportunidad:</strong> ${opps} fechas con tarifa muy baja. <span class="action-link" onclick="filterTable('opp')">Ver listado</span>`);
+            }
+            if (risks > 0) {
+                addInsight('high', `⚠️ <strong>Riesgo Tarifa:</strong> ${risks} fechas muy por encima del market. <span class="action-link" onclick="filterTable('risk')">Ver listado</span>`);
+            }
+
+            if (count === 0) {
+                document.getElementById('kpi-avg').innerText = "N/A";
+                return;
+            }
+
+            const avg = mySum / count;
+            const mkt = compSum / count;
+            const gap = ((avg - mkt) / mkt) * 100;
+
+            document.getElementById('kpi-avg').innerText = avg.toFixed(0) + '€';
+            document.getElementById('kpi-market').innerText = mkt.toFixed(0) + '€';
+
+            const posEl = document.getElementById('kpi-pos');
+            posEl.innerText = (gap > 0 ? '+' : '') + gap.toFixed(1) + '%';
+
+            const cardPos = document.getElementById('kpi-card-pos');
+            const txtPos = document.getElementById('kpi-pos-text');
+
+            // Remove old classes
+            cardPos.style.borderLeft = gap > 10 ? '4px solid var(--danger)' : (gap < -10 ? '4px solid var(--warning)' : '4px solid var(--success)');
+
+            if (gap > 10) {
+                posEl.className = 'kpi-value kpi-trend-neg';
+                txtPos.innerText = "Por encima del mercado";
+            } else if (gap < -10) {
+                posEl.className = 'kpi-value kpi-trend-pos'; // Positive trend because cheaper = opportunity? Or warning? Usually Revenue Managers want to be slightly above or matched.
+                txtPos.innerText = "Por debajo del mercado";
+                // Let's make "Too Cheap" a warning color in text
+                posEl.style.color = 'var(--warning)';
+            } else {
+                posEl.className = 'kpi-value kpi-trend-pos';
+                posEl.style.color = 'var(--success)';
+                txtPos.innerText = "Competitivo";
+            }
+        }
+
+        function addInsight(type, html) {
+            const div = document.createElement('div');
+            div.className = `insight-box ${type}`;
+            div.innerHTML = html;
+            document.getElementById('insights-container').appendChild(div);
+        }
+
+        function renderTable(data) {
+            const thead = document.getElementById('tableHeader');
+            thead.innerHTML = '';
+
+            // Build Headers
+            let h = `<th>Fecha</th><th>${activeHotel}</th><th>Mercado</th><th>Gap</th><th>Acción</th>`;
+            competitorsList.forEach(c => {
+                // Allow longer names since we now wrap text
+                // Only truncate if extremely long (>25 chars) to prevent huge headers
+                const short = c.name.length > 25 ? c.name.substring(0, 25) + '..' : c.name;
+                h += `<th title="${c.name}">${short}</th>`;
+            });
+            thead.innerHTML = h;
+
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+
+            data.forEach(d => {
+                const my = d.hotels[activeHotel];
+                const myP = (my && !my.sold) ? my.price : 0;
+                const sold = my && my.sold;
+
+                // Gap Badge
+                let gapHtml = '-';
+                let actionHtml = '<span style="color:#cbd5e1">-</span>';
+
+                if (!sold && myP > 0 && d.compAvg > 0) {
+                    const diff = ((myP - d.compAvg) / d.compAvg) * 100;
+                    let cls = 'gap-ok';
+
+                    // Logic for Recommendation
+                    // Strategy: Stay within +/- 10% of market
+                    if (diff < -15) {
+                        // Too cheap -> Opportunity to raise
+                        cls = 'gap-low'; // Orange warning
+                        const target = (d.compAvg * 0.95).toFixed(0);
+                        actionHtml = `<span style="color:#16a34a; font-weight:700;">▲ ${target}€</span>`;
+                    } else if (diff > 20) {
+                        // Too expensive -> Risk of losing occ
+                        cls = 'gap-high'; // Red warning
+                        const target = (d.compAvg * 1.1).toFixed(0);
+                        actionHtml = `<span style="color:#dc2626; font-weight:700;">▼ ${target}€</span>`;
+                    } else {
+                        // Good
+                        actionHtml = `<span style="color:#94a3b8; font-size:0.8rem;">Mantener</span>`;
+                    }
+
+                    gapHtml = `<span class="gap-badge ${cls}">${diff > 0 ? '+' : ''}${diff.toFixed(0)}%</span>`;
+                }
+
+                // Row content
+                let html = `<tr id="row-${d.dayIndex}">`;
+                html += `<td>${d.dateHtml}</td>`;
+
+                // My Price
+                const myStatus = my?.status || 'available';
+                if (sold || myStatus === 'sold') {
+                    html += `<td><span class="price-sold">CERRADO</span></td>`;
+                } else if (myStatus === 'minStay') {
+                    html += `<td><span class="price-minstay" title="Estancia mínima requerida">M</span></td>`;
+                } else if (myStatus === 'noData') {
+                    html += `<td><span style="color:#cbd5e1">-</span></td>`;
+                } else {
+                    html += `<td class="price-val" style="font-size:1.1rem;">${myP.toFixed(0)}€</td>`;
+                }
+
+                // Mkt
+                html += `<td style="color:var(--primary); font-weight:600;">${d.compAvg.toFixed(0)}€</td>`;
+                html += `<td>${gapHtml}</td>`;
+                html += `<td>${actionHtml}</td>`; // NEW COLUMN
+
+                // Competitors
+                competitorsList.forEach(c => {
+                    const hData = d.hotels[c.name];
+                    if (!hData || hData.status === 'noData') {
+                        html += `<td>-</td>`;
+                    } else if (hData.sold || hData.status === 'sold') {
+                        html += `<td><span class="price-sold">S</span></td>`;
+                    } else if (hData.status === 'minStay') {
+                        html += `<td><span class="price-minstay" title="Estancia mínima">M</span></td>`;
+                    } else {
+                        const style = (!sold && hData.price < myP) ? "color:#ef4444; font-weight:600;" : "color:var(--text-light);";
+                        html += `<td style="${style}">${hData.price.toFixed(0)}€</td>`;
+                    }
+                });
+
+                html += `</tr>`;
+                tbody.innerHTML += html;
+            });
+        }
+
+        function renderChart(data) {
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+
+            const labels = data.map(d => d.label);
+            const myData = data.map(d => {
+                const h = d.hotels[activeHotel];
+                return (h && h.sold) ? null : h.price;
+            });
+            const mktData = data.map(d => d.compAvg);
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: activeHotel,
+                            data: myData,
+                            borderColor: '#4f46e5',
+                            backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                            borderWidth: 3,
+                            pointRadius: 2,
+                            pointHoverRadius: 6,
+                            tension: 0.3,
+                            fill: true,
+                            spanGaps: true
+                        },
+                        {
+                            label: 'Mercado',
+                            data: mktData,
+                            borderColor: '#94a3b8',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            tension: 0.3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            titleFont: { size: 13 },
+                            bodyFont: { size: 13 },
+                            padding: 10,
+                            cornerRadius: 8,
+                            displayColors: true
+                        }
+                    },
+                    scales: {
+                        y: { grid: { color: '#f1f5f9' }, beginAtZero: false },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+    </script>
+</body>
+
+</html>

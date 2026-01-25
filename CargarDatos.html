@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carga de Datos | CapaSuite</title>
+    <link rel="icon" type="image/png" href="Imagen/Icono_CapaSuite.png">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="js/storage.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-light: #818cf8;
+            --secondary: #10b981;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .upload-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 24px;
+            margin-top: 30px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            position: relative;
+        }
+
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 24px;
+        }
+
+        .hotel-selector {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            width: 100%;
+        }
+
+        select {
+            padding: 12px 24px;
+            border-radius: 10px;
+            border: 2px solid var(--border);
+            font-family: inherit;
+            font-size: 1.1rem;
+            outline: none;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        select:focus {
+            border-color: var(--primary);
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: 15px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin: 20px 0;
+            position: relative;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--primary);
+            background: #f1f5f9;
+        }
+
+        .upload-zone.dragging {
+            border-color: var(--secondary);
+            background: #ecfdf5;
+        }
+
+        .upload-zone i {
+            font-size: 2.5rem;
+            display: block;
+            margin-bottom: 15px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .status-up {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-pending {
+            background: #fef9c3;
+            color: #854d0e;
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background: #4338ca;
+        }
+
+        .file-info {
+            margin-top: 15px;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .history {
+            margin-top: 50px;
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        .history h2 {
+            margin-bottom: 20px;
+            font-size: 1.4rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            padding: 12px;
+            color: var(--text-muted);
+            font-weight: 600;
+            border-bottom: 2px solid var(--border);
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .loader {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .nav-link {
+            position: fixed;
+            top: 40px;
+            right: 40px;
+            background: white;
+            padding: 12px 20px;
+            border-radius: 30px;
+            text-decoration: none;
+            color: var(--primary);
+            font-weight: 600;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <a href="AnalisisProduccion.html" class="nav-link">
+        <span>📊 Ver Panel de Control</span>
+    </a>
+
+    <div class="loader" id="loader">
+        <div class="spinner"></div>
+        <p style="margin-top: 20px; font-weight: 600;">Procesando archivos...</p>
+    </div>
+
+    <div class="container">
+        <header style="display: flex; align-items: center; justify-content: center; gap: 30px; margin-bottom: 40px;">
+            <a href="index.html" title="Volver al Inicio" style="display:flex; align-items:center;">
+                <img src="Imagen/logo, CapaSuite.png" alt="CapaSuite" style="height: 60px; width: auto;">
+            </a>
+            <img id="hotelLogo" src="Imagen/logo-guadiana.svg" alt="Logo Hotel"
+                style="height: 55px; width: auto; object-fit: contain;">
+            <div style="text-align: left;">
+                <h1>Carga de Datos</h1>
+                <p>Sube los informes de Producción y Segmentos para actualizar el análisis.</p>
+            </div>
+        </header>
+
+        <div class="hotel-selector">
+            <span style="font-weight: 600;">Selecciona Hotel:</span>
+            <select id="hotelSelect" onchange="updateHistory()">
+                <option value="Guadiana">Hotel Guadiana</option>
+                <option value="Cumbria">Hotel Cumbria</option>
+            </select>
+        </div>
+
+        <div class="upload-grid">
+            <!-- PRODUCCIÓN CARD -->
+            <div class="card">
+                <div id="prodStatus" class="status-badge status-pending">Esperando carga...</div>
+                <h2 style="font-size: 1.6rem; color: var(--primary);">1. Informe de Producción</h2>
+                <p style="font-size: 0.95rem; color: var(--text-muted);">Sube el archivo "Estadística" o "Producción".
+                </p>
+
+                <div class="upload-zone" id="dropZoneProd" onclick="document.getElementById('fileProd').click()">
+                    <i>📄</i>
+                    <p>Arrastra aquí el archivo o haz clic</p>
+                    <input type="file" id="fileProd" hidden accept=".xlsx, .xls">
+                </div>
+
+                <div id="prodInfo" class="file-info">Siguiente carga esperada: <b id="nextDateProd">-</b></div>
+                <button class="btn" style="margin-top: 20px;"
+                    onclick="document.getElementById('fileProd').click()">Cargar Producción</button>
+            </div>
+
+            <!-- SEGMENTOS CARD -->
+            <div class="card">
+                <div id="segStatus" class="status-badge status-pending">Esperando carga...</div>
+                <h2 style="font-size: 1.6rem; color: var(--secondary);">2. Informe de Segmentos</h2>
+                <p style="font-size: 0.95rem; color: var(--text-muted);">Sube el archivo de Segmentos mensual/diario.
+                </p>
+
+                <div class="upload-zone" id="dropZoneSeg" onclick="document.getElementById('fileSeg').click()">
+                    <i>📁</i>
+                    <p>Arrastra aquí el archivo o haz clic</p>
+                    <input type="file" id="fileSeg" hidden accept=".xlsx, .xls">
+                </div>
+
+                <div id="segInfo" class="file-info">Siguiente carga esperada: <b id="nextDateSeg">-</b></div>
+                <button class="btn" style="margin-top: 20px; background: var(--secondary);"
+                    onclick="document.getElementById('fileSeg').click()">Cargar Segmentos</button>
+            </div>
+        </div>
+
+        <div id="debug-results"
+            style="display:none; margin-top: 30px; padding: 20px; background: white; border-radius: 15px; border: 1px solid var(--border); box-shadow: var(--shadow);">
+            <h3 style="margin-top:0; color: var(--primary);">📊 Resumen de Datos Detectados</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">Esto es lo que el sistema ha
+                capturado de tu Excel. Si los números son correctos, ya puedes ir a los informes.</p>
+            <div class="table-container">
+                <table style="width:100%; font-size: 0.85rem;">
+                    <thead>
+                        <tr>
+                            <th>Año</th>
+                            <th>Total Producción</th>
+                            <th>Total RN (Hab)</th>
+                            <th>Total Pax</th>
+                            <th>ADR Medio</th>
+                        </tr>
+                    </thead>
+                    <tbody id="debugBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="history">
+            <h2>Historial de Cargas (Últimos archivos)</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fecha Carga</th>
+                            <th>Hotel</th>
+                            <th>Tipo</th>
+                            <th>Periodo Detectado</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyBody">
+                        <!-- Dinámico -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div
+            style="margin-top: 40px; padding: 20px; border: 1px solid #fee2e2; border-radius: 15px; background: #fffafb; text-align: center;">
+            <p style="color: #991b1b; font-size: 0.9rem; margin-bottom: 15px; font-weight: 500;">
+                Zona de Gestión: ¿Quieres empezar de cero con la Producción y Segmentación?
+            </p>
+            <button class="btn" style="background: #ef4444; width: auto; padding: 10px 30px;"
+                onclick="resetProductionData()">
+                🗑️ Borrar Datos de Producción y Segmentos
+            </button>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 10px;">
+                * Esto NO afectará a tus datos de Análisis de Competencia ni a los Presupuestos.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Shared Database logic (same as AnalisisProduccion.html)
+        const DB_KEY = 'hotel_manager_db_v2';
+        const CONFIG_KEY = 'upload_config_db_v2';
+        let db = JSON.parse(CapaStorage.getItem(DB_KEY)) || {};
+        let config = JSON.parse(CapaStorage.getItem(CONFIG_KEY)) || {};
+
+        function saveData() {
+            CapaStorage.setItem(DB_KEY, JSON.stringify(db));
+            CapaStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+        }
+
+        // --- UI INITIALIZATION ---
+        window.onload = () => {
+            updateHistory();
+            setupDropZones();
+        };
+
+        function updateHistory() {
+            const hotel = document.getElementById('hotelSelect').value;
+            const historyBody = document.getElementById('historyBody');
+            historyBody.innerHTML = '';
+
+            const logs = config[hotel]?.logs || [];
+            logs.slice(-5).reverse().forEach(log => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${log.timestamp}</td>
+                    <td>${hotel}</td>
+                    <td>${log.type}</td>
+                    <td>${log.period}</td>
+                    <td><span class="status-badge status-up">Éxito</span></td>
+                `;
+                historyBody.appendChild(tr);
+            });
+
+            // Update next expected dates
+            const lastProd = config[hotel]?.lastProdDate || "01-01-26";
+            const lastSeg = config[hotel]?.lastSegDate || "01-01-26";
+
+            document.getElementById('nextDateProd').innerText = calculateNextDay(lastProd);
+            document.getElementById('nextDateSeg').innerText = calculateNextDay(lastSeg);
+
+            if (config[hotel]?.lastProdDate) {
+                document.getElementById('prodStatus').innerText = "Actualizado hasta " + lastProd;
+                document.getElementById('prodStatus').className = "status-badge status-up";
+            }
+            if (config[hotel]?.lastSegDate) {
+                document.getElementById('segStatus').innerText = "Actualizado hasta " + lastSeg;
+                document.getElementById('segStatus').className = "status-badge status-up";
+            }
+
+            // Update logo
+            const logoImg = document.getElementById('hotelLogo');
+            if (hotel === 'Guadiana') logoImg.src = 'Imagen/logo-guadiana.svg';
+            else if (hotel === 'Cumbria') logoImg.src = 'Imagen/logo-cumbria.svg';
+        }
+
+        function calculateNextDay(dateStr) {
+            try {
+                const d = dateStr.split('-');
+                const date = new Date(2000 + parseInt(d[2]), parseInt(d[1]) - 1, parseInt(d[0]));
+                date.setDate(date.getDate() + 1);
+                return `${String(date.getDate()).padStart(2, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getFullYear()).slice(-2)}`;
+            } catch (e) { return "Mañana"; }
+        }
+
+        // --- FILE PROCESSING ---
+        function setupDropZones() {
+            ['Prod', 'Seg'].forEach(type => {
+                const zone = document.getElementById('dropZone' + type);
+                const input = document.getElementById('file' + type);
+
+                zone.ondragover = (e) => { e.preventDefault(); zone.classList.add('dragging'); };
+                zone.ondragleave = () => zone.classList.remove('dragging');
+                zone.ondrop = (e) => {
+                    e.preventDefault();
+                    zone.classList.remove('dragging');
+                    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0], type);
+                };
+                input.onchange = (e) => {
+                    if (e.target.files.length) handleFile(e.target.files[0], type);
+                };
+            });
+        }
+
+        async function handleFile(file, type) {
+            const hotel = document.getElementById('hotelSelect').value;
+            document.getElementById('loader').style.display = 'flex';
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+                    // Same parsing logic from dashboard
+                    const dateInfo = extractDateFromFilename(file.name);
+                    const year = dateInfo?.year || "2026";
+                    const period = dateInfo ? `${String(dateInfo.day).padStart(2, '0')}-${String(dateInfo.month + 1).padStart(2, '0')}-${dateInfo.year}` : "Periodo desconocido";
+
+                    // Call the processor (simplified version of the one in AnalisisProduccion.html)
+                    processDataForDB(jsonData, file.name, hotel, type);
+
+                    // Update config/logs
+                    if (!config[hotel]) config[hotel] = { logs: [] };
+                    if (type === 'Prod') config[hotel].lastProdDate = period;
+                    else config[hotel].lastSegDate = period;
+
+                    // SYNC lastUpdate to main DB
+                    if (!db[hotel]) db[hotel] = {};
+                    if (!db[hotel][year]) db[hotel][year] = { service: {}, segment: {} };
+
+                    let lastDateLabel = period;
+                    if (dateInfo && dateInfo.day) {
+                        const dayStr = String(dateInfo.day).padStart(2, '0');
+                        const monthStr = String(dateInfo.month + 1).padStart(2, '0');
+                        lastDateLabel = `${dayStr}-${monthStr}-${year}`;
+                    }
+
+                    db[hotel][year].lastUpdate = lastDateLabel;
+
+                    if (!config[hotel].logs) config[hotel].logs = [];
+                    config[hotel].logs.push({
+                        timestamp: new Date().toLocaleString('es-ES'),
+                        type: type === 'Prod' ? 'Producción' : 'Segmentos',
+                        period: period
+                    });
+
+                    saveData();
+                    setTimeout(() => {
+                        document.getElementById('loader').style.display = 'none';
+                        alert(`¡Archivo de ${type === 'Prod' ? 'Producción' : 'Segmentos'} cargado con éxito!`);
+                        updateHistory();
+                    }, 500);
+
+                } catch (err) {
+                    console.error(err);
+                    alert("Error al procesar el Excel. Verifica el formato.");
+                    document.getElementById('loader').style.display = 'none';
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function processDataForDB(data, fileName, hotel, type) {
+            const fileNameNorm = normalizeStr(fileName);
+            const dateInfo = extractDateFromFilename(fileName);
+            const reportYear = dateInfo?.year || "2026";
+
+            if (!db[hotel]) db[hotel] = {};
+            if (!db[hotel][reportYear]) db[hotel][reportYear] = { service: {}, segment: {}, lastUpdate: "" };
+
+            const dbYear = db[hotel][reportYear];
+            dbYear.lastUpdate = dateInfo ? dateInfo.full : "Carga Masiva";
+
+            const SHORT_MONTHS_MAP = {
+                "ENE": 0, "FEB": 1, "MAR": 2, "ABR": 3, "MAY": 4, "JUN": 5,
+                "JUL": 6, "AGO": 7, "SEP": 8, "OCT": 9, "NOV": 10, "DIC": 11
+            };
+
+            const PRODUCTION_GROUPS = {
+                "HABITACION": ["HABITACION", "ALOJAMIENTO", "ESTANCIA", "DUI", "DOBLE", "SUPERIOR", "SUITE", "CUADRUPLE", "TRIPLE", "FAMILIAR", "LATE CHECK OUT", "AMPLIACION", "CAMA SUPLETORIA"],
+                "DESAYUNOS": ["DESAYUNO BUFFET", "DESAYUNO GRUPO", "DESAYUNO", "BUFFET"],
+                "RESTAURANTE": ["RESTAURANTE", "CENA", "ALMUERZO"],
+                "EVENTOS": ["CENA GRUPO", "ALMUERZO GRUPO", "CATERING", "COFFEE BREAK", "SALONES/ALQUILER", "AUDIOVISUALES", "SALON", "ALQUILER", "EVENTO"],
+                "CAFETERIA": ["CAFETERIA", "BAR"],
+                "MINIBAR": ["MINIBAR"],
+                "SPA": ["SPA", "BALNEARIO", "MASAJE", "TRATAMIENTO"],
+                "PARKING": ["GARAJE", "PARKING"],
+                "SUPLEMENTOS": ["SUPLEMENTO", "MASCOTA", "CUNA", "UPGRADE"],
+                "VARIOS": ["LAVANDERIA", "ARTESANIA", "FAX", "TELÉFONO", "VARIOS"]
+            };
+
+            const getGroupID = (n) => {
+                const norm = normalizeStr(n);
+                // Solo omitir si es exactamente la cabecera maestra o contiene TOTAL PRODUCCION
+                if (norm === "HAB" || norm === "PAX" || norm === "PRO" || norm === "MXH" ||
+                    norm === "PRODUCCION TOTAL" || norm === "TOTAL PRODUCCION") return null;
+
+                const eventKeywords = ["GRUPO", "CATERING", "COFFEE", "SALA", "SALON", "EVENTO", "ALQUILER", "AUDIOVISUAL"];
+                for (const [id, keys] of Object.entries(PRODUCTION_GROUPS)) {
+                    if (id === "RESTAURANTE" && eventKeywords.some(k => norm.includes(k))) continue;
+                    if (keys.some(k => norm.includes(k))) return id;
+                }
+                return "VARIOS";
+            };
+
+            const applyVal = (key, val, monthIdx, itemType) => {
+                if (monthIdx < 0 || monthIdx > 11) return;
+                const k = key.toUpperCase();
+                if (!dbYear.service[k]) dbYear.service[k] = { name: k, revenue: new Array(12).fill(0), rooms: new Array(12).fill(0), pax: new Array(12).fill(0) };
+
+                if (itemType === 'rev') dbYear.service[k].revenue[monthIdx] += val;
+                else if (itemType === 'rms') dbYear.service[k].rooms[monthIdx] += val;
+                else if (itemType === 'pax') dbYear.service[k].pax[monthIdx] += val;
+            };
+
+            if (type === 'Prod') {
+                // 1. ESCANEO UNIVERSAL DE FILAS MAESTRAS
+                let rowFechas = null, rowHab = null, rowPax = null, rowPro = null;
+                let masterIndices = new Set();
+
+                for (let r = 0; r < Math.min(data.length, 50); r++) {
+                    const row = data[r] || [];
+                    const first = normalizeStr(row[0]);
+
+                    // Solo coincidencias EXACTAS para filas maestras
+                    if (first === "HAB" || first === "RMS") { rowHab = row; masterIndices.add(r); }
+                    if (first === "PAX" || first === "PERSONAS" || first === "PAX.") { rowPax = row; masterIndices.add(r); }
+                    if (first === "PRO" || first === "PRODUCCION") { rowPro = row; masterIndices.add(r); }
+
+                    if (rowFechas === null) {
+                        for (let c = 1; c < row.length; c++) {
+                            const h = normalizeStr(row[c]);
+                            if (h.includes("ENE") || h.includes("TOTAL") || h.includes("JAN")) {
+                                rowFechas = row; masterIndices.add(r); break;
+                            }
+                        }
+                    }
+                }
+
+                if (!rowHab || !rowPro) {
+                    rowHab = data[1]; rowPax = data[2]; rowPro = data[3]; rowFechas = data[0];
+                }
+
+                let hasData = false;
+                const headerRow = rowFechas || [];
+
+                for (let c = 1; c < headerRow.length; c++) {
+                    const header = normalizeStr(headerRow[c]);
+                    if (!header) continue;
+
+                    let mIdx = -1;
+                    for (const [name, index] of Object.entries(SHORT_MONTHS_MAP)) {
+                        if (header.startsWith(name)) { mIdx = index; break; }
+                    }
+
+                    if (mIdx === -1 && header.includes("TOTAL")) mIdx = dateInfo ? dateInfo.month : 0;
+                    if (mIdx === -1) {
+                        const cell = headerRow[c];
+                        if (cell instanceof Date) mIdx = cell.getMonth();
+                        else if (!isNaN(cell) && cell > 40000) mIdx = new Date((cell - 25569) * 86400 * 1000).getMonth();
+                    }
+
+                    if (mIdx >= 0 && mIdx <= 11) {
+                        applyVal("TOTAL_MASTER", parseVal(rowHab ? rowHab[c] : 0), mIdx, 'rms');
+                        applyVal("TOTAL_MASTER", parseVal(rowPax ? rowPax[c] : 0), mIdx, 'pax');
+                        applyVal("TOTAL_MASTER", parseVal(rowPro ? rowPro[c] : 0), mIdx, 'rev');
+                        hasData = true;
+
+                        // Detalles: Procesamos TODAS las filas que no sean maestras ni cabeceras
+                        for (let r = 0; r < data.length; r++) {
+                            if (masterIndices.has(r)) continue;
+                            const rowItem = data[r];
+                            if (!rowItem || !rowItem[0]) continue;
+                            const concept = String(rowItem[0]).trim();
+                            const gid = getGroupID(concept);
+                            if (gid && gid !== "OMIT") {
+                                applyVal(concept, parseVal(rowItem[c]), mIdx, 'rev');
+                            }
+                        }
+                    }
+                }
+                if (!hasData) alert("⚠️ Error: No se han detectado datos en el Excel. Comprueba el formato.");
+            } else if (type === 'Seg') {
+                // Segment logic simple implementation
+            }
+            saveData();
+            showDebugResults();
+        }
+
+        function showDebugResults() {
+            const container = document.getElementById('debug-results');
+            const tbody = document.getElementById('debugBody');
+            tbody.innerHTML = '';
+
+            const hotel = document.getElementById('hotelSelector').value;
+            const years = Object.keys(db[hotel] || {}).sort().reverse();
+
+            if (years.length === 0) return;
+            container.style.display = 'block';
+
+            years.forEach(y => {
+                const master = db[hotel][y].service["TOTAL_MASTER"];
+                if (!master) return;
+
+                const rev = master.revenue.reduce((a, b) => a + b, 0);
+                const rms = master.rooms.reduce((a, b) => a + b, 0);
+                const pax = master.pax.reduce((a, b) => a + b, 0);
+                const adr = rms > 0 ? (rev / rms) : 0;
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td style="font-weight:700;">${y}</td>
+                        <td style="color:var(--primary); font-weight:600;">${new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(rev)}</td>
+                        <td>${new Intl.NumberFormat('es-ES').format(rms)}</td>
+                        <td>${new Intl.NumberFormat('es-ES').format(pax)}</td>
+                        <td style="color:#10b981; font-weight:600;">${adr.toFixed(2)} €</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function extractDateFromFilename(name) {
+            const n = normalizeStr(name);
+            const months = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
+
+            // Caso 1: Formato "DICIEMBRE - 25"
+            for (let i = months.length - 1; i >= 0; i--) {
+                if (n.includes(months[i])) {
+                    let year = "2026";
+                    const yearMatch = n.match(/- (\d{2,4})/);
+                    if (yearMatch) {
+                        year = yearMatch[1].length === 2 ? "20" + yearMatch[1] : yearMatch[1];
+                    }
+                    return { day: 1, month: i, year: year, full: months[i] + " " + year };
+                }
+            }
+
+            // Caso 2: Formato estándar DD-MM-YY
+            const dateRegex = /(\d{2})[-/](\d{2})[-/](\d{2,4})/g;
+            const matches = name.match(dateRegex);
+            if (matches && matches.length > 0) {
+                const lastMatch = matches[matches.length - 1];
+                const parts = lastMatch.split(/[-/]/);
+                let y = parts[2];
+                if (y.length === 2) y = "20" + y;
+                return { day: parseInt(parts[0]), month: parseInt(parts[1]) - 1, year: y, full: lastMatch };
+            }
+            return null;
+        }
+
+        function normalizeStr(s) { return String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase(); }
+
+        function parseVal(val) {
+            if (val === null || val === undefined || val === "") return 0;
+            if (typeof val === 'number') return val;
+            let s = String(val).replace(/[€$\s\u00a0]/g, "").trim();
+
+            const lastComma = s.lastIndexOf(',');
+            const lastDot = s.lastIndexOf('.');
+
+            if (lastComma > lastDot) {
+                s = s.replace(/\./g, "").replace(",", ".");
+            } else if (lastDot > lastComma && lastComma !== -1) {
+                s = s.replace(/,/g, "");
+            } else if (lastComma !== -1) {
+                s = s.replace(",", ".");
+            }
+
+            const num = parseFloat(s);
+            return isNaN(num) ? 0 : num;
+        }
+
+        function resetProductionData() {
+            if (confirm("⚠️ ¿Estás seguro de que quieres borrar TODOS los datos de Producción y Segmentos? Esta acción no se puede deshacer.")) {
+                CapaStorage.removeItem(DB_KEY);
+                CapaStorage.removeItem(CONFIG_KEY);
+                alert("Base de datos de producción borrada correctamente. Puedes empezar a cargar archivos de nuevo.");
+                location.reload();
+            }
+        }
+    </script>
+</body>
+
+</html>

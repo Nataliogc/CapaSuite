@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CapaSuite | Portal de Gestión Hotelera</title>
+    <meta name="description" content="CapaSuite - Suite completa de Revenue Management para hoteles.">
+    <link rel="icon" type="image/png" href="Imagen/Icono_CapaSuite.png">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="js/storage.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #4f46e5;
+            --primary-dark: #3730a3;
+            --secondary: #10b981;
+            --accent: #f59e0b;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --bg-body: #f8fafc;
+            --card-bg: #ffffff;
+            --border: #e2e8f0;
+        }
+
+        html,
+        body {
+            min-height: 100%;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-body);
+            background-image:
+                radial-gradient(at 0% 0%, rgba(79, 70, 229, 0.08) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(16, 185, 129, 0.06) 0px, transparent 50%),
+                radial-gradient(at 50% 100%, rgba(245, 158, 11, 0.05) 0px, transparent 50%);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* HEADER */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 40px;
+            background: white;
+            border-bottom: 1px solid var(--border);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .brand img.logo-main {
+            height: 45px;
+        }
+
+        .hotel-logos {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .hotel-logos img {
+            height: 50px;
+        }
+
+        .user-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #f1f5f9;
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        .user-badge .dot {
+            width: 8px;
+            height: 8px;
+            background: #22c55e;
+            border-radius: 50%;
+        }
+
+        /* MAIN */
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 40px 80px 40px;
+        }
+
+        .hero {
+            text-align: center;
+            margin-bottom: 35px;
+        }
+
+        .hero h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            margin-bottom: 10px;
+            color: var(--text-main);
+        }
+
+        .hero p {
+            font-size: 1rem;
+            color: var(--text-muted);
+            max-width: 450px;
+            margin: 0 auto;
+        }
+
+        /* CARDS GRID */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 24px;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 22px;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.3s ease;
+            position: relative;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            border-radius: 16px 16px 0 0;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+            border-color: rgba(79, 70, 229, 0.3);
+        }
+
+        .card:hover::before {
+            opacity: 1;
+        }
+
+        .card-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            margin-bottom: 14px;
+        }
+
+        .icon-prod {
+            background: linear-gradient(135deg, #eef2ff, #ddd6fe);
+        }
+
+        .icon-budget {
+            background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+        }
+
+        .icon-market {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+        }
+
+        .icon-upload {
+            background: linear-gradient(135deg, #fce7f3, #fbcfe8);
+        }
+
+        .card:hover .icon-prod {
+            background: var(--primary);
+            color: white;
+        }
+
+        .card:hover .icon-budget {
+            background: var(--secondary);
+            color: white;
+        }
+
+        .card:hover .icon-market {
+            background: var(--accent);
+            color: white;
+        }
+
+        .card:hover .icon-upload {
+            background: #ec4899;
+            color: white;
+        }
+
+        .card h3 {
+            font-size: 0.95rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: var(--text-main);
+        }
+
+        .card p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-size: 0.6rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .badge-live {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .badge-new {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        /* FOOTER */
+        footer {
+            padding: 12px 40px;
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border);
+            background: white;
+        }
+
+        footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 1000px) {
+            .cards-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .hero h1 {
+                font-size: 2rem;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .cards-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 12px;
+                padding: 12px 20px;
+            }
+
+            main {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <script>
+        // Detección de entorno local
+        if (window.location.protocol === 'file:') {
+            document.write(`
+                <div id="protocol-warning" style="background: linear-gradient(90deg, #4f46e5, #3730a3); color: white; padding: 12px; text-align: center; font-size: 0.9rem; position: sticky; top: 0; z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                    🚀 <strong>Modo Local Detectado:</strong> Para una experiencia 100% estable y persistencia de datos, 
+                    <a href="http://localhost:8000" style="color: #fbbf24; font-weight: 700; text-decoration: underline; margin-left: 5px;">pulsa aquí para entrar por el Servidor Profesional</a>
+                    <span style="display:block; font-size: 0.75rem; opacity: 0.8; margin-top: 2px;">(Asegúrate de haber ejecutado antes el archivo 'INICIAR_SERVIDOR.bat')</span>
+                </div>
+            `);
+        }
+    </script>
+
+    <header class="header">
+        <div class="brand">
+            <img src="Imagen/logo, CapaSuite.png" alt="CapaSuite" class="logo-main">
+            <div class="hotel-logos">
+                <img src="Imagen/logo-guadiana.svg" alt="Guadiana">
+                <img src="Imagen/logo-cumbria.svg" alt="Cumbria">
+            </div>
+        </div>
+        <div class="user-badge">
+            <span class="dot"></span>
+            <span>Revenue Manager</span>
+        </div>
+    </header>
+
+    <main>
+        <div class="hero">
+            <h1>Centro de Control Hotelero</h1>
+            <p>Plataforma integral de Revenue Management para análisis de producción, presupuestos y mercado.</p>
+        </div>
+
+        <div class="cards-grid">
+
+            <a href="AnalisisSegmentos.html" class="card">
+                <span class="badge badge-live">SEGMENTOS</span>
+                <div class="card-icon icon-prod">👥</div>
+                <h3>Producción por Segmentos</h3>
+                <p>Análisis detallado de canales de venta, OTAs, grupos y segmentación de clientes.</p>
+            </a>
+
+            <a href="AnalisisServicios.html" class="card">
+                <span class="badge badge-live">SERVICIOS</span>
+                <div class="card-icon icon-prod">🏨</div>
+                <h3>Producción por Servicios</h3>
+                <p>Control de ingresos por departamento: Alojamiento, F&B, Eventos y otros servicios.</p>
+            </a>
+
+            <a href="AnalisisProduccion.html" class="card">
+                <span class="badge badge-live">PACE</span>
+                <div class="card-icon icon-prod">📈</div>
+                <h3>Análisis de Producción</h3>
+                <p>Análisis Pace, Pick-up y comparativa detallada de ingresos por tipo.</p>
+            </a>
+
+            <a href="CalculadoraPresupuesto.html" class="card">
+                <span class="badge badge-live">LIVE</span>
+                <div class="card-icon icon-budget">💰</div>
+                <h3>Presupuestos 2026</h3>
+                <p>Calculadora de Revenue, ADR y ocupación con simulaciones.</p>
+            </a>
+
+            <a href="AnalisisCompetencia.html" class="card">
+                <span class="badge badge-live">LIVE</span>
+                <div class="card-icon icon-market">⚡</div>
+                <h3>Análisis de Mercado</h3>
+                <p>Inteligencia de precios y oportunidades de Revenue.</p>
+            </a>
+
+            <a href="CargarDatos.html" class="card">
+                <span class="badge badge-new">NUEVO</span>
+                <div class="card-icon icon-upload">📊</div>
+                <h3>Cargar Datos</h3>
+                <p>Importa informes de Producción y Segmentos desde Excel.</p>
+            </a>
+
+            <div class="card" style="opacity: 0.7; cursor: default; border-style: dashed; filter: grayscale(0.5);">
+                <span class="badge" style="background:#f1f5f9; color:#64748b;">PRÓXIMAMENTE</span>
+                <div class="card-icon" style="background: #f1f5f9; color: #94a3b8;">🔮</div>
+                <h3>Predicción IA</h3>
+                <p>Módulo de Inteligencia Artificial para previsión de demanda y ocupación.</p>
+            </div>
+
+            <div class="card" style="opacity: 0.7; cursor: default; border-style: dashed; filter: grayscale(0.5);">
+                <span class="badge" style="background:#f1f5f9; color:#64748b;">PRÓXIMAMENTE</span>
+                <div class="card-icon" style="background: #f1f5f9; color: #94a3b8;">📅</div>
+                <h3>Calendario Eventos</h3>
+                <p>Gestión y visualización de eventos locales que afectan al Revenue.</p>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        &copy; 2026 CapaSuite · Powered by <a href="#">Antigravity Systems</a>
+    </footer>
+
+</body>
+
+</html>

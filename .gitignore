@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.xlsx
+*.pdf
+*.txt
+*.csv
+_backup/
+Producciones/
+analyze_pdf_structure.py
+est_temp.csv
+debug_pdf_text.txt
+.gemini/
+.agent/
+.antigravityignore
