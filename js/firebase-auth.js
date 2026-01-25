@@ -20,9 +20,9 @@ if (!firebase.apps.length) {
 const cloudDb = firebase.database();
 const cloudAuth = firebase.auth();
 
-// Claves de base de datos para sincronización (renombradas para evitar colisiones)
 const SYNC_DB_KEY = "hotel_manager_db_v2";
 const SYNC_CONFIG_KEY = "upload_config_db_v2";
+const SYNC_COMP_KEY = "revenue_data_v2";
 
 /**
  * Función para proteger las páginas
@@ -57,6 +57,7 @@ function checkAuth() {
                     if (typeof render === 'function') render();
                     if (typeof updateAll === 'function') updateAll();
                     if (typeof init === 'function') init();
+                    if (typeof initView === 'function') initView();
                 }
                 resolve(user);
             }
@@ -76,13 +77,13 @@ async function uploadToCloud() {
 
     const data = CapaStorage.getItem(SYNC_DB_KEY);
     const config = CapaStorage.getItem(SYNC_CONFIG_KEY);
-
-    if (!data) return;
+    const comp = CapaStorage.getItem(SYNC_COMP_KEY);
 
     try {
         await cloudDb.ref('users/' + user.uid).update({
             hotelData: data,
             configData: config,
+            compData: comp,
             lastSync: firebase.database.ServerValue.TIMESTAMP
         });
         console.log("☁️ CapaSuite: Datos sincronizados con la nube (Realtime).");
@@ -112,6 +113,10 @@ async function downloadFromCloud() {
                 CapaStorage.setItem(SYNC_CONFIG_KEY, cloudData.configData);
                 hasNewData = true;
             }
+            if (cloudData.compData) {
+                CapaStorage.setItem(SYNC_COMP_KEY, cloudData.compData);
+                hasNewData = true;
+            }
 
             if (hasNewData) {
                 console.log("☁️ CapaSuite: Datos recuperados de la nube.");
@@ -138,7 +143,7 @@ window.forceCloudUpload = async function () {
 const originalSetItem = CapaStorage.setItem;
 CapaStorage.setItem = function (key, value) {
     originalSetItem(key, value);
-    if (cloudAuth.currentUser && (key === SYNC_DB_KEY || key === SYNC_CONFIG_KEY)) {
+    if (cloudAuth.currentUser && (key === SYNC_DB_KEY || key === SYNC_CONFIG_KEY || key === SYNC_COMP_KEY)) {
         // Debounce simple para no saturar Firebase
         if (window._syncTimer) clearTimeout(window._syncTimer);
         window._syncTimer = setTimeout(uploadToCloud, 2000);

@@ -806,7 +806,9 @@
             });
         }
 
-        window.addEventListener('load', () => {
+        window.addEventListener('load', initView);
+
+        function initView() {
             const saved = CapaStorage.getItem('revenue_data_v2');
             if (saved) {
                 try {
@@ -836,7 +838,7 @@
                     CapaStorage.removeItem('revenue_data_v2');
                 }
             }
-        });
+        }
 
         function clearData() {
             if (confirm('¿Subir nuevo archivo? Se perderán los datos actuales.')) {

@@ -577,7 +577,8 @@
             </script>
         </div>
 
-        <details style="margin-top: 20px; border: 1px solid #fee2e2; border-radius: 15px; background: #fffafb;">
+        <details id="admin-management-zone"
+            style="display: none; margin-top: 20px; border: 1px solid #fee2e2; border-radius: 15px; background: #fffafb;">
             <summary
                 style="padding: 15px; cursor: pointer; color: #991b1b; font-weight: 600; font-size: 0.9rem; text-align: center; list-style: none;">
                 🛠️ Zona de Gestión y Borrado (Clic para expandir)
@@ -601,6 +602,13 @@
                 </p>
             </div>
         </details>
+
+        <script>
+            // Solo mostrar zona de gestión si estamos en LOCAL (file://)
+            if (window.location.protocol === 'file:') {
+                document.getElementById('admin-management-zone').style.display = 'block';
+            }
+        </script>
     </div>
 
     <script>
@@ -1261,6 +1269,11 @@
         }
 
         function resetProductionData() {
+            const pass = prompt("🔐 Introduce la clave de Administrador para borrar la base completa:");
+            if (pass !== 'Suite2026') {
+                if (pass !== null) alert("Clave incorrecta.");
+                return;
+            }
             if (confirm("⚠️ ¿Estás seguro de que quieres borrar TODOS los datos de Producción y Segmentos? Esta acción no se puede deshacer.")) {
                 CapaStorage.removeItem(DB_KEY);
                 CapaStorage.removeItem(CONFIG_KEY);
@@ -1270,6 +1283,11 @@
         }
 
         function resetHotelData() {
+            const pass = prompt("🔐 Introduce la clave de Administrador para borrar este hotel:");
+            if (pass !== 'Suite2026') {
+                if (pass !== null) alert("Clave incorrecta.");
+                return;
+            }
             const hotel = document.getElementById('hotelSelector').value;
             if (confirm(`⚠️ ¿Borrar TODOS los datos del Hotel ${hotel}? Los datos de otros hoteles se mantendrán.`)) {
                 delete db[hotel];
