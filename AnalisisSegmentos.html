@@ -812,9 +812,19 @@
                 data: {
                     labels: SHORT_MONTHS,
                     datasets: [
-                        { label: currentYear, data: mainData, borderColor: '#4f46e5', fill: true, backgroundColor: 'rgba(79,70,229,0.1)', tension: 0.4 },
-                        { label: (currentYear - 1), data: prevData, borderColor: '#94a3b8', borderDash: [5, 5], fill: false, tension: 0.4 }
-                    ]
+                        { label: currentYear, data: mainData, borderColor: '#4f46e5', fill: true, backgroundColor: 'rgba(79,70,229,0.1)', tension: 0.4, zIndex: 10 },
+                        { label: (currentYear - 1), data: prevData, borderColor: '#94a3b8', borderDash: [5, 5], fill: false, tension: 0.4, zIndex: 5 },
+                        (data.otb && currentMetric === 'revenue') ? {
+                            label: `Forecast OTB ${currentYear}`,
+                            data: data.otb.revenue,
+                            borderColor: '#8b5cf6',
+                            borderDash: [3, 3],
+                            fill: false,
+                            tension: 0.4,
+                            pointRadius: 3,
+                            zIndex: 1
+                        } : null
+                    ].filter(d => d)
                 },
                 options: { maintainAspectRatio: false }
             });

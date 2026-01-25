@@ -772,6 +772,9 @@
                 'occ': 'Ocupación (%)'
             };
 
+            // 3. Forecast Data (OTB)
+            const otbData = data.otb ? data.otb.revenue : null;
+
             // 1. Evolution Chart (Line)
             if (charts.main) charts.main.destroy();
             charts.main = new Chart(document.getElementById('mainChart'), {
@@ -786,7 +789,8 @@
                             backgroundColor: 'rgba(79, 70, 229, 0.1)',
                             fill: true,
                             tension: 0.4,
-                            pointRadius: 4
+                            pointRadius: 4,
+                            zIndex: 10
                         },
                         mainDataLY ? {
                             label: `${metricLabels[chartMetric]} ${(parseInt(currentYear) - 1)}`,
@@ -796,7 +800,18 @@
                             tension: 0.4,
                             borderDash: [5, 5],
                             pointRadius: 4,
-                            hoverRadius: 6
+                            hoverRadius: 6,
+                            zIndex: 5
+                        } : null,
+                        (otbData && chartMetric === 'total') ? {
+                            label: `Forecast OTB ${currentYear}`,
+                            data: otbData,
+                            borderColor: '#8b5cf6', // Violet
+                            fill: false,
+                            tension: 0.4,
+                            borderDash: [3, 3],
+                            pointRadius: 4,
+                            zIndex: 1
                         } : null
                     ].filter(d => d)
                 },

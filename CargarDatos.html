@@ -502,9 +502,11 @@
             // Update next expected dates
             const lastProd = config[hotel]?.lastProdDate || "01-01-26";
             const lastSeg = config[hotel]?.lastSegDate || "01-01-26";
+            const lastOtb = config[hotel]?.lastOtbDate || "Pendiente";
 
             document.getElementById('nextDateProd').innerText = calculateNextDay(lastProd);
             document.getElementById('nextDateSeg').innerText = calculateNextDay(lastSeg);
+            document.getElementById('otbStateText').innerText = lastOtb;
 
             if (config[hotel]?.lastProdDate) {
                 document.getElementById('prodStatus').innerText = "Actualizado hasta " + lastProd;
@@ -513,6 +515,10 @@
             if (config[hotel]?.lastSegDate) {
                 document.getElementById('segStatus').innerText = "Actualizado hasta " + lastSeg;
                 document.getElementById('segStatus').className = "status-badge status-up";
+            }
+            if (config[hotel]?.lastOtbDate) {
+                document.getElementById('otbStatus').innerText = "Actualizado hasta " + lastOtb;
+                document.getElementById('otbStatus').className = "status-badge status-up";
             }
 
             // Update logo
@@ -575,6 +581,7 @@
                     if (!config[hotel]) config[hotel] = { logs: [] };
                     if (type === 'Prod') config[hotel].lastProdDate = period;
                     else if (type === 'Seg') config[hotel].lastSegDate = period;
+                    else if (type === 'Prevision') config[hotel].lastOtbDate = period;
 
                     // SYNC lastUpdate to main DB
                     if (!db[hotel]) db[hotel] = {};

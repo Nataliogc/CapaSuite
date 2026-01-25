@@ -782,6 +782,7 @@
         }
 
         function renderCharts() {
+            const h = hotelData[currentHotel];
             const ctx = document.getElementById('mainChart').getContext('2d');
             const ctxPie = document.getElementById('pieChart').getContext('2d');
 
@@ -794,7 +795,7 @@
                     datasets: [
                         {
                             label: 'Real 2025',
-                            data: real2025.rev,
+                            data: h.real2025.rev,
                             borderColor: '#94a3b8',
                             backgroundColor: 'rgba(148, 163, 184, 0.1)',
                             fill: true,
@@ -828,7 +829,6 @@
                 }
             });
 
-            // Pie Chart (Distribution by Quarter approx)
             // Group data into Q1, Q2, Q3, Q4
             const qData = [0, 0, 0, 0];
             currentRev.forEach((v, i) => {
@@ -845,7 +845,7 @@
                     labels: ['Q1 (Invierno)', 'Q2 (Prim)', 'Q3 (Verano)', 'Q4 (Otoño)'],
                     datasets: [{
                         data: qData,
-                        backgroundColor: ['#60a5fa', '#34d399', '#ffbbf24', '#818cf8'],
+                        backgroundColor: ['#60a5fa', '#34d399', '#f59e0b', '#818cf8'],
                         borderWidth: 0
                     }]
                 },
