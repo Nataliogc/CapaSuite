@@ -1021,6 +1021,18 @@
                 }
             }
 
+            // NEW: Find occupancy row
+            let occupancyRow = -1;
+            for (let r = 0; r < rawData.length; r++) {
+                const first = String(rawData[r][0] || "").toLowerCase();
+                if (first.includes("ocupaci") || first.includes("occupancy") ||
+                    first.includes("rn") || first.includes("hb ocupadas") ||
+                    first.includes("habitaciones ocupadas")) {
+                    occupancyRow = r;
+                    break;
+                }
+            }
+
             // Build Data
             processedData = [];
             distinctMonths = [];
@@ -1041,7 +1053,30 @@
                 if (dayNameRow !== -1 && rawData[dayNameRow]) dName = String(rawData[dayNameRow][c] || "").trim();
 
                 // Format Date
-                const dateInfo = parseDate(currentMonth, dNum, dName);
+                let occ = 0;
+                if (occupancyRow !== -1) occ = parseFloat(rawData[occupancyRow][c]) || 0;
+
+                const dateInfo = parseDate(currentMonth, dNum, dName, occ);
+
+                // Fallback: If no occupancy in report, try looking in the Production DB
+                if (occ === 0 && dateInfo.iso) {
+                    try {
+                        const pDbRaw = CapaStorage.getItem('hotel_manager_db_v2');
+                        if (pDbRaw) {
+                            const pDb = JSON.parse(pDbRaw);
+                            const yr = dateInfo.iso.split('-')[0];
+                            const iso = dateInfo.iso;
+                            // Search in Guadiana or Cumbria daily data
+                            const hotelOcc = (pDb[activeHotel] && pDb[activeHotel][yr] && pDb[activeHotel][yr].daily) ? pDb[activeHotel][yr].daily[iso] : 0;
+                            if (hotelOcc > 0) {
+                                occ = hotelOcc;
+                                // Re-generate dateHtml with found occupancy
+                                dateInfo.html = parseDate(currentMonth, dNum, dName, occ).html;
+                            }
+                        }
+                    } catch (e) { }
+                }
+
                 if (dateInfo.month && !distinctMonths.includes(dateInfo.month)) distinctMonths.push(dateInfo.month);
 
                 const dayObj = {
@@ -1050,7 +1085,8 @@
                     label: `${dNum} ${dateInfo.month}`,
                     month: dateInfo.month,
                     hotels: {},
-                    compAvg: 0
+                    compAvg: 0,
+                    occupancy: occ
                 };
 
                 let compPrices = [];
@@ -1092,7 +1128,7 @@
             return { price: isNaN(p) ? 0 : p, sold: false, status: 'available' };
         }
 
-        function parseDate(mRaw, dNum, dayNameRaw) {
+        function parseDate(mRaw, dNum, dayNameRaw, occVal = 0) {
             let m = String(mRaw || "").trim();
 
             // Extract year if present (e.g., "JANUARY 2027")
@@ -1134,18 +1170,29 @@
             let dShort = d.length > 2 ? d.substring(0, 2) : d;
             dShort = dShort.charAt(0).toUpperCase() + dShort.slice(1);
 
+            const dShortStr = dShort;
+            const mShortStr = mShort;
+
+            // Prepare ISO for database lookup
+            const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+            const monthIdx = monthNames.indexOf(mShort);
+            const iso = `${year}-${String(monthIdx + 1).padStart(2, '0')}-${String(dNum).padStart(2, '0')}`;
+
+            const occHtml = (occVal > 0) ? `<span style="display:block; font-size: 0.65rem; color: #4f46e5; font-weight: 700; margin-top: 2px;">Hab: ${occVal.toFixed(0)}</span>` : '';
+
             // Pretty HTML
             const html = `
                 <div class="date-pill">
                     <div class="date-day">${dNum}</div>
                     <div class="date-meta">
-                        <span>${dShort}</span>
-                        <span>${mShort}</span>
+                        <span>${dShortStr}</span>
+                        <span>${mShortStr}</span>
+                        ${occHtml}
                     </div>
                 </div>
             `;
 
-            return { html: html, month: monthWithYear };
+            return { html: html, month: monthWithYear, iso: iso };
         }
 
         function populateMonths() {

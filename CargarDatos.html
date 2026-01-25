@@ -915,10 +915,23 @@
                     }
 
                     if (mIdx >= 0 && mIdx <= 11) {
-                        applyVal("TOTAL_MASTER", parseVal(rowHab ? rowHab[c] : 0), mIdx, 'rms');
+                        const rms = parseVal(rowHab ? rowHab[c] : 0);
+                        applyVal("TOTAL_MASTER", rms, mIdx, 'rms');
                         applyVal("TOTAL_MASTER", parseVal(rowPax ? rowPax[c] : 0), mIdx, 'pax');
                         applyVal("TOTAL_MASTER", parseVal(rowPro ? rowPro[c] : 0), mIdx, 'rev');
                         hasData = true;
+
+                        // NEW: Save daily data if the header is a specific date
+                        let specDate = null;
+                        const headerCell = headerRow[c];
+                        if (headerCell instanceof Date) specDate = headerCell;
+                        else if (!isNaN(headerCell) && headerCell > 40000) specDate = new Date((headerCell - 25569) * 86400 * 1000);
+
+                        if (specDate) {
+                            if (!dbYear.daily) dbYear.daily = {};
+                            const iso = specDate.toISOString().split('T')[0];
+                            dbYear.daily[iso] = rms;
+                        }
 
                         for (let r = 0; r < data.length; r++) {
                             if (masterIndices.has(r)) continue;
