@@ -250,35 +250,49 @@
                     <div class="kpi-trend" id="trend-total">--</div>
                 </div>
                 <div class="card">
-                    <div class="kpi-label">ADR (Habitación)</div>
-                    <div class="kpi-value" id="kpi-adr">0 €</div>
+                    <div class="kpi-label">Prod. Habitación</div>
+                    <div class="kpi-value" id="kpi-prod-hab">0 €</div>
+                    <div class="kpi-trend" id="trend-prod-hab">--</div>
+                </div>
+                <div class="card">
+                    <div class="kpi-label">Estancias (RN)</div>
+                    <div class="kpi-value" id="kpi-rn">0</div>
+                    <div class="kpi-trend" id="trend-rn">--</div>
+                </div>
+                <div class="card">
+                    <div class="kpi-label">Total Pax</div>
+                    <div class="kpi-value" id="kpi-pax">0</div>
+                    <div class="kpi-trend" id="trend-pax">--</div>
+                </div>
+                <div class="card" style="background: #f0fdf4;">
+                    <div class="kpi-label" style="color: #166534;">ADR (Precio Medio)</div>
+                    <div class="kpi-value" id="kpi-adr" style="color: #166534;">0 €</div>
                     <div class="kpi-trend" id="trend-adr">--</div>
                 </div>
-                <div class="card">
-                    <div class="kpi-label">RevPAC (Total/Pax)</div>
-                    <div class="kpi-value" id="kpi-revpac">0 €</div>
+                <div class="card" style="background: #eff6ff;">
+                    <div class="kpi-label" style="color: #1e40af;">RevPAC (Gasto Total/Pax)</div>
+                    <div class="kpi-value" id="kpi-revpac" style="color: #1e40af;">0 €</div>
                     <div class="kpi-trend" id="trend-revpac">--</div>
-                </div>
-                <div class="card">
-                    <div class="kpi-label">Ticket Desayuno</div>
-                    <div class="kpi-value" id="kpi-ticketdes">0 €</div>
-                    <div class="kpi-trend" id="trend-ticketdes">--</div>
-                </div>
-                <div class="card">
-                    <div class="kpi-label">Ticket Comp.</div>
-                    <div class="kpi-value" id="kpi-comppax">0 €</div>
-                    <div class="kpi-trend" id="trend-comppax">--</div>
                 </div>
                 <div class="card">
                     <div class="kpi-label">Ocupación</div>
                     <div class="kpi-value" id="kpi-occ">0 %</div>
                     <div class="kpi-trend" id="trend-occ">--</div>
                 </div>
+                <div class="card">
+                    <div class="kpi-label">Gasto Comp. / Pax</div>
+                    <div class="kpi-value" id="kpi-comppax">0 €</div>
+                    <div class="kpi-trend" id="trend-comppax">--</div>
+                </div>
             </div>
 
-            <div class="charts-row">
+            <div class="charts-row" style="grid-template-columns: 1.5fr 1fr 1fr;">
                 <div class="card chart-card">
-                    <div class="kpi-label">Pace Report: Gasto Complementario por Pax (TY vs LY)</div>
+                    <div class="kpi-label">Evolución de Ingresos (Mensual)</div>
+                    <div class="chart-container"><canvas id="mainChart"></canvas></div>
+                </div>
+                <div class="card chart-card">
+                    <div class="kpi-label">Pace Report: Gasto Complementario por Pax</div>
                     <div class="chart-container"><canvas id="paceChart"></canvas></div>
                 </div>
                 <div class="card chart-card">
@@ -416,6 +430,7 @@
             const dataPrev = db[currentHotel][prevYear];
 
             const midx = document.getElementById('monthSelector').value === "All" ? -1 : parseInt(document.getElementById('monthSelector').value);
+
             const getV = (item, m) => {
                 if (!item || !item.revenue) return 0;
                 return m === -1 ? item.revenue.reduce((a, b) => (a || 0) + (b || 0), 0) : (item.revenue[m] || 0);
@@ -436,6 +451,14 @@
             const revLY = totalLY ? getV(totalLY, midx) : 0;
             const rmsLY = totalLY ? getR(totalLY, midx) : 0;
             const paxLY = totalLY ? getP(totalLY, midx) : 0;
+
+            // Month over Month calculation
+            let revLM = 0, rmsLM = 0, paxLM = 0;
+            if (midx > 0) {
+                revLM = getV(totalTY, midx - 1);
+                rmsLM = getR(totalTY, midx - 1);
+                paxLM = getP(totalTY, midx - 1);
+            }
 
             // Grouping logic
             const groupedTY = {};
@@ -476,46 +499,62 @@
             const compTY = (getV(groupedTY.SPA, midx) + getV(groupedTY.PARKING, midx) + getV(groupedTY.MINIBAR, midx) + getV(groupedTY.VARIOS, midx) + getV(groupedTY.OFICINAS, midx) + getV(groupedTY.CAFETERIA, midx));
             const compLY = dataPrev ? (getV(groupedLY.SPA, midx) + getV(groupedLY.PARKING, midx) + getV(groupedLY.MINIBAR, midx) + getV(groupedLY.VARIOS, midx) + getV(groupedLY.OFICINAS, midx) + getV(groupedLY.CAFETERIA, midx)) : 0;
 
+            const compLM = midx > 0 ? (getV(groupedTY.SPA, midx - 1) + getV(groupedTY.PARKING, midx - 1) + getV(groupedTY.MINIBAR, midx - 1) + getV(groupedTY.VARIOS, midx - 1) + getV(groupedTY.OFICINAS, midx - 1) + getV(groupedTY.CAFETERIA, midx - 1)) : 0;
+
             const habRevTY = getV(groupedTY.HABITACION, midx);
             const habRevLY = dataPrev ? getV(groupedLY.HABITACION, midx) : 0;
+            const habRevLM = midx > 0 ? getV(groupedTY.HABITACION, midx - 1) : 0;
 
             // KPIs
             const fmt = (n) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
-            const trend = (ty, ly) => {
-                if (!ly) return "--";
-                const p = ((ty - ly) / ly * 100).toFixed(1);
-                return `<span class="${p >= 0 ? 'trend-up' : 'trend-down'}">${p >= 0 ? '▲' : '▼'} ${Math.abs(p)}% vs LY</span>`;
+            const trend = (ty, ly, lm) => {
+                let res = '';
+                if (ly) {
+                    const p = ((ty - ly) / ly * 100).toFixed(1);
+                    res += `<span class="${p >= 0 ? 'trend-up' : 'trend-down'}" style="display:block;">${p >= 0 ? '▲' : '▼'} ${Math.abs(p)}% vs LY</span>`;
+                }
+                if (lm !== undefined && lm !== 0 && midx !== -1) {
+                    const p = ((ty - lm) / lm * 100).toFixed(1);
+                    res += `<span style="font-size:0.7rem; color:var(--text-muted); display:block;">${p >= 0 ? '▲' : '▼'} ${Math.abs(p)}% vs L. Month</span>`;
+                }
+                return res || '--';
             }
 
             document.getElementById('kpi-total').innerText = fmt(revTY);
-            document.getElementById('trend-total').innerHTML = trend(revTY, revLY);
+            document.getElementById('trend-total').innerHTML = trend(revTY, revLY, revLM);
+
+            document.getElementById('kpi-prod-hab').innerText = fmt(habRevTY);
+            document.getElementById('trend-prod-hab').innerHTML = trend(habRevTY, habRevLY, habRevLM);
+
+            document.getElementById('kpi-rn').innerText = rmsTY;
+            document.getElementById('trend-rn').innerHTML = trend(rmsTY, rmsLY, rmsLM);
+
+            document.getElementById('kpi-pax').innerText = paxTY;
+            document.getElementById('trend-pax').innerHTML = trend(paxTY, paxLY, paxLM);
 
             const adrTY = rmsTY > 0 ? habRevTY / rmsTY : 0;
             const adrLY = rmsLY > 0 ? habRevLY / rmsLY : 0;
+            const adrLM = rmsLM > 0 ? habRevLM / rmsLM : 0;
             document.getElementById('kpi-adr').innerText = adrTY.toFixed(1) + " €";
-            document.getElementById('trend-adr').innerHTML = trend(adrTY, adrLY);
+            document.getElementById('trend-adr').innerHTML = trend(adrTY, adrLY, adrLM);
 
             const revpacTY = paxTY > 0 ? revTY / paxTY : 0;
             const revpacLY = paxLY > 0 ? revLY / paxLY : 0;
+            const revpacLM = paxLM > 0 ? revLM / paxLM : 0;
             document.getElementById('kpi-revpac').innerText = revpacTY.toFixed(1) + " €";
-            document.getElementById('trend-revpac').innerHTML = trend(revpacTY, revpacLY);
-
-            // Room Production KPI
-            if (document.getElementById('kpi-ticketdes')) {
-                document.getElementById('kpi-ticketdes').innerText = fmt(habRevTY);
-                document.querySelector('#kpi-ticketdes').previousElementSibling.innerText = "Prod. Habitación";
-                document.getElementById('trend-ticketdes').innerHTML = trend(habRevTY, habRevLY);
-            }
-
-            const comppaxTY = paxTY > 0 ? compTY / paxTY : 0;
-            const comppaxLY = paxLY > 0 ? compLY / paxLY : 0;
-            document.getElementById('kpi-comppax').innerText = comppaxTY.toFixed(1) + " €";
-            document.getElementById('trend-comppax').innerHTML = trend(comppaxTY, comppaxLY);
+            document.getElementById('trend-revpac').innerHTML = trend(revpacTY, revpacLY, revpacLM);
 
             const occTY = (rmsTY / (HOTELS[currentHotel].rooms * (midx === -1 ? 365 : 30)) * 100);
             const occLY = (rmsLY / (HOTELS[currentHotel].rooms * (midx === -1 ? 365 : 30)) * 100);
+            const occLM = midx > 0 ? (rmsLM / (HOTELS[currentHotel].rooms * 30) * 100) : 0;
             document.getElementById('kpi-occ').innerText = occTY.toFixed(1) + " %";
-            document.getElementById('trend-occ').innerHTML = trend(occTY, occLY);
+            document.getElementById('trend-occ').innerHTML = trend(occTY, occLY, occLM);
+
+            const comppaxTY = paxTY > 0 ? compTY / paxTY : 0;
+            const comppaxLY = paxLY > 0 ? compLY / paxLY : 0;
+            const comppaxLM = paxLM > 0 ? compLM / paxLM : 0;
+            document.getElementById('kpi-comppax').innerText = comppaxTY.toFixed(1) + " €";
+            document.getElementById('trend-comppax').innerHTML = trend(comppaxTY, comppaxLY, comppaxLM);
 
             // Table
             renderTable(groupedTY, midx, revTY, fmt);
@@ -565,7 +604,41 @@
         }
 
         function renderCharts(groupedTY, groupedLY, totalTY, totalLY, midx) {
-            // Mix Chart
+            // 1. Evolution Chart (Line)
+            if (charts.main) charts.main.destroy();
+            charts.main = new Chart(document.getElementById('mainChart'), {
+                type: 'line',
+                data: {
+                    labels: SHORT_MONTHS,
+                    datasets: [
+                        {
+                            label: currentYear,
+                            data: totalTY.revenue,
+                            borderColor: '#4f46e5',
+                            backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 4
+                        },
+                        totalLY ? {
+                            label: (parseInt(currentYear) - 1),
+                            data: totalLY.revenue,
+                            borderColor: '#cbd5e1',
+                            fill: false,
+                            tension: 0.4,
+                            borderDash: [5, 5],
+                            pointRadius: 0
+                        } : null
+                    ].filter(d => d)
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top' } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+
+            // 2. Mix Chart (Doughnut)
             const mixData = [], mixLabels = [];
             Object.values(groupedTY).forEach(g => {
                 const val = midx === -1 ? g.revenue.reduce((a, b) => (a || 0) + (b || 0), 0) : (g.revenue[midx] || 0);
@@ -579,7 +652,7 @@
                 options: { maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
             });
 
-            // Pace Chart: Complementary / Pax comparison
+            // 3. Pace Chart (Bar)
             const labels = midx === -1 ? SHORT_MONTHS : [MONTH_ORDER[midx]];
             const tyPace = [], lyPace = [];
 
@@ -604,8 +677,8 @@
                 data: {
                     labels: labels,
                     datasets: [
-                        { label: 'This Year (€/pax)', data: tyPace, backgroundColor: '#4f46e5' },
-                        { label: 'Last Year (€/pax)', data: lyPace, backgroundColor: '#cbd5e1' }
+                        { label: 'Current (€/pax)', data: tyPace, backgroundColor: '#4f46e5' },
+                        { label: 'LY (€/pax)', data: lyPace, backgroundColor: '#cbd5e1' }
                     ]
                 },
                 options: { maintainAspectRatio: false, scales: { y: { beginAtZero: true, title: { display: true, text: 'Euros por Pax' } } } }
