@@ -581,21 +581,28 @@
                 let row = data[r];
                 if (!row || row.length < 2) continue;
 
-                let col0 = String(row[0] || "").trim();
-                let col1 = String(row[1] || "").trim().toUpperCase();
-
-                const isHab = col1.includes("HAB") || col1.includes("RMS");
-                const isPro = col1.includes("PRO") || col1.includes("REV") || col1.includes("ING");
-
-                if (col0) {
-                    const col0Upper = col0.toUpperCase();
-                    if (col0Upper === "XXXX" || col0Upper === "SEG." || col0Upper === "S/S") {
-                        currentSeg = "S/S";
-                    } else if (col0Upper.includes("TOTAL")) {
-                        currentSeg = "TOTAL";
-                    } else {
-                        currentSeg = col0;
+                // Súper-detección de fila (Habitaciones vs Producción)
+                let rowType = null;
+                for (let c = 0; c < Math.min(row.length, 5); c++) {
+                    const nCell = normalizeStr(row[c]);
+                    if (nCell === "HAB" || nCell === "RMS" || nCell === "RN" || nCell === "ESTANCIAS" || nCell === "NIGHTS" || nCell === "UNITS" || nCell === "EST" || nCell.includes("HABITACIO")) {
+                        rowType = 'rms'; break;
                     }
+                    if (nCell === "PRO" || nCell === "REV" || nCell === "PROD" || nCell === "VTA" || nCell === "ING" || nCell === "REVENUE" || nCell === "IMPORTE" || nCell === "VALORADA" || nCell.includes("PRODUCCIO")) {
+                        rowType = 'rev'; break;
+                    }
+                }
+
+                const isHab = rowType === 'rms';
+                const isPro = rowType === 'rev';
+
+                // Detección de nombre de Segmento
+                if (col0 && !isHab && !isPro) {
+                    currentSeg = nCol0;
+                    filledHab = false;
+                    filledPro = false;
+                } else if (!col0 && !isHab && !isPro && nCol1) {
+                    currentSeg = nCol1; // Fallback to Col B for name if Col A is empty
                     filledHab = false;
                     filledPro = false;
                 } else if (!col0 && (isHab || isPro)) {
@@ -604,7 +611,7 @@
                     }
                 }
 
-                if (!currentSeg) continue;
+                if (!currentSeg || currentSeg === "METRICA" || currentSeg === "CONCEPTOS") continue;
 
                 if (isHab || isPro) {
                     if (!dbYear.segment[currentSeg]) {
@@ -629,6 +636,8 @@
 
             dbYear.lastUpdate = new Date().toLocaleDateString('es-ES');
         }
+
+        const normalizeStr = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[.\/-]/g, "").toUpperCase().trim();
 
         function parseVal(val) {
             if (val === null || val === undefined || val === "") return 0;

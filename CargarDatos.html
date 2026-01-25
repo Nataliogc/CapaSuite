@@ -904,20 +904,31 @@
                     if (!row || row.length < 2) continue;
 
                     let col0 = String(row[0] || "").trim();
-                    const col1 = String(row[1] || "").trim().toUpperCase();
+                    const nCol0 = normalizeStr(row[0]);
+                    const nCol1 = normalizeStr(row[1]);
 
-                    const isHab = col1 === "HAB" || col1 === "RMS";
-                    const isPro = col1 === "PRO" || col1 === "REV";
-
-                    if (col0) {
-                        const col0Upper = col0.toUpperCase();
-                        if (col0Upper === "XXXX" || col0Upper === "SEG." || col0Upper === "S/S") {
-                            currentSeg = "S/S";
-                        } else if (col0Upper.includes("TOTAL")) {
-                            currentSeg = "TOTAL";
-                        } else {
-                            currentSeg = col0;
+                    // Súper-detección de fila (Habitaciones vs Producción)
+                    let rowType = null;
+                    for (let c = 0; c < Math.min(row.length, 5); c++) {
+                        const nCell = normalizeStr(row[c]);
+                        if (nCell === "HAB" || nCell === "RMS" || nCell === "RN" || nCell === "ESTANCIAS" || nCell === "NIGHTS" || nCell === "UNITS" || nCell === "EST" || nCell.includes("HABITACIO")) {
+                            rowType = 'rms'; break;
                         }
+                        if (nCell === "PRO" || nCell === "REV" || nCell === "PROD" || nCell === "VTA" || nCell === "ING" || nCell === "REVENUE" || nCell === "IMPORTE" || nCell === "VALORADA" || nCell.includes("PRODUCCIO")) {
+                            rowType = 'rev'; break;
+                        }
+                    }
+
+                    const isHab = rowType === 'rms';
+                    const isPro = rowType === 'rev';
+
+                    // Detección de nombre de Segmento
+                    if (col0 && !isHab && !isPro) {
+                        currentSeg = nCol0;
+                        filledHab = false;
+                        filledPro = false;
+                    } else if (!col0 && !isHab && !isPro && nCol1) {
+                        currentSeg = nCol1;
                         filledHab = false;
                         filledPro = false;
                     } else if (!col0 && (isHab || isPro)) {
@@ -926,7 +937,7 @@
                         }
                     }
 
-                    if (!currentSeg) continue;
+                    if (!currentSeg || currentSeg === "METRICA" || currentSeg === "CONCEPTOS") continue;
 
                     if (isHab || isPro) {
                         if (!dbYear.segment[currentSeg]) {
@@ -976,12 +987,8 @@
                     if (Object.keys(monthCols).length >= 1) break; // Found header row
                 }
 
-                // If no header found, default to columns 1-12
-                if (Object.keys(monthCols).length === 0) {
-                    for (let i = 0; i < 12; i++) monthCols[i] = i + 1;
-                    // This block is now effectively a fallback for when no month headers are found.
-                    // The logic below will handle it based on `monthCols` being empty.
-                }
+                // If no header found, we don't fill monthCols here to allow the fallback below
+                // to work. We only use monthCols if we actually found something in the header.
 
                 for (let r = 0; r < data.length; r++) {
                     const row = data[r];
@@ -993,11 +1000,11 @@
                         const cell = normalizeStr(row[c]);
                         if (!cell) continue;
 
-                        if (cell === "HAB" || cell === "RN" || cell === "ESTANCIAS" || cell.includes("NIGHT") || cell === "HABITACIONES") {
+                        if (cell.includes("HAB") || cell === "RN" || cell.includes("ESTANCIA") || cell.includes("NIGHT") || cell.includes("UNIT") || cell === "HABITACIONES") {
                             rowType = 'rms';
                             break;
                         }
-                        if (cell === "TOTAL" || cell.includes("PRODUCCION") || cell.includes("INGRESO") || cell.includes("IMPORTE") || cell.includes("VALORADA") || cell === "REVENUE") {
+                        if (cell === "TOTAL" || cell.includes("PRODUCCION") || cell.includes("INGRESO") || cell.includes("IMPORTE") || cell.includes("VALORADA") || cell.includes("REVENUE") || cell.includes("VENTA")) {
                             rowType = 'rev';
                             break;
                         }
@@ -1015,14 +1022,20 @@
                                 }
                             }
                         } else {
-                            // Fallback: If no month headers found, look for FIRST large numeric value or column labeled TOTAL
-                            for (let c = 1; c < row.length; c++) {
-                                const val = parseVal(row[c]);
-                                if (val > 0) {
-                                    // If we detect this is likely a single month report from filename
-                                    const m = dateInfo ? dateInfo.month : 0;
-                                    targetArray[m] = val;
-                                    break;
+                            // Fallback: Default to columns 1-12 if row is long enough
+                            if (row.length >= 13) {
+                                for (let mIdx = 0; mIdx < 12; mIdx++) {
+                                    targetArray[mIdx] = parseVal(row[mIdx + 1]);
+                                }
+                            } else {
+                                // Fallback 2: Look for single value (total)
+                                for (let c = 1; c < row.length; c++) {
+                                    const val = parseVal(row[c]);
+                                    if (val > 0) {
+                                        const m = dateInfo ? dateInfo.month : 0;
+                                        targetArray[m] = val;
+                                        break;
+                                    }
                                 }
                             }
                         }
@@ -1055,14 +1068,47 @@
                 const adr = rms > 0 ? (rev / rms) : 0;
 
                 tbody.innerHTML += `
-                    <tr>
-                        <td style="font-weight:700;">${y}</td>
+                    <tr style="background:rgba(79, 70, 229, 0.05);">
+                        <td style="font-weight:700;">${y} (Master)</td>
                         <td style="color:var(--primary); font-weight:600;">${new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(rev)}</td>
                         <td>${new Intl.NumberFormat('es-ES').format(rms)}</td>
                         <td>${new Intl.NumberFormat('es-ES').format(pax)}</td>
                         <td style="color:#10b981; font-weight:600;">${adr.toFixed(2)} €</td>
                     </tr>
                 `;
+
+                // Add Segments Summary
+                const segments = Object.keys(db[hotel][y].segment || {});
+                if (segments.length > 0) {
+                    const segRev = Object.values(db[hotel][y].segment).reduce((acc, s) => acc + s.revenue.reduce((a, b) => a + b, 0), 0);
+                    const segRms = Object.values(db[hotel][y].segment).reduce((acc, s) => acc + s.rooms.reduce((a, b) => a + b, 0), 0);
+                    tbody.innerHTML += `
+                        <tr style="font-size: 0.75rem; color: var(--text-muted);">
+                            <td>└─ ${segments.length} Segmentos</td>
+                            <td>${new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(segRev)}</td>
+                            <td>${new Intl.NumberFormat('es-ES').format(segRms)} RN</td>
+                            <td>-</td>
+                            <td>${segRms > 0 ? (segRev / segRms).toFixed(2) : 0} €</td>
+                        </tr>
+                    `;
+                }
+
+                // Add OTB Summary
+                if (db[hotel][y].otb) {
+                    const otbRev = db[hotel][y].otb.revenue.reduce((a, b) => a + b, 0);
+                    const otbRms = db[hotel][y].otb.rooms.reduce((a, b) => a + b, 0);
+                    if (otbRev > 0) {
+                        tbody.innerHTML += `
+                            <tr style="font-size: 0.75rem; color: #8b5cf6;">
+                                <td>└─ Previsión OTB 2026</td>
+                                <td>${new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(otbRev)}</td>
+                                <td>${new Intl.NumberFormat('es-ES').format(otbRms)} RN</td>
+                                <td>-</td>
+                                <td>${otbRms > 0 ? (otbRev / otbRms).toFixed(2) : 0} €</td>
+                            </tr>
+                        `;
+                    }
+                }
             });
         }
 

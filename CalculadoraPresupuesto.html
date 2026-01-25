@@ -694,7 +694,11 @@
             const db = JSON.parse(CapaStorage.getItem('hotel_manager_db_v2')) || {};
             const year = "2026";
             if (db[currentHotel] && db[currentHotel][year] && db[currentHotel][year].otb) {
-                h.otbData = [...db[currentHotel][year].otb.revenue];
+                const importedOTB = db[currentHotel][year].otb.revenue;
+                // Only overwrite if we actually have imported data
+                if (importedOTB && importedOTB.some(v => v > 0)) {
+                    h.otbData = [...importedOTB];
+                }
             }
 
             loadStrategy();
