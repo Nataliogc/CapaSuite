@@ -540,8 +540,15 @@
         }
 
         function render() {
-            if (!db[currentHotel] || !db[currentHotel][currentYear]) return;
+            // Ensure db[currentHotel][currentYear] and its 'otb' property are initialized
+            if (!db[currentHotel][currentYear]) db[currentHotel][currentYear] = {
+                service: {},
+                segment: {},
+                otb: { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) },
+                lastUpdate: ""
+            };
             const data = db[currentHotel][currentYear];
+            if (!data.otb) data.otb = { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) };
 
             // Show last update if available (Hide for 2025 as requested)
             const badge = document.getElementById('updateBadge');
@@ -879,9 +886,9 @@
             Object.entries(groupedTY).forEach(([id, g]) => {
                 const val = midx === -1 ? g.revenue.reduce((a, b) => (a || 0) + (b || 0), 0) : (g.revenue[midx] || 0);
                 if (val > 0) {
+                    const pct = totalValForMix > 0 ? ((val / totalValForMix) * 100).toFixed(1) : 0;
                     mixData.push(val);
-                    const perc = totalValForMix > 0 ? ((val / totalValForMix) * 100).toFixed(1) : 0;
-                    mixLabels.push(`${g.name.split('. ')[1]} (${perc}%)`);
+                    mixLabels.push(`${g.name.split('. ')[1] || g.name} (${pct}%)`);
                     mixIds.push(id);
                 }
             });
@@ -894,7 +901,19 @@
                     maintainAspectRatio: false,
                     plugins: {
                         legend: { position: 'right' },
-                        title: { display: true, text: 'Click para ver detalle', font: { size: 10 } }
+                        title: { display: true, text: 'Click para ver detalle', font: { size: 10 } },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    const value = context.raw;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                    const label = context.label || '';
+                                    const valFmt = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value);
+                                    return ` ${label}: ${valFmt} (${percentage}%)`;
+                                }
+                            }
+                        }
                     },
                     onClick: (e, items) => {
                         if (items.length > 0) {

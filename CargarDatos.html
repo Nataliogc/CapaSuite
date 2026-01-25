@@ -706,9 +706,14 @@
             const reportYear = dateInfo?.year || "2026";
 
             if (!db[hotel]) db[hotel] = {};
-            if (!db[hotel][reportYear]) db[hotel][reportYear] = { service: {}, segment: {}, lastUpdate: "" };
-
+            if (!db[hotel][reportYear]) db[hotel][reportYear] = {
+                service: {},
+                segment: {},
+                otb: { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) },
+                lastUpdate: ""
+            };
             const dbYear = db[hotel][reportYear];
+            if (!dbYear.otb) dbYear.otb = { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) };
             dbYear.lastUpdate = dateInfo ? dateInfo.full : "Carga Masiva";
 
             const SHORT_MONTHS_MAP = {
@@ -1004,7 +1009,7 @@
                             rowType = 'rms';
                             break;
                         }
-                        if (cell === "TOTAL" || cell.includes("PRODUCCION") || cell.includes("INGRESO") || cell.includes("IMPORTE") || cell.includes("VALORADA") || cell.includes("REVENUE") || cell.includes("VENTA")) {
+                        if (cell === "TOTAL" || cell.includes("PRODUCCION") || cell.includes("INGRESO") || cell.includes("IMPORTE") || cell.includes("VALORADA") || cell.includes("REVENUE") || cell.includes("VENTA") || cell.includes("OTB") || cell.includes("BOOKING")) {
                             rowType = 'rev';
                             break;
                         }
