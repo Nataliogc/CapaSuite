@@ -13,6 +13,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="js/storage.js"></script>
 
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="js/firebase-auth.js"></script>
+
     <style>
         * {
             margin: 0;
@@ -335,6 +341,82 @@
                 padding: 20px;
             }
         }
+
+        /* LOGIN STYLES (Universal) */
+        .login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg-body);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999999;
+        }
+
+        .login-card {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .login-card h2 {
+            margin-bottom: 30px;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        .login-field {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .login-field label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: var(--text-muted);
+        }
+
+        .login-field input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-family: inherit;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .login-btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .logout-link {
+            font-size: 0.7rem;
+            color: #ef4444;
+            cursor: pointer;
+            text-decoration: underline;
+            margin-left: 10px;
+        }
     </style>
 </head>
 
@@ -352,16 +434,7 @@
         }
     </script>
 
-    <nav class="top-nav">
-        <a href="index.html" class="active">🏠 Inicio</a>
-        <a href="AnalisisProduccion.html">📈 Producción</a>
-        <a href="AnalisisSegmentos.html">👥 Segmentos</a>
-        <a href="AnalisisCompetencia.html">⚖️ Competencia</a>
-        <a href="CalculadoraPresupuesto.html">💰 Presupuesto</a>
-        <a href="CargarDatos.html">⚙️ Config</a>
-    </nav>
-
-    <header class="header">
+    <header class="header" id="mainHeader" style="display: none;">
         <div class="brand">
             <img src="Imagen/logo, CapaSuite.png" alt="CapaSuite" class="logo-main">
             <div class="hotel-logos">
@@ -371,11 +444,85 @@
         </div>
         <div class="user-badge">
             <span class="dot"></span>
-            <span>Revenue Manager</span>
+            <span id="userEmail">Cargando...</span>
+            <span class="logout-link" onclick="auth.signOut()">Cerrar Sesión</span>
         </div>
     </header>
 
-    <main>
+    <div id="login-container" class="login-overlay">
+        <div class="login-card">
+            <img src="Imagen/logo, CapaSuite.png" alt="CapaSuite" style="height: 50px; margin-bottom: 20px;">
+            <h2>Acceso a CapaSuite</h2>
+            <div class="login-field">
+                <label>Email Profesional</label>
+                <input type="email" id="email" placeholder="usuario@empresa.com">
+            </div>
+            <div class="login-field">
+                <label>Clave de Acceso</label>
+                <input type="password" id="password" placeholder="••••••••">
+            </div>
+            <button class="login-btn" onclick="handleLogin()">Entrar al Portal</button>
+            <p id="login-error" style="color: #ef4444; font-size: 0.8rem; margin-top: 15px; display: none;"></p>
+        </div>
+    </div>
+
+    <script>
+        async function handleLogin() {
+            const email = document.getElementById('email').value;
+            const pass = document.getElementById('password').value;
+            const errorEl = document.getElementById('login-error');
+
+            try {
+                await auth.signInWithEmailAndPassword(email, pass);
+            } catch (error) {
+                errorEl.innerText = "Error: Acceso denegado. Verifica tus credenciales.";
+                errorEl.style.display = 'block';
+            }
+        }
+
+        auth.onAuthStateChanged(async (user) => {
+            const loginSection = document.getElementById('login-container');
+            const mainContent = document.getElementById('dashboard-main');
+            const mainHeader = document.getElementById('mainHeader');
+            const mainNav = document.getElementById('mainNav');
+
+            if (user) {
+                loginSection.style.display = 'none';
+                mainContent.style.display = 'flex';
+                mainHeader.style.display = 'flex';
+                mainNav.style.display = 'flex';
+                document.getElementById('userEmail').innerText = user.email;
+
+                // 1. Intentar descargar datos de la nube
+                const hasCloudData = await downloadFromCloud();
+
+                // 2. Si la nube está vacía pero tengo datos locales, subir los locales (Migración inicial)
+                if (!hasCloudData) {
+                    const localData = CapaStorage.getItem('hotel_manager_db_v2');
+                    if (localData && localData !== '{}') {
+                        console.log("📤 Detectados datos locales. Sincronizando con Firebase por primera vez...");
+                        await uploadToCloud();
+                    }
+                }
+            } else {
+                loginSection.style.display = 'flex';
+                mainContent.style.display = 'none';
+                mainHeader.style.display = 'none';
+                mainNav.style.display = 'none';
+            }
+        });
+    </script>
+
+    <nav class="top-nav" id="mainNav" style="display: none;">
+        <a href="index.html" class="active">🏠 Inicio</a>
+        <a href="AnalisisProduccion.html">📈 Producción</a>
+        <a href="AnalisisSegmentos.html">👥 Segmentos</a>
+        <a href="AnalisisCompetencia.html">⚖️ Competencia</a>
+        <a href="CalculadoraPresupuesto.html">💰 Presupuesto</a>
+        <a href="CargarDatos.html">⚙️ Config</a>
+    </nav>
+
+    <main id="dashboard-main" style="display: none;">
         <div class="hero">
             <h1>Centro de Control Hotelero</h1>
             <p>Plataforma integral de Revenue Management para análisis de producción, presupuestos y mercado.</p>

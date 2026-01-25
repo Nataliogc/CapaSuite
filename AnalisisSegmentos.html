@@ -15,6 +15,10 @@
     <script src="js/xlsx.full.min.js"></script>
     <script src="js/chart.js"></script>
     <script src="js/storage.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="js/firebase-auth.js"></script>
 
     <style>
         :root {
@@ -359,7 +363,19 @@
                     <option value="Cumbria">Hotel Cumbria</option>
                 </select>
                 <button class="btn" onclick="document.getElementById('fileInput').click()">📂 Añadir</button>
+                <div class="user-badge"
+                    style="background:#f1f5f9; padding:8px 16px; border-radius:30px; display:flex; align-items:center; gap:10px; font-size: 0.8rem; font-weight: 500;">
+                    <span style="color:var(--secondary);">●</span>
+                    <span id="userEmailNav">Cargando...</span>
+                    <span onclick="auth.signOut()"
+                        style="color:#ef4444; cursor:pointer; text-decoration:underline; font-size:0.7rem; margin-left:5px;">Salir</span>
+                </div>
             </div>
+            <script>
+                auth.onAuthStateChanged(user => {
+                    if (user) document.getElementById('userEmailNav').innerText = user.email;
+                });
+            </script>
         </header>
 
         <div id="upload-section" class="upload-area" onclick="document.getElementById('fileInput').click()">
@@ -827,15 +843,35 @@
                             label: `Forecast OTB ${currentYear}`,
                             data: data.otb.revenue,
                             borderColor: '#8b5cf6',
-                            borderDash: [3, 3],
+                            borderWidth: 2,
                             fill: false,
                             tension: 0.4,
-                            pointRadius: 3,
+                            pointRadius: 4,
                             zIndex: 1
                         } : null
                     ].filter(d => d)
                 },
-                options: { maintainAspectRatio: false }
+                options: {
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) label += ': ';
+                                    if (context.parsed.y !== null) {
+                                        label += new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(context.parsed.y);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
             });
 
             // Comparativa Anual Bar Chart

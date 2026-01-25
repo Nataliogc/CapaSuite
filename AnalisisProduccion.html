@@ -12,6 +12,10 @@
     <link rel="icon" type="image/png" href="Imagen/Icono_CapaSuite.png">
     <script src="js/chart.js"></script>
     <script src="js/storage.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="js/firebase-auth.js"></script>
 
     <style>
         :root {
@@ -319,7 +323,19 @@
                     <option value="Guadiana">Hotel Guadiana</option>
                     <option value="Cumbria">Hotel Cumbria</option>
                 </select>
+                <div class="user-badge"
+                    style="background:#f1f5f9; padding:8px 16px; border-radius:30px; display:flex; align-items:center; gap:10px; font-size: 0.8rem; font-weight: 500;">
+                    <span style="color:var(--secondary);">●</span>
+                    <span id="userEmailNav">Cargando...</span>
+                    <span onclick="auth.signOut()"
+                        style="color:#ef4444; cursor:pointer; text-decoration:underline; font-size:0.7rem; margin-left:5px;">Salir</span>
+                </div>
             </div>
+            <script>
+                auth.onAuthStateChanged(user => {
+                    if (user) document.getElementById('userEmailNav').innerText = user.email;
+                });
+            </script>
         </header>
 
         <div id="no-data-section" class="upload-area" style="display:none;">

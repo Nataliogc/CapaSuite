@@ -9,6 +9,10 @@
     <script src="js/chart.js"></script>
     <script src="js/xlsx.full.min.js"></script>
     <script src="js/storage.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="js/firebase-auth.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -497,7 +501,36 @@
         </div>
 
         <div
-            style="margin-top: 40px; padding: 20px; border: 1px solid #fee2e2; border-radius: 15px; background: #fffafb; text-align: center;">
+            style="margin-top: 30px; padding: 20px; border: 1px solid #e0e7ff; border-radius: 15px; background: #f5f7ff; text-align: center;">
+            <div style="display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:10px;">
+                <span style="font-size:1.5rem;">☁️</span>
+                <h3 style="margin:0; color:var(--primary);">Sincronización en la Nube</h3>
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">
+                Tus datos se sincronizan automáticamente, pero puedes forzar una subida manual para asegurar que todo
+                esté en Firebase.
+            </p>
+            <div style="display: flex; gap: 15px; justify-content: center; align-items: center;">
+                <button class="btn" style="background: var(--primary); width: auto; padding: 10px 25px;"
+                    onclick="window.forceCloudUpload()">
+                    📤 Subir datos locales a la Nube ahora
+                </button>
+            </div>
+            <p id="cloud-status-text"
+                style="font-size: 0.7rem; color: var(--secondary); margin-top: 10px; font-weight: 500;">
+                Conectado como: Cargando...
+            </p>
+            <script>
+                auth.onAuthStateChanged(user => {
+                    const statusEl = document.getElementById('cloud-status-text');
+                    if (user) statusEl.innerText = "✅ Sincronización activa para: " + user.email;
+                    else statusEl.innerText = "❌ No has iniciado sesión.";
+                });
+            </script>
+        </div>
+
+        <div
+            style="margin-top: 20px; padding: 20px; border: 1px solid #fee2e2; border-radius: 15px; background: #fffafb; text-align: center;">
             <p style="color: #991b1b; font-size: 0.9rem; margin-bottom: 15px; font-weight: 500;">
                 Zona de Gestión: ¿Quieres empezar de cero con la Producción y Segmentación?
             </p>
@@ -971,25 +1004,26 @@
                 const dbYear = db[hotel][detectedYear];
                 if (!dbYear.otb) dbYear.otb = { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) };
 
-                // Clear or aggregate? Usually forecasts are "full replacements"
-                dbYear.otb.revenue.fill(0);
-                dbYear.otb.rooms.fill(0);
+                // Update: We no longer clear full OTB, so multi-month uploads are incremental
+                // dbYear.otb.revenue.fill(0); 
+                // dbYear.otb.rooms.fill(0);
 
                 // 1. First, find the header row to detect where months are
                 let monthCols = {};
                 const SHORT_MONTHS_MAP = { "ENE": 0, "JAN": 0, "FEB": 1, "MAR": 2, "ABR": 3, "APR": 3, "MAY": 4, "JUN": 5, "JUL": 6, "AGO": 7, "AUG": 7, "SEP": 8, "OCT": 9, "NOV": 10, "DIC": 11, "DEC": 11 };
 
-                for (let r = 0; r < Math.min(data.length, 50); r++) {
+                for (let r = 0; r < Math.min(data.length, 100); r++) {
                     const row = data[r] || [];
                     for (let c = 0; c < row.length; c++) {
                         const cell = normalizeStr(row[c]);
+                        if (!cell) continue;
                         for (const [mName, mIdx] of Object.entries(SHORT_MONTHS_MAP)) {
                             if (cell.startsWith(mName)) {
                                 monthCols[mIdx] = c;
                             }
                         }
                     }
-                    if (Object.keys(monthCols).length >= 1) break; // Found header row
+                    if (Object.keys(monthCols).length >= 2) break; // Found at least 2 month headers
                 }
 
                 // If no header found, we don't fill monthCols here to allow the fallback below
@@ -1009,7 +1043,7 @@
                             rowType = 'rms';
                             break;
                         }
-                        if (cell === "TOTAL" || cell.includes("PRODUCCION") || cell.includes("INGRESO") || cell.includes("IMPORTE") || cell.includes("VALORADA") || cell.includes("REVENUE") || cell.includes("VENTA") || cell.includes("OTB") || cell.includes("BOOKING")) {
+                        if (cell === "TOTAL" || cell.includes("PRODUCCION") || cell.includes("INGRESO") || cell.includes("IMPORTE") || cell.includes("VALORADA") || cell.includes("REVENUE") || cell.includes("VENTA") || cell.includes("OTB") || cell.includes("BOOKING") || cell.includes("BOOK")) {
                             rowType = 'rev';
                             break;
                         }
@@ -1027,21 +1061,20 @@
                                 }
                             }
                         } else {
-                            // Fallback: Default to columns 1-12 if row is long enough
-                            if (row.length >= 13) {
+                            // Súper Fallback: Look for first column with positive numeric value
+                            let startIndex = -1;
+                            for (let c = 1; c < row.length; c++) {
+                                if (parseVal(row[c]) > 0) { startIndex = c; break; }
+                            }
+
+                            if (startIndex !== -1 && row.length >= startIndex + 12) {
                                 for (let mIdx = 0; mIdx < 12; mIdx++) {
-                                    targetArray[mIdx] = parseVal(row[mIdx + 1]);
+                                    targetArray[mIdx] = parseVal(row[startIndex + mIdx]);
                                 }
-                            } else {
-                                // Fallback 2: Look for single value (total)
-                                for (let c = 1; c < row.length; c++) {
-                                    const val = parseVal(row[c]);
-                                    if (val > 0) {
-                                        const m = dateInfo ? dateInfo.month : 0;
-                                        targetArray[m] = val;
-                                        break;
-                                    }
-                                }
+                            } else if (startIndex !== -1) {
+                                // Assume single month based on filename
+                                const m = dateInfo ? dateInfo.month : 0;
+                                targetArray[m] = parseVal(row[startIndex]);
                             }
                         }
                     }
@@ -1082,11 +1115,15 @@
                     </tr>
                 `;
 
-                // Add Segments Summary
-                const segments = Object.keys(db[hotel][y].segment || {});
+                // Add Segments Summary (exclude TOTAL to avoid doubling)
+                const segments = Object.keys(db[hotel][y].segment || {}).filter(s => s !== "TOTAL");
                 if (segments.length > 0) {
-                    const segRev = Object.values(db[hotel][y].segment).reduce((acc, s) => acc + s.revenue.reduce((a, b) => a + b, 0), 0);
-                    const segRms = Object.values(db[hotel][y].segment).reduce((acc, s) => acc + s.rooms.reduce((a, b) => a + b, 0), 0);
+                    const segRev = Object.values(db[hotel][y].segment)
+                        .filter(s => s.name !== "TOTAL")
+                        .reduce((acc, s) => acc + s.revenue.reduce((a, b) => a + b, 0), 0);
+                    const segRms = Object.values(db[hotel][y].segment)
+                        .filter(s => s.name !== "TOTAL")
+                        .reduce((acc, s) => acc + s.rooms.reduce((a, b) => a + b, 0), 0);
                     tbody.innerHTML += `
                         <tr style="font-size: 0.75rem; color: var(--text-muted);">
                             <td>└─ ${segments.length} Segmentos</td>
