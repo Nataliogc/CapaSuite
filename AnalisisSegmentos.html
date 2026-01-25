@@ -515,15 +515,19 @@
         }
 
         function processData(data, fileName) {
-            // 1. Detect Year
+            // 1. Detect Year and Months from headers
             let detectedYear = "2026";
             let headerRow = null;
-            // Scan first 10 rows for month headers
-            for (let r = 0; r < 10; r++) {
+            let colMap = [];
+
+            for (let r = 0; r < 20; r++) {
                 const row = data[r] || [];
-                if (row.some(c => {
-                    const s = String(c).toUpperCase();
-                    return s.includes("ENE") || s.includes("JAN") || s.includes("TOTAL");
+                if (row.some(cell => {
+                    const s = String(cell).toUpperCase();
+                    if (s.includes("ENE") || s.includes("JAN") || s.includes("TOTAL")) return true;
+                    if (s.match(/\d{1,2}[\/-]\d{1,2}/)) return true;
+                    if (cell instanceof Date) return true;
+                    return false;
                 })) {
                     headerRow = row;
                     break;
@@ -532,19 +536,40 @@
 
             if (headerRow) {
                 for (let c = 0; c < headerRow.length; c++) {
-                    const h = String(headerRow[c]);
-                    const yrMatch = h.match(/[.\-\/ ](\d{2,4})$/);
+                    const cell = headerRow[c];
+                    const s = String(cell).toUpperCase();
+
+                    const yrMatch = s.match(/[.\-\/ ](\d{2,4})$/);
                     if (yrMatch) {
-                        detectedYear = yrMatch[1].length === 2 ? "20" + yrMatch[1] : yrMatch[1];
-                        break;
+                        const yFound = yrMatch[1].length === 2 ? "20" + yrMatch[1] : yrMatch[1];
+                        if (yFound > 2000) detectedYear = yFound;
                     }
+
+                    if (c < 2) continue;
+
+                    let mIdx = -1;
+                    const SHORT_MONTHS_MAP = { "ENE": 0, "JAN": 0, "FEB": 1, "MAR": 2, "ABR": 3, "APR": 3, "MAY": 4, "JUN": 5, "JUL": 6, "AGO": 7, "AUG": 7, "SEP": 8, "OCT": 9, "NOV": 10, "DIC": 11, "DEC": 11 };
+                    for (const [name, index] of Object.entries(SHORT_MONTHS_MAP)) {
+                        if (s.startsWith(name)) { mIdx = index; break; }
+                    }
+                    if (mIdx === -1) {
+                        const match = s.match(/(\d{1,2})[\/-](\d{1,2})/);
+                        if (match) {
+                            let m = parseInt(match[2]);
+                            if (m > 12) m = parseInt(match[1]);
+                            mIdx = (m >= 1 && m <= 12) ? m - 1 : -1;
+                        }
+                    }
+                    if (mIdx === -1) {
+                        if (cell instanceof Date) mIdx = cell.getMonth();
+                        else if (!isNaN(cell) && cell > 40000) mIdx = new Date((cell - 25569) * 86400 * 1000).getMonth();
+                    }
+                    colMap[c] = mIdx;
                 }
             }
 
             if (!db[currentHotel][detectedYear]) db[currentHotel][detectedYear] = { segment: {}, service: {}, lastUpdate: "" };
             const dbYear = db[currentHotel][detectedYear];
-
-            // Clear existing segments for this specific year
             dbYear.segment = {};
 
             let currentSeg = null;
@@ -574,7 +599,6 @@
                     filledHab = false;
                     filledPro = false;
                 } else if (!col0 && (isHab || isPro)) {
-                    // Deteción de TOTAL
                     if ((isHab && filledHab) || (isPro && filledPro)) {
                         currentSeg = "TOTAL";
                     }
@@ -584,25 +608,19 @@
 
                 if (isHab || isPro) {
                     if (!dbYear.segment[currentSeg]) {
-                        dbYear.segment[currentSeg] = {
-                            name: currentSeg,
-                            revenue: new Array(12).fill(0),
-                            rooms: new Array(12).fill(0)
-                        };
+                        dbYear.segment[currentSeg] = { name: currentSeg, revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) };
                     }
                     const segObj = dbYear.segment[currentSeg];
 
-                    // 3. Map columns C+ to months (0-11)
                     for (let c = 2; c < row.length; c++) {
-                        const midx = c - 2;
-                        if (midx > 11) break;
-
+                        const midx = colMap[c];
+                        if (midx === undefined || midx < 0 || midx > 11) continue;
                         let val = parseVal(row[c]);
                         if (isHab) {
-                            segObj.rooms[midx] = val;
+                            segObj.rooms[midx] += val;
                             filledHab = true;
                         } else if (isPro) {
-                            segObj.revenue[midx] = val;
+                            segObj.revenue[midx] += val;
                             filledPro = true;
                         }
                     }

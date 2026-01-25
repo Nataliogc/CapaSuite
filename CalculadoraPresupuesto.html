@@ -679,6 +679,14 @@
             currentHotel = document.getElementById('hotelSelector').value;
             const h = hotelData[currentHotel];
             document.getElementById('hotelLogo').src = h.logo;
+
+            // Try to load OTB from DB
+            const db = JSON.parse(CapaStorage.getItem('hotel_manager_db_v2')) || {};
+            const year = "2026";
+            if (db[currentHotel] && db[currentHotel][year] && db[currentHotel][year].otb) {
+                h.otbData = [...db[currentHotel][year].otb.revenue];
+            }
+
             loadStrategy();
         }
 
@@ -691,9 +699,10 @@
         }
 
         function loadStrategy() {
+            const h = hotelData[currentHotel];
             const key = document.getElementById('strategySelector').value;
-            currentRev = [...strategies[key].rev];
-            currentAdr = [...strategies[key].adr];
+            currentRev = [...h.strategies[key].rev];
+            currentAdr = [...h.strategies[key].adr];
             updateAll();
         }
 
@@ -714,6 +723,7 @@
 
         // --- RENDERERS ---
         function renderDashboard() {
+            const h = hotelData[currentHotel];
             const editorBody = document.getElementById('editorBody');
             editorBody.innerHTML = '';
 
@@ -723,16 +733,16 @@
                 const rev = currentRev[i];
                 const adr = currentAdr[i];
                 const rn = adr > 0 ? Math.round(rev / adr) : 0;
-                const occ = (rn / capacity[i]) * 100;
+                const occ = (rn / h.capacity[i]) * 100;
 
                 // Totales acumulados
-                t_rev25 += real2025.rev[i];
+                t_rev25 += h.real2025.rev[i];
                 t_rev26 += rev;
                 t_rn26 += rn;
-                t_cap += capacity[i];
+                t_cap += h.capacity[i];
 
                 // Bonus logic for KPI
-                const sold = otbData[i];
+                const sold = h.otbData[i];
                 const surplus = Math.max(0, sold - rev);
                 t_bonus += (surplus * 0.04);
 
@@ -852,6 +862,7 @@
         }
 
         function renderDetailTable() {
+            const h = hotelData[currentHotel];
             const tbody = document.getElementById('fullBody');
             const tfoot = document.getElementById('fullFoot');
             tbody.innerHTML = '';
@@ -862,39 +873,39 @@
                 const rev = currentRev[i];
                 const adr = currentAdr[i];
                 const rn = adr > 0 ? Math.round(rev / adr) : 0;
-                const occ = (rn / capacity[i]) * 100;
+                const occ = (rn / h.capacity[i]) * 100;
 
                 // Variaciones
-                const varRev = ((rev - real2025.rev[i]) / real2025.rev[i]) * 100;
-                const varAdr = ((adr - real2025.adr[i]) / real2025.adr[i]) * 100;
-                const varRn = ((rn - real2025.rn[i]) / real2025.rn[i]) * 100;
+                const varRev = ((rev - h.real2025.rev[i]) / h.real2025.rev[i]) * 100;
+                const varAdr = ((adr - h.real2025.adr[i]) / h.real2025.adr[i]) * 100;
+                const varRn = ((rn - h.real2025.rn[i]) / h.real2025.rn[i]) * 100;
 
                 // Running Totals
-                t_cap += capacity[i];
-                t_rev25 += real2025.rev[i];
+                t_cap += h.capacity[i];
+                t_rev25 += h.real2025.rev[i];
                 t_rev26 += rev;
-                t_rn25 += real2025.rn[i];
+                t_rn25 += h.real2025.rn[i];
                 t_rn26 += rn;
 
                 const occClass = occ > 100 ? 'occ-warning' : '';
 
                 tbody.innerHTML += `<tr>
                 <td>${months[i]}</td>
-                <td style="color:#64748b;">${formatNum(capacity[i])}</td>
+                <td style="color:#64748b;">${formatNum(h.capacity[i])}</td>
                 
-                <td style="color:#94a3b8;">${formatNum(real2025.rev[i])}€</td>
+                <td style="color:#94a3b8;">${formatNum(h.real2025.rev[i])}€</td>
                 <td style="font-weight:600;">${formatNum(rev)}€</td>
                 <td class="${varRev >= 0 ? 'text-success' : 'text-danger'}">${(varRev > 0 ? '+' : '')}${varRev.toFixed(1)}%</td>
 
-                <td style="color:#94a3b8;">${real2025.adr[i].toFixed(1)}€</td>
+                <td style="color:#94a3b8;">${h.real2025.adr[i].toFixed(1)}€</td>
                 <td style="font-weight:600;">${adr.toFixed(2)}€</td>
                 <td class="${varAdr >= 0 ? 'text-success' : 'text-danger'}">${(varAdr > 0 ? '+' : '')}${varAdr.toFixed(1)}%</td>
 
-                <td style="color:#94a3b8;">${formatNum(real2025.rn[i])}</td>
+                <td style="color:#94a3b8;">${formatNum(h.real2025.rn[i])}</td>
                 <td>${formatNum(rn)}</td>
                 <td class="${varRn >= 0 ? 'text-success' : 'text-danger'}">${(varRn > 0 ? '+' : '')}${varRn.toFixed(1)}%</td>
 
-                <td style="color:#94a3b8;">${(real2025.rn[i] / capacity[i] * 100).toFixed(1)}%</td>
+                <td style="color:#94a3b8;">${(h.real2025.rn[i] / h.capacity[i] * 100).toFixed(1)}%</td>
                 <td class="${occClass}">${occ.toFixed(1)}%</td>
             </tr>`;
             }
@@ -927,13 +938,14 @@
         }
 
         function renderBonusTable() {
+            const h = hotelData[currentHotel];
             const tbody = document.getElementById('bonusBody');
             tbody.innerHTML = '';
             let t_target = 0, t_sold = 0, t_surplus = 0, t_bonus = 0;
 
             for (let i = 0; i < 12; i++) {
                 const target = currentRev[i];
-                const sold = otbData[i];
+                const sold = h.otbData[i];
                 const surplus = Math.max(0, sold - target);
                 const gap = target - sold;
                 const bonus = surplus * 0.04;

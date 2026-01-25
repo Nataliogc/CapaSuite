@@ -376,6 +376,24 @@
                 <button class="btn" style="margin-top: 20px; background: var(--secondary);"
                     onclick="document.getElementById('fileSeg').click()">Cargar Segmentos</button>
             </div>
+
+            <!-- OTB CARD -->
+            <div class="card">
+                <div id="otbStatus" class="status-badge status-pending">Esperando carga...</div>
+                <h2 style="font-size: 1.6rem; color: #8b5cf6;">3. Listado Previsiones (OTB)</h2>
+                <p style="font-size: 0.95rem; color: var(--text-muted);">Sube el Listado de Previsiones Valoradas.
+                </p>
+
+                <div class="upload-zone" id="dropZoneOtb" onclick="document.getElementById('fileOtb').click()">
+                    <i>🔮</i>
+                    <p>Arrastra aquí el archivo o haz clic</p>
+                    <input type="file" id="fileOtb" hidden accept=".xlsx, .xls">
+                </div>
+
+                <div id="otbInfo" class="file-info">Estado: <b id="otbStateText">Pendiente</b></div>
+                <button class="btn" style="margin-top: 20px; background: #8b5cf6;"
+                    onclick="document.getElementById('fileOtb').click()">Cargar Previsión</button>
+            </div>
         </div>
 
         <div id="debug-results"
@@ -514,19 +532,21 @@
 
         // --- FILE PROCESSING ---
         function setupDropZones() {
-            ['Prod', 'Seg'].forEach(type => {
+            ['Prod', 'Seg', 'Otb'].forEach(type => {
                 const zone = document.getElementById('dropZone' + type);
                 const input = document.getElementById('file' + type);
+
+                if (!zone || !input) return;
 
                 zone.ondragover = (e) => { e.preventDefault(); zone.classList.add('dragging'); };
                 zone.ondragleave = () => zone.classList.remove('dragging');
                 zone.ondrop = (e) => {
                     e.preventDefault();
                     zone.classList.remove('dragging');
-                    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0], type);
+                    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0], type === 'Otb' ? 'Prevision' : type);
                 };
                 input.onchange = (e) => {
-                    if (e.target.files.length) handleFile(e.target.files[0], type);
+                    if (e.target.files.length) handleFile(e.target.files[0], type === 'Otb' ? 'Prevision' : type);
                 };
             });
         }
@@ -554,11 +574,11 @@
                     // Update config/logs
                     if (!config[hotel]) config[hotel] = { logs: [] };
                     if (type === 'Prod') config[hotel].lastProdDate = period;
-                    else config[hotel].lastSegDate = period;
+                    else if (type === 'Seg') config[hotel].lastSegDate = period;
 
                     // SYNC lastUpdate to main DB
                     if (!db[hotel]) db[hotel] = {};
-                    if (!db[hotel][year]) db[hotel][year] = { service: {}, segment: {} };
+                    if (!db[hotel][year]) db[hotel][year] = { service: {}, segment: {}, otb: { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) } };
 
                     let lastDateLabel = period;
                     if (dateInfo && dateInfo.day) {
@@ -572,14 +592,14 @@
                     if (!config[hotel].logs) config[hotel].logs = [];
                     config[hotel].logs.push({
                         timestamp: new Date().toLocaleString('es-ES'),
-                        type: type === 'Prod' ? 'Producción' : 'Segmentos',
+                        type: type === 'Prod' ? 'Producción' : (type === 'Seg' ? 'Segmentos' : 'Previsiones'),
                         period: period
                     });
 
                     saveData();
                     setTimeout(() => {
                         document.getElementById('loader').style.display = 'none';
-                        alert(`¡Archivo de ${type === 'Prod' ? 'Producción' : 'Segmentos'} cargado con éxito!`);
+                        alert(`¡Archivo de ${type} cargado con éxito!`);
                         updateHistory();
                     }, 500);
 
@@ -721,14 +741,19 @@
                 }
                 if (!hasData) alert("⚠️ Error: No se han detectado datos en el Excel. Comprueba el formato.");
             } else if (type === 'Seg') {
-                // 1. Detect Year from headers (e.g. "ENE.22" -> 2022)
+                // 1. Detect Year and Months from headers
                 let detectedYear = reportYear;
                 let headerRow = null;
-                for (let r = 0; r < 10; r++) {
+                let colMap = [];
+
+                for (let r = 0; r < 20; r++) {
                     const row = data[r] || [];
-                    if (row.some(c => {
-                        const s = String(c).toUpperCase();
-                        return s.includes("ENE") || s.includes("JAN") || s.includes("TOTAL");
+                    if (row.some(cell => {
+                        const s = String(cell).toUpperCase();
+                        if (s.includes("ENE") || s.includes("JAN") || s.includes("TOTAL")) return true;
+                        if (s.match(/\d{1,2}[\/-]\d{1,2}/)) return true;
+                        if (cell instanceof Date) return true;
+                        return false;
                     })) {
                         headerRow = row;
                         break;
@@ -737,19 +762,43 @@
 
                 if (headerRow) {
                     for (let c = 0; c < headerRow.length; c++) {
-                        const h = String(headerRow[c]);
-                        const yrMatch = h.match(/[.\-\/ ](\d{2,4})$/);
+                        const cell = headerRow[c];
+                        const s = String(cell).toUpperCase();
+
+                        // Detect Year if not already found
+                        const yrMatch = s.match(/[.\-\/ ](\d{2,4})$/);
                         if (yrMatch) {
-                            detectedYear = yrMatch[1].length === 2 ? "20" + yrMatch[1] : yrMatch[1];
-                            break;
+                            const yFound = yrMatch[1].length === 2 ? "20" + yrMatch[1] : yrMatch[1];
+                            if (yFound > 2000) detectedYear = yFound;
                         }
+
+                        if (c < 2) continue; // Skip Seg and Metric columns for mapping
+
+                        let mIdx = -1;
+                        // Match month names
+                        for (const [name, index] of Object.entries(SHORT_MONTHS_MAP)) {
+                            if (s.startsWith(name)) { mIdx = index; break; }
+                        }
+                        // Match daily formats (e.g. 01/01)
+                        if (mIdx === -1) {
+                            const match = s.match(/(\d{1,2})[\/-](\d{1,2})/);
+                            if (match) {
+                                let m = parseInt(match[2]);
+                                if (m > 12) m = parseInt(match[1]); // Try swapped format
+                                mIdx = (m >= 1 && m <= 12) ? m - 1 : -1;
+                            }
+                        }
+                        // Match Dates/Excel numbers
+                        if (mIdx === -1) {
+                            if (cell instanceof Date) mIdx = cell.getMonth();
+                            else if (!isNaN(cell) && cell > 40000) mIdx = new Date((cell - 25569) * 86400 * 1000).getMonth();
+                        }
+                        colMap[c] = mIdx;
                     }
                 }
 
                 if (!db[hotel][detectedYear]) db[hotel][detectedYear] = { service: {}, segment: {}, lastUpdate: "" };
                 const dbYear = db[hotel][detectedYear];
-
-                // Clear existing segments for this specific year to avoid ghost data/duplicates
                 dbYear.segment = {};
 
                 let currentSeg = null;
@@ -778,7 +827,6 @@
                         filledHab = false;
                         filledPro = false;
                     } else if (!col0 && (isHab || isPro)) {
-                        // Switch to TOTAL if we see metrics again but no name
                         if ((isHab && filledHab) || (isPro && filledPro)) {
                             currentSeg = "TOTAL";
                         }
@@ -792,16 +840,49 @@
                         }
                         const segObj = dbYear.segment[currentSeg];
                         for (let c = 2; c < row.length; c++) {
-                            const mIdx = c - 2;
-                            if (mIdx < 0 || mIdx > 11) continue;
+                            const mIdx = colMap[c];
+                            if (mIdx === undefined || mIdx < 0 || mIdx > 11) continue;
                             const val = parseVal(row[c]);
                             if (isHab) {
-                                segObj.rooms[mIdx] = val;
+                                segObj.rooms[mIdx] += val;
                                 filledHab = true;
                             } else {
-                                segObj.revenue[mIdx] = val;
+                                segObj.revenue[mIdx] += val;
                                 filledPro = true;
                             }
+                        }
+                    }
+                }
+                dbYear.lastUpdate = new Date().toLocaleDateString('es-ES');
+            } else if (type === 'Prevision') {
+                // Parser for "Listado Previsiones Valoradas"
+                let detectedYear = reportYear;
+                if (!db[hotel][detectedYear]) db[hotel][detectedYear] = { service: {}, segment: {}, otb: { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) }, lastUpdate: "" };
+                const dbYear = db[hotel][detectedYear];
+                if (!dbYear.otb) dbYear.otb = { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) };
+
+                // Clear or aggregate? Usually forecasts are "full replacements"
+                dbYear.otb.revenue.fill(0);
+                dbYear.otb.rooms.fill(0);
+
+                for (let r = 0; r < data.length; r++) {
+                    const row = data[r];
+                    if (!row || row.length < 2) continue;
+                    const first = String(row[0] || "").toUpperCase();
+
+                    // Detect Rooms row
+                    if (first.includes("HAB") || first === "RN") {
+                        for (let c = 1; c < row.length; c++) {
+                            const mIdx = c - 1;
+                            if (mIdx < 12) dbYear.otb.rooms[mIdx] = parseVal(row[c]);
+                        }
+                    }
+                    // Detect Total row (usually the last conceptual item or a explicit total)
+                    // If it matches concept names like "TOTAL" or occurs at the end of revenues
+                    if (first.includes("TOTAL") || first.includes("PRODUCCION")) {
+                        for (let c = 1; c < row.length; c++) {
+                            const mIdx = c - 1;
+                            if (mIdx < 12) dbYear.otb.revenue[mIdx] = parseVal(row[c]);
                         }
                     }
                 }
