@@ -1082,32 +1082,53 @@
                 // dbYear.otb.revenue.fill(0); 
                 // dbYear.otb.rooms.fill(0);
 
-                // 1. First, find the header row to detect where months are
+                // 1. Find the header row and detect column types (Months vs Days)
                 let monthCols = {};
+                let dailyCols = {}; // { colIndex: dateISO }
                 const SHORT_MONTHS_MAP = { "ENE": 0, "JAN": 0, "FEB": 1, "MAR": 2, "ABR": 3, "APR": 3, "MAY": 4, "JUN": 5, "JUL": 6, "AGO": 7, "AUG": 7, "SEP": 8, "OCT": 9, "NOV": 10, "DIC": 11, "DEC": 11 };
 
-                for (let r = 0; r < Math.min(data.length, 100); r++) {
+                for (let r = 0; r < Math.min(data.length, 50); r++) {
                     const row = data[r] || [];
                     for (let c = 0; c < row.length; c++) {
-                        const cell = normalizeStr(row[c]);
-                        if (!cell) continue;
+                        const cellRaw = row[c];
+                        if (cellRaw === null || cellRaw === undefined) continue;
+
+                        if (cellRaw instanceof Date) {
+                            dailyCols[c] = cellRaw.toISOString().split('T')[0];
+                            continue;
+                        }
+
+                        const cellStr = String(cellRaw).trim();
+                        const cellNorm = normalizeStr(cellStr);
+
+                        // Check for Day format (e.g. 25/01, 25-01, 25/01/2026)
+                        const dayMatch = cellStr.match(/^(\d{1,2})[\/-](\d{1,2})([\/-](\d{2,4}))?$/);
+                        if (dayMatch) {
+                            const d = dayMatch[1].padStart(2, '0');
+                            const m = dayMatch[2].padStart(2, '0');
+                            let y = dayMatch[4] || detectedYear;
+                            if (y.length === 2) y = "20" + y;
+                            dailyCols[c] = `${y}-${m}-${d}`;
+                            continue;
+                        }
+
                         for (const [mName, mIdx] of Object.entries(SHORT_MONTHS_MAP)) {
-                            if (cell.startsWith(mName)) {
+                            if (cellNorm.startsWith(mName)) {
                                 monthCols[mIdx] = c;
                             }
                         }
                     }
-                    if (Object.keys(monthCols).length >= 2) break; // Found at least 2 month headers
+                    if (Object.keys(dailyCols).length >= 5 || Object.keys(monthCols).length >= 2) break;
                 }
 
-                // If no header found, we don't fill monthCols here to allow the fallback below
-                // to work. We only use monthCols if we actually found something in the header.
+                if (!dbYear.daily) dbYear.daily = {};
+                const hasDaily = Object.keys(dailyCols).length > 0;
+                if (hasDaily) dbYear.otb.rooms.fill(0); // Reset only if we have high-res data
 
                 for (let r = 0; r < data.length; r++) {
                     const row = data[r];
                     if (!row || row.length < 2) continue;
 
-                    // Identify row by scanning first 15 columns for keywords
                     let rowType = null;
                     for (let c = 0; c < Math.min(row.length, 15); c++) {
                         const cell = normalizeStr(row[c]);
@@ -1126,8 +1147,15 @@
                     if (rowType === 'rms' || rowType === 'rev') {
                         const targetArray = rowType === 'rms' ? dbYear.otb.rooms : dbYear.otb.revenue;
 
-                        // If we have specific month columns, use them
-                        if (Object.keys(monthCols).length > 0) {
+                        if (hasDaily) {
+                            for (const [col, iso] of Object.entries(dailyCols)) {
+                                const val = parseVal(row[col]);
+                                if (rowType === 'rms') dbYear.daily[iso] = val;
+
+                                const mIdx = parseInt(iso.split('-')[1]) - 1;
+                                if (mIdx >= 0 && mIdx < 12) targetArray[mIdx] += val;
+                            }
+                        } else if (Object.keys(monthCols).length > 0) {
                             for (let mIdx = 0; mIdx < 12; mIdx++) {
                                 const col = monthCols[mIdx];
                                 if (col !== undefined && row[col] !== undefined) {
@@ -1135,18 +1163,15 @@
                                 }
                             }
                         } else {
-                            // Súper Fallback: Look for first column with positive numeric value
                             let startIndex = -1;
                             for (let c = 1; c < row.length; c++) {
                                 if (parseVal(row[c]) > 0) { startIndex = c; break; }
                             }
-
                             if (startIndex !== -1 && row.length >= startIndex + 12) {
                                 for (let mIdx = 0; mIdx < 12; mIdx++) {
                                     targetArray[mIdx] = parseVal(row[startIndex + mIdx]);
                                 }
                             } else if (startIndex !== -1) {
-                                // Assume single month based on filename
                                 const m = dateInfo ? dateInfo.month : 0;
                                 targetArray[m] = parseVal(row[startIndex]);
                             }

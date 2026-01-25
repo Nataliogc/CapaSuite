@@ -1086,7 +1086,9 @@
                     month: dateInfo.month,
                     hotels: {},
                     compAvg: 0,
-                    occupancy: occ
+                    occupancy: occ,
+                    dateISO: dateInfo.iso,
+                    dateMeta: { currentMonth, dNum, dName }
                 };
 
                 let compPrices = [];
@@ -1207,6 +1209,27 @@
             const selectedMonth = document.getElementById('monthSelector').value;
 
             let data = processedData;
+
+            // NEW: Synchronize occupancy from Production DB before rendering
+            try {
+                const pDbRaw = CapaStorage.getItem('hotel_manager_db_v2');
+                if (pDbRaw) {
+                    const pDb = JSON.parse(pDbRaw);
+                    data.forEach(d => {
+                        if (d.dateISO) {
+                            const yr = d.dateISO.split('-')[0];
+                            const dbOcc = (pDb[activeHotel] && pDb[activeHotel][yr] && pDb[activeHotel][yr].daily) ? pDb[activeHotel][yr].daily[d.dateISO] : 0;
+
+                            // If we found new/different occupancy in DB, update the label
+                            if (dbOcc > 0 && dbOcc !== d.occupancy) {
+                                d.occupancy = dbOcc;
+                                d.dateHtml = parseDate(d.dateMeta.currentMonth, d.dateMeta.dNum, d.dateMeta.dName, d.occupancy).html;
+                            }
+                        }
+                    });
+                }
+            } catch (e) { console.warn("Occupancy sync failed", e); }
+
             if (selectedMonth !== 'all') {
                 data = processedData.filter(d => d.month === selectedMonth);
             }
