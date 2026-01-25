@@ -6,8 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Carga de Datos | CapaSuite</title>
     <link rel="icon" type="image/png" href="Imagen/Icono_CapaSuite.png">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="js/chart.js"></script>
+    <script src="js/xlsx.full.min.js"></script>
     <script src="js/storage.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -292,7 +292,7 @@
 
         <div class="hotel-selector">
             <span style="font-weight: 600;">Selecciona Hotel:</span>
-            <select id="hotelSelect" onchange="updateHistory()">
+            <select id="hotelSelector" onchange="updateHistory()">
                 <option value="Guadiana">Hotel Guadiana</option>
                 <option value="Cumbria">Hotel Cumbria</option>
             </select>
@@ -411,7 +411,7 @@
         };
 
         function updateHistory() {
-            const hotel = document.getElementById('hotelSelect').value;
+            const hotel = document.getElementById('hotelSelector').value;
             const historyBody = document.getElementById('historyBody');
             historyBody.innerHTML = '';
 
@@ -479,7 +479,7 @@
         }
 
         async function handleFile(file, type) {
-            const hotel = document.getElementById('hotelSelect').value;
+            const hotel = document.getElementById('hotelSelector').value;
             document.getElementById('loader').style.display = 'flex';
 
             const reader = new FileReader();
@@ -663,15 +663,15 @@
                 // Segment logic simple implementation
             }
             saveData();
-            showDebugResults();
+            showDebugResults(hotel);
         }
 
-        function showDebugResults() {
+        function showDebugResults(hotel) {
             const container = document.getElementById('debug-results');
             const tbody = document.getElementById('debugBody');
             tbody.innerHTML = '';
 
-            const hotel = document.getElementById('hotelSelector').value;
+
             const years = Object.keys(db[hotel] || {}).sort().reverse();
 
             if (years.length === 0) return;

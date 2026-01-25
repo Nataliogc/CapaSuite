@@ -303,13 +303,13 @@
 
 <body>
     <script>
-        // Detección de entorno local
+        // Detección de entorno local vs GitHub Pages
         if (window.location.protocol === 'file:') {
             document.write(`
                 <div id="protocol-warning" style="background: linear-gradient(90deg, #4f46e5, #3730a3); color: white; padding: 12px; text-align: center; font-size: 0.9rem; position: sticky; top: 0; z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                    🚀 <strong>Modo Local Detectado:</strong> Para una experiencia 100% estable y persistencia de datos, 
-                    <a href="http://localhost:8000" style="color: #fbbf24; font-weight: 700; text-decoration: underline; margin-left: 5px;">pulsa aquí para entrar por el Servidor Profesional</a>
-                    <span style="display:block; font-size: 0.75rem; opacity: 0.8; margin-top: 2px;">(Asegúrate de haber ejecutado antes el archivo 'INICIAR_SERVIDOR.bat')</span>
+                    🚀 <strong>Modo Local Detectado:</strong> Estás abriendo el archivo directamente. 
+                    <a href="https://Nataliogc.github.io/CapaSuite/" style="color: #fbbf24; font-weight: 700; text-decoration: underline; margin-left: 5px;">Pulsa aquí para entrar en la versión profesional Online (GitHub)</a>
+                    <span style="display:block; font-size: 0.75rem; opacity: 0.8; margin-top: 2px;">Los datos se guardarán de forma permanente en la versión online.</span>
                 </div>
             `);
         }
