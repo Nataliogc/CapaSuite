@@ -309,14 +309,14 @@
         const PRODUCTION_GROUPS = {
             "HABITACION": { name: "1. Habitación", keys: ["HABITACIÓN", "HABITACION", "ALOJAMIENTO", "ESTANCIA", "DUI", "DOBLE", "SUPERIOR", "SUITE", "CUADRUPLE", "TRIPLE", "FAMILIAR", "LATE CHECK OUT", "AMPLIACION", "CAMA SUPLETORIA"] },
             "DESAYUNOS": { name: "2. Desayunos", keys: ["DESAYUNO BUFFET", "DESAYUNO GRUPO", "DESAYUNO", "BUFFET"] },
-            "RESTAURANTE": { name: "3. Restaurante", keys: ["RESTAURANTE", "CENA", "ALMUERZO", "CENA GRUPO", "ALMUERZO GRUPO", "CATERING"] },
-            "EVENTOS": { name: "4. Eventos", keys: ["COFFEE BREAK", "SALONES/ALQUILER", "AUDIOVISUALES", "SALON", "ALQUILER", "EVENTO", "OFICINA", "RETENCIONES"] },
+            "RESTAURANTE": { name: "3. Restaurante", keys: ["RESTAURANTE", "CENA", "ALMUERZO", "CENA GRUPO", "ALMUERZO GRUPO", "CATERING", "RESTAURANTE CATERING"] },
+            "EVENTOS": { name: "4. Eventos", keys: ["COFFEE BREAK", "SALONES/ALQUILER", "AUDIOVISUALES", "SALON", "ALQUILER", "EVENTO"] },
             "CAFETERIA": { name: "5. Cafetería", keys: ["CAFETERÍA/HAB", "CAFETERIA", "BAR"] },
             "MINIBAR": { name: "6. Minibar", keys: ["MINIBAR"] },
             "SPA": { name: "7. Spa", keys: ["SPA", "BALNEARIO", "MASAJE", "TRATAMIENTO"] },
             "PARKING": { name: "8. Parking", keys: ["GARAJE", "PARKING"] },
-            "SUPLEMENTOS": { name: "9. Suplementos", keys: ["SUPLEMENTO", "MASCOTA", "CUNA", "UPGRADE"] },
-            "VARIOS": { name: "10. Varios", keys: ["LAVANDERÍA", "ARTESANÍA", "FAX", "TELÉFONO", "VARIOS", "LAVANDERIA", "ARTESANIA", "TELEFONO"] }
+            "OFICINAS": { name: "9. Alquiler de Oficinas", keys: ["OFICINA", "RETENCIONES"] },
+            "VARIOS": { name: "10. Varios", keys: ["LAVANDERÍA", "ARTESANÍA", "FAX", "TELÉFONO", "VARIOS", "LAVANDERIA", "ARTESANIA", "TELEFONO", "SUPLEMENTO", "MASCOTA", "CUNA", "UPGRADE"] }
         };
 
         let db = {};
@@ -391,7 +391,7 @@
             if (norm === "HAB" || norm === "PAX" || norm === "PRO" || norm === "MXH" ||
                 norm.includes("TOTAL") || norm.includes("PRODUCCION") || norm === "PERSONAS") return "OMIT";
 
-            const eventKeywords = ["GRUPO", "CATERING", "COFFEE", "SALA", "SALON", "EVENTO", "ALQUILER", "AUDIOVISUAL"];
+            const eventKeywords = ["COFFEE", "SALA", "SALON", "EVENTO", "ALQUILER", "AUDIOVISUAL", "OFICINA"];
 
             for (const [id, g] of Object.entries(PRODUCTION_GROUPS)) {
                 // Priority exclusion: Restaurant should not pick up Event-related keywords
