@@ -587,14 +587,18 @@
                 <p style="color: #991b1b; font-size: 0.85rem; margin-bottom: 15px;">
                     ¿Quieres empezar de cero con la Producción y Segmentación? Usa estas opciones con cuidado.
                 </p>
-                <div style="display: flex; gap: 15px; justify-content: center;">
+                <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
                     <button class="btn" style="background: #ef4444; width: auto; padding: 10px 20px;"
                         onclick="resetHotelData()">
-                        🗑️ Borrar datos de este Hotel
+                        🗑️ Borrar este Hotel
+                    </button>
+                    <button class="btn" style="background: #f59e0b; width: auto; padding: 10px 20px;"
+                        onclick="resetOTBData()">
+                        🕒 Borrar Previsiones (OTB)
                     </button>
                     <button class="btn" style="background: #64748b; width: auto; padding: 10px 20px;"
                         onclick="resetProductionData()">
-                        ⚠️ Borrar TODO (Base completa)
+                        ⚠️ Borrar TODO
                     </button>
                 </div>
                 <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 10px;">
@@ -857,34 +861,45 @@
                 let rowFechas = null, rowHab = null, rowPax = null, rowPro = null;
                 let masterIndices = new Set();
 
-                for (let r = 0; r < Math.min(data.length, 100); r++) {
+                for (let r = 0; r < Math.min(data.length, 150); r++) {
                     const row = data[r] || [];
                     const first = normalizeStr(row[0]);
+                    const rowStr = JSON.stringify(row).toUpperCase();
 
                     // Advanced detection of master rows (Hab, Pax, Production)
-                    if (first === "HAB" || first === "RMS" || first === "RN" || first === "RN." || first === "ESTANCIAS" || first.includes("HAB.")) {
+                    if (rowHab === null && (first === "HAB" || first === "RMS" || first === "RN" || first === "ESTANCIAS" || first.includes("HAB."))) {
                         rowHab = row; masterIndices.add(r);
                     }
-                    if (first === "PAX" || first === "PERSONAS" || first === "PAX." || first === "PER.") {
+                    if (rowPax === null && (first === "PAX" || first === "PERSONAS" || first === "PAX." || first === "PER.")) {
                         rowPax = row; masterIndices.add(r);
                     }
-                    if (first === "PRO" || first === "PRODUCCION" || first.includes("PROD.") || first === "INGRESOS") {
+                    if (rowPro === null && (first === "PRO" || first === "PRODUCCION" || first.includes("PROD.") || first === "INGRESOS" || first.includes("PROD TOTAL"))) {
                         rowPro = row; masterIndices.add(r);
                     }
 
                     if (rowFechas === null) {
-                        for (let c = 1; c < row.length; c++) {
+                        for (let c = 1; c < Math.min(row.length, 10); c++) {
                             const h = normalizeStr(row[c]);
-                            if (h.includes("ENE") || h.includes("JAN") || h.includes("TOTAL") || h.includes("MES")) {
+                            if (h.includes("ENE") || h.includes("JAN") || h.includes("TOTAL") || h.includes("MES") || h.includes("CONCEPT")) {
                                 rowFechas = row; masterIndices.add(r); break;
                             }
                         }
                     }
                 }
 
+                // Final Fallback if scan failed
                 if (!rowHab || !rowPro) {
-                    rowHab = data[1]; rowPax = data[2]; rowPro = data[3]; rowFechas = data[0];
+                    console.warn("Scan failed, using row fallbacks", { rowHab, rowPro });
+                    for (let r = 0; r < Math.min(data.length, 20); r++) {
+                        if (!rowFechas && data[r] && data[r].length > 5) rowFechas = data[r];
+                        if (!rowHab && data[r] && String(data[r][0]).includes("Hab")) rowHab = data[r];
+                        if (!rowPro && data[r] && String(data[r][0]).includes("Prod")) rowPro = data[r];
+                    }
                 }
+
+                if (!rowHab) rowHab = data[1];
+                if (!rowPro) rowPro = data[3];
+                if (!rowFechas) rowFechas = data[0];
 
                 const headerRow = rowFechas || [];
                 const foundMonths = headerRow.some(cell => {
@@ -1130,15 +1145,15 @@
                     if (!row || row.length < 2) continue;
 
                     let rowType = null;
-                    for (let c = 0; c < Math.min(row.length, 15); c++) {
+                    for (let c = 0; c < Math.min(row.length, 30); c++) {
                         const cell = normalizeStr(row[c]);
                         if (!cell) continue;
 
-                        if (cell.includes("HAB") || cell === "RN" || cell.includes("ESTANCIA") || cell.includes("NIGHT") || cell.includes("UNIT") || cell === "HABITACIONES") {
+                        if (cell.includes("HAB") || cell === "RN" || cell.includes("ESTANCIA") || cell.includes("NIGHT") || cell.includes("UNIT") || cell === "HABITACIONES" || cell === "HAB.") {
                             rowType = 'rms';
                             break;
                         }
-                        if (cell === "TOTAL" || cell.includes("PRODUCCION") || cell.includes("INGRESO") || cell.includes("IMPORTE") || cell.includes("VALORADA") || cell.includes("REVENUE") || cell.includes("VENTA") || cell.includes("OTB") || cell.includes("BOOKING") || cell.includes("BOOK")) {
+                        if (cell === "TOTAL" || cell.includes("PRODUCCION") || cell.includes("INGRESO") || cell.includes("IMPORTE") || cell.includes("VALORADA") || cell.includes("REVENUE") || cell.includes("VENTA") || cell.includes("OTB") || cell.includes("BOOKING") || cell.includes("BOOK") || cell.includes("ING.")) {
                             rowType = 'rev';
                             break;
                         }
@@ -1196,23 +1211,32 @@
             container.style.display = 'block';
 
             years.forEach(y => {
-                const master = db[hotel][y].service["TOTAL_MASTER"];
-                if (!master) return;
+                const yearData = db[hotel][y];
+                const master = yearData.service["TOTAL_MASTER"];
 
-                const rev = master.revenue.reduce((a, b) => a + b, 0);
-                const rms = master.rooms.reduce((a, b) => a + b, 0);
-                const pax = master.pax.reduce((a, b) => a + b, 0);
-                const adr = rms > 0 ? (rev / rms) : 0;
+                if (master) {
+                    const rev = master.revenue.reduce((a, b) => a + b, 0);
+                    const rms = master.rooms.reduce((a, b) => a + b, 0);
+                    const pax = master.pax.reduce((a, b) => a + b, 0);
+                    const adr = rms > 0 ? (rev / rms) : 0;
 
-                tbody.innerHTML += `
-                    <tr style="background:rgba(79, 70, 229, 0.05);">
-                        <td style="font-weight:700;">${y} (Master)</td>
-                        <td style="color:var(--primary); font-weight:600;">${new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(rev)}</td>
-                        <td>${new Intl.NumberFormat('es-ES').format(rms)}</td>
-                        <td>${new Intl.NumberFormat('es-ES').format(pax)}</td>
-                        <td style="color:#10b981; font-weight:600;">${adr.toFixed(2)} €</td>
-                    </tr>
-                `;
+                    tbody.innerHTML += `
+                        <tr style="background:rgba(79, 70, 229, 0.05);">
+                            <td style="font-weight:700;">${y} (Producción)</td>
+                            <td style="color:var(--primary); font-weight:600;">${new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(rev)}</td>
+                            <td>${new Intl.NumberFormat('es-ES').format(rms)}</td>
+                            <td>${new Intl.NumberFormat('es-ES').format(pax)}</td>
+                            <td style="color:#10b981; font-weight:600;">${adr.toFixed(2)} €</td>
+                        </tr>
+                    `;
+                } else {
+                    tbody.innerHTML += `
+                        <tr style="background:rgba(100, 116, 139, 0.05);">
+                            <td style="font-weight:700;">${y}</td>
+                            <td colspan="4" style="color:var(--text-muted); font-size: 0.8rem;">Sin resumen de producción maestra.</td>
+                        </tr>
+                    `;
+                }
 
                 // Add Segments Summary (exclude TOTAL to avoid doubling)
                 const segments = Object.keys(db[hotel][y].segment || {}).filter(s => s !== "TOTAL");
@@ -1336,9 +1360,31 @@
             }
         }
 
+        function resetOTBData() {
+            const pass = prompt("🔐 Introduce la clave de Administrador para borrar las previsiones:");
+            if (pass !== 'Suite2026') {
+                if (pass !== null) alert("Clave incorrecta.");
+                return;
+            }
+            const hotel = document.getElementById('hotelSelector').value;
+            if (confirm(`⚠️ ¿Borrar solo los datos de Previsiones (OTB) del Hotel ${hotel}? Los datos de producción real se mantendrán.`)) {
+                if (db[hotel]) {
+                    for (const year in db[hotel]) {
+                        if (db[hotel][year].otb) {
+                            db[hotel][year].otb.revenue = new Array(12).fill(0);
+                            db[hotel][year].otb.rooms = new Array(12).fill(0);
+                        }
+                    }
+                }
+                saveData();
+                alert(`Previsiones del hotel ${hotel} borradas.`);
+                location.reload();
+            }
+        }
+
         function deleteLog(idx) {
             const hotel = document.getElementById('hotelSelector').value;
-            if (confirm(`¿Borrar este registro del historial?`)) {
+            if (confirm(`¿Borrar este registro del historial? (Nota: Esto no borra los datos ya procesados, solo el registro de subida)`)) {
                 config[hotel].logs.splice(idx, 1);
                 saveData();
                 updateHistory();

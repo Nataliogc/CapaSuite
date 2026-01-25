@@ -671,7 +671,7 @@
                     adr: [59.55, 58.89, 60.65, 66.33, 80.87, 67.52, 70.58, 58.18, 59.91, 59.20, 62.41, 60.49],
                     rn: [783, 1110, 1398, 1739, 1984, 1591, 1838, 2141, 2350, 2637, 1785, 1532]
                 },
-                otbData: [66127, 37552, 97753, 130646, 49692, 44094, 21440, 4151, 21767, 36394, 828, 10448],
+                otbData: new Array(12).fill(0),
                 strategies: {
                     original: {
                         rev: [66789, 71441, 106875, 130251, 125309, 118652, 121962, 131039, 148593, 163911, 114738, 95813],
@@ -699,7 +699,7 @@
                     adr: [66.00, 69.00, 73.00, 76.00, 86.00, 83.00, 89.00, 85.00, 83.00, 79.00, 75.00, 71.00],
                     rn: [1182, 1232, 1342, 1645, 1721, 1627, 1742, 1706, 1687, 1709, 1533, 1380]
                 },
-                otbData: [84000, 48000, 115000, 138000, 158000, 145000, 165000, 155000, 148000, 138000, 98000, 88000],
+                otbData: new Array(12).fill(0),
                 strategies: {
                     original: {
                         rev: [88000, 92000, 108000, 135000, 158000, 145000, 168000, 158000, 155000, 148000, 128000, 115000],
@@ -739,14 +739,17 @@
             document.getElementById('hotelLogo').src = h.logo;
 
             // Try to load OTB from DB
+            // Try to load OTB from DB
             const db = JSON.parse(CapaStorage.getItem('hotel_manager_db_v2')) || {};
             const year = "2026";
             if (db[currentHotel] && db[currentHotel][year] && db[currentHotel][year].otb) {
                 const importedOTB = db[currentHotel][year].otb.revenue;
-                // Only overwrite if we actually have imported data
-                if (importedOTB && importedOTB.some(v => v > 0)) {
+                if (importedOTB) {
                     h.otbData = [...importedOTB];
                 }
+            } else {
+                // If hotel not in DB, ensure it's zeros
+                h.otbData = new Array(12).fill(0);
             }
 
             loadStrategy();

@@ -927,10 +927,10 @@
             let cumbriaRow = -1;
 
             // Find Anchors
-            for (let r = 0; r < rawData.length; r++) {
+            for (let r = 0; r < Math.min(rawData.length, 50); r++) {
                 const first = String(rawData[r][0] || "").toLowerCase();
-                if (first.includes("sercotel guadiana")) guadianaRow = r;
-                if (first.includes("cumbria spa")) cumbriaRow = r;
+                if (first.includes("guadiana")) guadianaRow = r;
+                if (first.includes("cumbria")) cumbriaRow = r;
             }
 
             if (guadianaRow === -1) { alert("Error: No se encontró 'Sercotel Guadiana' en la primera columna."); return; }
@@ -939,33 +939,23 @@
             const dateNumRow = guadianaRow - 1;
             const dayNameRow = guadianaRow - 2;
             let monthRow = -1;
-            // According to Expedia format, row 10 (index 9) contains month/year like "JANUARY 2027"
-            if (rawData[9]) {
-                const row9Str = JSON.stringify(rawData[9] || []).toLowerCase();
-                if (row9Str.includes("january") || row9Str.includes("february") || row9Str.includes("march") ||
-                    row9Str.includes("april") || row9Str.includes("may") || row9Str.includes("june") ||
-                    row9Str.includes("july") || row9Str.includes("august") || row9Str.includes("september") ||
-                    row9Str.includes("october") || row9Str.includes("november") || row9Str.includes("december")) {
-                    monthRow = 9;
-                }
-            }
-            // Fallback: Scan up for Month if not found in row 9
-            if (monthRow === -1) {
-                for (let r = dayNameRow - 1; r >= Math.max(0, dayNameRow - 12); r--) {
-                    const str = JSON.stringify(rawData[r] || []).toLowerCase();
-                    if (str.includes("enero") || str.includes("jan") || str.includes("feb")) {
-                        monthRow = r; break;
-                    }
+            // Scan for month row (usually row 10/index 9)
+            for (let r = 0; r < Math.min(rawData.length, 15); r++) {
+                const str = JSON.stringify(rawData[r] || []).toLowerCase();
+                if (str.includes("january") || str.includes("february") || str.includes("enero") || str.includes("marzo")) {
+                    monthRow = r; break;
                 }
             }
 
             // Start Column
             let startCol = 1;
-            const gRowData = rawData[guadianaRow];
-            for (let c = 1; c < gRowData.length; c++) {
-                const val = gRowData[c];
-                if (!isNaN(parseFloat(val)) || String(val).toUpperCase() === 'S') {
-                    startCol = c; break;
+            if (guadianaRow !== -1) {
+                const gRowData = rawData[guadianaRow];
+                for (let c = 1; c < gRowData.length; c++) {
+                    const val = gRowData[c];
+                    if (!isNaN(parseFloat(val)) || String(val).toUpperCase() === 'S') {
+                        startCol = c; break;
+                    }
                 }
             }
 
@@ -1043,6 +1033,15 @@
                 // Month Update
                 if (monthRow !== -1 && rawData[monthRow] && rawData[monthRow][c]) {
                     currentMonth = String(rawData[monthRow][c]).trim();
+                } else if (currentMonth === "") {
+                    // Fallback: If currentMonth still empty, check this entire column for any month name
+                    for (let r = 0; r < 20; r++) {
+                        const cell = String(rawData[r] ? rawData[r][c] : "").toLowerCase();
+                        for (const mKey in MONTH_MAP) {
+                            if (cell.includes(mKey)) { currentMonth = cell; break; }
+                        }
+                        if (currentMonth) break;
+                    }
                 }
 
                 let dNum = "";
@@ -1178,7 +1177,8 @@
             // Prepare ISO for database lookup
             const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
             const monthIdx = monthNames.indexOf(mShort);
-            const iso = `${year}-${String(monthIdx + 1).padStart(2, '0')}-${String(dNum).padStart(2, '0')}`;
+            const validMonthIdx = monthIdx === -1 ? 0 : monthIdx;
+            const iso = `${year}-${String(validMonthIdx + 1).padStart(2, '0')}-${String(dNum).padStart(2, '0')}`;
 
             const occHtml = (occVal > 0) ? `<span style="display:block; font-size: 0.65rem; color: #4f46e5; font-weight: 700; margin-top: 2px;">Hab: ${occVal.toFixed(0)}</span>` : '';
 
@@ -1221,7 +1221,7 @@
                             const dbOcc = (pDb[activeHotel] && pDb[activeHotel][yr] && pDb[activeHotel][yr].daily) ? pDb[activeHotel][yr].daily[d.dateISO] : 0;
 
                             // If we found new/different occupancy in DB, update the label
-                            if (dbOcc > 0 && dbOcc !== d.occupancy) {
+                            if (dbOcc > 0 && dbOcc !== d.occupancy && d.dateMeta) {
                                 d.occupancy = dbOcc;
                                 d.dateHtml = parseDate(d.dateMeta.currentMonth, d.dateMeta.dNum, d.dateMeta.dName, d.occupancy).html;
                             }
