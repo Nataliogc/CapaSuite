@@ -693,7 +693,7 @@
             renderTable(groupedTY, midx, revTY, fmt);
 
             // Charts
-            renderCharts(groupedTY, groupedLY, totalTY, totalLY, midx);
+            renderCharts(data, groupedTY, groupedLY, totalTY, totalLY, midx);
         }
 
         function renderTable(grouped, midx, total, fmt) {
@@ -736,7 +736,7 @@
             });
         }
 
-        function renderCharts(groupedTY, groupedLY, totalTY, totalLY, midx) {
+        function renderCharts(data, groupedTY, groupedLY, totalTY, totalLY, midx) {
             // 0. Prepare Metric Selector logic
             const chartMetric = document.getElementById('chartMetricSelector')?.value || 'total';
             const getMetricData = (totalObj, groupedObj) => {

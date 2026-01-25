@@ -790,10 +790,10 @@
             }
             tbody.innerHTML = body;
 
-            updateCharts(mTotals, mRooms, mTotalsPrev, mRoomsPrev, concepts, midx);
+            updateCharts(data, mTotals, mRooms, mTotalsPrev, mRoomsPrev, concepts, midx);
         }
 
-        function updateCharts(mTotals, mRooms, mTotalsPrev, mRoomsPrev, concepts, midx) {
+        function updateCharts(data, mTotals, mRooms, mTotalsPrev, mRoomsPrev, concepts, midx) {
             const isRooms = currentMetric === 'rooms';
             const isAdr = currentMetric === 'adr';
 
