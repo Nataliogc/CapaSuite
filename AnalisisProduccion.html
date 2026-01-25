@@ -407,9 +407,18 @@
             const dataPrev = db[currentHotel][prevYear];
 
             const midx = document.getElementById('monthSelector').value === "All" ? -1 : parseInt(document.getElementById('monthSelector').value);
-            const getV = (item, m) => m === -1 ? item.revenue.reduce((a, b) => a + b, 0) : item.revenue[m];
-            const getR = (item, m) => m === -1 ? item.rooms.reduce((a, b) => a + b, 0) : item.rooms[m];
-            const getP = (item, m) => m === -1 ? item.pax.reduce((a, b) => a + b, 0) : item.pax[m];
+            const getV = (item, m) => {
+                if (!item || !item.revenue) return 0;
+                return m === -1 ? item.revenue.reduce((a, b) => a + b, 0) : item.revenue[m];
+            };
+            const getR = (item, m) => {
+                if (!item || !item.rooms) return 0;
+                return m === -1 ? item.rooms.reduce((a, b) => a + b, 0) : item.rooms[m];
+            };
+            const getP = (item, m) => {
+                if (!item || !item.pax) return 0;
+                return m === -1 ? item.pax.reduce((a, b) => a + b, 0) : item.pax[m];
+            };
 
             const totalTY = data.service["TOTAL_MASTER"] || { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0), pax: new Array(12).fill(0) };
             const revTY = getV(totalTY, midx), rmsTY = getR(totalTY, midx), paxTY = getP(totalTY, midx);
@@ -453,8 +462,8 @@
                 });
             }
 
-            const compTY = (getV(groupedTY.SPA, midx) + getV(groupedTY.PARKING, midx) + getV(groupedTY.MINIBAR, midx) + getV(groupedTY.VARIOS, midx) + getV(groupedTY.SUPLEMENTOS, midx));
-            const compLY = dataPrev ? (getV(groupedLY.SPA, midx) + getV(groupedLY.PARKING, midx) + getV(groupedLY.MINIBAR, midx) + getV(groupedLY.VARIOS, midx) + getV(groupedLY.SUPLEMENTOS, midx)) : 0;
+            const compTY = (getV(groupedTY.SPA, midx) + getV(groupedTY.PARKING, midx) + getV(groupedTY.MINIBAR, midx) + getV(groupedTY.VARIOS, midx) + getV(groupedTY.OFICINAS, midx) + getV(groupedTY.CAFETERIA, midx));
+            const compLY = dataPrev ? (getV(groupedLY.SPA, midx) + getV(groupedLY.PARKING, midx) + getV(groupedLY.MINIBAR, midx) + getV(groupedLY.VARIOS, midx) + getV(groupedLY.OFICINAS, midx) + getV(groupedLY.CAFETERIA, midx)) : 0;
 
             const desTY = getV(groupedTY.DESAYUNOS, midx);
             const desLY = dataPrev ? getV(groupedLY.DESAYUNOS, midx) : 0;
