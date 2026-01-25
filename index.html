@@ -98,8 +98,45 @@
         .user-badge .dot {
             width: 8px;
             height: 8px;
-            background: #22c55e;
+            background: var(--secondary);
             border-radius: 50%;
+        }
+
+        /* TOP NAVIGATION */
+        .top-nav {
+            background: #1e293b;
+            padding: 6px 20px;
+            display: flex;
+            justify-content: center;
+            gap: 25px;
+            position: sticky;
+            top: 0;
+            z-index: 99999;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .top-nav a {
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+            padding: 4px 0;
+        }
+
+        .top-nav a:hover {
+            color: #ffffff;
+            transform: translateY(-1px);
+        }
+
+        .top-nav a.active {
+            color: #818cf8;
+            border-bottom: 2px solid #818cf8;
         }
 
         /* MAIN */
@@ -314,6 +351,15 @@
             `);
         }
     </script>
+
+    <nav class="top-nav">
+        <a href="index.html" class="active">🏠 Inicio</a>
+        <a href="AnalisisProduccion.html">📈 Producción</a>
+        <a href="AnalisisSegmentos.html">👥 Segmentos</a>
+        <a href="AnalisisCompetencia.html">⚖️ Competencia</a>
+        <a href="CalculadoraPresupuesto.html">💰 Presupuesto</a>
+        <a href="CargarDatos.html">⚙️ Config</a>
+    </nav>
 
     <header class="header">
         <div class="brand">

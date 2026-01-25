@@ -245,11 +245,56 @@
             border-bottom: 1px solid var(--border);
             padding-bottom: 10px;
         }
+
+        /* TOP NAVIGATION */
+        .top-nav {
+            background: #1e293b;
+            padding: 6px 20px;
+            display: flex;
+            justify-content: center;
+            gap: 25px;
+            position: sticky;
+            top: 0;
+            z-index: 99999;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .top-nav a {
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+            padding: 4px 0;
+        }
+
+        .top-nav a:hover {
+            color: #ffffff;
+            transform: translateY(-1px);
+        }
+
+        .top-nav a.active {
+            color: #818cf8;
+            border-bottom: 2px solid #818cf8;
+        }
     </style>
 </head>
 
-<body>
-    <div class="container">
+<body style="padding: 0;">
+    <nav class="top-nav">
+        <a href="index.html">🏠 Inicio</a>
+        <a href="AnalisisProduccion.html" class="active">📈 Producción</a>
+        <a href="AnalisisSegmentos.html">👥 Segmentos</a>
+        <a href="AnalisisCompetencia.html">⚖️ Competencia</a>
+        <a href="CalculadoraPresupuesto.html">💰 Presupuesto</a>
+        <a href="CargarDatos.html">⚙️ Config</a>
+    </nav>
+    <div class="container" style="padding: 15px;">
         <header class="header">
             <div style="display: flex; align-items: center; gap: 20px;">
                 <a href="index.html"><img src="Imagen/logo, CapaSuite.png" alt="CapaSuite" style="height: 50px;"></a>
@@ -498,9 +543,9 @@
             if (!db[currentHotel] || !db[currentHotel][currentYear]) return;
             const data = db[currentHotel][currentYear];
 
-            // Show last update if available
+            // Show last update if available (Hide for 2025 as requested)
             const badge = document.getElementById('updateBadge');
-            if (data.lastUpdate) {
+            if (data.lastUpdate && currentYear !== "2025") {
                 badge.innerText = `📅 Actualizado: ${data.lastUpdate}`;
                 badge.style.display = 'inline-block';
             } else {
@@ -776,11 +821,14 @@
 
             // 2. Mix Chart (Doughnut)
             const mixData = [], mixLabels = [], mixIds = [];
+            const totalValForMix = Object.values(groupedTY).reduce((acc, g) => acc + (midx === -1 ? g.revenue.reduce((a, b) => (a || 0) + (b || 0), 0) : (g.revenue[midx] || 0)), 0);
+
             Object.entries(groupedTY).forEach(([id, g]) => {
                 const val = midx === -1 ? g.revenue.reduce((a, b) => (a || 0) + (b || 0), 0) : (g.revenue[midx] || 0);
                 if (val > 0) {
                     mixData.push(val);
-                    mixLabels.push(g.name.split('. ')[1]);
+                    const perc = totalValForMix > 0 ? ((val / totalValForMix) * 100).toFixed(1) : 0;
+                    mixLabels.push(`${g.name.split('. ')[1]} (${perc}%)`);
                     mixIds.push(id);
                 }
             });
@@ -849,13 +897,16 @@
             document.getElementById('subMixTitle').innerText = `Desglose: ${group.name.split('. ')[1]}`;
 
             const labels = [], data = [];
+            const totalGroupVal = group.details.reduce((acc, s) => acc + (midx === -1 ? s.revenue.reduce((a, b) => (a || 0) + (b || 0), 0) : (s.revenue[midx] || 0)), 0);
+
             group.details.sort((a, b) => {
                 const getV = (arr) => midx === -1 ? arr.reduce((x, y) => (x || 0) + (y || 0), 0) : (arr[midx] || 0);
                 return getV(b.revenue) - getV(a.revenue);
             }).forEach(s => {
                 const val = midx === -1 ? s.revenue.reduce((a, b) => (a || 0) + (b || 0), 0) : (s.revenue[midx] || 0);
                 if (val > 0) {
-                    labels.push(s.name);
+                    const perc = totalGroupVal > 0 ? ((val / totalGroupVal) * 100).toFixed(1) : 0;
+                    labels.push(`${s.name} (${perc}%)`);
                     data.push(val);
                 }
             });
