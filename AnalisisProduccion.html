@@ -288,7 +288,17 @@
 
             <div class="charts-row" style="grid-template-columns: 1.5fr 1fr 1fr;">
                 <div class="card chart-card">
-                    <div class="kpi-label">Evolución de Ingresos (Mensual)</div>
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <div class="kpi-label" style="margin-bottom: 0;">Evolución Mensual Detallada</div>
+                        <select id="chartMetricSelector" onchange="render()"
+                            style="font-size: 0.75rem; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border); background: #f8fafc; cursor: pointer;">
+                            <option value="total">Producción Total</option>
+                            <option value="hab">Solo Habitaciones</option>
+                            <option value="adr">Precio Medio (ADR)</option>
+                            <option value="occ">Ocupación (%)</option>
+                        </select>
+                    </div>
                     <div class="chart-container"><canvas id="mainChart"></canvas></div>
                 </div>
                 <div class="card chart-card">
@@ -604,25 +614,60 @@
         }
 
         function renderCharts(groupedTY, groupedLY, totalTY, totalLY, midx) {
+            // 0. Prepare Metric Selector logic
+            const chartMetric = document.getElementById('chartMetricSelector')?.value || 'total';
+            const getMetricData = (totalObj, groupedObj) => {
+                if (!totalObj) return null;
+                const months = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+                switch (chartMetric) {
+                    case 'total': return totalObj.revenue;
+                    case 'hab': return groupedObj.HABITACION.revenue;
+                    case 'adr':
+                        return months.map(m => {
+                            const rev = groupedObj.HABITACION.revenue[m] || 0;
+                            const rms = totalObj.rooms[m] || 0;
+                            return rms > 0 ? (rev / rms).toFixed(1) : 0;
+                        });
+                    case 'occ':
+                        return months.map(m => {
+                            const rms = totalObj.rooms[m] || 0;
+                            const days = 30.42; // average
+                            return ((rms / (HOTELS[currentHotel].rooms * days)) * 100).toFixed(1);
+                        });
+                    default: return totalObj.revenue;
+                }
+            };
+
+            const mainDataTY = getMetricData(totalTY, groupedTY);
+            const mainDataLY = totalLY ? getMetricData(totalLY, groupedLY) : null;
+            const labelsMain = SHORT_MONTHS;
+
+            const metricLabels = {
+                'total': 'Producción Total (€)',
+                'hab': 'Prod. Habitación (€)',
+                'adr': 'ADR (€)',
+                'occ': 'Ocupación (%)'
+            };
+
             // 1. Evolution Chart (Line)
             if (charts.main) charts.main.destroy();
             charts.main = new Chart(document.getElementById('mainChart'), {
                 type: 'line',
                 data: {
-                    labels: SHORT_MONTHS,
+                    labels: labelsMain,
                     datasets: [
                         {
-                            label: currentYear,
-                            data: totalTY.revenue,
+                            label: `${metricLabels[chartMetric]} ${currentYear}`,
+                            data: mainDataTY,
                             borderColor: '#4f46e5',
                             backgroundColor: 'rgba(79, 70, 229, 0.1)',
                             fill: true,
                             tension: 0.4,
                             pointRadius: 4
                         },
-                        totalLY ? {
-                            label: (parseInt(currentYear) - 1),
-                            data: totalLY.revenue,
+                        mainDataLY ? {
+                            label: `${metricLabels[chartMetric]} ${(parseInt(currentYear) - 1)}`,
+                            data: mainDataLY,
                             borderColor: '#cbd5e1',
                             fill: false,
                             tension: 0.4,
@@ -633,7 +678,22 @@
                 },
                 options: {
                     maintainAspectRatio: false,
-                    plugins: { legend: { position: 'top' } },
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) label += ': ';
+                                    if (context.parsed.y !== null) {
+                                        if (chartMetric === 'occ') label += context.parsed.y + '%';
+                                        else label += new Intl.NumberFormat('es-ES', { style: chartMetric === 'adr' || chartMetric.includes('total') || chartMetric === 'hab' ? 'currency' : 'decimal', currency: 'EUR', maximumFractionDigits: 0 }).format(context.parsed.y);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
                     scales: { y: { beginAtZero: true } }
                 }
             });
@@ -653,7 +713,7 @@
             });
 
             // 3. Pace Chart (Bar)
-            const labels = midx === -1 ? SHORT_MONTHS : [MONTH_ORDER[midx]];
+            const labelsPace = midx === -1 ? SHORT_MONTHS : [MONTH_ORDER[midx]];
             const tyPace = [], lyPace = [];
 
             const months = midx === -1 ? [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] : [midx];
@@ -675,16 +735,17 @@
             charts.pace = new Chart(document.getElementById('paceChart'), {
                 type: 'bar',
                 data: {
-                    labels: labels,
+                    labels: labelsPace,
                     datasets: [
                         { label: 'Current (€/pax)', data: tyPace, backgroundColor: '#4f46e5' },
                         { label: 'LY (€/pax)', data: lyPace, backgroundColor: '#cbd5e1' }
                     ]
                 },
-                options: { maintainAspectRatio: false, scales: { y: { beginAtZero: true, title: { display: true, text: 'Euros por Pax' } } } }
+                options: { maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
             });
         }
     </script>
 </body>
 
 </html>
+```
