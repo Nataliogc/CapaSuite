@@ -5,6 +5,7 @@
 const firebaseConfig = {
     apiKey: "AIzaSyCBa1EEt-9wK7zHoz6c_ZSrB9ZsbX0qCtM",
     authDomain: "capasuite.firebaseapp.com",
+    databaseURL: "https://capasuite-default-rtdb.europe-west1.firebasedatabase.app/",
     projectId: "capasuite",
     storageBucket: "capasuite.firebasestorage.app",
     messagingSenderId: "1066499289752",
