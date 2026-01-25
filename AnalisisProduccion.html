@@ -792,13 +792,67 @@
 
             const getV = (arr) => midx === -1 ? arr.reduce((a, b) => (a || 0) + (b || 0), 0) : (arr[midx] || 0);
 
+            // Get OTB data if available
+            const otbData = (db[currentHotel] && db[currentHotel][currentYear] && db[currentHotel][currentYear].otb)
+                ? db[currentHotel][currentYear].otb
+                : null;
+
             Object.values(grouped).sort((a, b) => parseInt(a.name) - parseInt(b.name)).forEach(g => {
                 const gVal = getV(g.revenue); if (gVal === 0 && g.details.length === 0) return;
                 const percTotal = total > 0 ? (gVal / total * 100).toFixed(1) : "0.0";
 
                 let row = `<tr class="row-group"><td>${g.name}</td>`;
                 if (midx === -1) {
-                    row += g.revenue.map(v => `<td>${v ? fmt(v) : '-'}</td>`).join('') + `<td>${fmt(gVal)}</td><td>${percTotal}%</td>`;
+                    // MAPPING: Production Group Name -> OTB Breakdown Key
+                    let otbKey = null;
+                    const gName = g.name.toUpperCase();
+                    if (gName.includes('HABITACIÓN') || gName.includes('HABITACION')) otbKey = 'habitacion';
+                    else if (gName.includes('DESAYUNO')) otbKey = 'desayunos';
+                    else if (gName.includes('RESTAURANTE') || gName.includes('ALMUERZO') || gName.includes('CENA')) otbKey = 'restaurante';
+                    else if (gName.includes('SPA')) otbKey = 'spa';
+                    else if (gName.includes('VARIOS') || gName.includes('OTROS') || gName.includes('EXTRAS')) otbKey = 'varios';
+
+                    // Get specific OTB array for this group from Breakdown or fallback to generic matching
+                    let groupOtbArr = (otbData && otbData.breakdown && otbKey) ? otbData.breakdown[otbKey] : null;
+
+                    // FALLBACK: If no specific breakdown exists but we have total revenue, assign it to HABITACION
+                    // This handles legacy data loaded before the breakdown logic was added
+                    if (!groupOtbArr && otbKey === 'habitacion' && otbData && otbData.revenue && (!otbData.breakdown || Object.keys(otbData.breakdown).length === 0)) {
+                        groupOtbArr = otbData.revenue;
+                    }
+
+                    // Show all months
+                    row += g.revenue.map((v, idx) => {
+                        let cellContent = v ? fmt(v) : '-';
+
+                        // Add OTB data if available for this specific group
+                        // Condition: We have specific breakdown data > 0
+                        const hasOtbRev = groupOtbArr && groupOtbArr[idx] > 0;
+                        const hasOtbRms = otbKey === 'habitacion' && otbData && otbData.rooms && otbData.rooms[idx] > 0;
+
+                        if (hasOtbRev || hasOtbRms) {
+                            const otbRev = hasOtbRev ? groupOtbArr[idx] : 0;
+                            const realValue = v || 0;
+                            const proyeccion = realValue + otbRev;
+
+                            // Show OTB Forecast in purple (only if > 0)
+                            if (otbRev > 0) {
+                                cellContent += `<br><span style="font-size:0.65rem; color:#8b5cf6; font-weight:600;">📈 ${fmt(otbRev)}</span>`;
+                            }
+
+                            // Show Rooms only for 'Habitación' category
+                            if (otbKey === 'habitacion' && hasOtbRms) {
+                                cellContent += `<br><span style="font-size:0.6rem; color:#64748b;">${otbData.rooms[idx]} RN</span>`;
+                            }
+
+                            // Show Total Projection in green (if we have OTB revenue)
+                            if (otbRev > 0) {
+                                cellContent += `<br><span style="font-size:0.7rem; color:#10b981; font-weight:700;">= ${fmt(proyeccion)}</span>`;
+                            }
+                        }
+
+                        return `<td style="vertical-align:top;">${cellContent}</td>`;
+                    }).join('') + `<td>${fmt(gVal)}</td><td>${percTotal}%</td>`;
                 }
                 else {
                     row += `<td style="font-weight:700;">${fmt(gVal)}</td><td style="font-weight:700;">${percTotal}%</td><td>-</td>`;
@@ -810,16 +864,51 @@
                     const sPercTotal = total > 0 ? (sVal / total * 100).toFixed(1) : "0.0";
                     const sPercGroup = gVal > 0 ? (sVal / gVal * 100).toFixed(1) : "0.0";
 
-                    let sRow = `<tr><td style="padding-left:25px; font-size: 0.85rem; color: #475569;">${s.name}</td>`;
+                    // Format service name: lowercase with first letter capitalized
+                    const serviceName = s.name.charAt(0).toUpperCase() + s.name.slice(1).toLowerCase();
+
+                    let sRow = `<tr><td style="padding-left:20px; font-size: 0.75rem; color: #64748b; font-weight:500; text-transform:capitalize;">${serviceName}</td>`;
                     if (midx === -1) {
-                        sRow += s.revenue.map(v => `<td>${v ? fmt(v) : '-'}</td>`).join('') + `<td>${fmt(sVal)}</td><td>${sPercTotal}%</td>`;
+                        sRow += s.revenue.map(v => `<td style="font-size:0.85rem;">${v ? fmt(v) : '-'}</td>`).join('') + `<td style="font-size:0.85rem;">${fmt(sVal)}</td><td style="font-size:0.85rem;">${sPercTotal}%</td>`;
                     }
                     else {
-                        sRow += `<td>${fmt(sVal)}</td><td style="color:#64748b;">${sPercTotal}%</td><td style="font-weight:600; color:var(--primary);">${sPercGroup}%</td>`;
+                        sRow += `<td style="font-size:0.9rem;">${fmt(sVal)}</td><td style="color:#64748b; font-size:0.85rem;">${sPercTotal}%</td><td style="font-weight:600; color:var(--primary); font-size:0.85rem;">${sPercGroup}%</td>`;
                     }
                     tbody.innerHTML += sRow + '</tr>';
                 });
             });
+
+            // Add OTB Forecast Row (if data exists)
+            if (db[currentHotel] && db[currentHotel][currentYear] && db[currentHotel][currentYear].otb) {
+                const otbData = db[currentHotel][currentYear].otb;
+                const otbRevTotal = otbData.revenue.reduce((a, b) => (a || 0) + (b || 0), 0);
+                const otbRmsTotal = otbData.rooms.reduce((a, b) => (a || 0) + (b || 0), 0);
+
+                if (otbRevTotal > 0 || otbRmsTotal > 0) {
+                    const otbRev = getV(otbData.revenue);
+                    const otbRms = getV(otbData.rooms);
+
+                    let otbRow = `<tr style="background: rgba(139, 92, 246, 0.08); border-top: 2px solid #8b5cf6;"><td style="font-weight:700; color:#8b5cf6; padding-left:25px;">📈 Previsión OTB ${currentYear}</td>`;
+
+                    if (midx === -1) {
+                        // Show all months
+                        otbRow += otbData.revenue.map((v, idx) => {
+                            const rms = otbData.rooms[idx] || 0;
+                            if (v > 0 || rms > 0) {
+                                return `<td style="font-size:0.8rem;"><span style="color:#8b5cf6; font-weight:600;">${fmt(v)}</span><br><span style="color:#64748b; font-size:0.7rem;">${rms} RN</span></td>`;
+                            } else {
+                                return `<td>-</td>`;
+                            }
+                        }).join('');
+                        otbRow += `<td style="color:#8b5cf6; font-weight:700;">${fmt(otbRev)}<br><span style="font-size:0.75rem; color:#64748b;">${otbRms} RN</span></td><td>-</td>`;
+                    } else {
+                        // Show single month
+                        otbRow += `<td style="font-weight:700; color:#8b5cf6;">${fmt(otbRev)}<br><span style="font-size:0.75rem; color:#64748b;">${otbRms} RN</span></td><td>-</td><td>-</td>`;
+                    }
+
+                    tbody.innerHTML += otbRow + '</tr>';
+                }
+            }
         }
 
         function renderCharts(data, groupedTY, groupedLY, totalTY, totalLY, midx) {
@@ -858,8 +947,27 @@
                 'occ': 'Ocupación (%)'
             };
 
-            // 3. Forecast Data (OTB)
-            const otbData = data.otb ? data.otb.revenue : null;
+            // 3. Forecast Data (OTB) - Select based on metric
+            let otbDataForChart = null;
+            if (data.otb) {
+                if (chartMetric === 'total') {
+                    otbDataForChart = data.otb.revenue;
+                } else if (chartMetric === 'hab') {
+                    // For room production, show OTB rooms converted to revenue (if needed, or just rooms)
+                    otbDataForChart = data.otb.rooms;
+                } else if (chartMetric === 'occ') {
+                    // For occupancy, calculate from OTB rooms
+                    const months = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+                    otbDataForChart = months.map(m => {
+                        const rms = data.otb.rooms[m] || 0;
+                        const days = 30.42; // average
+                        return ((rms / (HOTELS[currentHotel].rooms * days)) * 100).toFixed(1);
+                    });
+                }
+            }
+
+            // Check if OTB has actual data (not all zeros)
+            const hasOTBData = otbDataForChart && otbDataForChart.some(v => v > 0);
 
             // 1. Evolution Chart (Line)
             if (charts.main) charts.main.destroy();
@@ -889,14 +997,16 @@
                             hoverRadius: 6,
                             zIndex: 5
                         } : null,
-                        (otbData && chartMetric === 'total') ? {
-                            label: `Forecast OTB ${currentYear}`,
-                            data: otbData,
+                        hasOTBData ? {
+                            label: `Previsión OTB ${currentYear}`,
+                            data: otbDataForChart,
                             borderColor: '#8b5cf6', // Violet
+                            backgroundColor: 'rgba(139, 92, 246, 0.05)',
                             fill: false,
                             tension: 0.4,
                             borderDash: [3, 3],
-                            pointRadius: 4,
+                            pointRadius: 3,
+                            pointStyle: 'circle',
                             zIndex: 1
                         } : null
                     ].filter(d => d)

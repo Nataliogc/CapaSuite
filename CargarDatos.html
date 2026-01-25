@@ -1121,8 +1121,15 @@
                         if (dayMatch) {
                             const d = dayMatch[1].padStart(2, '0');
                             const m = dayMatch[2].padStart(2, '0');
+
+                            // Default to current year if not detected
+                            if (!detectedYear) {
+                                detectedYear = new Date().getFullYear();
+                            }
+
                             let y = dayMatch[4] || detectedYear;
-                            if (y.length === 2) y = "20" + y;
+                            if (y && String(y).length === 2) y = "20" + y;
+
                             dailyCols[c] = `${y}-${m}-${d}`;
                             continue;
                         }
@@ -1140,27 +1147,128 @@
                 const hasDaily = Object.keys(dailyCols).length > 0;
                 if (hasDaily) dbYear.otb.rooms.fill(0); // Reset only if we have high-res data
 
+                console.log("🔮 OTB Processing:", {
+                    hasDaily,
+                    dailyColsCount: Object.keys(dailyCols).length,
+                    monthColsCount: Object.keys(monthCols).length,
+                    dailyCols,
+                    monthCols
+                });
+
+                let foundRMS = false;
+                let foundREV = false;
+                let rmsRowCount = 0;
+                let revRowCount = 0;
+
                 for (let r = 0; r < data.length; r++) {
                     const row = data[r];
                     if (!row || row.length < 2) continue;
 
-                    let rowType = null;
-                    for (let c = 0; c < Math.min(row.length, 30); c++) {
-                        const cell = normalizeStr(row[c]);
-                        if (!cell) continue;
+                    // STOP if we've already processed a complete section (both RMS and REV found, at least 2 rows each)
+                    // This prevents processing duplicate data that appears later in the file
+                    if (foundRMS && foundREV && rmsRowCount >= 1 && revRowCount >= 1 && r > 10) {
+                        console.log(`⏹️ Stopping OTB processing at row ${r} to avoid duplicates`);
+                        break;
+                    }
 
-                        if (cell.includes("HAB") || cell === "RN" || cell.includes("ESTANCIA") || cell.includes("NIGHT") || cell.includes("UNIT") || cell === "HABITACIONES" || cell === "HAB.") {
-                            rowType = 'rms';
-                            break;
-                        }
-                        if (cell === "TOTAL" || cell.includes("PRODUCCION") || cell.includes("INGRESO") || cell.includes("IMPORTE") || cell.includes("VALORADA") || cell.includes("REVENUE") || cell.includes("VENTA") || cell.includes("OTB") || cell.includes("BOOKING") || cell.includes("BOOK") || cell.includes("ING.")) {
-                            rowType = 'rev';
-                            break;
+                    let rowType = null;
+                    const firstCell = String(row[0] || "").trim();
+                    const firstCellNorm = normalizeStr(firstCell);
+
+                    // Check first few numeric values to determine type (rooms vs revenue)
+                    let sampleValues = [];
+                    for (let c = 1; c < Math.min(row.length, 10); c++) {
+                        const val = parseVal(row[c]);
+                        if (val > 0) sampleValues.push(val);
+                        if (sampleValues.length >= 3) break; // Sample 3 values
+                    }
+
+                    const avgSample = sampleValues.length > 0 ? sampleValues.reduce((a, b) => a + b, 0) / sampleValues.length : 0;
+
+                    if (!dbYear.otb.breakdown) dbYear.otb.breakdown = {};
+                    let category = null;
+
+                    // IMPROVED DETECTION LOGIC
+                    // 1. Rooms (RMS) - Exact "Hab." or "RN" or similar with small numbers
+                    if (firstCellNorm === "HAB" || firstCellNorm === "RN" || firstCellNorm === "ESTANCIAS" || firstCellNorm === "NIGHTS") {
+                        rowType = 'rms';
+                    }
+                    // 2. Room Revenue (Habitación) - "Habitación" with large values -> category: habitacion
+                    else if ((firstCellNorm.includes("HABITACION") || firstCellNorm.includes("ROOM")) && avgSample > 10) {
+                        rowType = 'rev';
+                        category = 'habitacion';
+                    }
+                    // 3. Breakfast (Desayuno) -> category: desayunos
+                    else if (firstCellNorm.includes("DESAYUNO") || firstCellNorm.includes("BREAKFAST")) {
+                        rowType = 'rev';
+                        category = 'desayunos';
+                    }
+                    // 4. Restaurant (Almuerzo / Cena) -> category: restaurante
+                    else if (firstCellNorm.includes("ALMUERZO") || firstCellNorm.includes("CENA") || firstCellNorm.includes("RESTAURANTE") || firstCellNorm.includes("LUNCH") || firstCellNorm.includes("DINNER")) {
+                        rowType = 'rev';
+                        category = 'restaurante';
+                    }
+                    // 5. Spa -> category: spa
+                    else if (firstCellNorm.includes("SPA") || firstCellNorm.includes("WELLNESS")) {
+                        rowType = 'rev';
+                        category = 'spa';
+                    }
+                    // 6. Misc (Varios / Extras) -> category: varios
+                    else if (firstCellNorm === "VARIOS" || firstCellNorm.includes("EXTRAS") || firstCellNorm.includes("OTROS")) {
+                        rowType = 'rev';
+                        category = 'varios';
+                    }
+                    // 7. Fallback General Revenue
+                    else if (firstCellNorm === "TOTAL" || firstCellNorm.includes("PRODUCCION") ||
+                        firstCellNorm.includes("INGRESO") || firstCellNorm.includes("IMPORTE") ||
+                        firstCellNorm.includes("VALORADA") || firstCellNorm.includes("REVENUE") ||
+                        firstCellNorm.includes("VENTA") || firstCellNorm.includes("OTB") ||
+                        firstCellNorm.includes("BOOKING") || firstCellNorm.includes("ING")) {
+                        // We track this as generic revenue if needed, but for breakdown we focus on components
+                        // rowType = 'rev'; 
+                    }
+                    // Fallback: Check all cells in the row for keywords if rowType is still null
+                    else {
+                        for (let c = 0; c < Math.min(row.length, 30); c++) {
+                            const cell = normalizeStr(row[c]);
+                            if (!cell) continue;
+
+                            if (cell === "HAB" || cell === "RN" || cell.includes("ESTANCIA") || cell.includes("NIGHT") || cell.includes("UNIT")) {
+                                rowType = 'rms';
+                                break;
+                            }
+                            if (cell === "TOTAL" || cell.includes("PRODUCCION") || cell.includes("INGRESO") ||
+                                cell.includes("IMPORTE") || cell.includes("VALORADA") || cell.includes("REVENUE")) {
+                                // Default revenue without category
+                                rowType = 'rev';
+                                break;
+                            }
                         }
                     }
 
-                    if (rowType === 'rms' || rowType === 'rev') {
-                        const targetArray = rowType === 'rms' ? dbYear.otb.rooms : dbYear.otb.revenue;
+                    if (rowType === 'rms' || (rowType === 'rev' && (category || foundREV))) { // Accept generic rev if found
+                        if (rowType === 'rms') {
+                            foundRMS = true;
+                            rmsRowCount++;
+                        }
+                        if (rowType === 'rev') {
+                            foundREV = true;
+                            revRowCount++;
+                        }
+
+                        // Decide where to store the data
+                        let targetArray;
+                        if (rowType === 'rms') {
+                            targetArray = dbYear.otb.rooms;
+                        } else if (category) {
+                            // If it has a category, initialize its array in breakdown if needed
+                            if (!dbYear.otb.breakdown[category]) dbYear.otb.breakdown[category] = new Array(12).fill(0);
+                            targetArray = dbYear.otb.breakdown[category];
+                        } else {
+                            targetArray = dbYear.otb.revenue; // Fallback to generic total
+                        }
+
+                        console.log(`📊 Processing OTB row ${r} [${rowType}/${category || 'generic'}]:`, firstCell, 'avg:', avgSample.toFixed(2));
 
                         if (hasDaily) {
                             for (const [col, iso] of Object.entries(dailyCols)) {
@@ -1193,6 +1301,61 @@
                         }
                     }
                 }
+
+                // Re-calculate TOTAL Revenue from breakdown components to ensure consistency
+                if (dbYear.otb.breakdown && Object.keys(dbYear.otb.breakdown).length > 0) {
+                    dbYear.otb.revenue.fill(0);
+                    Object.values(dbYear.otb.breakdown).forEach(arr => {
+                        arr.forEach((val, idx) => {
+                            dbYear.otb.revenue[idx] += val;
+                        });
+                    });
+                }
+
+                // SAVE FIRST, THEN FEEDBACK
+                saveData();
+
+                // Show feedback to user
+                const totalRMS = dbYear.otb.rooms.reduce((a, b) => a + b, 0);
+                const totalREV = dbYear.otb.revenue.reduce((a, b) => a + b, 0);
+                const daysCount = Object.keys(dbYear.daily || {}).length;
+                const fmtEuro = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' });
+
+                let msg = `✅ Datos procesados para ${detectedYear || 'año desconocido'}:<br>`;
+                msg += `- Días detectados: <b>${daysCount}</b><br>`;
+                msg += `- Total Habitaciones: <b>${totalRMS}</b><br>`;
+                msg += `- Total Revenue: <b>${fmtEuro.format(totalREV)}</b><br>`;
+
+                if (dbYear.otb.breakdown && Object.keys(dbYear.otb.breakdown).length > 0) {
+                    msg += `- Categorías desglosadas: ${Object.keys(dbYear.otb.breakdown).join(', ')}`;
+                }
+
+                // Create or update status box
+                let statusBox = document.getElementById('upload-status-box');
+                if (!statusBox) {
+                    statusBox = document.createElement('div');
+                    statusBox.id = 'upload-status-box';
+                    statusBox.style.marginTop = '15px';
+                    statusBox.style.padding = '15px';
+                    statusBox.style.borderRadius = '8px';
+                    statusBox.style.textAlign = 'center';
+                    const container = document.querySelector('.upload-box') || document.querySelector('.card');
+                    if (container) container.appendChild(statusBox);
+                }
+
+                statusBox.innerHTML = msg;
+                statusBox.style.background = (daysCount > 0 || totalRMS > 0) ? '#d1fae5' : '#fee2e2';
+                statusBox.style.color = (daysCount > 0 || totalRMS > 0) ? '#065f46' : '#991b1b';
+                statusBox.style.border = (daysCount > 0 || totalRMS > 0) ? '1px solid #10b981' : '1px solid #ef4444';
+
+                console.log("✅ OTB Processing Complete:", {
+                    foundRMS,
+                    foundREV,
+                    otbRooms: dbYear.otb.rooms,
+                    otbRevenue: dbYear.otb.revenue,
+                    dailyDatesCount: Object.keys(dbYear.daily).length
+                });
+
                 dbYear.lastUpdate = new Date().toLocaleDateString('es-ES');
             }
             saveData();
@@ -1374,10 +1537,18 @@
                             db[hotel][year].otb.revenue = new Array(12).fill(0);
                             db[hotel][year].otb.rooms = new Array(12).fill(0);
                         }
+                        // IMPORTANTE: También borrar los datos diarios de previsiones
+                        if (db[hotel][year].daily) {
+                            db[hotel][year].daily = {};
+                        }
+                    }
+                    // También limpiar la fecha de última actualización de OTB en config
+                    if (config[hotel]) {
+                        delete config[hotel].lastOtbDate;
                     }
                 }
                 saveData();
-                alert(`Previsiones del hotel ${hotel} borradas.`);
+                alert(`Previsiones del hotel ${hotel} borradas correctamente (incluidos datos diarios).`);
                 location.reload();
             }
         }

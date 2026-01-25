@@ -446,6 +446,8 @@
             width: 95px;
             min-width: 95px;
             max-width: 95px;
+            overflow: visible;
+            white-space: normal;
         }
 
         tbody tr:hover td {
@@ -1086,6 +1088,7 @@
                     hotels: {},
                     compAvg: 0,
                     occupancy: occ,
+                    otbRooms: dateInfo.otb || 0, // Store numerical OTB for diagnostics
                     dateISO: dateInfo.iso,
                     dateMeta: { currentMonth, dNum, dName }
                 };
@@ -1105,6 +1108,31 @@
                 }
 
                 processedData.push(dayObj);
+            }
+
+            // DIAGNOSTIC: Check production DB content
+            try {
+                const prodDB = JSON.parse(CapaStorage.getItem('hotel_manager_db_v2') || '{}');
+                const hData = prodDB[activeHotel];
+                if (hData) {
+                    // Find year with data
+                    const years = Object.keys(hData);
+                    console.log(`🔍 DIAGNOSTIC: Hotel ${activeHotel} has years: ${years.join(', ')}`);
+                    years.forEach(y => {
+                        if (hData[y].daily) {
+                            console.log(`   Year ${y} has ${Object.keys(hData[y].daily).length} daily records.`);
+                            // Log first 3 keys as sample
+                            const keys = Object.keys(hData[y].daily).slice(0, 3);
+                            console.log(`   Sample keys: ${keys.join(', ')}`);
+                        } else {
+                            console.log(`   Year ${y} has NO daily records.`);
+                        }
+                    });
+                } else {
+                    console.log(`⚠️ DIAGNOSTIC: No data found for hotel ${activeHotel}`);
+                }
+            } catch (e) {
+                console.error("Diagnostic failed", e);
             }
 
             populateMonths();
@@ -1180,7 +1208,84 @@
             const validMonthIdx = monthIdx === -1 ? 0 : monthIdx;
             const iso = `${year}-${String(validMonthIdx + 1).padStart(2, '0')}-${String(dNum).padStart(2, '0')}`;
 
+            // LOAD OTB DATA from production database
+            let otbRooms = 0;
+            try {
+                const productionDB = CapaStorage.getItem('hotel_manager_db_v2');
+                if (productionDB) {
+                    const prodData = JSON.parse(productionDB);
+                    const currentHotel = document.getElementById('hotelSelector')?.value || activeHotel || 'Guadiana';
+
+                    // Robust search: Try current hotel, then common names, case insensitive
+                    const hotelsToTry = [currentHotel, 'Guadiana', 'Cumbria'];
+                    const variants = [];
+                    hotelsToTry.forEach(h => {
+                        if (h) {
+                            variants.push(h);
+                            variants.push(h.toLowerCase());
+                            variants.push(h.charAt(0).toUpperCase() + h.slice(1).toLowerCase());
+                            variants.push(h.toUpperCase());
+                        }
+                    });
+                    // Remove duplicates
+                    const uniqueHotels = [...new Set(variants)];
+
+                    for (const h of uniqueHotels) {
+                        try {
+                            const hotelObj = prodData[h];
+                            if (!hotelObj) continue;
+
+                            // 1. Try EXACT Year first
+                            if (hotelObj[year] && hotelObj[year].daily) {
+                                if (hotelObj[year].daily[iso]) {
+                                    otbRooms = hotelObj[year].daily[iso];
+                                    break;
+                                }
+                                const manualIso = `${year}-${String(validMonthIdx + 1).padStart(2, '0')}-${String(dNum).padStart(2, '0')}`;
+                                if (hotelObj[year].daily[manualIso]) {
+                                    otbRooms = hotelObj[year].daily[manualIso];
+                                    break;
+                                }
+                            }
+
+                            // 2. Fallback: Try ANY available year (Year Agnostic Search) PLUS Adjacent Days (Timezone Fix)
+                            if (!otbRooms) {
+                                const availableYears = Object.keys(hotelObj);
+                                for (const y of availableYears) {
+                                    if (hotelObj[y] && hotelObj[y].daily) {
+                                        // Try exact Date
+                                        let keysToTry = [];
+                                        keysToTry.push(`${y}-${String(validMonthIdx + 1).padStart(2, '0')}-${String(dNum).padStart(2, '0')}`);
+
+                                        // Try Prev Day (Timezone shift -1)
+                                        let prevD = dNum - 1;
+                                        if (prevD > 0) keysToTry.push(`${y}-${String(validMonthIdx + 1).padStart(2, '0')}-${String(prevD).padStart(2, '0')}`);
+
+                                        // Try Next Day (Timezone shift +1)
+                                        let nextD = dNum + 1;
+                                        if (nextD <= 31) keysToTry.push(`${y}-${String(validMonthIdx + 1).padStart(2, '0')}-${String(nextD).padStart(2, '0')}`);
+
+                                        for (const key of keysToTry) {
+                                            if (hotelObj[y].daily[key]) {
+                                                otbRooms = hotelObj[y].daily[key];
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    if (otbRooms) break;
+                                }
+                            }
+                            if (otbRooms) break; // Found in some year/day
+                        } catch (err) { continue; }
+                    }
+                }
+            } catch (e) {
+                // Silently fail if production DB is not available
+                console.log('OTB data not available:', e);
+            }
+
             const occHtml = (occVal > 0) ? `<span style="display:block; font-size: 0.65rem; color: #4f46e5; font-weight: 700; margin-top: 2px;">Hab: ${occVal.toFixed(0)}</span>` : '';
+            const otbHtml = (otbRooms > 0) ? `<span style="display:block; font-size: 0.6rem; color: #8b5cf6; font-weight: 600; margin-top: 1px;">📈 ${otbRooms} OTB</span>` : '';
 
             // Pretty HTML
             const html = `
@@ -1190,11 +1295,12 @@
                         <span>${dShortStr}</span>
                         <span>${mShortStr}</span>
                         ${occHtml}
+                        ${otbHtml}
                     </div>
                 </div>
             `;
 
-            return { html: html, month: monthWithYear, iso: iso };
+            return { html: html, month: monthWithYear, iso: iso, otb: otbRooms };
         }
 
         function populateMonths() {
@@ -1234,7 +1340,13 @@
                 data = processedData.filter(d => d.month === selectedMonth);
             }
 
-            document.getElementById('record-count').innerText = `${data.length} días analizados`;
+            // Diagnostic Counter in UI
+            const otbCount = data.filter(d => d.otbRooms > 0).length;
+            const otbText = otbCount > 0
+                ? `<span style="color:#10b981; font-weight:bold; margin-left:5px;">(OTB: ${otbCount} OK)</span>`
+                : `<span style="color:#ef4444; font-weight:bold; margin-left:5px;">(OTB: 0)</span>`;
+
+            document.getElementById('record-count').innerHTML = `${data.length} días analizados ${otbText}`;
 
             renderKPIs(data);
             renderChart(data);
@@ -1375,8 +1487,48 @@
                 }
 
                 // Row content
+                // --- CAPASUITE ALERTS SYSTEM ---
+                // Config: Guadiana 108, Cumbria 59
+                const HOTEL_CAPACITY = (activeHotel === 'Cumbria') ? 59 : 108;
+                const occ = d.otbRooms || 0;
+                let alertHtml = '';
+
+                // Rule: High Occupancy >= 96%
+                const occPct = (occ / HOTEL_CAPACITY) * 100;
+
+                if (occPct >= 96) {
+                    const isOver = occ > HOTEL_CAPACITY;
+                    // Check if we are selling: price > 0, not sold, not closed
+                    const isOpen = (my && !my.sold && my.price > 0 && my.status !== 'sold' && my.status !== 'closed');
+
+                    if (isOver && isOpen) {
+                        // CRITICAL: Overbooking AND Open Sales -> RED ALERT
+                        alertHtml = `<div title="¡Alerta Crítica! Ventas abiertas con overbooking (${occ}/${HOTEL_CAPACITY})" style="margin-top:3px; padding:2px; border-radius:3px; background:#fee2e2; border:1px solid #ef4444; font-size:0.65rem; color:#991b1b; font-weight:800; display:flex; align-items:center; justify-content:center; gap:2px; width:100%;">
+                            <span>⚠️</span> STOP
+                        </div>`;
+                    } else {
+                        // WARNING: High Occupancy -> ORANGE ALERT
+                        alertHtml = `<div title="Ocupación alta (${occPct.toFixed(0)}%)" style="margin-top:2px; font-size:0.65rem; color:#c2410c; font-weight:700; display:flex; align-items:center; justify-content:center; gap:2px;">
+                            <span>🔥</span> ${occPct.toFixed(0)}%
+                        </div>`;
+                    }
+                }
+
+                // Inject into date cell
+                let cellContent = d.dateHtml;
+                if (alertHtml) {
+                    // Try to insert inside .date-meta for better alignment
+                    const metaClose = cellContent.lastIndexOf('</div></div>');
+                    if (metaClose > -1) {
+                        cellContent = cellContent.substring(0, metaClose) + alertHtml + "</div></div>";
+                    } else {
+                        // Fallback just append
+                        cellContent += alertHtml;
+                    }
+                }
+
                 let html = `<tr id="row-${d.dayIndex}">`;
-                html += `<td>${d.dateHtml}</td>`;
+                html += `<td>${cellContent}</td>`;
 
                 // My Price
                 const myStatus = my?.status || 'available';
@@ -1481,6 +1633,37 @@
         auth.onAuthStateChanged(user => {
             if (user) document.getElementById('userEmailNav').innerText = user.email;
         });
+
+        // --- APP INITIALIZATION & SYNC ---
+        function initApp() {
+            // Try to load saved competitor data from Storage (Local or Firebase populated)
+            try {
+                const saved = CapaStorage.getItem('revenue_data_v2');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (parsed.data) {
+                        processedData = parsed.data;
+                        competitorsList = parsed.competitors || [];
+                        distinctMonths = parsed.months || [];
+                        // activeHotel = parsed.activeHotel || "Guadiana"; // Keep default or last
+
+                        populateMonths();
+                        renderAll();
+                        updateOutdatedStatus();
+                        console.log("✅ Loaded competitor data from storage");
+                    }
+                }
+            } catch (e) { console.warn("No cached data available yet"); }
+        }
+
+        // Exposed for firebase-auth.js to call after cloud download
+        window.updateAll = function () {
+            console.log("🔄 Cloud Data Received -> Refreshing View...");
+            initApp();
+        };
+
+        // Run on load
+        window.addEventListener('DOMContentLoaded', initApp);
     </script>
 </body>
 
