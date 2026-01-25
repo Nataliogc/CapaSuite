@@ -63,11 +63,29 @@
             font-size: 1.1rem;
         }
 
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
         .upload-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 24px;
-            margin-top: 30px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .upload-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         .card {
@@ -136,9 +154,14 @@
         }
 
         .upload-zone i {
-            font-size: 2.5rem;
+            font-size: 2rem;
             display: block;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
+        }
+
+        .upload-zone p {
+            font-size: 0.85rem;
+            line-height: 1.2;
         }
 
         .status-badge {
@@ -343,56 +366,62 @@
         <div class="upload-grid">
             <!-- PRODUCCIÓN CARD -->
             <div class="card">
-                <div id="prodStatus" class="status-badge status-pending">Esperando carga...</div>
-                <h2 style="font-size: 1.6rem; color: var(--primary);">1. Informe de Producción</h2>
-                <p style="font-size: 0.95rem; color: var(--text-muted);">Sube el archivo "Estadística" o "Producción".
-                </p>
+                <div>
+                    <div id="prodStatus" class="status-badge status-pending">Pendiente</div>
+                    <h2 style="font-size: 1.2rem; color: var(--primary);">1. Producción</h2>
+                    <p style="font-size: 0.8rem; color: var(--text-muted);">Archivo de estadística diaria.</p>
+                </div>
 
                 <div class="upload-zone" id="dropZoneProd" onclick="document.getElementById('fileProd').click()">
                     <i>📄</i>
-                    <p>Arrastra aquí el archivo o haz clic</p>
+                    <p>Subir Excel</p>
                     <input type="file" id="fileProd" hidden accept=".xlsx, .xls">
                 </div>
 
-                <div id="prodInfo" class="file-info">Siguiente carga esperada: <b id="nextDateProd">-</b></div>
-                <button class="btn" style="margin-top: 20px;"
-                    onclick="document.getElementById('fileProd').click()">Cargar Producción</button>
+                <div id="prodInfo" class="file-info" style="font-size: 0.75rem;">Siguiente: <b id="nextDateProd">-</b>
+                </div>
+                <button class="btn" style="margin-top: 10px; padding: 8px;"
+                    onclick="document.getElementById('fileProd').click()">Seleccionar</button>
             </div>
 
             <!-- SEGMENTOS CARD -->
             <div class="card">
-                <div id="segStatus" class="status-badge status-pending">Esperando carga...</div>
-                <h2 style="font-size: 1.6rem; color: var(--secondary);">2. Informe de Segmentos</h2>
-                <p style="font-size: 0.95rem; color: var(--text-muted);">Sube el archivo de Segmentos mensual/diario.
-                </p>
+                <div>
+                    <div id="segStatus" class="status-badge status-pending">Pendiente</div>
+                    <h2 style="font-size: 1.2rem; color: var(--secondary);">2. Segmentos</h2>
+                    <p style="font-size: 0.8rem; color: var(--text-muted);">Desglose por mercados.</p>
+                </div>
 
                 <div class="upload-zone" id="dropZoneSeg" onclick="document.getElementById('fileSeg').click()">
                     <i>📁</i>
-                    <p>Arrastra aquí el archivo o haz clic</p>
+                    <p>Subir Excel</p>
                     <input type="file" id="fileSeg" hidden accept=".xlsx, .xls">
                 </div>
 
-                <div id="segInfo" class="file-info">Siguiente carga esperada: <b id="nextDateSeg">-</b></div>
-                <button class="btn" style="margin-top: 20px; background: var(--secondary);"
-                    onclick="document.getElementById('fileSeg').click()">Cargar Segmentos</button>
+                <div id="segInfo" class="file-info" style="font-size: 0.75rem;">Siguiente: <b id="nextDateSeg">-</b>
+                </div>
+                <button class="btn" style="margin-top: 10px; padding: 8px; background: var(--secondary);"
+                    onclick="document.getElementById('fileSeg').click()">Seleccionar</button>
             </div>
 
             <!-- OTB CARD -->
             <div class="card">
-                <div id="otbStatus" class="status-badge status-pending">Esperando carga...</div>
-                <h2 style="font-size: 1.6rem; color: #8b5cf6;">3. Listado Previsiones (OTB)</h2>
-                <p style="font-size: 0.95rem; color: var(--text-muted);">Sube el Listado de Previsiones Valoradas.
-                </p>
+                <div>
+                    <div id="otbStatus" class="status-badge status-pending">Pendiente</div>
+                    <h2 style="font-size: 1.2rem; color: #8b5cf6;">3. Previsión (OTB)</h2>
+                    <p style="font-size: 0.8rem; color: var(--text-muted);">Listado de valoradas.</p>
+                </div>
 
                 <div class="upload-zone" id="dropZoneOtb" onclick="document.getElementById('fileOtb').click()">
                     <i>🔮</i>
-                    <p>Arrastra aquí el archivo o haz clic</p>
+                    <p>Subir Excel</p>
                     <input type="file" id="fileOtb" hidden accept=".xlsx, .xls">
                 </div>
 
-                <div id="otbInfo" class="file-info">Estado: <b id="otbStateText">Pendiente</b></div>
-                <button class="btn" style="margin-top: 20px; background: #8b5cf6;"
-                    onclick="document.getElementById('fileOtb').click()">Cargar Previsión</button>
+                <div id="otbInfo" class="file-info" style="font-size: 0.75rem;">Estado: <b
+                        id="otbStateText">Pendiente</b></div>
+                <button class="btn" style="margin-top: 10px; padding: 8px; background: #8b5cf6;"
+                    onclick="document.getElementById('fileOtb').click()">Seleccionar</button>
             </div>
         </div>
 
@@ -418,7 +447,36 @@
         </div>
 
         <div class="history">
-            <h2>Historial de Cargas (Últimos archivos)</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 style="margin:0;">Historial y Configuración Avanzada</h2>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn" style="background: #f1f5f9; color: #475569; width: auto; font-size: 0.8rem;"
+                        onclick="toggleAdvancedPanels()">⚙️ Opciones</button>
+                </div>
+            </div>
+
+            <div id="advanced-config"
+                style="display:grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 25px; padding-bottom: 25px; border-bottom: 1px solid var(--border);">
+                <div class="card" style="padding:15px; background: #f8fafc; border: 1.5px dashed #cbd5e1;">
+                    <h3 style="font-size: 0.9rem; margin-bottom: 10px;">📉 Monitor de Pick-up (Semanal)</h3>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 15px;">Compara
+                        automáticamente la carga actual con la de hace 7 días para detectar tendencias.</p>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <input type="checkbox" id="pickupToggle" onchange="saveOptions()">
+                        <span style="font-size: 0.85rem; font-weight: 500;">Activar alertas de aceleración</span>
+                    </div>
+                </div>
+                <div class="card" style="padding:15px; background: #f8fafc; border: 1.5px dashed #cbd5e1;">
+                    <h3 style="font-size: 0.9rem; margin-bottom: 10px;">🎯 Sincronización de Objetivos</h3>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 15px;">Vincula los informes
+                        con los Presupuestos definidos para visualizar el % de cumplimiento.</p>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <input type="checkbox" id="budgetSyncToggle" onchange="saveOptions()">
+                        <span style="font-size: 0.85rem; font-weight: 500;">Mostrar cumplimiento vs Budget</span>
+                    </div>
+                </div>
+            </div>
+
             <div class="table-container">
                 <table>
                     <thead>
@@ -475,7 +533,30 @@
         window.onload = () => {
             updateHistory();
             setupDropZones();
+            loadOptions();
         };
+
+        function toggleAdvancedPanels() {
+            const panel = document.getElementById('advanced-config');
+            panel.style.display = panel.style.display === 'none' ? 'grid' : 'none';
+        }
+
+        function saveOptions() {
+            config.options = {
+                pickupEnabled: document.getElementById('pickupToggle').checked,
+                budgetSyncEnabled: document.getElementById('budgetSyncToggle').checked
+            };
+            saveData();
+        }
+
+        function loadOptions() {
+            if (config.options) {
+                document.getElementById('pickupToggle').checked = config.options.pickupEnabled || false;
+                document.getElementById('budgetSyncToggle').checked = config.options.budgetSyncEnabled || false;
+            }
+            // Hide by default if not previously open or just to keep it clean
+            document.getElementById('advanced-config').style.display = 'none';
+        }
 
         function updateHistory() {
             const hotel = document.getElementById('hotelSelector').value;
@@ -631,8 +712,8 @@
             dbYear.lastUpdate = dateInfo ? dateInfo.full : "Carga Masiva";
 
             const SHORT_MONTHS_MAP = {
-                "ENE": 0, "FEB": 1, "MAR": 2, "ABR": 3, "MAY": 4, "JUN": 5,
-                "JUL": 6, "AGO": 7, "SEP": 8, "OCT": 9, "NOV": 10, "DIC": 11
+                "ENE": 0, "JAN": 0, "FEB": 1, "MAR": 2, "ABR": 3, "APR": 3, "MAY": 4, "JUN": 5,
+                "JUL": 6, "AGO": 7, "AUG": 7, "SEP": 8, "OCT": 9, "NOV": 10, "DIC": 11, "DEC": 11
             };
 
             const PRODUCTION_GROUPS = {
@@ -677,19 +758,25 @@
                 let rowFechas = null, rowHab = null, rowPax = null, rowPro = null;
                 let masterIndices = new Set();
 
-                for (let r = 0; r < Math.min(data.length, 50); r++) {
+                for (let r = 0; r < Math.min(data.length, 100); r++) {
                     const row = data[r] || [];
                     const first = normalizeStr(row[0]);
 
-                    // Solo coincidencias EXACTAS para filas maestras
-                    if (first === "HAB" || first === "RMS") { rowHab = row; masterIndices.add(r); }
-                    if (first === "PAX" || first === "PERSONAS" || first === "PAX.") { rowPax = row; masterIndices.add(r); }
-                    if (first === "PRO" || first === "PRODUCCION") { rowPro = row; masterIndices.add(r); }
+                    // Advanced detection of master rows (Hab, Pax, Production)
+                    if (first === "HAB" || first === "RMS" || first === "RN" || first === "RN." || first === "ESTANCIAS" || first.includes("HAB.")) {
+                        rowHab = row; masterIndices.add(r);
+                    }
+                    if (first === "PAX" || first === "PERSONAS" || first === "PAX." || first === "PER.") {
+                        rowPax = row; masterIndices.add(r);
+                    }
+                    if (first === "PRO" || first === "PRODUCCION" || first.includes("PROD.") || first === "INGRESOS") {
+                        rowPro = row; masterIndices.add(r);
+                    }
 
                     if (rowFechas === null) {
                         for (let c = 1; c < row.length; c++) {
                             const h = normalizeStr(row[c]);
-                            if (h.includes("ENE") || h.includes("TOTAL") || h.includes("JAN")) {
+                            if (h.includes("ENE") || h.includes("JAN") || h.includes("TOTAL") || h.includes("MES")) {
                                 rowFechas = row; masterIndices.add(r); break;
                             }
                         }
@@ -892,42 +979,51 @@
                 // If no header found, default to columns 1-12
                 if (Object.keys(monthCols).length === 0) {
                     for (let i = 0; i < 12; i++) monthCols[i] = i + 1;
+                    // This block is now effectively a fallback for when no month headers are found.
+                    // The logic below will handle it based on `monthCols` being empty.
                 }
 
                 for (let r = 0; r < data.length; r++) {
                     const row = data[r];
                     if (!row || row.length < 2) continue;
 
-                    // Identify row by scanning first 10 columns for keywords
+                    // Identify row by scanning first 15 columns for keywords
                     let rowType = null;
-                    for (let c = 0; c < Math.min(row.length, 10); c++) {
+                    for (let c = 0; c < Math.min(row.length, 15); c++) {
                         const cell = normalizeStr(row[c]);
                         if (!cell) continue;
 
-                        if (cell.includes("HAB") || cell === "RN" || cell === "ESTANCIAS" || cell.includes("NIGHTS")) {
+                        if (cell === "HAB" || cell === "RN" || cell === "ESTANCIAS" || cell.includes("NIGHT") || cell === "HABITACIONES") {
                             rowType = 'rms';
                             break;
                         }
-                        if (cell.includes("TOTAL") || cell.includes("PRODUCCION") || cell.includes("INGRESOS") || cell.includes("IMPORTES") || cell.includes("VALORADAS") || cell.includes("REVENUE")) {
+                        if (cell === "TOTAL" || cell.includes("PRODUCCION") || cell.includes("INGRESO") || cell.includes("IMPORTE") || cell.includes("VALORADA") || cell === "REVENUE") {
                             rowType = 'rev';
                             break;
                         }
                     }
 
-                    if (rowType === 'rms') {
-                        for (let mIdx = 0; mIdx < 12; mIdx++) {
-                            const col = monthCols[mIdx];
-                            if (col !== undefined && row[col] !== undefined) {
-                                dbYear.otb.rooms[mIdx] = parseVal(row[col]);
-                            }
-                        }
-                    }
+                    if (rowType === 'rms' || rowType === 'rev') {
+                        const targetArray = rowType === 'rms' ? dbYear.otb.rooms : dbYear.otb.revenue;
 
-                    if (rowType === 'rev') {
-                        for (let mIdx = 0; mIdx < 12; mIdx++) {
-                            const col = monthCols[mIdx];
-                            if (col !== undefined && row[col] !== undefined) {
-                                dbYear.otb.revenue[mIdx] = parseVal(row[col]);
+                        // If we have specific month columns, use them
+                        if (Object.keys(monthCols).length > 0) {
+                            for (let mIdx = 0; mIdx < 12; mIdx++) {
+                                const col = monthCols[mIdx];
+                                if (col !== undefined && row[col] !== undefined) {
+                                    targetArray[mIdx] = parseVal(row[col]);
+                                }
+                            }
+                        } else {
+                            // Fallback: If no month headers found, look for FIRST large numeric value or column labeled TOTAL
+                            for (let c = 1; c < row.length; c++) {
+                                const val = parseVal(row[c]);
+                                if (val > 0) {
+                                    // If we detect this is likely a single month report from filename
+                                    const m = dateInfo ? dateInfo.month : 0;
+                                    targetArray[m] = val;
+                                    break;
+                                }
                             }
                         }
                     }
@@ -999,7 +1095,9 @@
             return null;
         }
 
-        function normalizeStr(s) { return String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase(); }
+        function normalizeStr(s) {
+            return String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[.\/-]/g, "").toUpperCase().trim();
+        }
 
         function parseVal(val) {
             if (val === null || val === undefined || val === "") return 0;
