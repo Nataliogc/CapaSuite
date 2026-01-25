@@ -632,8 +632,14 @@
             const habRevLM = midx > 0 ? getV(groupedTY.HABITACION, midx - 1) : 0;
 
             // KPIs
-            const fmt = (n) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
-            const fmtNum = (n) => new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }).format(n);
+            const fmt = (n) => {
+                if (n === 0 || n === null || n === undefined) return "0 €";
+                return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".") + " €";
+            };
+            const fmtNum = (n) => {
+                if (n === 0 || n === null || n === undefined) return "0";
+                return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+            };
             const trend = (ty, ly, lm) => {
                 let res = '';
                 if (ly) {
@@ -662,25 +668,25 @@
             const adrTY = rmsTY > 0 ? habRevTY / rmsTY : 0;
             const adrLY = rmsLY > 0 ? habRevLY / rmsLY : 0;
             const adrLM = rmsLM > 0 ? habRevLM / rmsLM : 0;
-            document.getElementById('kpi-adr').innerText = adrTY.toFixed(1) + " €";
+            document.getElementById('kpi-adr').innerText = adrTY.toFixed(2).replace('.', ',') + " €";
             document.getElementById('trend-adr').innerHTML = trend(adrTY, adrLY, adrLM);
 
             const revpacTY = paxTY > 0 ? revTY / paxTY : 0;
             const revpacLY = paxLY > 0 ? revLY / paxLY : 0;
             const revpacLM = paxLM > 0 ? revLM / paxLM : 0;
-            document.getElementById('kpi-revpac').innerText = revpacTY.toFixed(1) + " €";
+            document.getElementById('kpi-revpac').innerText = revpacTY.toFixed(2).replace('.', ',') + " €";
             document.getElementById('trend-revpac').innerHTML = trend(revpacTY, revpacLY, revpacLM);
 
             const occTY = (rmsTY / (HOTELS[currentHotel].rooms * (midx === -1 ? 365 : 30)) * 100);
             const occLY = (rmsLY / (HOTELS[currentHotel].rooms * (midx === -1 ? 365 : 30)) * 100);
             const occLM = midx > 0 ? (rmsLM / (HOTELS[currentHotel].rooms * 30) * 100) : 0;
-            document.getElementById('kpi-occ').innerText = occTY.toFixed(1) + " %";
+            document.getElementById('kpi-occ').innerText = occTY.toFixed(1).replace('.', ',') + " %";
             document.getElementById('trend-occ').innerHTML = trend(occTY, occLY, occLM);
 
             const comppaxTY = paxTY > 0 ? compTY / paxTY : 0;
             const comppaxLY = paxLY > 0 ? compLY / paxLY : 0;
             const comppaxLM = paxLM > 0 ? compLM / paxLM : 0;
-            document.getElementById('kpi-comppax').innerText = comppaxTY.toFixed(1) + " €";
+            document.getElementById('kpi-comppax').innerText = comppaxTY.toFixed(2).replace('.', ',') + " €";
             document.getElementById('trend-comppax').innerHTML = trend(comppaxTY, comppaxLY, comppaxLM);
 
             // Table

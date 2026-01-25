@@ -651,8 +651,8 @@
 
         function renderDashboard() {
             const data = db[currentHotel][currentYear]; if (!data) return;
+            const dataPrev = db[currentHotel][currentYear - 1];
             const concepts = Object.values(data.segment);
-            const hotelCap = HOTELS[currentHotel].rooms;
 
             const mTotals = new Array(12).fill(0);
             const mRooms = new Array(12).fill(0);
@@ -662,6 +662,17 @@
                     mRooms[i] += c.rooms[i];
                 }
             });
+
+            const mTotalsPrev = new Array(12).fill(0);
+            const mRoomsPrev = new Array(12).fill(0);
+            if (dataPrev) {
+                Object.values(dataPrev.segment).forEach(c => {
+                    for (let i = 0; i < 12; i++) {
+                        mTotalsPrev[i] += c.revenue[i];
+                        mRoomsPrev[i] += c.rooms[i];
+                    }
+                });
+            }
 
             const midx = currentMonthFilter === "All" ? -1 : parseInt(currentMonthFilter);
 
@@ -677,13 +688,54 @@
                 totalRN = midx === -1 ? mRooms.reduce((a, b) => a + b, 0) : mRooms[midx];
             }
 
-            const fmt = (n) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
-            const fmtNum = (n) => new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }).format(n);
-            const fmtVal = (n) => currentMetric === 'revenue' ? fmt(n) : (currentMetric === 'adr' ? n.toFixed(2) + " €" : fmtNum(n));
+            // LY Data for Trends
+            let totalRevPrev = 0, totalRNPrev = 0;
+            if (dataPrev) {
+                const totalObjPrev = dataPrev.segment["TOTAL"];
+                if (totalObjPrev) {
+                    totalRevPrev = midx === -1 ? totalObjPrev.revenue.reduce((a, b) => a + b, 0) : totalObjPrev.revenue[midx];
+                    totalRNPrev = midx === -1 ? totalObjPrev.rooms.reduce((a, b) => a + b, 0) : totalObjPrev.rooms[midx];
+                } else {
+                    totalRevPrev = midx === -1 ? mTotalsPrev.reduce((a, b) => a + b, 0) : mTotalsPrev[midx];
+                    totalRNPrev = midx === -1 ? mRoomsPrev.reduce((a, b) => a + b, 0) : mRoomsPrev[midx];
+                }
+            }
+
+            const fmt = (n) => {
+                if (n === 0 || n === null || n === undefined) return "0 €";
+                return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".") + " €";
+            };
+            const fmtNum = (n) => {
+                if (n === 0 || n === null || n === undefined) return "0";
+                return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+            };
+            const fmtVal = (n) => currentMetric === 'revenue' ? fmt(n) : (currentMetric === 'adr' ? n.toFixed(2).replace('.', ',') + " €" : fmtNum(n));
 
             document.getElementById('kpi-prod').innerText = fmt(totalRev);
             document.getElementById('kpi-rooms').innerText = fmtNum(totalRN);
-            document.getElementById('kpi-adr').innerText = (totalRN > 0 ? (totalRev / totalRN).toFixed(2) : "0") + " €";
+            const adr = totalRN > 0 ? (totalRev / totalRN) : 0;
+            document.getElementById('kpi-adr').innerText = adr.toFixed(2).replace('.', ',') + " €";
+
+            // Trends
+            const setTrend = (id, cur, prev) => {
+                const el = document.getElementById(id);
+                if (!prev) { el.innerText = "—"; return; }
+                const diff = ((cur - prev) / prev * 100).toFixed(1);
+                const isPos = parseFloat(diff) >= 0;
+                el.innerHTML = `<span style="color:${isPos ? 'var(--success)' : '#ef4444'}">${isPos ? '▲' : '▼'} ${Math.abs(diff)}%</span> vs LY`;
+            };
+            setTrend('kpi-prod-diff', totalRev, totalRevPrev);
+            setTrend('kpi-rooms-diff', totalRN, totalRNPrev);
+            const adrPrev = totalRNPrev > 0 ? (totalRevPrev / totalRNPrev) : 0;
+            setTrend('kpi-adr-diff', adr, adrPrev);
+
+            // RevPAR
+            const hotelRooms = HOTELS[currentHotel].rooms;
+            const daysInPeriod = midx === -1 ? 365 : 30;
+            const revpar = totalRev / (hotelRooms * daysInPeriod);
+            const revparPrev = totalRevPrev / (hotelRooms * daysInPeriod);
+            document.getElementById('kpi-revpar').innerText = revpar.toFixed(2).replace('.', ',') + " €";
+            setTrend('kpi-revpar-diff', revpar, revparPrev);
 
             // Table
             const tbody = document.getElementById('tableBody');
@@ -720,24 +772,68 @@
             }
             tbody.innerHTML = body;
 
-            updateCharts(mTotals, concepts, midx);
+            updateCharts(mTotals, mRooms, mTotalsPrev, mRoomsPrev, concepts, midx);
         }
 
-        function updateCharts(mTotals, concepts, midx) {
+        function updateCharts(mTotals, mRooms, mTotalsPrev, mRoomsPrev, concepts, midx) {
+            const isRooms = currentMetric === 'rooms';
+            const isAdr = currentMetric === 'adr';
+
+            const getMetricData = (revArr, rmsArr) => {
+                if (isRooms) return rmsArr;
+                if (isAdr) return revArr.map((v, i) => rmsArr[i] > 0 ? (v / rmsArr[i]).toFixed(1) : 0);
+                return revArr;
+            };
+
+            const mainData = getMetricData(mTotals, mRooms);
+            const prevData = getMetricData(mTotalsPrev, mRoomsPrev);
+
             if (charts.main) charts.main.destroy();
             charts.main = new Chart(document.getElementById('mainChart'), {
-                type: 'line', data: { labels: SHORT_MONTHS, datasets: [{ label: currentYear, data: mTotals, borderColor: '#4f46e5', fill: true, backgroundColor: 'rgba(79,70,229,0.1)', tension: 0.4 }] },
+                type: 'line',
+                data: {
+                    labels: SHORT_MONTHS,
+                    datasets: [
+                        { label: currentYear, data: mainData, borderColor: '#4f46e5', fill: true, backgroundColor: 'rgba(79,70,229,0.1)', tension: 0.4 },
+                        { label: (currentYear - 1), data: prevData, borderColor: '#94a3b8', borderDash: [5, 5], fill: false, tension: 0.4 }
+                    ]
+                },
                 options: { maintainAspectRatio: false }
+            });
+
+            // Comparativa Anual Bar Chart
+            if (charts.top) charts.top.destroy();
+            const yearSum = mainData.reduce((a, b) => parseFloat(a) + parseFloat(b), 0);
+            const prevSum = prevData.reduce((a, b) => parseFloat(a) + parseFloat(b), 0);
+
+            charts.top = new Chart(document.getElementById('topChart'), {
+                type: 'bar',
+                data: {
+                    labels: [currentYear, (currentYear - 1)],
+                    datasets: [{
+                        data: [yearSum, prevSum],
+                        backgroundColor: ['#4f46e5', '#94a3b8']
+                    }]
+                },
+                options: { maintainAspectRatio: false, plugins: { legend: { display: false } } }
             });
 
             if (charts.dist) charts.dist.destroy();
             const dLabels = [], dData = [];
             concepts.forEach(c => {
-                const v = midx === -1 ? c.revenue.reduce((a, b) => a + b, 0) : c.revenue[midx];
+                if (c.name === "TOTAL") return;
+                let v = 0;
+                if (midx === -1) {
+                    const r = c.revenue.reduce((a, b) => a + b, 0);
+                    const rms = c.rooms.reduce((a, b) => a + b, 0);
+                    v = isRooms ? rms : (isAdr ? (rms > 0 ? r / rms : 0) : r);
+                } else {
+                    v = isRooms ? c.rooms[midx] : (isAdr ? (c.rooms[midx] > 0 ? c.revenue[midx] / c.rooms[midx] : 0) : c.revenue[midx]);
+                }
                 if (v > 0) { dLabels.push(c.name); dData.push(v); }
             });
             charts.dist = new Chart(document.getElementById('distChart'), {
-                type: 'doughnut', data: { labels: dLabels, datasets: [{ data: dData, backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'] }] },
+                type: 'doughnut', data: { labels: dLabels, datasets: [{ data: dData, backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#475569', '#94a3b8'] }] },
                 options: { maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
             });
         }
