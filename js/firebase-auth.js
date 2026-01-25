@@ -22,7 +22,7 @@ const auth = firebase.auth();
 
 // Claves de base de datos
 const DB_KEY = "hotel_manager_db_v2";
-const CONFIG_KEY = "hotel_manager_config_v2";
+const CONFIG_KEY = "upload_config_db_v2";
 
 /**
  * Función para proteger las páginas
