@@ -205,6 +205,46 @@
                 transform: rotate(360deg);
             }
         }
+
+        /* MODAL */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 600px;
+            position: relative;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-muted);
+        }
+
+        .modal-header {
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
+        }
     </style>
 </head>
 
@@ -215,8 +255,13 @@
                 <a href="index.html"><img src="Imagen/logo, CapaSuite.png" alt="CapaSuite" style="height: 50px;"></a>
                 <img id="hotelLogo" src="Imagen/logo-guadiana.svg" alt="Logo Hotel" style="height: 45px;">
                 <div class="title">
-                    <h1>Revenue Assistant</h1>
-                    <p>Análisis Pace y Producción Detallada</p>
+                    <h1 id="mainTitle">Revenue Assistant</h1>
+                    <div style="display: flex; align-items: center; gap: 12px; margin-top: 2px;">
+                        <p id="mainSubtitle" style="margin:0;">Análisis Pace y Producción Detallada</p>
+                        <span id="updateBadge"
+                            style="display:none; font-size: 0.75rem; background: #fee2e2; color: #b91c1c; padding: 3px 12px; border-radius: 20px; font-weight: 600; border: 1px solid #fecaca; white-space: nowrap;">📅
+                            Actualizado: --</span>
+                    </div>
                 </div>
             </div>
             <div style="display:flex; gap:12px; align-items:center;">
@@ -325,6 +370,22 @@
         </div>
     </div>
 
+    <!-- Modal para Drill-down -->
+    <div id="subMixModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal"
+                onclick="document.getElementById('subMixModal').style.display='none'">&times;</span>
+            <div class="modal-header">
+                <h3 id="subMixTitle" style="color: var(--primary);">Distribución Detallada</h3>
+                <p id="subMixSubtitle" style="font-size: 0.8rem; color: var(--text-muted);">Desglose por conceptos del
+                    grupo seleccionado</p>
+            </div>
+            <div style="height: 400px; position: relative;">
+                <canvas id="subMixChart"></canvas>
+            </div>
+        </div>
+    </div>
+
     <script>
         const MONTH_ORDER = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
         const SHORT_MONTHS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
@@ -412,8 +473,8 @@
             const monthText = midx === -1 ? "Anual" : MONTH_ORDER[midx];
 
             // Update the title and subtitle to be more prominent
-            document.querySelector('.title h1').innerText = `Revenue Assistant | ${currentYear}`;
-            document.querySelector('.title p').innerText = `Análisis Pace y Producción Detallada: ${monthText}`;
+            document.getElementById('mainTitle').innerText = `Revenue Assistant | ${currentYear}`;
+            document.getElementById('mainSubtitle').innerText = `Análisis Pace y Producción Detallada: ${monthText}`;
             render();
         }
 
@@ -436,6 +497,16 @@
         function render() {
             if (!db[currentHotel] || !db[currentHotel][currentYear]) return;
             const data = db[currentHotel][currentYear];
+
+            // Show last update if available
+            const badge = document.getElementById('updateBadge');
+            if (data.lastUpdate) {
+                badge.innerText = `📅 Actualizado: ${data.lastUpdate}`;
+                badge.style.display = 'inline-block';
+            } else {
+                badge.style.display = 'none';
+            }
+
             const prevYear = String(parseInt(currentYear) - 1);
             const dataPrev = db[currentHotel][prevYear];
 
@@ -672,12 +743,17 @@
                             fill: false,
                             tension: 0.4,
                             borderDash: [5, 5],
-                            pointRadius: 0
+                            pointRadius: 4,
+                            hoverRadius: 6
                         } : null
                     ].filter(d => d)
                 },
                 options: {
                     maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
                     plugins: {
                         legend: { position: 'top' },
                         tooltip: {
@@ -699,17 +775,37 @@
             });
 
             // 2. Mix Chart (Doughnut)
-            const mixData = [], mixLabels = [];
-            Object.values(groupedTY).forEach(g => {
+            const mixData = [], mixLabels = [], mixIds = [];
+            Object.entries(groupedTY).forEach(([id, g]) => {
                 const val = midx === -1 ? g.revenue.reduce((a, b) => (a || 0) + (b || 0), 0) : (g.revenue[midx] || 0);
-                if (val > 0) { mixData.push(val); mixLabels.push(g.name.split('. ')[1]); }
+                if (val > 0) {
+                    mixData.push(val);
+                    mixLabels.push(g.name.split('. ')[1]);
+                    mixIds.push(id);
+                }
             });
 
             if (charts.mix) charts.mix.destroy();
             charts.mix = new Chart(document.getElementById('mixChart'), {
                 type: 'doughnut',
                 data: { labels: mixLabels, datasets: [{ data: mixData, backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16', '#64748b', '#1e293b'] }] },
-                options: { maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+                options: {
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right' },
+                        title: { display: true, text: 'Click para ver detalle', font: { size: 10 } }
+                    },
+                    onClick: (e, items) => {
+                        if (items.length > 0) {
+                            const idx = items[0].index;
+                            const gid = mixIds[idx];
+                            showDrillDown(gid, groupedTY, midx);
+                        }
+                    },
+                    onHover: (event, chartElement) => {
+                        event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
+                    }
+                }
             });
 
             // 3. Pace Chart (Bar)
@@ -742,6 +838,44 @@
                     ]
                 },
                 options: { maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+            });
+        }
+
+        function showDrillDown(gid, grouped, midx) {
+            const group = grouped[gid];
+            if (!group || !group.details.length) return;
+
+            document.getElementById('subMixModal').style.display = 'flex';
+            document.getElementById('subMixTitle').innerText = `Desglose: ${group.name.split('. ')[1]}`;
+
+            const labels = [], data = [];
+            group.details.sort((a, b) => {
+                const getV = (arr) => midx === -1 ? arr.reduce((x, y) => (x || 0) + (y || 0), 0) : (arr[midx] || 0);
+                return getV(b.revenue) - getV(a.revenue);
+            }).forEach(s => {
+                const val = midx === -1 ? s.revenue.reduce((a, b) => (a || 0) + (b || 0), 0) : (s.revenue[midx] || 0);
+                if (val > 0) {
+                    labels.push(s.name);
+                    data.push(val);
+                }
+            });
+
+            if (charts.subMix) charts.subMix.destroy();
+            charts.subMix = new Chart(document.getElementById('subMixChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16', '#64748b', '#1e293b']
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }
+                    }
+                }
             });
         }
     </script>
