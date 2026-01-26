@@ -120,6 +120,8 @@ async function downloadFromCloud() {
 
             if (hasNewData) {
                 console.log("☁️ CapaSuite: Datos recuperados de la nube.");
+                // Disparar evento para que las páginas recarguen sus variables locales
+                window.dispatchEvent(new CustomEvent('capasuite-data-synced'));
                 return true;
             }
         }
@@ -141,13 +143,31 @@ window.forceCloudUpload = async function () {
 
 // Interceptar CapaStorage para auto-sincronizar cuando el usuario está logueado
 const originalSetItem = CapaStorage.setItem;
+const originalRemoveItem = CapaStorage.removeItem;
+
 CapaStorage.setItem = function (key, value) {
     originalSetItem(key, value);
     if (cloudAuth.currentUser && (key === SYNC_DB_KEY || key === SYNC_CONFIG_KEY || key === SYNC_COMP_KEY)) {
-        // Debounce simple para no saturar Firebase
         if (window._syncTimer) clearTimeout(window._syncTimer);
-        window._syncTimer = setTimeout(uploadToCloud, 2000);
+        window._syncTimer = setTimeout(uploadToCloud, 1000); // 1s para cambios normales
     }
 };
+
+CapaStorage.removeItem = function (key) {
+    originalRemoveItem(key);
+    if (cloudAuth.currentUser && (key === SYNC_DB_KEY || key === SYNC_CONFIG_KEY || key === SYNC_COMP_KEY)) {
+        // Para borrar, somos más agresivos
+        if (window._syncTimer) clearTimeout(window._syncTimer);
+        uploadToCloud(); // Sincronización inmediata para borrar
+    }
+};
+
+// Asegurar sincronización antes de cerrar la página
+window.addEventListener('beforeunload', () => {
+    if (window._syncTimer) {
+        clearTimeout(window._syncTimer);
+        uploadToCloud();
+    }
+});
 
 window.auth = cloudAuth;

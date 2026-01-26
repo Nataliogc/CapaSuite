@@ -119,30 +119,32 @@
 
         .kpi-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 12px;
         }
 
         .card {
             background: var(--bg-surface);
             border-radius: var(--radius);
-            padding: 24px;
+            padding: 12px 16px;
             box-shadow: var(--shadow-md);
             border: 1px solid var(--border);
         }
 
         .kpi-label {
-            font-size: 0.8rem;
+            font-size: 0.65rem;
             color: var(--text-muted);
             text-transform: uppercase;
-            font-weight: 600;
-            margin-bottom: 8px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            line-height: 1.1;
         }
 
         .kpi-value {
-            font-size: 1.8rem;
-            font-weight: 700;
+            font-size: 1.25rem;
+            font-weight: 800;
             color: var(--text-main);
+            letter-spacing: -0.5px;
         }
 
         .kpi-diff {
@@ -210,40 +212,42 @@
         }
 
         .table-container {
-            overflow: auto;
-            max-height: 500px;
-            border-radius: var(--radius);
-            box-shadow: var(--shadow-md);
+            overflow-x: auto;
             background: var(--bg-surface);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            max-height: 700px;
+            overflow-y: auto;
         }
 
         table {
             width: 100%;
-            border-collapse: collapse;
-            white-space: nowrap;
+            border-collapse: separate;
+            border-spacing: 0;
+            text-align: left;
         }
 
-        th,
-        td {
-            padding: 12px 16px;
-            border-bottom: 1px solid var(--border);
-            text-align: right;
+        thead {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--bg-surface);
         }
 
         th {
-            background: #f1f5f9;
+            padding: 14px 16px;
+            border-bottom: 2px solid var(--border);
+            font-weight: 700;
             color: var(--text-muted);
-            font-weight: 600;
             text-transform: uppercase;
             font-size: 0.75rem;
-            position: sticky;
-            top: 0;
-            z-index: 10;
+            white-space: nowrap;
+            background: #f8fafc;
         }
 
+        /* Sticky Column for Segment Names */
         th:first-child,
         td:first-child {
-            text-align: left;
             position: sticky;
             left: 0;
             background: inherit;
@@ -360,6 +364,47 @@
             background: #10b981;
             border-radius: 50%;
         }
+
+        /* SEGMENTED TOGGLES */
+        .metric-toggles {
+            display: flex;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px;
+            border-radius: 8px;
+            gap: 4px;
+        }
+
+        .toggle-btn {
+            background: transparent;
+            border: none;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .toggle-btn.active {
+            background: white;
+            color: var(--primary);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .metric-icon {
+            display: none;
+        }
+
+        /* Hide the old big icon */
     </style>
 </head>
 
@@ -368,8 +413,9 @@
         <div class="nav-links">
             <a href="index.html">🏠 Inicio</a>
             <a href="AnalisisProduccion.html">📈 Producción</a>
-            <a href="AnalisisSegmentos.html" class="active">👥 Segmentos</a>
+            <a href="AnalisisSegmentos.html">👥 Segmentos</a>
             <a href="AnalisisCompetencia.html">⚖️ Competencia</a>
+            <a href="AnalisisIA.html" style="color:#f59e0b; font-weight:800;">✨ CapaAI</a>
             <a href="CalculadoraPresupuesto.html">💰 Presupuesto</a>
             <a href="CargarDatos.html">⚙️ Config</a>
         </div>
@@ -395,18 +441,13 @@
                     style="padding:10px; border-radius:8px; border:1px solid #e2e8f0;"></select>
                 <select id="monthSelector" class="form-select" onchange="updateView()"
                     style="padding:10px; border-radius:8px; border:1px solid #e2e8f0;"></select>
-                <select id="metricSelector" class="form-select" onchange="updateView()"
-                    style="padding:10px; border-radius:8px; border:1px solid #e2e8f0; font-weight:600; color:var(--primary);">
-                    <option value="revenue" selected>💶 Producción (€)</option>
-                    <option value="rooms">🛏️ Habitaciones (RN)</option>
-                    <option value="adr">🏷️ ADR (€/hab)</option>
-                </select>
+
                 <select id="hotelSelector" class="form-select" onchange="switchHotel(this.value)"
                     style="padding:10px; border-radius:8px; border:1px solid #e2e8f0; font-weight:600;">
                     <option value="Guadiana">Hotel Guadiana</option>
                     <option value="Cumbria">Hotel Cumbria</option>
                 </select>
-                <button class="btn" onclick="document.getElementById('fileInput').click()">📂 Añadir</button>
+
             </div>
             <script>
                 auth.onAuthStateChanged(user => {
@@ -448,9 +489,18 @@
                 </div>
             </div>
 
-            <div class="metric-indicator">
-                <span class="metric-icon" id="metric-icon">💶</span>
-                <span class="metric-name" id="metric-name">PRODUCCIÓN (€)</span>
+            <div class="metric-indicator" style="justify-content: space-between;">
+                <div class="metric-toggles">
+                    <button class="toggle-btn active" id="btn-revenue" onclick="selectMetric('revenue')">
+                        💶 Producción
+                    </button>
+                    <button class="toggle-btn" id="btn-rooms" onclick="selectMetric('rooms')">
+                        🛏️ Habitaciones
+                    </button>
+                    <button class="toggle-btn" id="btn-adr" onclick="selectMetric('adr')">
+                        🏷️ ADR
+                    </button>
+                </div>
                 <span class="metric-years" id="metric-years">2026 vs 2025</span>
             </div>
 
@@ -499,6 +549,20 @@
         let charts = {};
 
         window.onload = function () { loadData(); document.getElementById('hotelSelector').value = currentHotel; };
+
+        // Escuchar cambios desde la nube para recargar variables locales
+        window.addEventListener('capasuite-data-synced', () => {
+            const s = CapaStorage.getItem(STORAGE_KEY);
+            if (s) {
+                try {
+                    db = JSON.parse(s);
+                    refreshAvailableYears();
+                    if (currentYear) {
+                        initControls();
+                    }
+                } catch (e) { console.error("Error recargando DB desde nube", e); }
+            }
+        });
 
         function switchHotel(h) {
             currentHotel = h;
@@ -580,148 +644,145 @@
         }
 
         function processData(data, fileName) {
-            // 1. Detect Year and Months from headers
             let detectedYear = "2026";
-            let headerRow = null;
+            let headerRowIndex = -1;
             let colMap = [];
 
-            for (let r = 0; r < 20; r++) {
+            // 1. Encontrar la verdadera fila de cabecera (buscando meses)
+            for (let r = 0; r < Math.min(data.length, 20); r++) {
                 const row = data[r] || [];
-                if (row.some(cell => {
-                    const s = String(cell).toUpperCase();
-                    if (s.includes("ENE") || s.includes("JAN") || s.includes("TOTAL")) return true;
-                    if (s.match(/\d{1,2}[\/-]\d{1,2}/)) return true;
-                    if (cell instanceof Date) return true;
-                    return false;
-                })) {
-                    headerRow = row;
-                    break;
-                }
-            }
+                let monthsFound = 0;
+                let potentialColMap = [];
 
-            if (headerRow) {
-                for (let c = 0; c < headerRow.length; c++) {
-                    const cell = headerRow[c];
-                    const s = String(cell).toUpperCase();
-
-                    const yrMatch = s.match(/[.\-\/ ](\d{2,4})$/);
-                    if (yrMatch) {
-                        const yFound = yrMatch[1].length === 2 ? "20" + yrMatch[1] : yrMatch[1];
-                        if (yFound > 2000) detectedYear = yFound;
-                    }
-
-                    if (c < 2) continue;
+                for (let c = 0; c < row.length; c++) {
+                    const cell = row[c];
+                    if (!cell) continue;
 
                     let mIdx = -1;
+
+                    // A. Texto
+                    const s = normalizeStr(cell);
                     const SHORT_MONTHS_MAP = { "ENE": 0, "JAN": 0, "FEB": 1, "MAR": 2, "ABR": 3, "APR": 3, "MAY": 4, "JUN": 5, "JUL": 6, "AGO": 7, "AUG": 7, "SEP": 8, "OCT": 9, "NOV": 10, "DIC": 11, "DEC": 11 };
                     for (const [name, index] of Object.entries(SHORT_MONTHS_MAP)) {
                         if (s.startsWith(name)) { mIdx = index; break; }
                     }
+
+                    // B. Detectar fecha Excel (número > 40000) o Date Object
                     if (mIdx === -1) {
-                        const match = s.match(/(\d{1,2})[\/-](\d{1,2})/);
-                        if (match) {
-                            let m = parseInt(match[2]);
-                            if (m > 12) m = parseInt(match[1]);
-                            mIdx = (m >= 1 && m <= 12) ? m - 1 : -1;
+                        if (cell instanceof Date) {
+                            mIdx = cell.getMonth();
+                            const y = cell.getFullYear();
+                            if (y > 2000) detectedYear = y.toString();
+                        } else if (!isNaN(cell) && parseFloat(cell) > 40000) {
+                            // Excel serial date
+                            const dateObj = new Date((cell - 25569) * 86400 * 1000);
+                            mIdx = dateObj.getMonth();
+                            const y = dateObj.getFullYear();
+                            if (y > 2000) detectedYear = y.toString();
                         }
                     }
-                    if (mIdx === -1) {
-                        if (cell instanceof Date) mIdx = cell.getMonth();
-                        else if (!isNaN(cell) && cell > 40000) mIdx = new Date((cell - 25569) * 86400 * 1000).getMonth();
+
+                    if (mIdx !== -1) {
+                        potentialColMap[c] = mIdx;
+                        monthsFound++;
                     }
-                    colMap[c] = mIdx;
+
+                    // Detectar año por texto si no se sacó por fecha
+                    const yrMatch = String(cell).match(/[.\s\/-](\d{2,4})$/);
+                    if (yrMatch) {
+                        const yFound = yrMatch[1].length === 2 ? "20" + yrMatch[1] : yrMatch[1];
+                        if (parseInt(yFound) >= 2000) detectedYear = yFound;
+                    }
+                }
+
+                if (monthsFound >= 2) {
+                    headerRowIndex = r;
+                    colMap = potentialColMap;
+                    break;
                 }
             }
 
-            if (!db[currentHotel][detectedYear]) db[currentHotel][detectedYear] = { segment: {}, service: {}, lastUpdate: "" };
+            if (headerRowIndex === -1) return;
+
+            if (!db[currentHotel][detectedYear]) db[currentHotel][detectedYear] = { segment: {}, lastUpdate: "" };
             const dbYear = db[currentHotel][detectedYear];
             dbYear.segment = {};
 
             let currentSeg = null;
-            let filledHab = false;
-            let filledPro = false;
 
-            // 2. Iterate through rows
-            for (let r = 0; r < data.length; r++) {
-                let row = data[r];
+
+            for (let r = headerRowIndex + 1; r < data.length; r++) {
+                const row = data[r];
                 if (!row || row.length < 2) continue;
 
-                // Súper-detección de fila (Habitaciones vs Producción)
-                let rowType = null;
-                for (let c = 0; c < Math.min(row.length, 5); c++) {
-                    const nCell = normalizeStr(row[c]);
-                    if (nCell === "HAB" || nCell === "RMS" || nCell === "RN" || nCell === "ESTANCIAS" || nCell === "NIGHTS" || nCell === "UNITS" || nCell === "EST" || nCell.includes("HABITACIO")) {
-                        rowType = 'rms'; break;
-                    }
-                    if (nCell === "PRO" || nCell === "REV" || nCell === "PROD" || nCell === "VTA" || nCell === "ING" || nCell === "REVENUE" || nCell === "IMPORTE" || nCell === "VALORADA" || nCell.includes("PRODUCCIO")) {
-                        rowType = 'rev'; break;
-                    }
-                }
+                let rawColA = String(row[0] || "").trim();
+                const colB = normalizeStr(row[1] || "");
+                const nColA = normalizeStr(rawColA);
 
-                const isHab = rowType === 'rms';
-                const isPro = rowType === 'rev';
+                // Detectar métrica (flexible)
+                const isHab = colB === "HAB" || colB.includes("RN") || colB.includes("RM") || colB.includes("OCU") || colB.includes("HAB");
+                const isPro = colB === "PRO" || colB.includes("REV") || colB.includes("ING") || colB.includes("VTA") || colB.includes("PRO");
 
-                // Detección de nombre de Segmento
-                if (col0 && !isHab && !isPro) {
-                    currentSeg = nCol0;
-                    filledHab = false;
-                    filledPro = false;
-                } else if (!col0 && !isHab && !isPro && nCol1) {
-                    currentSeg = nCol1; // Fallback to Col B for name if Col A is empty
-                    filledHab = false;
-                    filledPro = false;
-                } else if (!col0 && (isHab || isPro)) {
-                    if ((isHab && filledHab) || (isPro && filledPro)) {
-                        currentSeg = "TOTAL";
-                    }
-                }
+                // Filtros de filas basura / totales
+                if (nColA.includes("TOTAL") || nColA.includes("RESUMEN") || nColA === "SUMA") continue;
+                if (nColA.includes("VARIOS") && nColA.includes("21")) continue; // Exclude "Varios 21% Iva"
+                if (rawColA === "" && (colB === "TOTAL" || colB.includes("RESULTADO"))) continue;
 
-                // FALLBACK: If we have a segment name but NO explicit row type (e.g. data on same row)
-                if (currentSeg && !isHab && !isPro) {
-                    // Check if we have numbers in mapped columns
-                    let hasNum = false;
-                    for (let c = 2; c < row.length; c++) {
-                        if (colMap[c] !== undefined && colMap[c] >= 0 && parseVal(row[c]) > 0) {
-                            hasNum = true; break;
-                        }
-                    }
-                    if (hasNum) {
-                        // Assume type based on Filename or Default to Revenue
-                        const fNameUpper = normalizeStr(fileName);
-                        if (fNameUpper.includes("HAB") || fNameUpper.includes("RN") || fNameUpper.includes("ROOM") || fNameUpper.includes("OCUPACION")) {
-                            isHab = true;
+                // --- GESTIÓN DE SEGMENTOS IMPLANTANDO LÓGICA DE CONTINUIDAD ---
+
+                // Si la celda A tiene texto...
+                if (rawColA !== "") {
+                    // NO queremos que "SEG" o "SEGMENTO" sean nombres de segmento validos.
+                    // A menudo son solo cabeceras repetidas.
+                    if (nColA === "SEG" || nColA === "SEGMENTO") {
+                        // Si nos encontramos una fila que SOLO pone "SEG" en A,
+                        // puede ser el inicio del bloque "sin nombre" (S/S).
+                        // Si NO tenemos segmento activo, asumimos que empieza el S/S.
+                        if (!currentSeg) {
+                            currentSeg = "S/S";
                         } else {
-                            isPro = true;
+                            // Si YA tenemos un segmento activo (ej: AGENCIAS), 
+                            // y aparece "SEGMENTO" de nuevo, lo ignoramos, 
+                            // asumiendo que es una cabecera para el SIGUIENTE bloque de datos de AGENCIAS
+                            // o simplemente ruido. Mantenemos currentSeg = AGENCIAS.
                         }
+                    } else {
+                        // Es un nombre legítimo (AGENCIAS, GRUPOS, ETC)
+                        currentSeg = rawColA;
                     }
+                } else {
+                    // Si A está vacío...
+                    if (!currentSeg) {
+                        // Y no tenemos segmento previo (caso especial inicio fila 1)
+                        if (isHab || isPro) currentSeg = "S/S";
+                    }
+                    // Si ya tenemos currentSeg, lo mantenemos (continuidad)
                 }
 
-                if (!currentSeg || currentSeg === "METRICA" || currentSeg === "CONCEPTOS") continue;
+                if (!currentSeg) continue;
+                if (!isHab && !isPro) continue; // Si no es fila de datos, pasamos
 
-                if (isHab || isPro) {
-                    if (!dbYear.segment[currentSeg]) {
-                        dbYear.segment[currentSeg] = { name: currentSeg, revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) };
-                    }
-                    const segObj = dbYear.segment[currentSeg];
+                // Asegurar que nunca se cuele "SEG" como nombre final
+                if (normalizeStr(currentSeg) === "SEG") currentSeg = "S/S";
 
-                    for (let c = 2; c < row.length; c++) {
-                        const midx = colMap[c];
-                        if (midx === undefined || midx < 0 || midx > 11) continue;
-                        let val = parseVal(row[c]);
-                        if (isHab) {
-                            segObj.rooms[midx] += val;
-                            filledHab = true;
-                        } else if (isPro) {
-                            segObj.revenue[midx] += val;
-                            filledPro = true;
-                        }
-                    }
+                if (!dbYear.segment[currentSeg]) {
+                    dbYear.segment[currentSeg] = { name: currentSeg, revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) };
+                }
+                const segObj = dbYear.segment[currentSeg];
+
+                // Extraer datos
+                for (let c = 0; c < row.length; c++) {
+                    const midx = colMap[c];
+                    if (midx === undefined || midx < 0) continue;
+                    let val = parseVal(row[c]);
+                    if (isHab) segObj.rooms[midx] += val;
+                    else if (isPro) segObj.revenue[midx] += val;
                 }
             }
-
             dbYear.lastUpdate = new Date().toLocaleDateString('es-ES');
         }
 
+        // Definición explícita de normalizeStr para asegurar que funciona aquí
         const normalizeStr = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[.\/-]/g, "").toUpperCase().trim();
 
         function parseVal(val) {
@@ -745,17 +806,28 @@
 
             const ms = document.getElementById('monthSelector');
             ms.innerHTML = '<option value="All">Todos los meses</option>' + MONTH_ORDER.map((m, i) => `<option value="${i}">${m}</option>`).join('');
+
+            // Set default toggle state
+            selectMetric('revenue');
+        }
+
+        // --- TOGGLE LOGIC ---
+        function selectMetric(val) {
+            currentMetric = val;
+
+            // Update Toggle UI
+            document.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
+            // Safe check in case button IDs don't match exactly or during transitions
+            const targetBtn = document.getElementById('btn-' + val);
+            if (targetBtn) targetBtn.classList.add('active');
+
             updateView();
         }
 
         function updateView() {
             currentYear = document.getElementById('yearSelector').value;
             currentMonthFilter = document.getElementById('monthSelector').value;
-            currentMetric = document.getElementById('metricSelector').value;
 
-            const info = { revenue: { icon: '💶', name: 'PRODUCCIÓN (€)' }, rooms: { icon: '🛏️', name: 'HABITACIONES (RN)' }, adr: { icon: '🏷️', name: 'ADR (€/hab)' } }[currentMetric];
-            document.getElementById('metric-icon').innerText = info.icon;
-            document.getElementById('metric-name').innerText = info.name;
             document.getElementById('metric-years').innerText = `${currentYear} vs ${(currentYear - 1)}`;
 
             renderDashboard();
@@ -823,10 +895,72 @@
             };
             const fmtVal = (n) => currentMetric === 'revenue' ? fmt(n) : (currentMetric === 'adr' ? n.toFixed(2).replace('.', ',') + " €" : fmtNum(n));
 
+            // Calculate elapsed days for YTD calculation (from Production data as source of truth for days)
+            let elapsedDays = 0;
+            const prodData = (db[currentHotel] && db[currentHotel][currentYear]) ? db[currentHotel][currentYear] : {};
+            const monthDays = new Array(12).fill(0);
+
+            if (prodData.daily) {
+                Object.keys(prodData.daily).forEach(dateStr => {
+                    const parts = dateStr.split('-');
+                    if (parts.length >= 2) {
+                        const m = parseInt(parts[1]) - 1;
+                        if (m >= 0 && m < 12) monthDays[m]++;
+                    }
+                });
+            }
+
+            // Sync monthDays with lastUpdate for headers
+            if (prodData.lastUpdate) {
+                const parts = prodData.lastUpdate.split(' ')[0].split(/[\/-]/);
+                if (parts.length === 3) {
+                    const d = parseInt(parts[0]);
+                    const m = parseInt(parts[1]) - 1;
+                    const y = parts[2].length === 2 ? "20" + parts[2] : parts[2];
+                    if (y === String(currentYear) && m >= 0 && m < 12) {
+                        monthDays[m] = d;
+                    }
+                }
+            }
+
+            if (midx === -1) {
+                const dailyDays = monthDays.reduce((a, b) => a + b, 0);
+                let updateDays = 0;
+                if (prodData.lastUpdate) {
+                    const parts = prodData.lastUpdate.split(' ')[0].split(/[\/-]/);
+                    if (parts.length === 3) updateDays = (parseInt(parts[1]) - 1) * 30.42 + parseInt(parts[0]);
+                }
+
+                const currentRealYear = new Date().getFullYear();
+                elapsedDays = (parseInt(currentYear) < currentRealYear) ? 365 : (updateDays > 0 ? updateDays : dailyDays);
+                if (elapsedDays === 0) elapsedDays = 1;
+
+                // Add counter badge to dashboard
+                const dayCounterHTML = `<div style="font-size: 0.73rem; color: var(--primary); font-weight: 800; margin-top: 4px; background: #eef2ff; display: inline-block; padding: 2px 10px; border-radius: 20px; border: 1px solid #c7d2fe;">🗓️ Día ${Math.floor(elapsedDays)} de 365</div>`;
+                document.getElementById('metric-years').innerHTML += ` ${dayCounterHTML}`;
+            } else {
+                let daysInM = monthDays[midx];
+                let updateDaysInM = 0;
+                if (prodData.lastUpdate) {
+                    const parts = prodData.lastUpdate.split(' ')[0].split(/[\/-]/);
+                    if (parts.length === 3) {
+                        const m = parseInt(parts[1]) - 1;
+                        if (m === midx) updateDaysInM = parseInt(parts[0]);
+                    }
+                }
+                // If we have a manual update date for THIS month, use it as the authority.
+                elapsedDays = updateDaysInM > 0 ? updateDaysInM : daysInM;
+                if (elapsedDays === 0) elapsedDays = 30.42;
+            }
+
+            const hotelRooms = HOTELS[currentHotel].rooms;
             document.getElementById('kpi-prod').innerText = fmt(totalRev);
             document.getElementById('kpi-rooms').innerText = fmtNum(totalRN);
             const adr = totalRN > 0 ? (totalRev / totalRN) : 0;
             document.getElementById('kpi-adr').innerText = adr.toFixed(2).replace('.', ',') + " €";
+
+            const revpar = totalRev / (hotelRooms * elapsedDays);
+            document.getElementById('kpi-revpar').innerText = revpar.toFixed(2).replace('.', ',') + " €";
 
             // Trends
             const setTrend = (id, cur, prev) => {
@@ -841,12 +975,8 @@
             const adrPrev = totalRNPrev > 0 ? (totalRevPrev / totalRNPrev) : 0;
             setTrend('kpi-adr-diff', adr, adrPrev);
 
-            // RevPAR
-            const hotelRooms = HOTELS[currentHotel].rooms;
-            const daysInPeriod = midx === -1 ? 365 : 30;
-            const revpar = totalRev / (hotelRooms * daysInPeriod);
-            const revparPrev = totalRevPrev / (hotelRooms * daysInPeriod);
-            document.getElementById('kpi-revpar').innerText = revpar.toFixed(2).replace('.', ',') + " €";
+            // RevPAR / Occupancy Fix
+            const revparPrev = totalRevPrev / (hotelRooms * (midx === -1 ? 365 : 30));
             setTrend('kpi-revpar-diff', revpar, revparPrev);
 
             // Table
@@ -854,32 +984,36 @@
             const thead = document.getElementById('tableHead');
             let body = '';
 
-            // Filter out empty segments and handle TOTAL uniquely
             const activeConcepts = concepts.filter(c => c.revenue.some(v => v > 0) || c.rooms.some(v => v > 0));
 
             if (midx === -1) {
-                thead.innerHTML = '<tr><th>Segmento</th>' + SHORT_MONTHS.map(m => `<th>${m}</th>`).join('') + '<th>Total</th><th>% Mix</th></tr>';
+                thead.innerHTML = '<tr><th style="background:#f1f5f9; z-index:110;">Segmento</th>' + SHORT_MONTHS.map((m, i) => {
+                    const d = monthDays[i];
+                    const dTag = d > 0 ? `<span style="font-size:0.6rem; color:var(--success); font-weight:800; margin-right:3px;">${d}</span>` : '';
+                    return `<th style="text-align:center;">${dTag}${m}</th>`;
+                }).join('') + '<th>Total</th><th>% Mix</th></tr>';
+
                 activeConcepts.sort((a, b) => b.revenue.reduce((x, y) => x + y, 0) - a.revenue.reduce((x, y) => x + y, 0)).forEach(c => {
-                    if (c.name === "TOTAL") return; // We handle total specially or skip if it's already in the header/KPIs
+                    if (c.name === "TOTAL") return;
                     const rowRev = c.revenue.reduce((a, b) => a + b, 0);
                     const rowRooms = c.rooms.reduce((a, b) => a + b, 0);
                     const valTotal = currentMetric === 'revenue' ? rowRev : (currentMetric === 'rooms' ? rowRooms : (rowRooms > 0 ? rowRev / rowRooms : 0));
 
                     const cells = c.revenue.map((v, idx) => {
                         const vCell = currentMetric === 'revenue' ? v : (currentMetric === 'rooms' ? c.rooms[idx] : (c.rooms[idx] > 0 ? v / c.rooms[idx] : 0));
-                        return `<td>${vCell ? fmtVal(vCell) : '-'}</td>`;
+                        return `<td style="text-align:center;">${vCell ? fmtVal(vCell) : '-'}</td>`;
                     }).join('');
 
-                    body += `<tr><td style="font-weight:600;">${c.name}</td>${cells}<td style="font-weight:700;">${fmtVal(valTotal)}</td><td>${(rowRev / totalRev * 100).toFixed(1)}%</td></tr>`;
+                    body += `<tr><td style="font-weight:600; background:white; position:sticky; left:0; z-index:20;">${c.name}</td>${cells}<td style="font-weight:700;">${fmtVal(valTotal)}</td><td>${(rowRev / totalRev * 100).toFixed(1)}%</td></tr>`;
                 });
             } else {
-                thead.innerHTML = '<tr><th>Segmento</th><th>Valor Detalle</th><th>% Mix Total</th></tr>';
+                thead.innerHTML = `<tr><th style="background:#f1f5f9; z-index:110;">Segmento (${Math.floor(elapsedDays)} DÍAS)</th><th>Valor Detalle</th><th>% Mix Total</th></tr>`;
                 activeConcepts.sort((a, b) => b.revenue[midx] - a.revenue[midx]).forEach(c => {
                     if (c.name === "TOTAL") return;
                     const rev = c.revenue[midx];
                     const rooms = c.rooms[midx];
                     const val = currentMetric === 'revenue' ? rev : (currentMetric === 'rooms' ? rooms : (rooms > 0 ? rev / rooms : 0));
-                    body += `<tr><td style="font-weight:600;">${c.name}</td><td>${fmtVal(val)}</td><td>${(rev / totalRev * 100).toFixed(1)}%</td></tr>`;
+                    body += `<tr><td style="font-weight:600; background:white; position:sticky; left:0; z-index:20;">${c.name}</td><td>${fmtVal(val)}</td><td>${(rev / totalRev * 100).toFixed(1)}%</td></tr>`;
                 });
             }
             tbody.innerHTML = body;

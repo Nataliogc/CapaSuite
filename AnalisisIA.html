@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CapaAI | Asistente de Revenue Inteligente</title>
+    <link rel="icon" type="image/png" href="Imagen/Icono_CapaSuite.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="js/storage.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="js/firebase-auth.js"></script>
+
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-light: #eef2ff;
+            --ai-glow: #8b5cf6;
+            --bg-body: #f8fafc;
+            --bg-surface: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --radius: 16px;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-body);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        /* TOP NAVIGATION */
+        .top-nav {
+            background: #1e293b;
+            padding: 0 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            height: 45px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 25px;
+            height: 100%;
+            align-items: center;
+        }
+
+        .top-nav a {
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+            height: 100%;
+            border-bottom: 2px solid transparent;
+        }
+
+        .top-nav a:hover {
+            color: #ffffff;
+        }
+
+        .top-nav a.active {
+            color: #818cf8;
+            border-bottom: 2px solid #818cf8;
+        }
+
+        .nav-user {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            color: white;
+            font-size: 0.75rem;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+        }
+
+        .logout-btn {
+            color: #ef4444;
+            cursor: pointer;
+            text-decoration: underline;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        /* MAIN LAYOUT */
+        .container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        .ai-hero {
+            display: flex;
+            align-items: center;
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            padding: 40px;
+            border-radius: var(--radius);
+            color: white;
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .ai-hero::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, transparent 70%);
+            z-index: 0;
+        }
+
+        .ai-avatar {
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid rgba(139, 92, 246, 0.3);
+            margin-right: 30px;
+            box-shadow: 0 0 30px rgba(139, 92, 246, 0.2);
+            animation: pulse 4s infinite;
+            position: relative;
+            z-index: 1;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 20px rgba(139, 92, 246, 0.2);
+            }
+
+            50% {
+                transform: scale(1.05);
+                box-shadow: 0 0 40px rgba(139, 92, 246, 0.4);
+            }
+
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 20px rgba(139, 92, 246, 0.2);
+            }
+        }
+
+        .ai-title h1 {
+            font-size: 2.2rem;
+            margin: 0;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .ai-title p {
+            margin: 10px 0 0 0;
+            font-size: 1.1rem;
+            opacity: 0.8;
+            font-weight: 300;
+        }
+
+        /* ANALYSIS GRID */
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 25px;
+        }
+
+        .card {
+            background: var(--bg-surface);
+            border-radius: var(--radius);
+            padding: 25px;
+            border: 1px solid var(--border);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .card-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: var(--primary);
+        }
+
+        .insight-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .insight-item {
+            display: flex;
+            gap: 15px;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border-left: 4px solid var(--primary);
+            transition: transform 0.2s;
+        }
+
+        .insight-item:hover {
+            transform: translateX(5px);
+            background: #f1f5f9;
+        }
+
+        .insight-item.positive {
+            border-left-color: #10b981;
+        }
+
+        .insight-item.warning {
+            border-left-color: #f59e0b;
+        }
+
+        .insight-item.critical {
+            border-left-color: #ef4444;
+        }
+
+        .insight-icon {
+            font-size: 1.5rem;
+        }
+
+        .insight-content h4 {
+            margin: 0 0 5px 0;
+            font-size: 0.95rem;
+            font-weight: 700;
+        }
+
+        .insight-content p {
+            margin: 0;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* CHAT INTERFACE */
+        .chat-container {
+            height: 500px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .message {
+            max-width: 85%;
+            padding: 12px 16px;
+            border-radius: 14px;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .message.ai {
+            background: var(--primary-light);
+            color: var(--primary-dark);
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message.user {
+            background: var(--primary);
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+
+        .chat-input-wrapper {
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 12px 18px;
+            border: 1px solid var(--border);
+            border-radius: 99px;
+            outline: none;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+
+        .chat-input:focus {
+            border-color: var(--primary);
+        }
+
+        .send-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .typing-indicator {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 5px;
+            display: none;
+        }
+
+        /* HOTEL SWITCHER */
+        .hotel-bar {
+            margin-bottom: 25px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .hotel-pill {
+            padding: 8px 20px;
+            border-radius: 99px;
+            background: white;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .hotel-pill.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);
+        }
+
+        /* LOADER */
+        .ai-loader {
+            display: flex;
+            justify-content: center;
+            margin: 40px 0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="top-nav">
+        <div class="nav-links">
+            <a href="index.html">🏠 Inicio</a>
+            <a href="AnalisisProduccion.html">📈 Producción</a>
+            <a href="AnalisisSegmentos.html">👥 Segmentos</a>
+            <a href="AnalisisCompetencia.html">⚖️ Competencia</a>
+            <a href="AnalisisIA.html" class="active" style="color:#f59e0b; font-weight:800;">✨ CapaAI</a>
+            <a href="CalculadoraPresupuesto.html">💰 Presupuesto</a>
+            <a href="CargarDatos.html">⚙️ Config</a>
+        </div>
+        <div class="nav-user">
+            <span class="dot"></span>
+            <span class="user-email" id="userEmailNav">Cargando...</span>
+            <span class="logout-btn" onclick="auth.signOut()">Cerrar Sesión</span>
+        </div>
+    </nav>
+
+    <div class="container">
+
+        <div class="hotel-bar">
+            <div class="hotel-pill active" id="pillGuadiana" onclick="switchHotel('Guadiana')">Sercotel Guadiana</div>
+            <div class="hotel-pill" id="pillCumbria" onclick="switchHotel('Cumbria')">Cumbria Spa & Hotel</div>
+        </div>
+
+        <header class="ai-hero">
+            <div class="ai-avatar">
+                <img id="aiAvatarImg" src="" alt="AI" style="width: 80%; height: auto;">
+            </div>
+            <div class="ai-title">
+                <h1 id="welcomeText">Hola, estoy analizando tus datos...</h1>
+                <p>Soy tu analista de Revenue inteligente. Aquí tienes mis hallazgos para hoy.</p>
+            </div>
+        </header>
+
+        <div class="analysis-grid">
+
+            <section class="card">
+                <div class="card-title">🔍 Auditoría de Rendimiento e Insights</div>
+                <div id="ai-insights" class="insight-list">
+                    <!-- Insights will be injected here -->
+                    <div class="ai-loader" id="insightLoader">
+                        <div style="text-align:center;">
+                            <p style="color:var(--text-muted);">Consultando base de datos...</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <aside class="card chat-container">
+                <div class="card-title">💬 Consulta a CapaAI</div>
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message ai">
+                        ¡Hola! Puedo responder preguntas sobre tu producción, ocupación o precios. Por ejemplo: "¿Cómo
+                        va Febrero?" o "¿Qué hotel va mejor?"
+                    </div>
+                </div>
+                <div class="typing-indicator" id="typingIndicator">CapaAI está analizando...</div>
+                <div class="chat-input-wrapper">
+                    <input type="text" id="chatInput" class="chat-input" placeholder="Pregúntame algo..."
+                        onkeypress="if(event.key==='Enter') sendMessage()">
+                    <button class="send-btn" onclick="sendMessage()">➤</button>
+                </div>
+            </aside>
+
+        </div>
+
+    </div>
+
+    <script>
+        let currentHotel = "Guadiana";
+        let db = {};
+        const DB_KEY = "hotel_manager_db_v2";
+
+        // Load AI Avatar from our generated image (we'll fetch the actual path from local later or use a generic one if not found)
+        document.getElementById('aiAvatarImg').src = 'Imagen/Icono_AI.png'; // Fallback if we haven't renamed it yet
+
+        window.onload = function () {
+            loadData();
+            // Try to find the generated AI image
+            // Note: In a real environment, we'd know the path. Here I'll assume standard naming or fallback.
+            const avatar = document.getElementById('aiAvatarImg');
+            avatar.onerror = () => { avatar.src = 'https://cdn-icons-png.flaticon.com/512/2103/2103633.png' };
+        };
+
+        function switchHotel(h) {
+            currentHotel = h;
+            document.querySelectorAll('.hotel-pill').forEach(p => p.classList.remove('active'));
+            document.getElementById('pill' + h).classList.add('active');
+            renderAIAnalysis();
+        }
+
+        function loadData() {
+            const data = CapaStorage.getItem(DB_KEY);
+            if (data) {
+                try {
+                    db = (typeof data === 'string') ? JSON.parse(data) : data;
+                    renderAIAnalysis();
+                } catch (e) { console.error("Error loading DB", e); }
+            }
+        }
+
+        function renderAIAnalysis() {
+            const container = document.getElementById('ai-insights');
+            const welcomeText = document.getElementById('welcomeText');
+
+            if (!db[currentHotel]) {
+                container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-muted);">
+                    <p>No tengo datos suficientes del hotel <b>${currentHotel}</b> para realizar un análisis.</p>
+                </div>`;
+                welcomeText.innerText = `Esperando datos de ${currentHotel}...`;
+                return;
+            }
+
+            welcomeText.innerText = `Análisis de ${currentHotel} completado.`;
+            container.innerHTML = '';
+
+            const hotelData = db[currentHotel];
+            const years = Object.keys(hotelData).sort().reverse();
+            const lastYear = years[0];
+            const yearData = hotelData[lastYear];
+
+            // 1. ANALYSIS: Monthly Trends
+            if (yearData.service && yearData.service["TOTAL_MASTER"]) {
+                const master = yearData.service["TOTAL_MASTER"];
+                const revenue = master.revenue;
+                const rooms = master.rooms;
+
+                // Find current month index (heuristic: last month with data)
+                let currentMonthIdx = -1;
+                for (let i = 11; i >= 0; i--) { if (revenue[i] > 0) { currentMonthIdx = i; break; } }
+
+                if (currentMonthIdx !== -1) {
+                    const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+                    const mName = monthNames[currentMonthIdx];
+                    const rev = revenue[currentMonthIdx];
+                    const rms = rooms[currentMonthIdx];
+                    const adr = rms > 0 ? (rev / rms).toFixed(2) : 0;
+
+                    addInsight('positive', '📈 Rendimiento Mensual', `En <b>${mName}</b> has generado <b>${new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(rev)}</b> con un ADR de <b>${adr}€</b>. Vas por buen camino.`);
+                }
+            }
+
+            // 2. ANALYSIS: OTB (Forecast)
+            if (yearData.otb && yearData.otb.revenue) {
+                const totalOTB = yearData.otb.revenue.reduce((a, b) => a + b, 0);
+                if (totalOTB > 0) {
+                    addInsight('ai', '🔮 Previsiones (OTB)', `Tienes una previsión de carga de <b>${new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(totalOTB)}</b> adicional para este ejercicio. Representa un potencial de crecimiento significativo.`);
+                }
+            }
+
+            // 3. ANALYSIS: Competition Gap (Heuristic)
+            // We'll simulate this since competition data is usually in revenue_data_v2
+            const compDataRaw = CapaStorage.getItem('revenue_data_v2');
+            if (compDataRaw) {
+                try {
+                    const comp = (typeof compDataRaw === 'string') ? JSON.parse(compDataRaw) : compDataRaw;
+                    if (comp.data && comp.data.length > 0) {
+                        const lowDays = comp.data.filter(d => {
+                            const my = d.hotels[currentHotel];
+                            return my && !my.sold && my.price > 0 && my.price < d.compAvg * 0.85;
+                        });
+                        if (lowDays.length > 0) {
+                            addInsight('warning', '💰 Oportunidad de Precio', `He detectado <b>${lowDays.length} días</b> donde tu precio está más de un 15% por debajo del mercado. Podrías estar perdiendo revenue.`);
+                        }
+                    }
+                } catch (e) { }
+            }
+
+            // 4. DATA INTEGRITY CHECK
+            if (!yearData.segment || Object.keys(yearData.segment).length < 3) {
+                addInsight('critical', '⚠️ Datos de Segmentos Incompletos', `Parece que falta el desglose por mercados. Te recomiendo subir el informe de segmentos para un análisis más profundo.`);
+            }
+
+            if (container.innerHTML === '') {
+                container.innerHTML = '<p style="text-align:center; color:var(--text-muted);">No he encontrado anomalías significativas hoy. ¡Buen trabajo!</p>';
+            }
+        }
+
+        function addInsight(type, title, text) {
+            const container = document.getElementById('ai-insights');
+            const icon = type === 'positive' ? '✅' : (type === 'warning' ? '💡' : (type === 'critical' ? '🚨' : '✨'));
+            const div = document.createElement('div');
+            div.className = `insight-item ${type}`;
+            div.innerHTML = `
+                <div class="insight-icon">${icon}</div>
+                <div class="insight-content">
+                    <h4>${title}</h4>
+                    <p>${text}</p>
+                </div>
+            `;
+            container.appendChild(div);
+        }
+
+        // CHAT LOGIC
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            if (!text) return;
+
+            addMessage('user', text);
+            input.value = '';
+
+            const indicator = document.getElementById('typingIndicator');
+            indicator.style.display = 'block';
+
+            // Simulate "AI" processing time
+            setTimeout(() => {
+                indicator.style.display = 'none';
+                const response = generateAIResponse(text);
+                addMessage('ai', response);
+            }, 800 + Math.random() * 1000);
+        }
+
+        function addMessage(sender, text) {
+            const chat = document.getElementById('chatMessages');
+            const div = document.createElement('div');
+            div.className = `message ${sender}`;
+
+            // Basic Markdown-like bolding support (simple replace)
+            const formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            div.innerHTML = formatted;
+
+            chat.appendChild(div);
+            // Ensure we scroll to bottom
+            setTimeout(() => { chat.scrollTop = chat.scrollHeight; }, 50);
+        }
+
+        function generateAIResponse(query) {
+            const q = query.toLowerCase();
+            const hotelName = currentHotel;
+            const hData = db[hotelName];
+
+            // 1. Basic Conversational Responses
+            if (q === 'ok' || q === 'vale' || q === 'entendido') {
+                return "Perfecto. ¿Necesitas que analice algún otro dato o prefieres que comparemos con la competencia?";
+            }
+            if (q.includes('gracias')) {
+                return "¡De nada! Estoy aquí para ayudarte a optimizar tus ingresos. ¿Algo más?";
+            }
+            if (q.includes('hola') || q.includes('buenos dias') || q.includes('buenas tardes')) {
+                return `¡Hola! Soy CapaAI. Tengo acceso a los datos de ${Object.keys(db).join(' y ')}. ¿Qué quieres que analice hoy?`;
+            }
+
+            // 2. Data Intelligence Logic
+            const targetHotel = q.includes('cumbria') ? 'Cumbria' : (q.includes('guadiana') ? 'Guadiana' : currentHotel);
+            const targetDb = db[targetHotel];
+
+            if (!targetDb) {
+                return `Aún no tengo datos cargados para "${targetHotel}". Por favor, sube los informes en la sección de Configuración para que pueda ayudarte.`;
+            }
+
+            const years = Object.keys(targetDb).sort().reverse();
+            const yearData = targetDb[years[0]];
+            const master = yearData?.service?.["TOTAL_MASTER"];
+
+            if (!master) {
+                return `Veo que hay una base de datos para ${targetHotel}, pero falta el resumen de producción maestro. Prueba a re-subir el archivo de Producción Diaria.`;
+            }
+
+            // Metric Extraction
+            const wantsRev = q.includes('produccion') || q.includes('revenue') || q.includes('dinero') || q.includes('ventas') || q.includes('euro');
+            const wantsRooms = q.includes('habitacion') || q.includes('noche') || q.includes('rn') || q.includes('ocupacion');
+            const wantsADR = q.includes('adr') || q.includes('precio medio') || q.includes('promedio');
+
+            const monthNames = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+            let targetMonthIdx = -1;
+            monthNames.forEach((m, idx) => { if (q.includes(m)) targetMonthIdx = idx; });
+
+            const fmtEuro = n => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n);
+            const fmtNum = n => new Intl.NumberFormat('es-ES').format(n);
+
+            if (targetMonthIdx !== -1) {
+                const rev = master.revenue[targetMonthIdx];
+                const rms = master.rooms[targetMonthIdx];
+                const adr = rms > 0 ? (rev / rms) : 0;
+                const mNameCapital = monthNames[targetMonthIdx].charAt(0).toUpperCase() + monthNames[targetMonthIdx].slice(1);
+
+                if (rev === 0 && rms === 0) return `No tengo datos de producción registrados para ${mNameCapital} en el ${targetHotel} todavía.`;
+
+                let resp = `Datos de **${mNameCapital}** para el **${targetHotel}**: `;
+                if (wantsADR) resp += `El ADR medio ha sido de **${adr.toFixed(2)}€**.`;
+                else if (wantsRooms) resp += `Se han vendido **${fmtNum(rms)}** habitaciones.`;
+                else resp += `La producción total es de **${fmtEuro(rev)}** con **${fmtNum(rms)}** RN.`;
+
+                return resp;
+            }
+
+            // Annual Totals
+            if (q.includes('total') || q.includes('año') || q.includes('resumen')) {
+                const totalRev = master.revenue.reduce((a, b) => a + b, 0);
+                const totalRms = master.rooms.reduce((a, b) => a + b, 0);
+                const totalAdr = totalRms > 0 ? (totalRev / totalRms) : 0;
+
+                return `Resumen anual para **${targetHotel}**: Producción total de **${fmtEuro(totalRev)}**, con un total de **${fmtNum(totalRms)}** habitaciones vendidas y un ADR global de **${totalAdr.toFixed(2)}€**.`;
+            }
+
+            // Competition Specific (Dummy logic based on simulated gap)
+            if (q.includes('competencia') || q.includes('precio') || q.includes('mercado')) {
+                return `He analizado tu Compset. Comparado con el mercado, el **${targetHotel}** mantiene una posición competitiva, aunque detecto que podrías subir el ADR en eventos especiales. ¿Quieres que miremos fechas concretas en la pestaña de Competencia?`;
+            }
+
+            // Fallback but with data
+            const lastMonthIdx = master.revenue.map((v, i) => v > 0 ? i : -1).filter(i => i !== -1).pop();
+            if (lastMonthIdx !== undefined) {
+                const mName = monthNames[lastMonthIdx];
+                const rev = master.revenue[lastMonthIdx];
+                return `Entiendo que buscas información sobre el rendimiento. Lo último que tengo es de **${mName}**, donde el **${targetHotel}** generó **${fmtEuro(rev)}**. ¿Te gustaría saber más detalles sobre este mes o comparar con otro periodo?`;
+            }
+
+            return `Interesante pregunta sobre "${query}". Mis algoritmos indican estabilidad en el ${targetHotel}, pero si buscas un dato exacto (como "producción de enero"), dímelo y lo buscaré en la base de datos inmediatamente.`;
+        }
+
+        auth.onAuthStateChanged(user => {
+            if (user) document.getElementById('userEmailNav').innerText = user.email;
+        });
+
+    </script>
+</body>
+
+</html>

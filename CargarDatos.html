@@ -127,6 +127,7 @@
             font-weight: 800;
             background: linear-gradient(135deg, var(--primary) 0%, #8b5cf6 100%);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
             margin-bottom: 8px;
         }
@@ -482,6 +483,7 @@
             <a href="AnalisisProduccion.html">📈 Producción</a>
             <a href="AnalisisSegmentos.html">👥 Segmentos</a>
             <a href="AnalisisCompetencia.html">⚖️ Competencia</a>
+            <a href="AnalisisIA.html" style="color:#f59e0b; font-weight:800;">✨ CapaAI</a>
             <a href="CalculadoraPresupuesto.html">💰 Presupuesto</a>
             <a href="CargarDatos.html" class="active">⚙️ Config</a>
         </div>
@@ -511,13 +513,57 @@
             </div>
         </header>
 
-        <div class="hotel-selector">
-            <span style="font-weight: 600;">Selecciona Hotel:</span>
-            <select id="hotelSelector" onchange="updateHistory()">
-                <option value="Guadiana">Hotel Guadiana</option>
-                <option value="Cumbria">Hotel Cumbria</option>
-            </select>
+        <div style="display: flex; gap: 20px; align-items: flex-start; margin-bottom: 20px;">
+            <div class="hotel-selector" style="margin-bottom: 0;">
+                <span style="font-weight: 600;">Selecciona Hotel:</span>
+                <select id="hotelSelector" onchange="updateHistory()">
+                    <option value="Guadiana">Hotel Guadiana</option>
+                    <option value="Cumbria">Hotel Cumbria</option>
+                </select>
+            </div>
+
+            <!-- SMART LINK UPLOAD -->
+            <div class="card"
+                style="margin-bottom: 0; padding: 10px 20px; flex: 1; min-width: 300px; border-style: solid; border-color: var(--primary-light);">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <span style="font-size: 1.5rem;">🔗</span>
+                    <div style="flex: 1;">
+                        <input type="text" id="filePathInput" placeholder="Pega aquí el nombre o ruta del archivo..."
+                            style="width: 100%; border: none; outline: none; font-family: inherit; font-size: 0.9rem;"
+                            oninput="checkLinkedFile(this.value)">
+                        <div id="linkDetectionMsg"
+                            style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">Detecta el modelo
+                            automáticamente</div>
+                    </div>
+                    <button class="btn" style="padding: 5px 15px; font-size: 0.8rem;"
+                        onclick="document.getElementById('fileUniversal').click()">Examinar</button>
+                    <input type="file" id="fileUniversal" hidden onchange="handleFile(this.files[0], null)">
+                </div>
+            </div>
         </div>
+
+        <script>
+            function checkLinkedFile(val) {
+                const msg = document.getElementById('linkDetectionMsg');
+                if (!val) { msg.innerText = "Detecta el modelo automáticamente"; msg.style.color = 'var(--text-muted)'; return; }
+
+                const typeMap = { 'Prod': 'Producción', 'Hist': 'Histórico', 'Seg': 'Segmentos', 'Otb': 'Previsiones' };
+                const detected = detectFileType(val);
+
+                if (detected) {
+                    msg.innerHTML = `✨ Modelo identificado: <b style="color:var(--primary)">${typeMap[detected]}</b>. Haz clic en "Examinar" para confirmar la carga.`;
+                    // Pre-fill manual input in background just in case
+                    const dInput = document.getElementById('manualPeriodInput');
+                    if (dInput) {
+                        const dateInf = extractDateFromFilename(val);
+                        if (dateInf) dInput.value = dateInf.full;
+                    }
+                } else {
+                    msg.innerText = "❓ No reconozco el modelo. Asegúrate de incluir palabras como 'Produccion', 'Segmentos' o 'Previsiones'.";
+                    msg.style.color = '#ef4444';
+                }
+            }
+        </script>
 
         <div id="db-summary-container" style="margin-bottom: 20px; display: none;">
             <h3 style="margin-bottom: 10px; color: var(--text-main);">Estado de la Base de Datos</h3>
@@ -544,6 +590,20 @@
                     </thead>
                     <tbody id="db-summary-body"></tbody>
                 </table>
+            </div>
+        </div>
+
+        <!-- SMART UNIVERSAL DROP ZONE -->
+        <div class="card"
+            style="margin-bottom: 25px; background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%); border: 2px dashed var(--primary-light);">
+            <div style="text-align: center; padding: 10px;">
+                <div id="dropZoneUniversal" class="upload-zone"
+                    style="margin: 0; background: transparent; border: none;">
+                    <div style="font-size: 2.2rem; margin-bottom: 10px;">🚀</div>
+                    <h3 style="color: var(--primary); margin-bottom: 5px;">Depósito Universal Inteligente</h3>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">Arrastra CUALQUIER informe aquí y CapaSuite
+                        sabrá qué modelo es.</p>
+                </div>
             </div>
         </div>
 
@@ -706,7 +766,8 @@
                     return sorted.length ? sorted.join(", ") : "Sin datos";
                 };
 
-                const otbInfo = data.otb && data.otb.revenue.some(v => v > 0) ? "Cargado" : "Vacío";
+                const hasOtbData = data.otb && ((data.otb.revenue && data.otb.revenue.some(v => v > 0)) || (data.otb.rooms && data.otb.rooms.some(v => v > 0)));
+                const otbInfo = hasOtbData ? "Cargado" : "Vacío";
 
                 const detailHTML = `
                 <table style="width:100%; border-collapse:collapse; margin-top:10px;">
@@ -920,6 +981,14 @@
             loadOptions();
         };
 
+        // Escuchar cambios desde la nube para recargar variables locales
+        window.addEventListener('capasuite-data-synced', () => {
+            console.log("🔄 Recargando datos locales desde la nube...");
+            db = JSON.parse(CapaStorage.getItem(DB_KEY)) || {};
+            config = JSON.parse(CapaStorage.getItem(CONFIG_KEY)) || {};
+            updateHistory();
+        });
+
         const SHORT_MONTHS_MAP = {
             "ENE": 0, "JAN": 0, "FEB": 1, "MAR": 2, "ABR": 3, "APR": 3, "MAY": 4, "JUN": 5,
             "JUL": 6, "AGO": 7, "AUG": 7, "SEP": 8, "OCT": 9, "NOV": 10, "DIC": 11, "DEC": 11
@@ -1050,7 +1119,32 @@
         }
 
         // --- FILE PROCESSING ---
+        function detectFileType(name) {
+            const n = normalizeStr(name);
+            // Previsiones / OTB
+            if (n.includes("PREVISION") || n.includes("OTB") || n.includes("VALORADA")) return 'Otb';
+            // Segmentos / Canales
+            if (n.includes("SEGMENTO") || n.includes("CANAL") || n.includes("MERCADO")) return 'Seg';
+            // Histórico (Production/Segments from past years)
+            if (n.includes("HISTORICO") || n.includes("YEARLY") || n.includes("ANUAL")) return 'Hist';
+            // Producción Diaria / Pickup
+            if (n.includes("PRODUCCION") || n.includes("DIARIA") || n.includes("PICKUP") || n.includes("DIARIO")) return 'Prod';
+            return null;
+        }
+
         function setupDropZones() {
+            // New Universal Zone
+            const uniZone = document.getElementById('dropZoneUniversal');
+            if (uniZone) {
+                uniZone.ondragover = (e) => { e.preventDefault(); uniZone.classList.add('dragging'); };
+                uniZone.ondragleave = () => uniZone.classList.remove('dragging');
+                uniZone.ondrop = (e) => {
+                    e.preventDefault();
+                    uniZone.classList.remove('dragging');
+                    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0], null);
+                };
+            }
+
             ['Prod', 'Hist', 'Seg', 'Otb'].forEach(type => {
                 const zone = document.getElementById('dropZone' + type);
                 const input = document.getElementById('file' + type);
@@ -1062,7 +1156,7 @@
                 zone.ondrop = (e) => {
                     e.preventDefault();
                     zone.classList.remove('dragging');
-                    handleFile(e.dataTransfer.files[0], type); // Pass raw type
+                    handleFile(e.dataTransfer.files[0], type);
                 };
                 input.onchange = (e) => {
                     if (e.target.files.length) handleFile(e.target.files[0], type);
@@ -1070,12 +1164,47 @@
             });
         }
 
-        async function handleFile(file, type) {
-            // Map type for internal logic if needed
-            let logicType = type;
-            if (type === 'Otb') logicType = 'Prevision';
+        let pendingFile = null;
+        let pendingType = null;
 
-            const hotel = document.getElementById('hotelSelector').value;
+        async function handleFile(file, type) {
+            const detected = detectFileType(file.name);
+            let finalType = type || detected;
+
+            if (type && detected && type !== detected) {
+                const typeMap = { 'Prod': 'Producción', 'Hist': 'Histórico', 'Seg': 'Segmentos', 'Otb': 'Previsiones' };
+                if (!confirm(`⚠️ Pareces estar subiendo un archivo tipo "${typeMap[detected]}" en la sección de "${typeMap[type]}". \n\n¿Quieres usar la categoría correcta (${typeMap[detected]}) automáticamente?`)) {
+                    finalType = type;
+                } else {
+                    finalType = detected;
+                }
+            }
+
+            if (!finalType) {
+                alert("❌ No he podido identificar el modelo del archivo por su nombre. Por favor, súbelo directamente en su tarjeta correspondiente o cámbiale el nombre.");
+                return;
+            }
+
+            pendingFile = file;
+            pendingType = finalType;
+
+            const dateInfo = extractDateFromFilename(file.name);
+            const period = dateInfo ? dateInfo.full : "";
+            document.getElementById('manualPeriodInput').value = period;
+
+            document.getElementById('hotelConfirmModal').style.display = 'flex';
+        }
+
+        function confirmHotelUpload(selectedHotel) {
+            const manualDate = document.getElementById('manualPeriodInput').value;
+            document.getElementById('hotelConfirmModal').style.display = 'none';
+            // Sync the main selector
+            document.getElementById('hotelSelector').value = selectedHotel;
+            updateHistory();
+            processFileFinal(pendingFile, pendingType, selectedHotel, manualDate);
+        }
+
+        async function processFileFinal(file, type, hotel, manualDate) {
             document.getElementById('loader').style.display = 'flex';
 
             const reader = new FileReader();
@@ -1086,13 +1215,19 @@
                     const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
                     const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
 
-                    // Same parsing logic from dashboard
-                    const dateInfo = extractDateFromFilename(file.name);
-                    const year = dateInfo?.year || "2026";
-                    const period = dateInfo ? `${String(dateInfo.day).padStart(2, '0')}-${String(dateInfo.month + 1).padStart(2, '0')}-${dateInfo.year}` : "Periodo desconocido";
+                    // Use manual date if provided correctly
+                    let dateInfo = extractDateFromFilename(file.name);
+                    let period = manualDate || (dateInfo ? dateInfo.full : "Periodo desconocido");
+                    let year = "2026";
+
+                    if (manualDate && manualDate.split('-').length === 3) {
+                        year = manualDate.split('-')[2];
+                    } else if (dateInfo) {
+                        year = dateInfo.year;
+                    }
 
                     // Call the processor (simplified version of the one in AnalisisProduccion.html)
-                    processDataForDB(jsonData, file.name, hotel, type);
+                    processDataForDB(jsonData, file.name, hotel, type, manualDate);
 
                     // Update config/logs
                     if (!config[hotel]) config[hotel] = { logs: [] };
@@ -1107,7 +1242,9 @@
                     if (!db[hotel][year]) db[hotel][year] = { service: {}, segment: {}, otb: { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) } };
 
                     let lastDateLabel = period;
-                    if (dateInfo && dateInfo.day) {
+                    // If the user provided a manual date, it ALREADY IS 'period' and should be used as is.
+                    // We only want to reconstruct from dateInfo if NO manual date was provided.
+                    if (!manualDate && dateInfo && dateInfo.day) {
                         const dayStr = String(dateInfo.day).padStart(2, '0');
                         const monthStr = String(dateInfo.month + 1).padStart(2, '0');
                         lastDateLabel = `${dayStr}-${monthStr}-${year}`;
@@ -1115,7 +1252,11 @@
 
                     db[hotel][year].lastUpdate = lastDateLabel;
 
-                    if (!config[hotel].logs) config[hotel].logs = [];
+                    if (!db[hotel][year].updates) db[hotel][year].updates = { prod: "N/A", seg: "N/A", otb: "N/A" };
+                    if (type === 'Prod') db[hotel][year].updates.prod = period;
+                    else if (type === 'Seg') db[hotel][year].updates.seg = period;
+                    else if (type === 'Otb') db[hotel][year].updates.otb = period;
+
                     config[hotel].logs.push({
                         timestamp: new Date().toLocaleString('es-ES'),
                         type: type === 'Prod' ? 'Producción' : (type === 'Hist' ? 'Histórico' : (type === 'Seg' ? 'Segmentos' : 'Previsiones')),
@@ -1163,17 +1304,17 @@
             }, 4000);
         }
 
-        function processDataForDB(data, fileName, hotel, type) {
+        function processDataForDB(data, fileName, hotel, type, manualPeriod) {
             const fileNameNorm = normalizeStr(fileName);
             const dateInfo = extractDateFromFilename(fileName);
-            // Default to 2026 ONLY if dateInfo failed completely
-            const reportYear = dateInfo?.year || "2026";
 
-            // CONFIRMATION ALERT (Debug)
-            if (dateInfo) {
-                alert(`📅 Archivo Detectado:\nMes: ${dateInfo.full.split(' ')[0]}\nAño: ${reportYear}\n\nSi esto es incorrecto, renombra el archivo ej: "Enero-2023.xlsx"`);
-            } else {
-                alert(`⚠️ No se detectó fecha en el nombre del archivo.\nSe asumirá año: ${reportYear}.\nPara corregir, incluye el MES y AÑO en el nombre.`);
+            let finalPeriod = manualPeriod || (dateInfo ? dateInfo.full : "Carga Masiva");
+            let reportYear = "2026";
+
+            if (manualPeriod && manualPeriod.split('-').length === 3) {
+                reportYear = manualPeriod.split('-')[2];
+            } else if (dateInfo) {
+                reportYear = dateInfo.year;
             }
 
             if (!db[hotel]) db[hotel] = {};
@@ -1200,12 +1341,12 @@
                 "HABITACION": ["HABITACION", "ALOJAMIENTO", "ESTANCIA", "DUI", "DOBLE", "SUPERIOR", "SUITE", "CUADRUPLE", "TRIPLE", "FAMILIAR", "LATE CHECK OUT", "AMPLIACION", "CAMA SUPLETORIA", "REGARGO GDS"],
                 "DESAYUNOS": ["DESAYUNO BUFFET", "DESAYUNO GRUPO", "DESAYUNO", "BUFFET"],
                 "RESTAURANTE": ["RESTAURANTE", "CENA", "ALMUERZO", "CENA GRUPO", "ALMUERZO GRUPO", "CATERING", "RESTAURANTE CATERING"],
-                "OFICINAS": ["ALQUILER RETENCIONES", "OFICINA", "RETENCIONES", "ALQUILER PLAZAS GARAJE", "FIANZA", "DOMICILIACION EMPRESAS", "GARAJE", "PARKING"],
+                "OFICINAS": ["ALQUILER RETENCIONES", "OFICINA", "RETENCIONES", "FIANZA", "DOMICILIACION EMPRESAS", "LIMPIEZA"],
                 "EVENTOS": ["COFFEE BREAK", "SALONES/ALQUILER", "AUDIOVISUALES", "SALON", "ALQUILER", "EVENTO"],
                 "CAFETERIA": ["CAFETERIA", "BAR"],
                 "MINIBAR": ["MINIBAR"],
                 "SPA": ["SPA", "BALNEARIO", "MASAJE", "TRATAMIENTO"],
-                "VARIOS": ["LAVANDERIA", "ARTESANIA", "FAX", "TELÉFONO", "VARIOS", "SUPLEMENTO", "MASCOTA", "CUNA", "UPGRADE", "LIMPIEZA", "MENSAJERIA"]
+                "VARIOS": ["LAVANDERIA", "ARTESANIA", "FAX", "TELÉFONO", "VARIOS", "SUPLEMENTO", "MASCOTA", "CUNA", "UPGRADE", "MENSAJERIA", "GARAJE", "PARKING", "ALQUILER PLAZAS GARAJE"]
             };
 
             const getGroupID = (n) => {
@@ -1288,7 +1429,7 @@
                     if (rowPax === null && (first === "PAX" || first === "PERSONAS" || first === "PAX." || first === "PER." || first === "ADULTOS" || first === "NIÑOS")) {
                         rowPax = row; masterIndices.add(r);
                     }
-                    if (rowPro === null && (first === "PRO" || first === "PRODUCCION" || first.includes("PROD.") || first === "INGRESOS" || first.includes("PROD TOTAL") || first === "TOTAL PRODUCCION")) {
+                    if (rowPro === null && (first === "PRO" || first === "PROD" || first === "PRODUCCION" || first.includes("PROD.") || first === "INGRESOS" || first.includes("PROD TOTAL") || first === "TOTAL PRODUCCION")) {
                         rowPro = row; masterIndices.add(r);
                     }
 
@@ -1319,21 +1460,34 @@
                     }
                 }
 
-                // Final Fallback if scan failed
-                if (!rowHab || !rowPro) {
-                    // Try to guess based on content if keywords missed
-                    console.warn("Scan failed, using row fallbacks", { rowHab, rowPro });
-                    for (let r = 0; r < Math.min(data.length, 20); r++) {
+                if (!rowFechas) {
+                    // Try to find row with most date-like cells in first 10 rows
+                    for (let r = 0; r < Math.min(data.length, 10); r++) {
                         const row = data[r] || [];
-                        if (!rowFechas && row.length > 5) rowFechas = row;
-                        if (!rowHab && String(row[0]).toUpperCase().includes("HAB")) rowHab = row;
-                        if (!rowPro && String(row[0]).toUpperCase().includes("PRO")) rowPro = row;
+                        let dateCount = 0;
+                        for (let c = 1; c < Math.min(row.length, 20); c++) {
+                            const val = row[c];
+                            if (val instanceof Date || (typeof val === 'number' && val > 30000) || String(val).match(/\d{1,2}[\/-]\d{1,2}/)) dateCount++;
+                        }
+                        if (dateCount >= 3) { rowFechas = row; break; }
                     }
                 }
 
-                if (!rowHab) rowHab = data[1];
-                if (!rowPro) rowPro = data[3];
-                if (!rowFechas) rowFechas = data[0];
+                if (!rowHab) {
+                    for (let r = 0; r < Math.min(data.length, 10); r++) {
+                        if (normalizeStr(data[r] ? data[r][0] : "").startsWith("HAB")) { rowHab = data[r]; break; }
+                    }
+                }
+                if (!rowPro) {
+                    for (let r = 0; r < Math.min(data.length, 10); r++) {
+                        const n = normalizeStr(data[r] ? data[r][0] : "");
+                        if (n === "PRO" || n === "PROD" || n.includes("PRODUCC")) { rowPro = data[r]; break; }
+                    }
+                }
+
+                if (!rowHab) rowHab = data[3]; // User's Row 4
+                if (!rowPro) rowPro = data[4]; // User's Row 5
+                if (!rowFechas) rowFechas = data[2]; // User's Row 3
 
                 const headerRow = rowFechas || [];
                 // Detect if headers match month names
@@ -1377,7 +1531,7 @@
                             dateObj = new Date((headerCell - 25569) * 86400 * 1000);
                         } else {
                             // Try Regex for strings like "23/02", "23-02", "23/02/2026"
-                            const dateMatch = String(header).match(/^(\d{1,2})[-\/](\d{1,2})(?:[-\/](\d{2,4}))?$/);
+                            const dateMatch = String(headerCell || "").trim().match(/^(\d{1,2})[-\/](\d{1,2})(?:[-\/](\d{2,4}))?$/);
                             if (dateMatch) {
                                 const d = parseInt(dateMatch[1]);
                                 const m = parseInt(dateMatch[2]) - 1; // 0-indexed
@@ -1386,7 +1540,6 @@
                                     y = dateMatch[3];
                                     if (y.length === 2) y = "20" + y;
                                 }
-
                                 if (m >= 0 && m <= 11 && d >= 1 && d <= 31) {
                                     dateObj = new Date(y, m, d);
                                 }
@@ -1417,10 +1570,9 @@
                         // Save Daily
                         let specDate = null;
                         if (headerCell instanceof Date) specDate = headerCell;
-                        else if (typeof headerCell === 'number' && headerCell > 30000) specDate = new Date((headerCell - 25569) * 86400 * 1000);
                         else {
-                            // Re-parse string date if needed (or rely on what we found above)
-                            const dateMatch = String(header).match(/^(\d{1,2})[-\/](\d{1,2})(?:[-\/](\d{2,4}))?$/);
+                            // Re-parse string date if needed. IMPORTANT: Use headerCell directly, not normalized 'header'
+                            const dateMatch = String(headerCell || "").match(/^(\d{1,2})[-\/](\d{1,2})(?:[-\/](\d{2,4}))?$/);
                             if (dateMatch) {
                                 const d = parseInt(dateMatch[1]);
                                 const m = parseInt(dateMatch[2]) - 1;
@@ -1436,7 +1588,12 @@
                         if (specDate && !isNaN(specDate.getTime())) {
                             if (!dbYear.daily) dbYear.daily = {};
                             const iso = specDate.toISOString().split('T')[0];
-                            dbYear.daily[iso] = rms;
+                            const dailyRev = parseVal(rowPro ? rowPro[c] : 0);
+
+                            // Only store if there's actual data to avoid counting empty Excel columns
+                            if (rms > 0 || dailyRev > 0) {
+                                dbYear.daily[iso] = { rooms: rms, revenue: dailyRev };
+                            }
                         }
 
                         // LOOP through rows to gather detail data
@@ -1499,11 +1656,12 @@
                         const cell = headerRow[c];
                         const s = String(cell).toUpperCase();
 
-                        // Detect Year if not already found
-                        const yrMatch = s.match(/[.\-\/ ](\d{2,4})$/);
+                        // Detect Year if not already found (Stricter regex: avoid picking up day numbers 01-31 as years)
+                        const yrMatch = s.match(/[.\-\/ ](20\d{2})$/) || s.match(/[.\-\/ ](2\d)$/);
                         if (yrMatch) {
                             const yFound = yrMatch[1].length === 2 ? "20" + yrMatch[1] : yrMatch[1];
-                            if (yFound > 2000) detectedYear = yFound;
+                            const yNum = parseInt(yFound);
+                            if (yNum >= 2015 && yNum <= 2035) detectedYear = yFound;
                         }
 
                         if (c < 2) continue; // Skip Seg and Metric columns for mapping
@@ -1631,16 +1789,21 @@
                     }
                 }
                 dbYear.lastUpdate = new Date().toLocaleDateString('es-ES');
-            } else if (type === 'Prevision') {
+            } else if (type === 'Otb' || type === 'Prevision') {
                 // Parser for "Listado Previsiones Valoradas"
                 let detectedYear = reportYear;
                 if (!db[hotel][detectedYear]) db[hotel][detectedYear] = { service: {}, segment: {}, otb: { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) }, lastUpdate: "" };
                 const dbYear = db[hotel][detectedYear];
                 if (!dbYear.otb) dbYear.otb = { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) };
 
-                // Update: We no longer clear full OTB, so multi-month uploads are incremental
-                // dbYear.otb.revenue.fill(0); 
-                // dbYear.otb.rooms.fill(0);
+                // RESET TOTAL (CRUSH): Always clear the OTB annual arrays to ensure the file is the single source of truth for the year
+                dbYear.otb.revenue.fill(0);
+                dbYear.otb.rooms.fill(0);
+                dbYear.otb.breakdown = {}; // Clear previous breakdown
+
+                // Note: We still use 'otbMonths' logic below strictly for cleaning DAILY data
+                // to avoid accidentally wiping Daily PRODUCTION data for months not in this OTB file.
+
 
                 // 1. Find the header row and detect column types (Months vs Days)
                 let monthCols = {};
@@ -1662,7 +1825,7 @@
                         const cellNorm = normalizeStr(cellStr);
 
                         // Check for Day format (e.g. 25/01, 25-01, 25/01/2026)
-                        const dayMatch = cellStr.match(/^(\d{1,2})[\/-](\d{1,2})([\/-](\d{2,4}))?$/);
+                        const dayMatch = cellStr.match(/(\d{1,2})[\/-](\d{1,2})([\/-](\d{2,4}))?/);
                         if (dayMatch) {
                             const d = dayMatch[1].padStart(2, '0');
                             const m = dayMatch[2].padStart(2, '0');
@@ -1688,7 +1851,7 @@
                     if (Object.keys(dailyCols).length >= 5 || Object.keys(monthCols).length >= 2) break;
                 }
 
-                if (!dbYear.daily) dbYear.daily = {};
+                if (!dbYear.daily_otb) dbYear.daily_otb = {};
                 const hasDaily = Object.keys(dailyCols).length > 0;
 
                 // RESET LOGIC FOR OTB: Identify all months present in this file
@@ -1723,10 +1886,11 @@
                         }
 
                         // Clear Daily Data for this month (same as Production)
-                        if (dbYear.daily) {
+                        // Clear Daily OTB Data for this month
+                        if (dbYear.daily_otb) {
                             const prefix = `${reportYear}-${String(m + 1).padStart(2, '0')}`;
-                            Object.keys(dbYear.daily).forEach(k => {
-                                if (k.startsWith(prefix)) delete dbYear.daily[k];
+                            Object.keys(dbYear.daily_otb).forEach(k => {
+                                if (k.startsWith(prefix)) delete dbYear.daily_otb[k];
                             });
                         }
 
@@ -1862,12 +2026,12 @@
                                 const val = parseVal(row[col]);
 
                                 // Initialize as object if missing or if it was a legacy number
-                                if (!dbYear.daily[iso] || typeof dbYear.daily[iso] !== 'object') {
-                                    const oldVal = (typeof dbYear.daily[iso] === 'number') ? dbYear.daily[iso] : 0;
-                                    dbYear.daily[iso] = { rooms: oldVal, revenue: 0 };
+                                // Initialize as object if missing (OTB ALWAYS uses objects for rooms/rev)
+                                if (!dbYear.daily_otb[iso] || typeof dbYear.daily_otb[iso] !== 'object') {
+                                    dbYear.daily_otb[iso] = { rooms: 0, revenue: 0 };
                                 }
 
-                                if (rowType === 'rms') dbYear.daily[iso].rooms = val;
+                                if (rowType === 'rms') dbYear.daily_otb[iso].rooms = val;
                                 // Only capture Revenue from the TOTAL PROD row (or generic revenue), not breakdown
                                 if (rowType === 'rev' && (!category || category === 'habitacion')) {
                                     // If we confirm this is TOTAL revenue or ROOM revenue, add it.
@@ -1879,8 +2043,10 @@
                                     // Let's rely on 'rowType === rev' and overwrite if it's a "better" source, or just accumulate?
                                     // Accumulation is dangerous if we have both Total and Room Rev.
                                     // Let's only take it if it matches "PRODUCCION" or "TOTAL" or "HABITACION".
-                                    if (firstCellNorm.includes("HABITACION") || firstCellNorm === "PROD" || firstCellNorm === "PRODUCCION") {
-                                        dbYear.daily[iso].revenue = val;
+                                    // Flexible detection for OTB Revenue
+                                    if (firstCellNorm.includes("HABITACION") || firstCellNorm === "PRO" || firstCellNorm === "PROD" || firstCellNorm === "PRODUCCION" ||
+                                        firstCellNorm.includes("TOTAL") || firstCellNorm.includes("INGRESO")) {
+                                        dbYear.daily_otb[iso].revenue = val;
                                     }
                                 }
 
@@ -1927,7 +2093,8 @@
                 // Show feedback to user
                 const totalRMS = dbYear.otb.rooms.reduce((a, b) => a + b, 0);
                 const totalREV = dbYear.otb.revenue.reduce((a, b) => a + b, 0);
-                const daysCount = Object.keys(dbYear.daily || {}).length;
+                // Only count days that actually have some data
+                const daysCount = Object.keys(dbYear.daily_otb || {}).filter(k => (dbYear.daily_otb[k].rooms > 0 || dbYear.daily_otb[k].revenue > 0)).length;
                 const fmtEuro = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' });
 
                 let msg = `✅ Datos procesados para ${detectedYear || 'año desconocido'}:<br>`;
@@ -1962,13 +2129,70 @@
                     foundREV,
                     otbRooms: dbYear.otb.rooms,
                     otbRevenue: dbYear.otb.revenue,
-                    dailyDatesCount: Object.keys(dbYear.daily).length
+                    dailyDatesCount: Object.keys(dbYear.daily_otb).length
                 });
 
+                if (!dbYear.updates) dbYear.updates = { prod: "N/A", seg: "N/A", otb: "N/A" };
+                dbYear.updates.otb = new Date().toLocaleDateString('es-ES') + " " + new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
                 dbYear.lastUpdate = new Date().toLocaleDateString('es-ES');
+            } else if (type === 'Prod') {
+                if (!dbYear.updates) dbYear.updates = { prod: "N/A", seg: "N/A", otb: "N/A" };
+                dbYear.updates.prod = new Date().toLocaleDateString('es-ES') + " " + new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
             }
+
             saveData();
+            updateUploadSummary(hotel, type, reportYear);
             showDebugResults(hotel);
+        }
+
+        function updateUploadSummary(hotel, type, year) {
+            const dbYear = db[hotel][year];
+            if (!dbYear) return;
+
+            let totalRMS = 0;
+            let totalREV = 0;
+            let daysCount = 0;
+
+            if (type === 'Otb' || type === 'Prevision') {
+                totalRMS = dbYear.otb.rooms.reduce((a, b) => a + b, 0);
+                totalREV = dbYear.otb.revenue.reduce((a, b) => a + b, 0);
+                daysCount = Object.keys(dbYear.daily_otb || {}).filter(k => (dbYear.daily_otb[k].rooms > 0 || dbYear.daily_otb[k].revenue > 0)).length;
+            } else {
+                const master = dbYear.service["TOTAL_MASTER"];
+                if (master) {
+                    totalRMS = master.rooms.reduce((a, b) => a + b, 0);
+                    totalREV = master.revenue.reduce((a, b) => a + b, 0);
+                }
+                daysCount = Object.keys(dbYear.daily || {}).filter(k => {
+                    const d = dbYear.daily[k];
+                    return (typeof d === 'object') ? (d.rooms > 0 || d.revenue > 0) : d > 0;
+                }).length;
+            }
+
+            const fmtEuro = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' });
+            const typeLabel = (type === 'Otb' || type === 'Prevision') ? 'Previsión/OTB' : 'Producción Real';
+
+            let msg = `✅ Datos procesados (${typeLabel}) para ${year}:<br>`;
+            msg += `- Días con datos: <b>${daysCount}</b><br>`;
+            msg += `- Total Habitaciones: <b>${totalRMS}</b><br>`;
+            msg += `- Total Revenue: <b>${fmtEuro.format(totalREV)}</b><br>`;
+
+            let statusBox = document.getElementById('upload-status-box');
+            if (!statusBox) {
+                statusBox = document.createElement('div');
+                statusBox.id = 'upload-status-box';
+                statusBox.style.marginTop = '15px';
+                statusBox.style.padding = '15px';
+                statusBox.style.borderRadius = '8px';
+                statusBox.style.textAlign = 'center';
+                const container = document.querySelector('.upload-box') || document.querySelector('.card');
+                if (container) container.appendChild(statusBox);
+            }
+
+            statusBox.innerHTML = msg;
+            statusBox.style.background = (daysCount > 0) ? '#d1fae5' : '#fee2e2';
+            statusBox.style.color = (daysCount > 0) ? '#065f46' : '#991b1b';
+            statusBox.style.border = (daysCount > 0) ? '1px solid #10b981' : '1px solid #ef4444';
         }
 
         function showDebugResults(hotel) {
@@ -2034,7 +2258,7 @@
                 if (db[hotel][y].otb) {
                     const otbRev = db[hotel][y].otb.revenue.reduce((a, b) => a + b, 0);
                     const otbRms = db[hotel][y].otb.rooms.reduce((a, b) => a + b, 0);
-                    if (otbRev > 0) {
+                    if (otbRev > 0 || otbRms > 0) {
                         tbody.innerHTML += `
                             <tr style="font-size: 0.75rem; color: #8b5cf6;">
                                 <td>└─ Previsión OTB 2026</td>
@@ -2058,40 +2282,44 @@
             // Caso 1: Formato con Nombre de Mes (ej: "ENERO - 23", "Diciembre 2025")
             for (let i = months.length - 1; i >= 0; i--) {
                 const mes = months[i];
-                // Check if month name exists in the filename
                 if (upName.includes(mes)) {
-                    let year = "2026"; // Default fallback
-
-                    // Regex MUY PERMISIVO: Busca el Mes + (cuiualquier cosa que no sea numero) + AÑO
-                    // Esto evita problemas con guiones raros, dobles espacios, etc.
-                    const regex = new RegExp(mes + "[^0-9]*(\\d{2,4})");
-                    const match = upName.match(regex);
-
-                    if (match && match[1]) {
-                        let y = match[1];
-                        // Convert 2-digit "23" to "2023"
-                        if (y.length === 2) y = "20" + y;
-                        // Basic validation
-                        if (parseInt(y) > 2000 && parseInt(y) < 2100) {
-                            year = y;
-                        }
+                    let year = "2026";
+                    const year4Match = upName.match(/(20\d{2})/);
+                    if (year4Match) {
+                        year = year4Match[1];
+                    } else {
+                        const regexAfter = new RegExp(mes + "[^0-9]*(\\d{2})");
+                        const matchAfter = upName.match(regexAfter);
+                        if (matchAfter && matchAfter[1]) year = "20" + matchAfter[1];
                     }
-
+                    const yNum = parseInt(year);
+                    if (yNum < 2015 || yNum > 2035) year = "2026";
                     return { day: 1, month: i, year: year, full: months[i] + " " + year };
                 }
             }
 
-            // Caso 2: Formato estándar DD-MM-YY (en nombre de archivo o similar)
-            const dateRegex = /(\d{2})[-/](\d{2})[-/](\d{2,4})/g;
-            const matches = name.match(dateRegex);
-            if (matches && matches.length > 0) {
-                const lastMatch = matches[matches.length - 1];
-                const parts = lastMatch.split(/[-/]/);
-                let y = parts[2];
+            // Caso 2: Formato estándar DD-MM-YY o Rangos (ej: del 26-01 al 31-12)
+            const dateRegex = /(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})/g;
+            const matches = [...name.matchAll(dateRegex)];
+
+            if (matches.length > 0) {
+                // If it's a range "DEL ... AL ...", we usually want the START date (the first one)
+                // In "del 26-01-2026 al 31-12-2026", picks 26-01-2026
+                const targetMatch = matches[0];
+                const d = parseInt(targetMatch[1]);
+                const m = parseInt(targetMatch[2]) - 1;
+                let y = targetMatch[3];
                 if (y.length === 2) y = "20" + y;
-                return { day: parseInt(parts[0]), month: parseInt(parts[1]) - 1, year: y, full: lastMatch };
+
+                return { day: d, month: m, year: y, full: `${String(d).padStart(2, '0')}-${String(m + 1).padStart(2, '0')}-${y}` };
             }
 
+            // Caso 3: Solo Año (ej: "Historico 2024" o "Datos 2025")
+            const yearMatch = upName.match(/(20\d{2})/);
+            if (yearMatch) {
+                const y = yearMatch[1];
+                return { day: 1, month: 0, year: y, full: `01-01-${y}` };
+            }
             return null;
         }
 
@@ -2103,6 +2331,11 @@
             if (val === null || val === undefined || val === "") return 0;
             if (typeof val === 'number') return val;
             let s = String(val).replace(/[€$\s\u00a0]/g, "").trim();
+
+            // Handle accounting parentheses (e.g. (100.00) -> -100.00)
+            if (s.startsWith('(') && s.endsWith(')')) {
+                s = '-' + s.substring(1, s.length - 1);
+            }
 
             const lastComma = s.lastIndexOf(',');
             const lastDot = s.lastIndexOf('.');
@@ -2180,7 +2413,8 @@
                                 hData[year].otb.rooms = new Array(12).fill(0);
                                 hData[year].otb.breakdown = {}; // Clear breakdown too
                             }
-                            if (hData[year].daily) hData[year].daily = {};
+                            if (hData[year].daily_otb) hData[year].daily_otb = {};
+                            // Leave hData[year].daily AS IS (Production history remains safe)
                         }
                         deletedCount++;
                     }
@@ -2217,6 +2451,51 @@
                 <h3 id="detailModalTitle" style="color: var(--primary);">Detalles</h3>
             </div>
             <div id="detailModalContent"></div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmación de Hotel -->
+    <div id="hotelConfirmModal" class="modal" style="display: none;">
+        <div class="modal-content"
+            style="max-width: 420px; text-align: center; border: 2px solid var(--primary); padding: 35px;">
+            <div style="font-size: 3.5rem; margin-bottom: 15px;">🏨</div>
+            <h3 style="color: var(--primary); margin-bottom: 10px; font-size: 1.5rem; font-weight: 700;">Confirmar Hotel
+            </h3>
+            <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 0.95rem;">¿Para qué hotel deseas cargar
+                estos datos? <br><small>(Seleccionar el hotel correcto es crítico para el análisis)</small></p>
+
+            <div
+                style="margin-top: 10px; padding: 12px; background: #f8fafc; border-radius: 12px; border: 1.5px solid #e2e8f0; text-align: left; margin-bottom: 25px;">
+                <label
+                    style="font-size: 0.7rem; font-weight: 800; color: var(--primary); display: block; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">📅
+                    Periodo Detectado (Puedes corregirlo):</label>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <input type="text" id="manualPeriodInput" placeholder="DD-MM-YYYY"
+                        style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.95rem; font-family: 'Outfit', sans-serif; font-weight: 600; color: var(--text-main);">
+                </div>
+                <small style="color: var(--text-muted); font-size: 0.65rem; margin-top: 4px; display: block;">Si el
+                    archivo es un rango, pon la fecha final o deseada.</small>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;">
+                <button class="btn" onclick="confirmHotelUpload('Guadiana')"
+                    style="padding: 15px 10px; height: auto; flex-direction: column; gap: 10px; display: flex; align-items: center; justify-content: center;">
+                    <img src="Imagen/logo-guadiana.svg" style="height: 35px; filter: brightness(0) invert(1);"
+                        alt="Guadiana">
+                    <span style="font-size: 0.85rem; font-weight: 700;">Hotel Guadiana</span>
+                </button>
+                <button class="btn" onclick="confirmHotelUpload('Cumbria')"
+                    style="padding: 15px 10px; height: auto; flex-direction: column; gap: 10px; display: flex; align-items: center; justify-content: center; background: #6366f1;">
+                    <img src="Imagen/logo-cumbria.svg" style="height: 35px; filter: brightness(0) invert(1);"
+                        alt="Cumbria">
+                    <span style="font-size: 0.85rem; font-weight: 700;">Hotel Cumbria</span>
+                </button>
+            </div>
+
+            <button class="btn" onclick="document.getElementById('hotelConfirmModal').style.display='none'"
+                style="background: transparent; color: var(--text-muted); border: 1px solid var(--border); width: 100%; padding: 12px; font-weight: 500;">
+                Cancelar Carga
+            </button>
         </div>
     </div>
 </body>

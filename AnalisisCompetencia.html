@@ -594,6 +594,7 @@
             <a href="AnalisisProduccion.html">📈 Producción</a>
             <a href="AnalisisSegmentos.html">👥 Segmentos</a>
             <a href="AnalisisCompetencia.html" class="active">⚖️ Competencia</a>
+            <a href="AnalisisIA.html" style="color:#f59e0b; font-weight:800;">✨ CapaAI</a>
             <a href="CalculadoraPresupuesto.html">💰 Presupuesto</a>
             <a href="CargarDatos.html">⚙️ Config</a>
         </div>
@@ -1185,7 +1186,7 @@
                 let occ = 0;
                 if (occupancyRow !== -1) occ = parseFloat(rawData[occupancyRow][c]) || 0;
 
-                const dateInfo = parseDate(currentMonth, dNum, dName, occ);
+                const dateInfo = parseDate(currentMonth, dNum, dName);
 
                 // Fallback Occupancy Sync
                 if (occ === 0 && dateInfo.iso && dateInfo.iso !== "INV-DATE") {
@@ -1194,12 +1195,14 @@
                         if (pDbRaw) {
                             const pDb = (typeof pDbRaw === 'string') ? JSON.parse(pDbRaw) : pDbRaw;
                             // Search Logic Simplified
-                            const yr = dateInfo.iso.split('-')[0];
-                            const iso = dateInfo.iso;
-                            if (pDb[activeHotel] && pDb[activeHotel][yr] && pDb[activeHotel][yr].daily && pDb[activeHotel][yr].daily[iso]) {
+                            // 1. Try EXACT Active Hotel + Year/Key
+                            if (pDb[activeHotel] && pDb[activeHotel][yr] && pDb[activeHotel][yr].daily_otb && pDb[activeHotel][yr].daily_otb[iso]) {
+                                let dVal = pDb[activeHotel][yr].daily_otb[iso];
+                                occ = (typeof dVal === 'object') ? (dVal.rooms || 0) : dVal;
+                            }
+                            // 2. Legacy Fallback (Actual Production from 'daily' if OTB is empty)
+                            else if (pDb[activeHotel] && pDb[activeHotel][yr] && pDb[activeHotel][yr].daily && pDb[activeHotel][yr].daily[iso]) {
                                 occ = pDb[activeHotel][yr].daily[iso];
-                            } else if (pDb["Guadiana"] && pDb["Guadiana"][yr] && pDb["Guadiana"][yr].daily && pDb["Guadiana"][yr].daily[iso]) {
-                                occ = pDb["Guadiana"][yr].daily[iso];
                             }
                             if (occ > 0) {
                                 dateInfo.html = parseDate(currentMonth, dNum, dName, occ).html;
@@ -1212,15 +1215,16 @@
 
                 const dayObj = {
                     dayIndex: c,
-                    dateHtml: dateInfo.html,
                     label: `${dNum} ${dateInfo.month}`,
                     month: dateInfo.month,
                     hotels: {},
                     compAvg: 0,
-                    occupancy: occ,
-                    otbRooms: dateInfo.otb || 0,
                     dateISO: dateInfo.iso,
-                    dateMeta: { currentMonth, dNum, dName }
+                    dateMeta: {
+                        dNum,
+                        dShort: dateInfo.dShort,
+                        mShort: dateInfo.mShort
+                    }
                 };
 
                 let compPrices = [];
@@ -1282,132 +1286,81 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             return { price: isNaN(p) ? 0 : p, sold: false, status: 'available' };
         }
 
-        function parseDate(monthRaw, dNum, dayNameRaw, occVal) {
-            // SAFEGUARDS
-            if (!dNum) return { html: "", month: "", iso: "INV-DATE", otb: 0 };
+        function parseDate(monthRaw, dNum, dayNameRaw) {
+            if (!dNum) return { month: "", iso: "INV-DATE", dShort: "", mShort: "" };
 
-            // Extract Month
             let mStr = String(monthRaw || "").trim();
-            // Try to extract year: "Enero 2025" -> 2025
             let yearFromData = null;
             const yearMatch = mStr.match(/(\d{4})/);
             if (yearMatch) yearFromData = parseInt(yearMatch[1]);
 
-            // Normalize Month
             let mLower = mStr.toLowerCase();
             let mShort = "";
             for (const key in MONTH_MAP) {
-                if (mLower.includes(key)) {
-                    mShort = MONTH_MAP[key];
-                    break;
-                }
+                if (mLower.includes(key)) { mShort = MONTH_MAP[key]; break; }
             }
-            if (!mShort) mShort = mStr.split(" ")[0]; // Fallback
+            if (!mShort) mShort = mStr.split(" ")[0];
             if (mShort) mShort = mShort.charAt(0).toUpperCase() + mShort.slice(1).toLowerCase();
 
-            // Detect Year Logic (if not in string)
-            let year = yearFromData;
-            if (!year) {
-                const currentYear = new Date().getFullYear(); // 2026
-                // Default to current year logic
-                year = currentYear;
-
-                // Optional: Intelligence about past months? 
-                // Let's force 2026 for now as we know user is working on 2026 data
-                if (year < 2026) year = 2026;
-            }
-
+            let year = yearFromData || 2026;
             const monthWithYear = `${mShort} ${year}`;
 
-            // Format Day Name
             let d = String(dayNameRaw || "").toLowerCase().trim().replace(".", "");
             let dShort = d.length > 2 ? d.substring(0, 2) : d;
             dShort = dShort.charAt(0).toUpperCase() + dShort.slice(1);
             if (dShort.length === 0) dShort = "Dia";
 
-            const dShortStr = dShort;
-            const mShortStr = mShort;
-
-            // Prepare ISO for database lookup
             const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-            const monthIdx = monthNames.indexOf(mShort);
-            const validMonthIdx = monthIdx === -1 ? 0 : monthIdx;
-            // Pad properly
-            const iso = `${year}-${String(validMonthIdx + 1).padStart(2, '0')}-${String(dNum).padStart(2, '0')}`;
+            const mIdx = monthNames.indexOf(mShort);
+            const iso = `${year}-${String((mIdx === -1 ? 0 : mIdx) + 1).padStart(2, '0')}-${String(dNum).padStart(2, '0')}`;
 
-            // LOAD OTB DATA from production database
-            let otbRooms = 0;
+            return { month: monthWithYear, iso: iso, dShort: dShort, mShort: mShort };
+        }
+
+        function getDynamicDateHtml(d, hotel) {
+            const iso = d.dateISO;
+            const meta = d.dateMeta;
+            let occ = 0;
+            let otb = 0;
+
             try {
-                const productionDB = CapaStorage.getItem('hotel_manager_db_v2');
-                if (productionDB) {
-                    // FIX: Handle Object vs String
-                    const prodData = (typeof productionDB === 'string') ? JSON.parse(productionDB) : productionDB;
-                    const currentHotel = document.getElementById('hotelSelector')?.value || activeHotel || 'Guadiana';
-
-                    // Robust search: Try current hotel, then common names, case insensitive
-                    const hotelsToTry = [currentHotel, 'Guadiana', 'Cumbria'];
-                    const variants = [];
-                    hotelsToTry.forEach(h => {
-                        if (h) {
-                            variants.push(h);
-                            variants.push(h.toLowerCase());
-                            variants.push(h.charAt(0).toUpperCase() + h.slice(1).toLowerCase());
-                            variants.push(h.toUpperCase());
+                const pDbRaw = CapaStorage.getItem('hotel_manager_db_v2');
+                if (pDbRaw) {
+                    const pDb = (typeof pDbRaw === 'string') ? JSON.parse(pDbRaw) : pDbRaw;
+                    const hData = pDb[hotel];
+                    if (hData) {
+                        const yr = iso.split('-')[0];
+                        // 1. Get OTBs
+                        if (hData[yr]?.daily_otb?.[iso]) {
+                            const val = hData[yr].daily_otb[iso];
+                            otb = (typeof val === 'object') ? (val.rooms || 0) : val;
                         }
-                    });
-                    const uniqueHotels = [...new Set(variants)];
-
-                    for (const h of uniqueHotels) {
-                        try {
-                            const hotelObj = prodData[h];
-                            if (!hotelObj) continue;
-
-                            // 1. Try EXACT Year/Key first
-                            if (hotelObj[year] && hotelObj[year].daily) {
-                                if (hotelObj[year].daily[iso]) {
-                                    otbRooms = hotelObj[year].daily[iso];
-                                    break;
-                                }
-                            }
-
-                            // 2. Fallback: Agnostic Year Search
-                            if (!otbRooms) {
-                                const availableYears = Object.keys(hotelObj);
-                                for (const y of availableYears) {
-                                    if (hotelObj[y] && hotelObj[y].daily) {
-                                        // Construct key for this year
-                                        const tryKey = `${y}-${String(validMonthIdx + 1).padStart(2, '0')}-${String(dNum).padStart(2, '0')}`;
-                                        if (hotelObj[y].daily[tryKey]) {
-                                            otbRooms = hotelObj[y].daily[tryKey];
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                            if (otbRooms) break;
-                        } catch (err) { continue; }
+                        // 2. Get Real Occupancy
+                        if (hData[yr]?.daily?.[iso]) {
+                            occ = hData[yr].daily[iso];
+                        }
                     }
                 }
-            } catch (e) {
-                // Silent fail
-            }
+            } catch (e) { }
 
-            const occValFix = (occVal > 0) ? `<span style="display:block; font-size: 0.65rem; color: #4f46e5; font-weight: 700; margin-top: 2px;">Hab: ${occVal.toFixed(0)}</span>` : '';
-            const otbHtml = (otbRooms > 0) ? `<span style="display:block; font-size: 0.6rem; color: #8b5cf6; font-weight: 600; margin-top: 1px;">📈 ${otbRooms} OTB</span>` : '';
+            const occValFix = (occ > 0) ? `<span style="display:block; font-size: 0.65rem; color: #4f46e5; font-weight: 700; margin-top: 2px;">Hab: ${occ}</span>` : '';
+            const otbHtml = (otb > 0 && Number(otb) !== Number(occ)) ? `<span style="display:block; font-size: 0.6rem; color: #8b5cf6; font-weight: 600; margin-top: 1px;">📈 ${otb} OTB</span>` : '';
 
-            const html = `
-                <div class="date-pill">
-                    <div class="date-day">${dNum}</div>
-                    <div class="date-meta">
-                        <span>${dShortStr}</span>
-                        <span>${mShortStr}</span>
-                        ${occValFix}
-                        ${otbHtml}
+            return {
+                html: `
+                    <div class="date-pill">
+                        <div class="date-day">${meta.dNum}</div>
+                        <div class="date-meta">
+                            <span>${meta.dShort}</span>
+                            <span>${meta.mShort}</span>
+                            ${occValFix}
+                            ${otbHtml}
+                        </div>
                     </div>
-                </div>
-            `;
-
-            return { html: html, month: monthWithYear, iso: iso, otb: otbRooms };
+                `,
+                occ: occ,
+                otb: otb
+            };
         }
 
         function populateMonths() {
@@ -1424,16 +1377,16 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             let data = processedData;
 
             // NEW: Synchronize occupancy from Production DB before rendering
-            // NEW: Synchronize occupancy from Production DB before rendering
+            // This block is now largely redundant as getDynamicDateHtml fetches live data for each cell.
+            // However, it's kept to update the `otbRooms` and `occupancy` properties in the `processedData` array
+            // which are used for the diagnostic counter and potentially other KPIs.
             try {
                 const pDbRaw = CapaStorage.getItem('hotel_manager_db_v2');
                 if (pDbRaw) {
-                    // Handle Object vs String (Firebase sync vs LocalStorage)
                     const pDb = (typeof pDbRaw === 'string') ? JSON.parse(pDbRaw) : pDbRaw;
 
-                    // FUZZY HOTEL MATCH: Find the correct key in DB for current activeHotel
                     const dbKeys = Object.keys(pDb);
-                    const targetName = activeHotel.toLowerCase().trim(); // e.g. "guadiana"
+                    const targetName = activeHotel.toLowerCase().trim();
                     let dbHotelKey = dbKeys.find(k => k === activeHotel)
                         || dbKeys.find(k => k.toLowerCase() === targetName)
                         || dbKeys.find(k => k.toLowerCase().includes(targetName));
@@ -1443,28 +1396,26 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
                         data.forEach(d => {
                             if (d.dateISO) {
-                                let foundOTB = -1; // Sentinel value to distinguish "not found" vs "0"
+                                let foundOTB = -1;
+                                let foundDailyOcc = -1;
                                 const parts = d.dateISO.split('-');
                                 const mStr = parts[1];
                                 const dStr = parts[2];
 
-                                // Agnostic Year Search: Check ALL years in DB for this Month-Day
                                 const years = Object.keys(hData);
                                 for (const y of years) {
-                                    if (hData[y] && hData[y].daily) {
-                                        // FORMATO ESTRICTO DE CLAVE
-                                        // La base de datos guarda "YYYY-MM-DD"
+                                    if (hData[y]) {
                                         const tryKey = `${y}-${mStr}-${dStr}`;
-
-                                        // Búsqueda Directa
-                                        if (hData[y].daily[tryKey] !== undefined) {
-                                            foundOTB = hData[y].daily[tryKey];
+                                        if (hData[y].daily_otb?.[tryKey] !== undefined) {
+                                            foundOTB = hData[y].daily_otb[tryKey];
                                             break;
+                                        }
+                                        if (hData[y].daily?.[tryKey] !== undefined) {
+                                            foundDailyOcc = hData[y].daily[tryKey];
                                         }
                                     }
                                 }
 
-                                // If found, update the data model
                                 if (foundOTB !== -1) {
                                     let otbRms = 0;
                                     let otbRev = 0;
@@ -1478,19 +1429,15 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
                                     if (otbRms !== 0) {
                                         d.otbRooms = otbRms;
-                                        d.occupancy = otbRms;
+                                        // d.occupancy = otbRms; // Do not overwrite spreadsheet occupancy here, use live daily for alerts
 
-                                        // Calculate ADR if Revenue is available
                                         if (otbRev > 0) {
                                             d.otbADR = otbRev / otbRms;
                                         }
-
-                                        // Regenerate HTML with new OTB data
-                                        const meta = d.dateMeta || {};
-                                        // Re-render pill
-                                        const res = parseDate(meta.currentMonth, meta.dNum, meta.dName, otbRms);
-                                        d.dateHtml = res.html;
                                     }
+                                }
+                                if (foundDailyOcc !== -1) {
+                                    d.occupancy = foundDailyOcc; // Update with live daily occupancy
                                 }
                             }
                         });
@@ -1502,7 +1449,6 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 data = processedData.filter(d => d.month === selectedMonth);
             }
 
-            // Diagnostic Counter in UI
             // Diagnostic Counter in UI
             const otbCount = data.filter(d => d.otbRooms > 0).length;
             let otbText = "";
@@ -1655,44 +1601,37 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 }
 
                 // Row content
-                // --- CAPASUITE ALERTS SYSTEM ---
-                // Config: Guadiana 108, Cumbria 59
+                // --- CAPASUITE DYNAMIC RENDERING ---
                 const HOTEL_CAPACITY = (activeHotel === 'Cumbria') ? 59 : 108;
-                const occ = d.otbRooms || 0;
-                let alertHtml = '';
+                const dynamic = getDynamicDateHtml(d, activeHotel);
 
-                // Rule: High Occupancy >= 96%
-                const occPct = (occ / HOTEL_CAPACITY) * 100;
+                // FIX: Use OTB if real occupancy is missing (common for future dates)
+                const currentOcc = (dynamic.occ > 0) ? dynamic.occ : dynamic.otb;
+
+                let alertHtml = '';
+                const occPct = (currentOcc / HOTEL_CAPACITY) * 100;
 
                 if (occPct >= 96) {
-                    const isOver = occ > HOTEL_CAPACITY;
-                    // Check if we are selling: price > 0, not sold, not closed
+                    const isOver = currentOcc > HOTEL_CAPACITY;
                     const isOpen = (my && !my.sold && my.price > 0 && my.status !== 'sold' && my.status !== 'closed');
 
                     if (isOver && isOpen) {
-                        // CRITICAL: Overbooking AND Open Sales -> RED ALERT
-                        alertHtml = `<div title="¡Alerta Crítica! Ventas abiertas con overbooking (${occ}/${HOTEL_CAPACITY})" style="margin-top:3px; padding:2px; border-radius:3px; background:#fee2e2; border:1px solid #ef4444; font-size:0.65rem; color:#991b1b; font-weight:800; display:flex; align-items:center; justify-content:center; gap:2px; width:100%;">
+                        alertHtml = `<div title="¡Alerta Crítica! Ventas abiertas con overbooking (${currentOcc}/${HOTEL_CAPACITY})" style="margin-top:3px; padding:2px; border-radius:3px; background:#fee2e2; border:1px solid #ef4444; font-size:0.65rem; color:#991b1b; font-weight:800; display:flex; align-items:center; justify-content:center; gap:2px; width:100%;">
                             <span>⚠️</span> STOP
                         </div>`;
                     } else {
-                        // WARNING: High Occupancy -> ORANGE ALERT
                         alertHtml = `<div title="Ocupación alta (${occPct.toFixed(0)}%)" style="margin-top:2px; font-size:0.65rem; color:#c2410c; font-weight:700; display:flex; align-items:center; justify-content:center; gap:2px;">
                             <span>🔥</span> ${occPct.toFixed(0)}%
                         </div>`;
                     }
                 }
 
-                // Inject into date cell
-                let cellContent = d.dateHtml;
+                let cellContent = dynamic.html;
                 if (alertHtml) {
-                    // Try to insert inside .date-meta for better alignment
                     const metaClose = cellContent.lastIndexOf('</div></div>');
                     if (metaClose > -1) {
                         cellContent = cellContent.substring(0, metaClose) + alertHtml + "</div></div>";
-                    } else {
-                        // Fallback just append
-                        cellContent += alertHtml;
-                    }
+                    } else cellContent += alertHtml;
                 }
 
                 let html = `<tr id="row-${d.dayIndex}">`;
@@ -1702,10 +1641,10 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 const myStatus = my?.status || 'available';
 
                 // DETECCIÓN DE "FALSO CERRADO" (Closed but has availability)
-                // Si el Excel dice 'S' (Cerrado/Sold Out) PERO tenemos hueco real según OTB
+                // Usamos currentOcc (que ya incluye OTB) para calcular el hueco
                 let falseClosedAlert = "";
-                if ((sold || myStatus === 'sold') && occ > 0 && occ < HOTEL_CAPACITY) {
-                    const roomGap = HOTEL_CAPACITY - occ;
+                if ((sold || myStatus === 'sold') && currentOcc > 0 && currentOcc < HOTEL_CAPACITY) {
+                    const roomGap = HOTEL_CAPACITY - currentOcc;
                     // Solo avisar si el hueco es significativo (ej: más de 1 hab)
                     if (roomGap >= 1) {
                         falseClosedAlert = `<div title="¡ATENCIÓN! El sistema de precios dice CERRADO pero tienes ${roomGap} habitaciones libres." 
@@ -1871,51 +1810,53 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
         window.diagnoseOTB = function () {
             const raw = CapaStorage.getItem('hotel_manager_db_v2');
-            if (!raw) return alert("❌ Base de datos OTB está COMPLETAMENTE VACÍA.\nPor favor ve a 'Config' y sube el archivo de nuevo.");
+            if (!raw) return alert("❌ Base de Datos (Producción/OTB) está VACÍA.\nPor favor ve a 'Config' y sube los archivos Excel.");
 
             try {
                 let db = (typeof raw === 'string') ? JSON.parse(raw) : raw;
                 const keys = Object.keys(db);
-                let msg = `✅ Base de Datos Conectada.\n`;
-                msg += `Hoteles encontrados: ${keys.join(', ')}\n`;
-                msg += `Hotel Activo seleccionado: "${activeHotel}"\n`;
+                let msg = `🔎 DIAGNÓSTICO DE PREVISIÓN (OTB):\n\n`;
+                msg += `1. Hoteles en BD: ${keys.join(', ')}\n`;
+                msg += `2. Hotel Seleccionado: "${activeHotel}"\n`;
 
                 if (keys.includes(activeHotel)) {
                     const yData = db[activeHotel];
                     const years = Object.keys(yData);
-                    msg += `\nAños Disponibles: ${years.join(', ')}`;
+                    const lastYear = years.sort().reverse()[0] || "2026";
 
-                    // TARGET CHECK
-                    if (typeof processedData !== 'undefined' && processedData.length > 0) {
+                    msg += `3. Años en BD: ${years.join(', ')}\n`;
+
+                    if (processedData.length > 0) {
                         const targetISO = processedData[0].dateISO;
-                        msg += `\n\n🔎 Tabla busca: "${targetISO}"`;
+                        msg += `4. Buscando fecha: "${targetISO}"\n`;
 
-                        const lastYear = years.includes('2026') ? '2026' : years[years.length - 1];
-                        if (yData[lastYear] && yData[lastYear].daily) {
-                            const dKeys = Object.keys(yData[lastYear].daily);
-                            msg += `\nEjemplos BD (${lastYear}): ${dKeys.slice(0, 3).join(', ')}`;
+                        let found = false;
+                        if (yData[lastYear]) {
+                            // Check both old and new format for legacy support during transition
+                            const hasDailyOTB = yData[lastYear].daily_otb && Object.keys(yData[lastYear].daily_otb).length > 0;
+                            const hasDailyLegacy = yData[lastYear].daily && Object.keys(yData[lastYear].daily).length > 0;
 
-                            // Check match
-                            let found = false;
+                            if (hasDailyOTB) msg += `✅ Se detectan datos en 'daily_otb' (${lastYear}).\n`;
+                            else if (hasDailyLegacy) msg += `⚠️ Datos detectados en formato antiguo (daily). Se recomienda re-subir el archivo de Previsión.\n`;
+                            else msg += `❌ No hay datos diarios de previsión para ${lastYear}.\n`;
+
+                            // Final check
                             years.forEach(y => {
-                                if (yData[y].daily && yData[y].daily[targetISO]) found = true;
+                                if ((yData[y].daily_otb && yData[y].daily_otb[targetISO]) || (yData[y].daily && yData[y].daily[targetISO])) found = true;
                             });
+                        }
 
-                            if (!found) {
-                                msg += `\n\n❌ La fecha "${targetISO}" buscada NO existe en la BD.`;
-                                msg += `\n(La BD tiene ${lastYear} y la tabla busca otro año/formato).`;
-                                msg += `\n\n💡 SOLUCIÓN DEFINITIVA:\nHAZ CLICK EN '↺ Nuevo Archivo' y SUBE EL EXCEL DE NUEVO.\nEsto corregirá las fechas internas de la tabla.`;
-                            } else {
-                                msg += `\n✅ La fecha existe en BD. Debería funcionar.`;
-                            }
+                        if (!found) {
+                            msg += `\n❌ CONCLUSIÓN: No hay datos de OTB para la fecha específica "${targetISO}".\n\n💡 SOLUCIÓN:\n1. Ve a 'Config' y sube el archivo 'Prevision.xlsx'.\n2. Asegúrate de que el año del archivo coincida con el de esta tabla.`;
+                        } else {
+                            msg += `\n✅ CONCLUSIÓN: Los datos existen. Si no los ves, refresca la página (F5).`;
                         }
                     }
                 } else {
-                    msg += `\n⚠️ NO SE ENCUENTRA "${activeHotel}" en la BD.`;
-                    if (keys.length > 0) msg += `\nIntenta cambiar el nombre en el selector o subir el archivo correcto.`;
+                    msg += `\n⚠️ ERROR: El hotel "${activeHotel}" no existe en la base de datos.\nSube un archivo para este hotel en la sección 'Config'.`;
                 }
                 alert(msg);
-            } catch (e) { alert("Error leyendo BD: " + e.message); }
+            } catch (e) { alert("Error en diagnóstico: " + e.message); }
         };
 
         // DEBUG PANEL
