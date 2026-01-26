@@ -967,75 +967,125 @@
             let guadianaRow = -1;
             let cumbriaRow = -1;
 
-            // Find Anchors
-            // Find Anchors Robust
-            for (let r = 0; r < Math.min(rawData.length, 50); r++) {
-                const rowStr = (rawData[r] || []).join(" ").toLowerCase();
-                if (rowStr.includes("guadiana")) guadianaRow = r;
-                if (rowStr.includes("cumbria")) cumbriaRow = r;
+            // Find Anchors - FIRST VALID MATCH STRATEGY
+            // We search for the first occurrence that looks like the main header row
+            for (let r = 0; r < Math.min(rawData.length, 100); r++) {
+                const row = rawData[r] || [];
+                const rowStr = row.join(" ").toLowerCase();
+
+                // Find Guadiana
+                if (guadianaRow === -1 && rowStr.includes("guadiana") && !rowStr.includes("tarifas")) {
+                    // Check if this row actually has data columns? 
+                    // The main row usually has values to the right.
+                    if (row.length > 2) {
+                        guadianaRow = r;
+                    }
+                }
+
+                // Find Cumbria
+                if (cumbriaRow === -1 && rowStr.includes("cumbria")) {
+                    cumbriaRow = r;
+                }
+
+                if (guadianaRow !== -1 && cumbriaRow !== -1) break;
             }
 
-            if (guadianaRow === -1) { logD("❌ ERROR FATAL: 'Guadiana' no encontrado en el Excel."); alert("Error: No se encontró 'Sercotel Guadiana'."); return; }
+            // Fallback: If we found Guadiana but it was short (length <=2), maybe it was the only one?
+            if (guadianaRow === -1) {
+                for (let r = 0; r < Math.min(rawData.length, 100); r++) {
+                    const rowStr = (rawData[r] || []).join(" ").toLowerCase();
+                    if (rowStr.includes("guadiana") && !rowStr.includes("tarifas")) { guadianaRow = r; break; }
+                }
+            }
+
+            if (guadianaRow === -1) { logD("❌ ERROR FATAL: 'Guadiana' no encontrado en el Excel."); alert("Error: No se encontró 'Sercotel Guadiana' en las primeras 100 filas."); return; }
             logD(`✅ Guadiana encontrado en fila ${guadianaRow}. Analizando fechas...`);
 
-            const dr = rawData[guadianaRow - 1];
-            const dStr = dr ? JSON.stringify(dr.slice(0, 8)).replace(/"/g, '') : 'NULL';
-            logD(`Fila Fechas [-1]: ${dStr}`);
+            // Metadata Rows - Dynamic Search for Date Row (1..31)
+            let dateNumRow = -1;
 
-            // Metadata Rows
-            const dateNumRow = guadianaRow - 1;
-            const dayNameRow = guadianaRow - 2;
+            // Scan upwards from Guadiana to find the row with day numbers (e.g "lun. 26" or just "26")
+            for (let r = guadianaRow - 1; r >= Math.max(0, guadianaRow - 10); r--) {
+                const row = rawData[r] || [];
+                let validDayNums = 0;
+
+                for (let c = 1; c < Math.min(row.length, 50); c++) {
+                    // Extract number from string like "lun. 26" -> 26
+                    const cellStr = String(row[c]);
+
+                    // Ignore cells with "%" to avoid confusions with "+10%" or similar
+                    if (cellStr.includes('%')) continue;
+
+                    const match = cellStr.match(/(\d+)/);
+                    if (match) {
+                        const val = parseInt(match[1]);
+                        if (val >= 1 && val <= 31) validDayNums++;
+                    }
+                }
+
+                // Heuristic: If we found > 3 valid days in a row, this is it
+                if (validDayNums > 3) {
+                    dateNumRow = r;
+                    break;
+                }
+            }
+
+            // Fallback
+            if (dateNumRow === -1) {
+                logD("⚠️ No se encontró fila de fechas (1..31). Usando fila anterior a Guadiana por defecto.");
+                dateNumRow = guadianaRow - 1;
+            } else {
+                logD(`✅ Fila de fechas detectada en índice ${dateNumRow}`);
+            }
+
+            const dayNameRow = dateNumRow; // Sometimes day name and number are in the SAME cell
             let monthRow = -1;
 
-            // Scan for month row relative to Guadiana (look up to 15 rows above)
-            const scanFrom = Math.max(0, guadianaRow - 15);
-            for (let r = scanFrom; r < guadianaRow; r++) {
+            // Scan for month row above Date Row
+            const scanFrom = Math.max(0, dateNumRow - 15);
+            for (let r = scanFrom; r < dateNumRow; r++) {
                 const str = JSON.stringify(rawData[r] || []).toLowerCase();
                 if (str.includes("january") || str.includes("february") || str.includes("enero") || str.includes("marzo") || str.includes("abril") || str.includes("mayo") || str.includes("junio") || str.includes("julio") || str.includes("agosto") || str.includes("septiembre") || str.includes("octubre") || str.includes("noviembre") || str.includes("diciembre")) {
                     monthRow = r; break;
                 }
             }
 
-            // Start Column
+            // Start Column Logic
             let startCol = 1;
-            let gRowData = [];
-
-            if (guadianaRow !== -1) {
-                gRowData = rawData[guadianaRow];
+            let gRowData = rawData[guadianaRow];
+            if (gRowData) {
                 for (let c = 1; c < gRowData.length; c++) {
                     const val = gRowData[c];
+                    // Look for valid price or 'S' (Closed)
                     if (!isNaN(parseFloat(val)) || String(val).toUpperCase() === 'S') {
                         startCol = c; break;
                     }
                 }
-
-                // Fallback: Check Date Num Row for numbers 1-31
+                // Double check with Date Row - Logic: Find first column with a valid date number that ISN'T a percentage
                 if (startCol === 1 && rawData[dateNumRow]) {
                     for (let c = 1; c < rawData[dateNumRow].length; c++) {
-                        const val = parseInt(rawData[dateNumRow][c]);
-                        if (!isNaN(val) && val >= 1 && val <= 31) {
-                            startCol = c; break;
+                        const cellStr = String(rawData[dateNumRow][c]);
+                        if (cellStr.includes('%')) continue;
+
+                        const match = cellStr.match(/(\d+)/);
+                        if (match) {
+                            const val = parseInt(match[1]);
+                            if (val >= 1 && val <= 31) {
+                                startCol = c; break;
+                            }
                         }
                     }
                 }
-
-                logD(`StartCol FINAL: ${startCol} | MonthRow: ${monthRow}`);
-            } else if (rawData.length > 0) {
-                gRowData = rawData[0]; // Fallback
             }
+            logD(`StartCol FINAL: ${startCol} | MonthRow: ${monthRow}`);
 
-            // Competitors
-
-            // Competitors
-
-            // Competitors
+            // Competitors List
             competitorsList = [];
             const scanStart = (cumbriaRow !== -1 ? cumbriaRow : guadianaRow) + 1;
-            const totalCols = gRowData.length;
+            const totalCols = gRowData ? gRowData.length : 0;
             let consecutiveInvalid = 0;
 
             for (let r = scanStart; r < rawData.length; r++) {
-                // Safety: Avoid scanning infinite empty rows
                 if (consecutiveInvalid > 20) break;
 
                 const row = rawData[r];
@@ -1047,7 +1097,7 @@
                 const name = String(row[0]).trim();
                 const nLow = name.toLowerCase();
 
-                // Blacklist / Filters
+                // Blacklist
                 if (name.length < 3) { consecutiveInvalid++; continue; }
                 if (nLow.includes("tarifas medias") || nLow.includes("interés") || nLow.includes("interes") ||
                     nLow.includes("año anterior") || nLow.includes("rank") || nLow.includes("clasificación") ||
@@ -1056,17 +1106,16 @@
                     consecutiveInvalid++; continue;
                 }
 
-                // VALIDATION: Check for DATA DENSITY
+                // Check Data Density
                 let validPoints = 0;
                 for (let checkC = startCol; checkC < Math.min(startCol + 30, totalCols); checkC++) {
                     const cell = row[checkC];
                     if (!isNaN(parseFloat(cell)) || String(cell).toUpperCase() === 'S') validPoints++;
                 }
 
-                // STRICT RULE: Must have at least 5 valid data points in the first 30 days
                 if (validPoints >= 5) {
                     competitorsList.push({ name: name, rowIdx: r });
-                    consecutiveInvalid = 0; // Reset counter on valid hit
+                    consecutiveInvalid = 0;
                 } else {
                     consecutiveInvalid++;
                 }
@@ -1088,14 +1137,14 @@
             processedData = [];
             distinctMonths = [];
             let currentMonth = "";
-            const maxCols = gRowData.length;
+            const maxCols = gRowData ? gRowData.length : 0;
 
             for (let c = startCol; c < maxCols; c++) {
                 // Month Update
                 if (monthRow !== -1 && rawData[monthRow] && rawData[monthRow][c]) {
                     currentMonth = String(rawData[monthRow][c]).trim();
                 } else if (currentMonth === "") {
-                    // Fallback
+                    // Fallback Search
                     for (let r = 0; r < 20; r++) {
                         const cell = String(rawData[r] ? rawData[r][c] : "").toLowerCase();
                         for (const mKey in MONTH_MAP) {
@@ -1105,12 +1154,25 @@
                     }
                 }
 
+                // Extract Day Number Properly using Regex
                 let dNum = "";
-                if (dateNumRow !== -1 && rawData[dateNumRow]) dNum = String(rawData[dateNumRow][c] || "").trim();
+                if (dateNumRow !== -1 && rawData[dateNumRow]) {
+                    const cellVal = String(rawData[dateNumRow][c] || "");
+                    if (!cellVal.includes('%')) { // Skip percentages
+                        const match = cellVal.match(/(\d+)/);
+                        if (match) dNum = match[1];
+                    }
+                }
+
                 if (!dNum) continue;
 
+                // Day Name is often in the same cell now "lun. 26"
                 let dName = "";
-                if (dayNameRow !== -1 && rawData[dayNameRow]) dName = String(rawData[dayNameRow][c] || "").trim();
+                if (dateNumRow !== -1 && rawData[dateNumRow]) {
+                    const cellVal = String(rawData[dateNumRow][c] || "");
+                    // remove digits to get name
+                    dName = cellVal.replace(/\d+/g, '').replace(/\./g, '').trim();
+                }
 
                 // Format Date & Occupancy
                 let occ = 0;
@@ -1118,27 +1180,21 @@
 
                 const dateInfo = parseDate(currentMonth, dNum, dName, occ);
 
-                // Fallback Occupancy Sync (if not in Excel)
+                // Fallback Occupancy Sync
                 if (occ === 0 && dateInfo.iso && dateInfo.iso !== "INV-DATE") {
                     try {
                         const pDbRaw = CapaStorage.getItem('hotel_manager_db_v2');
                         if (pDbRaw) {
                             const pDb = (typeof pDbRaw === 'string') ? JSON.parse(pDbRaw) : pDbRaw;
-                            // Search Logic Simplified for this fallback
+                            // Search Logic Simplified
                             const yr = dateInfo.iso.split('-')[0];
                             const iso = dateInfo.iso;
-
-                            // Try Active Hotel
                             if (pDb[activeHotel] && pDb[activeHotel][yr] && pDb[activeHotel][yr].daily && pDb[activeHotel][yr].daily[iso]) {
                                 occ = pDb[activeHotel][yr].daily[iso];
-                            }
-                            // Try Fallback Hotel names
-                            else if (pDb["Guadiana"] && pDb["Guadiana"][yr] && pDb["Guadiana"][yr].daily && pDb["Guadiana"][yr].daily[iso]) {
+                            } else if (pDb["Guadiana"] && pDb["Guadiana"][yr] && pDb["Guadiana"][yr].daily && pDb["Guadiana"][yr].daily[iso]) {
                                 occ = pDb["Guadiana"][yr].daily[iso];
                             }
-
                             if (occ > 0) {
-                                // Regenerate HTML with updated occupancy
                                 dateInfo.html = parseDate(currentMonth, dNum, dName, occ).html;
                             }
                         }
@@ -1177,22 +1233,33 @@
                 processedData.push(dayObj);
             }
 
-            // DIAGNOSTIC LOG (Console only)
+            // DIAGNOSTIC LOG (Console)
             console.log(`✅ Loaded ${processedData.length} days. First ISO: ${processedData[0]?.dateISO}`);
             logD(`✅ FIN: ${processedData.length} días cargados.`);
+
             if (processedData.length > 0) {
                 logD(`Muestra [0]: ISO=${processedData[0].dateISO}, Ocupación=${processedData[0].occupancy}, OTB=${processedData[0].otbRooms}`);
+
+                populateMonths();
+                document.getElementById('view-upload').style.display = 'none';
+                document.getElementById('view-dashboard').style.display = 'grid';
+                document.getElementById('dashboard-controls').style.display = 'flex';
+
+                saveData();
+                renderAll();
             } else {
-                logD("❌ ERROR CRÍTICO: No se han generado datos diarios. Posible fallo en detección de filas de fecha.");
+                const debugInfo = `
+Guadiana Row: ${guadianaRow}
+Date Num Row: ${dateNumRow}
+Start Col: ${startCol}
+Max Cols: ${maxCols}
+Sample Date Cell: "${rawData[dateNumRow] ? rawData[dateNumRow][startCol] : 'Undefined'}"
+Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
+`;
+                logD("❌ ERROR CRÍTICO: " + debugInfo);
+                alert("Error de Formato. Por favor envía una captura de esta alerta:\n" + debugInfo);
+                location.reload(); // Allow retry
             }
-
-            populateMonths();
-            document.getElementById('view-upload').style.display = 'none';
-            document.getElementById('view-dashboard').style.display = 'grid';
-            document.getElementById('dashboard-controls').style.display = 'flex';
-
-            saveData();
-            renderAll();
         }
 
         function parseVal(val) {

@@ -1441,22 +1441,40 @@
         }
 
         function extractDateFromFilename(name) {
-            const n = normalizeStr(name);
+            // Use raw uppercase to preserve hyphens and spaces
+            const upName = String(name).toUpperCase();
+            const n = normalizeStr(name); // Keep for legacy fallback if needed
             const months = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
 
-            // Caso 1: Formato "DICIEMBRE - 25"
+            // Caso 1: Formato con Nombre de Mes (ej: "ENERO - 23", "Diciembre 2025")
             for (let i = months.length - 1; i >= 0; i--) {
-                if (n.includes(months[i])) {
-                    let year = "2026";
-                    const yearMatch = n.match(/- (\d{2,4})/);
-                    if (yearMatch) {
-                        year = yearMatch[1].length === 2 ? "20" + yearMatch[1] : yearMatch[1];
+                const mes = months[i];
+                // Check if month name exists in the filename
+                if (upName.includes(mes)) {
+                    let year = "2026"; // Default fallback
+
+                    // Regex robusto para encontrar el año DESPUÉS del mes
+                    // Busca: Mes + (espacio opcional) + (separador opcional: - / DE) + (espacio opcional) + (2 o 4 dígitos)
+                    // Ejemplos match: "ENERO - 23", "Enero 23", "Enero del 2023", "Enero de 23"
+                    const regex = new RegExp(mes + "[\\s_]*(?:-|\\/|DE|DEL)?[\\s_]*(\\d{2,4})");
+                    const match = upName.match(regex);
+
+                    if (match && match[1]) {
+                        let y = match[1];
+                        // Convert 2-digit "23" to "2023"
+                        if (y.length === 2) y = "20" + y;
+                        // Basic validation: must be a reasonable year
+                        if (parseInt(y) > 2000 && parseInt(y) < 2100) {
+                            year = y;
+                        }
                     }
+
                     return { day: 1, month: i, year: year, full: months[i] + " " + year };
                 }
             }
 
-            // Caso 2: Formato estándar DD-MM-YY
+            // Caso 2: Formato estándar DD-MM-YY (en nombre de archivo o similar)
+            // Este regex busca patrones numéricos claros
             const dateRegex = /(\d{2})[-/](\d{2})[-/](\d{2,4})/g;
             const matches = name.match(dateRegex);
             if (matches && matches.length > 0) {
@@ -1466,6 +1484,7 @@
                 if (y.length === 2) y = "20" + y;
                 return { day: parseInt(parts[0]), month: parseInt(parts[1]) - 1, year: y, full: lastMatch };
             }
+
             return null;
         }
 
