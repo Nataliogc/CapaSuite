@@ -913,11 +913,49 @@
         fileInput.onchange = (e) => { if (e.target.files.length) processFile(e.target.files[0]); };
 
         function processFile(file) {
+            sessionStorage.removeItem('force_reset_pending');
             const reader = new FileReader();
             reader.onload = (e) => {
                 const wb = XLSX.read(e.target.result, { type: 'array' });
                 const sheet = wb.Sheets[wb.SheetNames[0]];
+
+                // FIX: Force read enough columns if range is truncated
+                if (sheet['!ref']) {
+                    const range = XLSX.utils.decode_range(sheet['!ref']);
+                    if (range.e.c < 35) {
+                        range.e.c = 40; // Force at least ~40 columns
+                        sheet['!ref'] = XLSX.utils.encode_range(range);
+                    }
+                }
+
                 rawData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+                // RECONSTRUCTION FALLBACK
+                let maxLen = 0;
+                rawData.forEach(r => maxLen = Math.max(maxLen, r.length));
+
+                if (maxLen < 20) {
+                    logD(`⚠️ Formato columnas dañado (maxLen=${maxLen}). Reconstruyendo celda a celda...`);
+                    // Manual read
+                    const newRaw = [];
+                    const range = sheet['!ref'] ? XLSX.utils.decode_range(sheet['!ref']) : { e: { r: 100 } };
+                    const limitR = range.e.r + 5;
+
+                    for (let R = 0; R <= limitR; ++R) {
+                        const row = [];
+                        // Force read 40 columns
+                        for (let C = 0; C < 40; ++C) {
+                            const ref = XLSX.utils.encode_cell({ c: C, r: R });
+                            const cell = sheet[ref];
+                            row.push(cell ? cell.v : "");
+                        }
+                        newRaw.push(row);
+                    }
+                    rawData = newRaw;
+                    console.log("⚠️ File repair applied automatically.");
+                }
+
+                // RAW DATA INSPECTOR REMOVED
                 analyze();
             };
             reader.readAsArrayBuffer(file);
@@ -925,41 +963,70 @@
 
         // --- PARSING ---
         function analyze() {
+            processedData = []; // RESET DATA
             let guadianaRow = -1;
             let cumbriaRow = -1;
 
             // Find Anchors
+            // Find Anchors Robust
             for (let r = 0; r < Math.min(rawData.length, 50); r++) {
-                const first = String(rawData[r][0] || "").toLowerCase();
-                if (first.includes("guadiana")) guadianaRow = r;
-                if (first.includes("cumbria")) cumbriaRow = r;
+                const rowStr = (rawData[r] || []).join(" ").toLowerCase();
+                if (rowStr.includes("guadiana")) guadianaRow = r;
+                if (rowStr.includes("cumbria")) cumbriaRow = r;
             }
 
-            if (guadianaRow === -1) { alert("Error: No se encontró 'Sercotel Guadiana' en la primera columna."); return; }
+            if (guadianaRow === -1) { logD("❌ ERROR FATAL: 'Guadiana' no encontrado en el Excel."); alert("Error: No se encontró 'Sercotel Guadiana'."); return; }
+            logD(`✅ Guadiana encontrado en fila ${guadianaRow}. Analizando fechas...`);
+
+            const dr = rawData[guadianaRow - 1];
+            const dStr = dr ? JSON.stringify(dr.slice(0, 8)).replace(/"/g, '') : 'NULL';
+            logD(`Fila Fechas [-1]: ${dStr}`);
 
             // Metadata Rows
             const dateNumRow = guadianaRow - 1;
             const dayNameRow = guadianaRow - 2;
             let monthRow = -1;
-            // Scan for month row (usually row 10/index 9)
-            for (let r = 0; r < Math.min(rawData.length, 15); r++) {
+
+            // Scan for month row relative to Guadiana (look up to 15 rows above)
+            const scanFrom = Math.max(0, guadianaRow - 15);
+            for (let r = scanFrom; r < guadianaRow; r++) {
                 const str = JSON.stringify(rawData[r] || []).toLowerCase();
-                if (str.includes("january") || str.includes("february") || str.includes("enero") || str.includes("marzo")) {
+                if (str.includes("january") || str.includes("february") || str.includes("enero") || str.includes("marzo") || str.includes("abril") || str.includes("mayo") || str.includes("junio") || str.includes("julio") || str.includes("agosto") || str.includes("septiembre") || str.includes("octubre") || str.includes("noviembre") || str.includes("diciembre")) {
                     monthRow = r; break;
                 }
             }
 
             // Start Column
             let startCol = 1;
+            let gRowData = [];
+
             if (guadianaRow !== -1) {
-                const gRowData = rawData[guadianaRow];
+                gRowData = rawData[guadianaRow];
                 for (let c = 1; c < gRowData.length; c++) {
                     const val = gRowData[c];
                     if (!isNaN(parseFloat(val)) || String(val).toUpperCase() === 'S') {
                         startCol = c; break;
                     }
                 }
+
+                // Fallback: Check Date Num Row for numbers 1-31
+                if (startCol === 1 && rawData[dateNumRow]) {
+                    for (let c = 1; c < rawData[dateNumRow].length; c++) {
+                        const val = parseInt(rawData[dateNumRow][c]);
+                        if (!isNaN(val) && val >= 1 && val <= 31) {
+                            startCol = c; break;
+                        }
+                    }
+                }
+
+                logD(`StartCol FINAL: ${startCol} | MonthRow: ${monthRow}`);
+            } else if (rawData.length > 0) {
+                gRowData = rawData[0]; // Fallback
             }
+
+            // Competitors
+
+            // Competitors
 
             // Competitors
             competitorsList = [];
@@ -978,30 +1045,22 @@
                 }
 
                 const name = String(row[0]).trim();
-
-                if (name.length < 3) {
-                    consecutiveInvalid++;
-                    continue;
-                }
-
                 const nLow = name.toLowerCase();
-                // Expanded blacklist
+
+                // Blacklist / Filters
+                if (name.length < 3) { consecutiveInvalid++; continue; }
                 if (nLow.includes("tarifas medias") || nLow.includes("interés") || nLow.includes("interes") ||
                     nLow.includes("año anterior") || nLow.includes("rank") || nLow.includes("clasificación") ||
                     nLow.includes("promedio") || nLow.includes("media") || nLow.includes("total") ||
                     nLow.includes("min") || nLow.includes("max") || nLow.includes("var") || nLow.includes("cv ")) {
-                    consecutiveInvalid++; // These are valid text rows but not competitors, effectively separating blocks
-                    continue;
+                    consecutiveInvalid++; continue;
                 }
 
                 // VALIDATION: Check for DATA DENSITY
-                // A valid hotel row must have multiple price points, not just one random number
                 let validPoints = 0;
                 for (let checkC = startCol; checkC < Math.min(startCol + 30, totalCols); checkC++) {
                     const cell = row[checkC];
-                    if (!isNaN(parseFloat(cell)) || String(cell).toUpperCase() === 'S') {
-                        validPoints++;
-                    }
+                    if (!isNaN(parseFloat(cell)) || String(cell).toUpperCase() === 'S') validPoints++;
                 }
 
                 // STRICT RULE: Must have at least 5 valid data points in the first 30 days
@@ -1013,7 +1072,7 @@
                 }
             }
 
-            // NEW: Find occupancy row
+            // Find occupancy row
             let occupancyRow = -1;
             for (let r = 0; r < rawData.length; r++) {
                 const first = String(rawData[r][0] || "").toLowerCase();
@@ -1036,7 +1095,7 @@
                 if (monthRow !== -1 && rawData[monthRow] && rawData[monthRow][c]) {
                     currentMonth = String(rawData[monthRow][c]).trim();
                 } else if (currentMonth === "") {
-                    // Fallback: If currentMonth still empty, check this entire column for any month name
+                    // Fallback
                     for (let r = 0; r < 20; r++) {
                         const cell = String(rawData[r] ? rawData[r][c] : "").toLowerCase();
                         for (const mKey in MONTH_MAP) {
@@ -1053,25 +1112,33 @@
                 let dName = "";
                 if (dayNameRow !== -1 && rawData[dayNameRow]) dName = String(rawData[dayNameRow][c] || "").trim();
 
-                // Format Date
+                // Format Date & Occupancy
                 let occ = 0;
                 if (occupancyRow !== -1) occ = parseFloat(rawData[occupancyRow][c]) || 0;
 
                 const dateInfo = parseDate(currentMonth, dNum, dName, occ);
 
-                // Fallback: If no occupancy in report, try looking in the Production DB
-                if (occ === 0 && dateInfo.iso) {
+                // Fallback Occupancy Sync (if not in Excel)
+                if (occ === 0 && dateInfo.iso && dateInfo.iso !== "INV-DATE") {
                     try {
                         const pDbRaw = CapaStorage.getItem('hotel_manager_db_v2');
                         if (pDbRaw) {
-                            const pDb = JSON.parse(pDbRaw);
+                            const pDb = (typeof pDbRaw === 'string') ? JSON.parse(pDbRaw) : pDbRaw;
+                            // Search Logic Simplified for this fallback
                             const yr = dateInfo.iso.split('-')[0];
                             const iso = dateInfo.iso;
-                            // Search in Guadiana or Cumbria daily data
-                            const hotelOcc = (pDb[activeHotel] && pDb[activeHotel][yr] && pDb[activeHotel][yr].daily) ? pDb[activeHotel][yr].daily[iso] : 0;
-                            if (hotelOcc > 0) {
-                                occ = hotelOcc;
-                                // Re-generate dateHtml with found occupancy
+
+                            // Try Active Hotel
+                            if (pDb[activeHotel] && pDb[activeHotel][yr] && pDb[activeHotel][yr].daily && pDb[activeHotel][yr].daily[iso]) {
+                                occ = pDb[activeHotel][yr].daily[iso];
+                            }
+                            // Try Fallback Hotel names
+                            else if (pDb["Guadiana"] && pDb["Guadiana"][yr] && pDb["Guadiana"][yr].daily && pDb["Guadiana"][yr].daily[iso]) {
+                                occ = pDb["Guadiana"][yr].daily[iso];
+                            }
+
+                            if (occ > 0) {
+                                // Regenerate HTML with updated occupancy
                                 dateInfo.html = parseDate(currentMonth, dNum, dName, occ).html;
                             }
                         }
@@ -1088,7 +1155,7 @@
                     hotels: {},
                     compAvg: 0,
                     occupancy: occ,
-                    otbRooms: dateInfo.otb || 0, // Store numerical OTB for diagnostics
+                    otbRooms: dateInfo.otb || 0,
                     dateISO: dateInfo.iso,
                     dateMeta: { currentMonth, dNum, dName }
                 };
@@ -1110,29 +1177,13 @@
                 processedData.push(dayObj);
             }
 
-            // DIAGNOSTIC: Check production DB content
-            try {
-                const prodDB = JSON.parse(CapaStorage.getItem('hotel_manager_db_v2') || '{}');
-                const hData = prodDB[activeHotel];
-                if (hData) {
-                    // Find year with data
-                    const years = Object.keys(hData);
-                    console.log(`🔍 DIAGNOSTIC: Hotel ${activeHotel} has years: ${years.join(', ')}`);
-                    years.forEach(y => {
-                        if (hData[y].daily) {
-                            console.log(`   Year ${y} has ${Object.keys(hData[y].daily).length} daily records.`);
-                            // Log first 3 keys as sample
-                            const keys = Object.keys(hData[y].daily).slice(0, 3);
-                            console.log(`   Sample keys: ${keys.join(', ')}`);
-                        } else {
-                            console.log(`   Year ${y} has NO daily records.`);
-                        }
-                    });
-                } else {
-                    console.log(`⚠️ DIAGNOSTIC: No data found for hotel ${activeHotel}`);
-                }
-            } catch (e) {
-                console.error("Diagnostic failed", e);
+            // DIAGNOSTIC LOG (Console only)
+            console.log(`✅ Loaded ${processedData.length} days. First ISO: ${processedData[0]?.dateISO}`);
+            logD(`✅ FIN: ${processedData.length} días cargados.`);
+            if (processedData.length > 0) {
+                logD(`Muestra [0]: ISO=${processedData[0].dateISO}, Ocupación=${processedData[0].occupancy}, OTB=${processedData[0].otbRooms}`);
+            } else {
+                logD("❌ ERROR CRÍTICO: No se han generado datos diarios. Posible fallo en detección de filas de fecha.");
             }
 
             populateMonths();
@@ -1140,7 +1191,7 @@
             document.getElementById('view-dashboard').style.display = 'grid';
             document.getElementById('dashboard-controls').style.display = 'flex';
 
-            saveData(); // <--- SAVE
+            saveData();
             renderAll();
         }
 
@@ -1157,47 +1208,48 @@
             return { price: isNaN(p) ? 0 : p, sold: false, status: 'available' };
         }
 
-        function parseDate(mRaw, dNum, dayNameRaw, occVal = 0) {
-            let m = String(mRaw || "").trim();
+        function parseDate(monthRaw, dNum, dayNameRaw, occVal) {
+            // SAFEGUARDS
+            if (!dNum) return { html: "", month: "", iso: "INV-DATE", otb: 0 };
 
-            // Extract year if present (e.g., "JANUARY 2027")
+            // Extract Month
+            let mStr = String(monthRaw || "").trim();
+            // Try to extract year: "Enero 2025" -> 2025
             let yearFromData = null;
-            const yearMatch = m.match(/\b(20\d{2})\b/);
-            if (yearMatch) {
-                yearFromData = yearMatch[1];
-                m = m.replace(yearMatch[0], '').trim(); // Remove year from month string
-            }
+            const yearMatch = mStr.match(/(\d{4})/);
+            if (yearMatch) yearFromData = parseInt(yearMatch[1]);
 
-            m = m.toLowerCase().replace(".", "");
-
-            // Always convert to Spanish full name
-            let mShort = MONTH_MAP[m];
-            if (!mShort) {
-                // Try matching first 3 chars
-                const m3 = m.substring(0, 3);
-                mShort = MONTH_MAP[m3] || m3;
+            // Normalize Month
+            let mLower = mStr.toLowerCase();
+            let mShort = "";
+            for (const key in MONTH_MAP) {
+                if (mLower.includes(key)) {
+                    mShort = MONTH_MAP[key];
+                    break;
+                }
             }
+            if (!mShort) mShort = mStr.split(" ")[0]; // Fallback
             if (mShort) mShort = mShort.charAt(0).toUpperCase() + mShort.slice(1).toLowerCase();
 
-            // Use year from data if available, otherwise calculate
+            // Detect Year Logic (if not in string)
             let year = yearFromData;
             if (!year) {
-                const currentYear = new Date().getFullYear();
-                const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-                    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-                const monthIndex = monthNames.indexOf(mShort);
-                const currentMonthIndex = new Date().getMonth();
+                const currentYear = new Date().getFullYear(); // 2026
+                // Default to current year logic
                 year = currentYear;
-                if (monthIndex < currentMonthIndex - 1) {
-                    year = currentYear + 1;
-                }
+
+                // Optional: Intelligence about past months? 
+                // Let's force 2026 for now as we know user is working on 2026 data
+                if (year < 2026) year = 2026;
             }
 
             const monthWithYear = `${mShort} ${year}`;
 
+            // Format Day Name
             let d = String(dayNameRaw || "").toLowerCase().trim().replace(".", "");
             let dShort = d.length > 2 ? d.substring(0, 2) : d;
             dShort = dShort.charAt(0).toUpperCase() + dShort.slice(1);
+            if (dShort.length === 0) dShort = "Dia";
 
             const dShortStr = dShort;
             const mShortStr = mShort;
@@ -1206,6 +1258,7 @@
             const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
             const monthIdx = monthNames.indexOf(mShort);
             const validMonthIdx = monthIdx === -1 ? 0 : monthIdx;
+            // Pad properly
             const iso = `${year}-${String(validMonthIdx + 1).padStart(2, '0')}-${String(dNum).padStart(2, '0')}`;
 
             // LOAD OTB DATA from production database
@@ -1213,7 +1266,8 @@
             try {
                 const productionDB = CapaStorage.getItem('hotel_manager_db_v2');
                 if (productionDB) {
-                    const prodData = JSON.parse(productionDB);
+                    // FIX: Handle Object vs String
+                    const prodData = (typeof productionDB === 'string') ? JSON.parse(productionDB) : productionDB;
                     const currentHotel = document.getElementById('hotelSelector')?.value || activeHotel || 'Guadiana';
 
                     // Robust search: Try current hotel, then common names, case insensitive
@@ -1227,7 +1281,6 @@
                             variants.push(h.toUpperCase());
                         }
                     });
-                    // Remove duplicates
                     const uniqueHotels = [...new Set(variants)];
 
                     for (const h of uniqueHotels) {
@@ -1235,66 +1288,46 @@
                             const hotelObj = prodData[h];
                             if (!hotelObj) continue;
 
-                            // 1. Try EXACT Year first
+                            // 1. Try EXACT Year/Key first
                             if (hotelObj[year] && hotelObj[year].daily) {
                                 if (hotelObj[year].daily[iso]) {
                                     otbRooms = hotelObj[year].daily[iso];
                                     break;
                                 }
-                                const manualIso = `${year}-${String(validMonthIdx + 1).padStart(2, '0')}-${String(dNum).padStart(2, '0')}`;
-                                if (hotelObj[year].daily[manualIso]) {
-                                    otbRooms = hotelObj[year].daily[manualIso];
-                                    break;
-                                }
                             }
 
-                            // 2. Fallback: Try ANY available year (Year Agnostic Search) PLUS Adjacent Days (Timezone Fix)
+                            // 2. Fallback: Agnostic Year Search
                             if (!otbRooms) {
                                 const availableYears = Object.keys(hotelObj);
                                 for (const y of availableYears) {
                                     if (hotelObj[y] && hotelObj[y].daily) {
-                                        // Try exact Date
-                                        let keysToTry = [];
-                                        keysToTry.push(`${y}-${String(validMonthIdx + 1).padStart(2, '0')}-${String(dNum).padStart(2, '0')}`);
-
-                                        // Try Prev Day (Timezone shift -1)
-                                        let prevD = dNum - 1;
-                                        if (prevD > 0) keysToTry.push(`${y}-${String(validMonthIdx + 1).padStart(2, '0')}-${String(prevD).padStart(2, '0')}`);
-
-                                        // Try Next Day (Timezone shift +1)
-                                        let nextD = dNum + 1;
-                                        if (nextD <= 31) keysToTry.push(`${y}-${String(validMonthIdx + 1).padStart(2, '0')}-${String(nextD).padStart(2, '0')}`);
-
-                                        for (const key of keysToTry) {
-                                            if (hotelObj[y].daily[key]) {
-                                                otbRooms = hotelObj[y].daily[key];
-                                                break;
-                                            }
+                                        // Construct key for this year
+                                        const tryKey = `${y}-${String(validMonthIdx + 1).padStart(2, '0')}-${String(dNum).padStart(2, '0')}`;
+                                        if (hotelObj[y].daily[tryKey]) {
+                                            otbRooms = hotelObj[y].daily[tryKey];
+                                            break;
                                         }
                                     }
-                                    if (otbRooms) break;
                                 }
                             }
-                            if (otbRooms) break; // Found in some year/day
+                            if (otbRooms) break;
                         } catch (err) { continue; }
                     }
                 }
             } catch (e) {
-                // Silently fail if production DB is not available
-                console.log('OTB data not available:', e);
+                // Silent fail
             }
 
-            const occHtml = (occVal > 0) ? `<span style="display:block; font-size: 0.65rem; color: #4f46e5; font-weight: 700; margin-top: 2px;">Hab: ${occVal.toFixed(0)}</span>` : '';
+            const occValFix = (occVal > 0) ? `<span style="display:block; font-size: 0.65rem; color: #4f46e5; font-weight: 700; margin-top: 2px;">Hab: ${occVal.toFixed(0)}</span>` : '';
             const otbHtml = (otbRooms > 0) ? `<span style="display:block; font-size: 0.6rem; color: #8b5cf6; font-weight: 600; margin-top: 1px;">📈 ${otbRooms} OTB</span>` : '';
 
-            // Pretty HTML
             const html = `
                 <div class="date-pill">
                     <div class="date-day">${dNum}</div>
                     <div class="date-meta">
                         <span>${dShortStr}</span>
                         <span>${mShortStr}</span>
-                        ${occHtml}
+                        ${occValFix}
                         ${otbHtml}
                     </div>
                 </div>
@@ -1317,22 +1350,57 @@
             let data = processedData;
 
             // NEW: Synchronize occupancy from Production DB before rendering
+            // NEW: Synchronize occupancy from Production DB before rendering
             try {
                 const pDbRaw = CapaStorage.getItem('hotel_manager_db_v2');
                 if (pDbRaw) {
-                    const pDb = JSON.parse(pDbRaw);
-                    data.forEach(d => {
-                        if (d.dateISO) {
-                            const yr = d.dateISO.split('-')[0];
-                            const dbOcc = (pDb[activeHotel] && pDb[activeHotel][yr] && pDb[activeHotel][yr].daily) ? pDb[activeHotel][yr].daily[d.dateISO] : 0;
+                    // Handle Object vs String (Firebase sync vs LocalStorage)
+                    const pDb = (typeof pDbRaw === 'string') ? JSON.parse(pDbRaw) : pDbRaw;
 
-                            // If we found new/different occupancy in DB, update the label
-                            if (dbOcc > 0 && dbOcc !== d.occupancy && d.dateMeta) {
-                                d.occupancy = dbOcc;
-                                d.dateHtml = parseDate(d.dateMeta.currentMonth, d.dateMeta.dNum, d.dateMeta.dName, d.occupancy).html;
+                    // FUZZY HOTEL MATCH: Find the correct key in DB for current activeHotel
+                    const dbKeys = Object.keys(pDb);
+                    const targetName = activeHotel.toLowerCase().trim(); // e.g. "guadiana"
+                    let dbHotelKey = dbKeys.find(k => k === activeHotel)
+                        || dbKeys.find(k => k.toLowerCase() === targetName)
+                        || dbKeys.find(k => k.toLowerCase().includes(targetName));
+
+                    if (dbHotelKey && pDb[dbHotelKey]) {
+                        const hData = pDb[dbHotelKey];
+
+                        data.forEach(d => {
+                            if (d.dateISO) {
+                                let foundOTB = 0;
+                                const parts = d.dateISO.split('-');
+                                const mStr = parts[1];
+                                const dStr = parts[2];
+
+                                // Agnostic Year Search: Check ALL years in DB for this Month-Day
+                                const years = Object.keys(hData);
+                                for (const y of years) {
+                                    if (hData[y] && hData[y].daily) {
+                                        const tryKey = `${y}-${mStr}-${dStr}`;
+                                        if (hData[y].daily[tryKey]) {
+                                            foundOTB = hData[y].daily[tryKey];
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                // If found, update the data model and HTML
+                                if (foundOTB > 0) {
+                                    d.otbRooms = foundOTB;
+                                    d.occupancy = foundOTB;
+                                    // Regenerate HTML with new OTB data (calling parseDate which now has OTB logic too)
+                                    // passing 0 as occVal initially to avoid double render, but parseDate logic will handle it.
+                                    // Actually, better to manually inject into parseDate call:
+                                    const meta = d.dateMeta || {};
+                                    // Re-render pill
+                                    const res = parseDate(meta.currentMonth, meta.dNum, meta.dName, foundOTB);
+                                    d.dateHtml = res.html;
+                                }
                             }
-                        }
-                    });
+                        });
+                    }
                 }
             } catch (e) { console.warn("Occupancy sync failed", e); }
 
@@ -1341,10 +1409,16 @@
             }
 
             // Diagnostic Counter in UI
+            // Diagnostic Counter in UI
             const otbCount = data.filter(d => d.otbRooms > 0).length;
-            const otbText = otbCount > 0
-                ? `<span style="color:#10b981; font-weight:bold; margin-left:5px;">(OTB: ${otbCount} OK)</span>`
-                : `<span style="color:#ef4444; font-weight:bold; margin-left:5px;">(OTB: 0)</span>`;
+            let otbText = "";
+
+            if (otbCount > 0) {
+                otbText = `<span style="color:#10b981; font-weight:bold; margin-left:5px;">(OTB: ${otbCount} OK)</span>`;
+            } else {
+                otbText = `<button onclick="diagnoseOTB()" style="background:#3b82f6; color:white; border:none; padding:3px 8px; border-radius:4px; font-weight:bold; cursor:pointer; margin-left:5px; font-size:0.7rem; box-shadow:0 2px 4px rgba(37,99,235,0.3);">⚠️ OTB: 0 (?)</button>
+                           <button onclick="window.clearData()" style="background:#6b7280; color:white; border:none; padding:3px 8px; border-radius:4px; font-weight:bold; cursor:pointer; margin-left:5px; font-size:0.7rem;">↺ RESET</button>`;
+            }
 
             document.getElementById('record-count').innerHTML = `${data.length} días analizados ${otbText}`;
 
@@ -1636,12 +1710,20 @@
 
         // --- APP INITIALIZATION & SYNC ---
         function initApp() {
+            // STOP auto-load if user requested a reset
+            if (sessionStorage.getItem('force_reset_pending') === 'true') {
+                console.log("🛑 Auto-load blocked by force_reset_pending. Waiting for manual file upload.");
+                return;
+            }
+
             // Try to load saved competitor data from Storage (Local or Firebase populated)
             try {
                 const saved = CapaStorage.getItem('revenue_data_v2');
                 if (saved) {
-                    const parsed = JSON.parse(saved);
-                    if (parsed.data) {
+                    // FIX: Handle Object (Memory) vs String (LocalStorage)
+                    const parsed = (typeof saved === 'string') ? JSON.parse(saved) : saved;
+
+                    if (parsed && parsed.data) {
                         processedData = parsed.data;
                         competitorsList = parsed.competitors || [];
                         distinctMonths = parsed.months || [];
@@ -1653,7 +1735,7 @@
                         console.log("✅ Loaded competitor data from storage");
                     }
                 }
-            } catch (e) { console.warn("No cached data available yet"); }
+            } catch (e) { console.warn("No cached data available yet", e); }
         }
 
         // Exposed for firebase-auth.js to call after cloud download
@@ -1662,8 +1744,84 @@
             initApp();
         };
 
+        window.clearData = function () {
+            if (confirm("¿Borrar datos actuales y subir nuevo archivo?\n(Pulsa ACEPTAR y espera en la pantalla de carga)")) {
+                try { CapaStorage.removeItem('revenue_data_v2'); } catch (e) { }
+                sessionStorage.setItem('force_reset_pending', 'true'); // Flag to block auto-load from cloud
+                location.reload();
+            }
+        };
+
+        window.diagnoseOTB = function () {
+            const raw = CapaStorage.getItem('hotel_manager_db_v2');
+            if (!raw) return alert("❌ Base de datos OTB está COMPLETAMENTE VACÍA.\nPor favor ve a 'Config' y sube el archivo de nuevo.");
+
+            try {
+                let db = (typeof raw === 'string') ? JSON.parse(raw) : raw;
+                const keys = Object.keys(db);
+                let msg = `✅ Base de Datos Conectada.\n`;
+                msg += `Hoteles encontrados: ${keys.join(', ')}\n`;
+                msg += `Hotel Activo seleccionado: "${activeHotel}"\n`;
+
+                if (keys.includes(activeHotel)) {
+                    const yData = db[activeHotel];
+                    const years = Object.keys(yData);
+                    msg += `\nAños Disponibles: ${years.join(', ')}`;
+
+                    // TARGET CHECK
+                    if (typeof processedData !== 'undefined' && processedData.length > 0) {
+                        const targetISO = processedData[0].dateISO;
+                        msg += `\n\n🔎 Tabla busca: "${targetISO}"`;
+
+                        const lastYear = years.includes('2026') ? '2026' : years[years.length - 1];
+                        if (yData[lastYear] && yData[lastYear].daily) {
+                            const dKeys = Object.keys(yData[lastYear].daily);
+                            msg += `\nEjemplos BD (${lastYear}): ${dKeys.slice(0, 3).join(', ')}`;
+
+                            // Check match
+                            let found = false;
+                            years.forEach(y => {
+                                if (yData[y].daily && yData[y].daily[targetISO]) found = true;
+                            });
+
+                            if (!found) {
+                                msg += `\n\n❌ La fecha "${targetISO}" buscada NO existe en la BD.`;
+                                msg += `\n(La BD tiene ${lastYear} y la tabla busca otro año/formato).`;
+                                msg += `\n\n💡 SOLUCIÓN DEFINITIVA:\nHAZ CLICK EN '↺ Nuevo Archivo' y SUBE EL EXCEL DE NUEVO.\nEsto corregirá las fechas internas de la tabla.`;
+                            } else {
+                                msg += `\n✅ La fecha existe en BD. Debería funcionar.`;
+                            }
+                        }
+                    }
+                } else {
+                    msg += `\n⚠️ NO SE ENCUENTRA "${activeHotel}" en la BD.`;
+                    if (keys.length > 0) msg += `\nIntenta cambiar el nombre en el selector o subir el archivo correcto.`;
+                }
+                alert(msg);
+            } catch (e) { alert("Error leyendo BD: " + e.message); }
+        };
+
+        // DEBUG PANEL
+        const dPanel = document.createElement('div');
+        dPanel.id = 'debug-panel';
+        dPanel.style.cssText = "display:none; position:fixed; bottom:10px; right:10px; width:350px; height:250px; background:rgba(0,0,0,0.9); color:#4ade80; overflow:auto; padding:10px; font-family:monospace; font-size:11px; z-index:10000; border:2px solid #4ade80; border-radius:8px; box-shadow:0 0 10px rgba(0,255,0,0.2);";
+        document.body.appendChild(dPanel);
+
+        function logD(msg) {
+            console.log(msg);
+            const line = document.createElement('div');
+            line.style.borderBottom = "1px solid #333";
+            line.style.padding = "2px 0";
+            line.innerText = "> " + msg;
+            dPanel.appendChild(line);
+            dPanel.scrollTop = dPanel.scrollHeight;
+        }
+
         // Run on load
-        window.addEventListener('DOMContentLoaded', initApp);
+        window.addEventListener('DOMContentLoaded', () => {
+            logD("Sistema iniciado. Esperando archivo...");
+            initApp();
+        });
     </script>
 </body>
 
