@@ -1673,8 +1673,26 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
                 // My Price
                 const myStatus = my?.status || 'available';
+
+                // DETECCIÓN DE "FALSO CERRADO" (Closed but has availability)
+                // Si el Excel dice 'S' (Cerrado/Sold Out) PERO tenemos hueco real según OTB
+                let falseClosedAlert = "";
+                if ((sold || myStatus === 'sold') && occ > 0 && occ < HOTEL_CAPACITY) {
+                    const roomGap = HOTEL_CAPACITY - occ;
+                    // Solo avisar si el hueco es significativo (ej: más de 1 hab)
+                    if (roomGap >= 1) {
+                        falseClosedAlert = `<div title="¡ATENCIÓN! El sistema de precios dice CERRADO pero tienes ${roomGap} habitaciones libres." 
+                            style="margin-top:4px; font-size:0.6rem; background:#fee2e2; color:#b91c1c; border:1px solid #ef4444; padding:2px 4px; border-radius:4px; font-weight:800; display:flex; align-items:center; gap:3px;">
+                            🔔 ¡HAY SITIO!
+                         </div>`;
+                    }
+                }
+
                 if (sold || myStatus === 'sold') {
-                    html += `<td><span class="price-sold">CERRADO</span></td>`;
+                    html += `<td>
+                        <span class="price-sold">CERRADO</span>
+                        ${falseClosedAlert}
+                    </td>`;
                 } else if (myStatus === 'minStay') {
                     html += `<td><span class="price-minstay" title="Estancia mínima requerida">M</span></td>`;
                 } else if (myStatus === 'noData') {

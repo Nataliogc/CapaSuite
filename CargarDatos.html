@@ -801,9 +801,18 @@
         function processDataForDB(data, fileName, hotel, type) {
             const fileNameNorm = normalizeStr(fileName);
             const dateInfo = extractDateFromFilename(fileName);
+            // Default to 2026 ONLY if dateInfo failed completely
             const reportYear = dateInfo?.year || "2026";
 
+            // CONFIRMATION ALERT (Debug)
+            if (dateInfo) {
+                alert(`📅 Archivo Detectado:\nMes: ${dateInfo.full.split(' ')[0]}\nAño: ${reportYear}\n\nSi esto es incorrecto, renombra el archivo ej: "Enero-2023.xlsx"`);
+            } else {
+                alert(`⚠️ No se detectó fecha en el nombre del archivo.\nSe asumirá año: ${reportYear}.\nPara corregir, incluye el MES y AÑO en el nombre.`);
+            }
+
             if (!db[hotel]) db[hotel] = {};
+            // Ensure year structure exists
             if (!db[hotel][reportYear]) db[hotel][reportYear] = {
                 service: {},
                 segment: {},
@@ -812,7 +821,10 @@
             };
             const dbYear = db[hotel][reportYear];
             if (!dbYear.otb) dbYear.otb = { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) };
-            dbYear.lastUpdate = dateInfo ? dateInfo.full : "Carga Masiva";
+
+            // Set update label
+            const periodLabel = dateInfo ? dateInfo.full : "Carga Masiva";
+            dbYear.lastUpdate = periodLabel;
 
             const SHORT_MONTHS_MAP = {
                 "ENE": 0, "JAN": 0, "FEB": 1, "MAR": 2, "ABR": 3, "APR": 3, "MAY": 4, "JUN": 5,
@@ -864,36 +876,54 @@
                 for (let r = 0; r < Math.min(data.length, 150); r++) {
                     const row = data[r] || [];
                     const first = normalizeStr(row[0]);
-                    const rowStr = JSON.stringify(row).toUpperCase();
 
                     // Advanced detection of master rows (Hab, Pax, Production)
-                    if (rowHab === null && (first === "HAB" || first === "RMS" || first === "RN" || first === "ESTANCIAS" || first.includes("HAB."))) {
+                    if (rowHab === null && (first === "HAB" || first === "RMS" || first === "RN" || first === "ESTANCIAS" || first.includes("HAB.") || first === "HABITACIONES")) {
                         rowHab = row; masterIndices.add(r);
                     }
-                    if (rowPax === null && (first === "PAX" || first === "PERSONAS" || first === "PAX." || first === "PER.")) {
+                    if (rowPax === null && (first === "PAX" || first === "PERSONAS" || first === "PAX." || first === "PER." || first === "ADULTOS" || first === "NIÑOS")) {
                         rowPax = row; masterIndices.add(r);
                     }
-                    if (rowPro === null && (first === "PRO" || first === "PRODUCCION" || first.includes("PROD.") || first === "INGRESOS" || first.includes("PROD TOTAL"))) {
+                    if (rowPro === null && (first === "PRO" || first === "PRODUCCION" || first.includes("PROD.") || first === "INGRESOS" || first.includes("PROD TOTAL") || first === "TOTAL PRODUCCION")) {
                         rowPro = row; masterIndices.add(r);
                     }
 
+                    // HEADER ROW DETECTION (Dates)
                     if (rowFechas === null) {
-                        for (let c = 1; c < Math.min(row.length, 10); c++) {
-                            const h = normalizeStr(row[c]);
+                        let potentialDates = 0;
+                        for (let c = 1; c < Math.min(row.length, 20); c++) {
+                            const cell = row[c];
+                            const h = normalizeStr(cell);
+
+                            // Check for keywords
                             if (h.includes("ENE") || h.includes("JAN") || h.includes("TOTAL") || h.includes("MES") || h.includes("CONCEPT")) {
-                                rowFechas = row; masterIndices.add(r); break;
+                                potentialDates += 5; // Strong signal
                             }
+                            // Check for Excel Dates (Numbers > 20000) or JS Dates
+                            if (cell instanceof Date) {
+                                potentialDates++;
+                            } else if (typeof cell === 'number' && cell > 30000 && cell < 60000) {
+                                potentialDates++;
+                            } else if (h.match(/\d{2}[-\/]\d{2}/)) {
+                                potentialDates++;
+                            }
+                        }
+                        // If we see a sequence of dates, this is the header (e.g. 01/01, 02/01, 03/01)
+                        if (potentialDates >= 3) {
+                            rowFechas = row; masterIndices.add(r);
                         }
                     }
                 }
 
                 // Final Fallback if scan failed
                 if (!rowHab || !rowPro) {
+                    // Try to guess based on content if keywords missed
                     console.warn("Scan failed, using row fallbacks", { rowHab, rowPro });
                     for (let r = 0; r < Math.min(data.length, 20); r++) {
-                        if (!rowFechas && data[r] && data[r].length > 5) rowFechas = data[r];
-                        if (!rowHab && data[r] && String(data[r][0]).includes("Hab")) rowHab = data[r];
-                        if (!rowPro && data[r] && String(data[r][0]).includes("Prod")) rowPro = data[r];
+                        const row = data[r] || [];
+                        if (!rowFechas && row.length > 5) rowFechas = row;
+                        if (!rowHab && String(row[0]).toUpperCase().includes("HAB")) rowHab = row;
+                        if (!rowPro && String(row[0]).toUpperCase().includes("PRO")) rowPro = row;
                     }
                 }
 
@@ -902,45 +932,61 @@
                 if (!rowFechas) rowFechas = data[0];
 
                 const headerRow = rowFechas || [];
+                // Detect if headers match month names
                 const foundMonths = headerRow.some(cell => {
                     const h = normalizeStr(cell);
                     return Object.keys(SHORT_MONTHS_MAP).some(m => h.startsWith(m));
                 });
 
                 let hasData = false;
+                let validColsCount = 0;
+
                 for (let c = 1; c < headerRow.length; c++) {
-                    const header = normalizeStr(headerRow[c]);
-                    if (!header) continue;
+                    const headerCell = headerRow[c];
+                    const header = normalizeStr(headerCell);
+                    if (!header && !headerCell) continue;
 
                     let mIdx = -1;
+
+                    // 1. Check Month Names (Ene, Feb...)
                     for (const [name, index] of Object.entries(SHORT_MONTHS_MAP)) {
                         if (header.startsWith(name)) { mIdx = index; break; }
                     }
 
-                    // Only use TOTAL if no month was found in the header row for other columns
+                    // 2. Check "TOTAL"
                     if (mIdx === -1 && header.includes("TOTAL")) {
-                        if (!foundMonths) mIdx = dateInfo ? dateInfo.month : 0;
-                        else continue; // Skip the TOTAL column if we have specific months
+                        // If this is a daily report, we don't want the Total column to overwrite daily sums unless we strictly need it.
+                        // However, usually daily reports sum to a Total column at the end.
+                        // Strategy: If we found specific month/date columns, IGNORE Total to avoid double counting.
+                        if (foundMonths || validColsCount > 0) continue;
+
+                        // If we haven't found anything else, maybe it's a monthly total report?
+                        mIdx = dateInfo ? dateInfo.month : 0;
                     }
 
+                    // 3. Check Dates (Excel Serial or Date Object)
                     if (mIdx === -1) {
-                        const cell = headerRow[c];
-                        if (cell instanceof Date) mIdx = cell.getMonth();
-                        else if (!isNaN(cell) && cell > 40000) mIdx = new Date((cell - 25569) * 86400 * 1000).getMonth();
+                        let dateObj = null;
+                        if (headerCell instanceof Date) dateObj = headerCell;
+                        else if (typeof headerCell === 'number' && headerCell > 30000) dateObj = new Date((headerCell - 25569) * 86400 * 1000);
+
+                        if (dateObj) {
+                            mIdx = dateObj.getMonth();
+                        }
                     }
 
                     if (mIdx >= 0 && mIdx <= 11) {
+                        validColsCount++;
                         const rms = parseVal(rowHab ? rowHab[c] : 0);
                         applyVal("TOTAL_MASTER", rms, mIdx, 'rms');
                         applyVal("TOTAL_MASTER", parseVal(rowPax ? rowPax[c] : 0), mIdx, 'pax');
                         applyVal("TOTAL_MASTER", parseVal(rowPro ? rowPro[c] : 0), mIdx, 'rev');
                         hasData = true;
 
-                        // NEW: Save daily data if the header is a specific date
+                        // Save Daily
                         let specDate = null;
-                        const headerCell = headerRow[c];
                         if (headerCell instanceof Date) specDate = headerCell;
-                        else if (!isNaN(headerCell) && headerCell > 40000) specDate = new Date((headerCell - 25569) * 86400 * 1000);
+                        else if (typeof headerCell === 'number' && headerCell > 30000) specDate = new Date((headerCell - 25569) * 86400 * 1000);
 
                         if (specDate) {
                             if (!dbYear.daily) dbYear.daily = {};
@@ -960,7 +1006,10 @@
                         }
                     }
                 }
-                if (!hasData) alert("⚠️ Error: No se han detectado datos en el Excel. Comprueba el formato.");
+
+                if (!hasData) {
+                    alert("⚠️ Error: No se han detectado columnas de fechas válidas.\nRevisa que el archivo tenga una fila de cabecera con fechas (ej: 01/01/26) o meses (Enero, Febrero...).");
+                }
             } else if (type === 'Seg') {
                 // 1. Detect Year and Months from headers
                 let detectedYear = reportYear;
@@ -1453,17 +1502,16 @@
                 if (upName.includes(mes)) {
                     let year = "2026"; // Default fallback
 
-                    // Regex robusto para encontrar el año DESPUÉS del mes
-                    // Busca: Mes + (espacio opcional) + (separador opcional: - / DE) + (espacio opcional) + (2 o 4 dígitos)
-                    // Ejemplos match: "ENERO - 23", "Enero 23", "Enero del 2023", "Enero de 23"
-                    const regex = new RegExp(mes + "[\\s_]*(?:-|\\/|DE|DEL)?[\\s_]*(\\d{2,4})");
+                    // Regex MUY PERMISIVO: Busca el Mes + (cuiualquier cosa que no sea numero) + AÑO
+                    // Esto evita problemas con guiones raros, dobles espacios, etc.
+                    const regex = new RegExp(mes + "[^0-9]*(\\d{2,4})");
                     const match = upName.match(regex);
 
                     if (match && match[1]) {
                         let y = match[1];
                         // Convert 2-digit "23" to "2023"
                         if (y.length === 2) y = "20" + y;
-                        // Basic validation: must be a reasonable year
+                        // Basic validation
                         if (parseInt(y) > 2000 && parseInt(y) < 2100) {
                             year = y;
                         }
@@ -1474,7 +1522,6 @@
             }
 
             // Caso 2: Formato estándar DD-MM-YY (en nombre de archivo o similar)
-            // Este regex busca patrones numéricos claros
             const dateRegex = /(\d{2})[-/](\d{2})[-/](\d{2,4})/g;
             const matches = name.match(dateRegex);
             if (matches && matches.length > 0) {
