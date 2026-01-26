@@ -19,12 +19,78 @@
             --primary: #4f46e5;
             --primary-light: #818cf8;
             --secondary: #10b981;
-            --bg: #f8fafc;
+            --bg: #f1f5f9;
             --card-bg: #ffffff;
-            --text-main: #1e293b;
+            --text-main: #0f172a;
             --text-muted: #64748b;
             --border: #e2e8f0;
-            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+            --radius: 16px;
+        }
+
+        /* MODAL STYLES */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: auto;
+            padding: 25px;
+            border: 1px solid #888;
+            width: 90%;
+            max-width: 500px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--bg);
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+        }
+
+        .close-modal {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .close-modal:hover,
+        .close-modal:focus {
+            color: var(--text-main);
+            text-decoration: none;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         * {
@@ -37,245 +103,196 @@
             font-family: 'Outfit', sans-serif;
             background-color: var(--bg);
             color: var(--text-main);
-            line-height: 1.6;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 40px 20px;
+            padding: 20px;
         }
 
         .container {
             width: 100%;
-            max-width: 900px;
+            max-width: 1100px;
+            margin: 0 auto;
         }
 
+        /* HEADER */
         header {
             text-align: center;
-            margin-bottom: 40px;
+            margin: 30px 0 50px;
         }
 
         header h1 {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: var(--primary);
+            font-size: 2.2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary) 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
             margin-bottom: 8px;
         }
 
         header p {
             color: var(--text-muted);
-            font-size: 1.1rem;
+            font-size: 1.05rem;
         }
 
+        /* CARDS */
         .card {
             background: var(--card-bg);
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: var(--shadow);
+            border-radius: var(--radius);
+            padding: 25px;
+            box-shadow: var(--shadow-sm);
             border: 1px solid var(--border);
-            position: relative;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            height: 100%;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
         }
 
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--primary-light);
+        }
+
         .upload-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
             gap: 20px;
             margin-top: 20px;
         }
 
-        @media (max-width: 900px) {
-            .upload-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .card {
-            background: var(--card-bg);
-            border-radius: 12px;
-            padding: 15px;
-            box-shadow: var(--shadow);
-            border: 1px solid var(--border);
-            position: relative;
-        }
-
-        .kpi-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 15px;
-            margin-bottom: 24px;
-        }
-
-        .hotel-selector {
-            background: var(--card-bg);
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 30px;
-            box-shadow: var(--shadow);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 20px;
-            width: 100%;
-        }
-
-        select {
-            padding: 12px 24px;
-            border-radius: 10px;
-            border: 2px solid var(--border);
-            font-family: inherit;
-            font-size: 1.1rem;
-            outline: none;
-            cursor: pointer;
-            transition: border-color 0.2s;
-        }
-
-        select:focus {
-            border-color: var(--primary);
-        }
-
+        /* UPLOAD ZONE */
         .upload-zone {
-            border: 2px dashed var(--border);
-            border-radius: 15px;
-            padding: 40px 20px;
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 20px 10px;
+            /* Reduced padding */
             text-align: center;
             cursor: pointer;
             transition: all 0.2s;
-            margin: 20px 0;
-            position: relative;
+            margin: 15px 0;
+            background: #fafafa;
         }
 
         .upload-zone:hover {
             border-color: var(--primary);
-            background: #f1f5f9;
+            background: #eef2ff;
         }
 
         .upload-zone.dragging {
             border-color: var(--secondary);
             background: #ecfdf5;
+            transform: scale(1.02);
         }
 
         .upload-zone i {
-            font-size: 2rem;
+            font-size: 2.5rem;
             display: block;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
+            opacity: 0.8;
         }
 
-        .upload-zone p {
-            font-size: 0.85rem;
-            line-height: 1.2;
+        /* HOTEL SELECTOR */
+        .hotel-selector {
+            background: white;
+            border-radius: 50px;
+            padding: 10px 30px;
+            box-shadow: var(--shadow-sm);
+            display: inline-flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 40px;
+            border: 1px solid var(--border);
         }
 
-        .status-badge {
-            display: inline-block;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.85rem;
+        select {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            outline: none;
             font-weight: 600;
-            margin-bottom: 10px;
+            color: var(--text-main);
+            background: #f8fafc;
         }
 
-        .status-up {
+        /* BUTTONS */
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: #4338ca;
+            transform: translateY(-1px);
+        }
+
+        /* STATUS BADGE */
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 99px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-success {
             background: #dcfce7;
             color: #166534;
         }
 
         .status-pending {
+            background: #f1f5f9;
+            color: #64748b;
+        }
+
+        .status-warn {
             background: #fef9c3;
             color: #854d0e;
+            /* Default color for warn */
         }
 
-        .btn {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 10px;
-            font-weight: 600;
-            cursor: pointer;
+        #db-summary-container {
             width: 100%;
-            transition: background 0.2s;
+            margin-bottom: 30px;
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+            display: none;
+            /* Controlled by JS, but ensure styling is ready */
         }
 
-        .btn:hover {
-            background: #4338ca;
-        }
-
-        .file-info {
-            margin-top: 15px;
-            font-size: 0.9rem;
-            color: var(--text-muted);
-        }
-
-        .history {
-            margin-top: 50px;
-            background: var(--card-bg);
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: var(--shadow);
-            border: 1px solid var(--border);
-        }
-
-        .history h2 {
-            margin-bottom: 20px;
-            font-size: 1.4rem;
-        }
-
-        table {
+        #db-status-table {
             width: 100%;
             border-collapse: collapse;
+            margin-top: 10px;
         }
 
-        th {
+        #db-status-table th,
+        #db-status-table td {
             text-align: left;
             padding: 12px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        #db-status-table th {
             color: var(--text-muted);
+            font-size: 0.85rem;
             font-weight: 600;
-            border-bottom: 2px solid var(--border);
+            text-transform: uppercase;
         }
 
-        td {
-            padding: 12px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .loader {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(5px);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-        }
-
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid var(--primary);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
-        /* TOP NAVIGATION */
+        /* NAVIGATION - Shared Style */
         .top-nav {
             background: #1e293b;
             padding: 0 40px;
@@ -288,6 +305,8 @@
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             height: 45px;
             width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 30px;
         }
 
         .nav-links {
@@ -349,25 +368,114 @@
             border-radius: 50%;
         }
 
-        .nav-link {
-            position: fixed;
-            top: 40px;
-            right: 40px;
+        /* HISTORY TABLE */
+        .history {
+            margin-top: 50px;
             background: white;
-            padding: 12px 20px;
-            border-radius: 30px;
-            text-decoration: none;
-            color: var(--primary);
-            font-weight: 600;
-            box-shadow: var(--shadow);
+            border-radius: var(--radius);
+            padding: 30px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th {
+            text-align: left;
+            padding: 15px;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* TOAST NOTIFICATIONS */
+        .toast-container {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            animation: slideIn 0.3s cubic-bezier(0.2, 0, 0, 1);
+            border-left: 4px solid var(--primary);
+            min-width: 300px;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* LOADER */
+        .loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(8px);
+            z-index: 2000;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid #e2e8f0;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s infinite linear;
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
         }
     </style>
 </head>
 
 <body style="padding: 0;">
+    <!-- TOAST CONTAINER -->
+    <div id="toastContainer" class="toast-container"></div>
+
     <nav class="top-nav">
         <div class="nav-links">
             <a href="index.html">🏠 Inicio</a>
@@ -383,6 +491,7 @@
             <span class="logout-btn" onclick="auth.signOut()">Cerrar Sesión</span>
         </div>
     </nav>
+
 
     <div class="loader" id="loader">
         <div class="spinner"></div>
@@ -410,13 +519,42 @@
             </select>
         </div>
 
+        <div id="db-summary-container" style="margin-bottom: 20px; display: none;">
+            <h3 style="margin-bottom: 10px; color: var(--text-main);">Estado de la Base de Datos</h3>
+            <div class="card" style="padding: 0; overflow: hidden;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead style="background: #f8fafc; border-bottom: 1px solid var(--border);">
+                        <tr>
+                            <th
+                                style="padding: 12px 20px; text-align: left; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">
+                                Año</th>
+                            <th
+                                style="padding: 12px 20px; text-align: center; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">
+                                Producción</th>
+                            <th
+                                style="padding: 12px 20px; text-align: center; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">
+                                Segmentos</th>
+                            <th
+                                style="padding: 12px 20px; text-align: center; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">
+                                OTB (Previsión)</th>
+                            <th
+                                style="padding: 12px 20px; text-align: right; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">
+                                Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="db-summary-body"></tbody>
+                </table>
+            </div>
+        </div>
+
         <div class="upload-grid">
-            <!-- PRODUCCIÓN CARD -->
+            <!-- (Cards below...) -->
+            <!-- PRODUCCIÓN DIARIA CARD -->
             <div class="card">
                 <div>
                     <div id="prodStatus" class="status-badge status-pending">Pendiente</div>
-                    <h2 style="font-size: 1.2rem; color: var(--primary);">1. Producción</h2>
-                    <p style="font-size: 0.8rem; color: var(--text-muted);">Archivo de estadística diaria.</p>
+                    <h2 style="font-size: 1.2rem; color: var(--primary);">1. Producción Diaria</h2>
+                    <p style="font-size: 0.8rem; color: var(--text-muted);">Estadística del año en curso (2026).</p>
                 </div>
 
                 <div class="upload-zone" id="dropZoneProd" onclick="document.getElementById('fileProd').click()">
@@ -431,12 +569,32 @@
                     onclick="document.getElementById('fileProd').click()">Seleccionar</button>
             </div>
 
+            <!-- HISTÓRICO CARD -->
+            <div class="card">
+                <div>
+                    <div id="histStatus" class="status-badge status-pending">Pendiente</div>
+                    <h2 style="font-size: 1.2rem; color: #6366f1;">2. Histórico</h2>
+                    <p style="font-size: 0.8rem; color: var(--text-muted);">Prod. o Segmentos de años anteriores.</p>
+                </div>
+
+                <div class="upload-zone" id="dropZoneHist" onclick="document.getElementById('fileHist').click()">
+                    <i>📚</i>
+                    <p>Subir Excel</p>
+                    <input type="file" id="fileHist" hidden accept=".xlsx, .xls">
+                </div>
+
+                <div id="histInfo" class="file-info" style="font-size: 0.75rem;">Detecta auto: <b
+                        id="histStateText">Prod / Seg</b></div>
+                <button class="btn" style="margin-top: 10px; padding: 8px; background: #6366f1;"
+                    onclick="document.getElementById('fileHist').click()">Seleccionar</button>
+            </div>
+
             <!-- SEGMENTOS CARD -->
             <div class="card">
                 <div>
                     <div id="segStatus" class="status-badge status-pending">Pendiente</div>
-                    <h2 style="font-size: 1.2rem; color: var(--secondary);">2. Segmentos</h2>
-                    <p style="font-size: 0.8rem; color: var(--text-muted);">Desglose por mercados.</p>
+                    <h2 style="font-size: 1.2rem; color: var(--secondary);">3. Segmentos (Actual)</h2>
+                    <p style="font-size: 0.8rem; color: var(--text-muted);">Desglose por mercados año en curso.</p>
                 </div>
 
                 <div class="upload-zone" id="dropZoneSeg" onclick="document.getElementById('fileSeg').click()">
@@ -455,7 +613,7 @@
             <div class="card">
                 <div>
                     <div id="otbStatus" class="status-badge status-pending">Pendiente</div>
-                    <h2 style="font-size: 1.2rem; color: #8b5cf6;">3. Previsión (OTB)</h2>
+                    <h2 style="font-size: 1.2rem; color: #8b5cf6;">4. Previsión (OTB)</h2>
                     <p style="font-size: 0.8rem; color: var(--text-muted);">Listado de valoradas.</p>
                 </div>
 
@@ -472,6 +630,117 @@
             </div>
         </div>
 
+        <script>
+            // ... (Previous Scripts) ...
+
+            // ... existing code ...
+
+            // MODIFICACIÓN: Modal de Detalles con Timestamp y Desglose
+            function renderDatabaseSummary() {
+                const hotel = document.getElementById('hotelSelector').value;
+                const container = document.getElementById('db-summary-container');
+                const tbody = document.getElementById('db-summary-body');
+
+                if (!container || !tbody) return;
+
+                container.style.display = 'block';
+                tbody.innerHTML = '';
+
+                const years = db[hotel] ? Object.keys(db[hotel]).sort().reverse() : [];
+
+                if (years.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="padding:15px; text-align:center; color:var(--text-muted);">No hay datos cargados para este hotel.</td></tr>';
+                    return;
+                }
+
+                years.forEach(year => {
+                    const data = db[hotel][year];
+                    const hasProd = data.service && Object.keys(data.service).length > 0;
+                    const hasSeg = data.segment && Object.keys(data.segment).length > 0;
+                    const hasOtb = data.otb && ((data.otb.revenue && data.otb.revenue.some(v => v > 0)) || (data.otb.rooms && data.otb.rooms.some(v => v > 0)));
+
+                    let prodStatus = hasProd ? `<span style="color:#10b981;">●</span>` : `<span style="color:#e2e8f0;">○</span>`;
+                    let segStatus = hasSeg ? `<span style="color:#10b981;">●</span>` : `<span style="color:#e2e8f0;">○</span>`;
+                    let otbStatus = hasOtb ? `<span style="color:#10b981;">●</span>` : `<span style="color:#e2e8f0;">○</span>`;
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                    <td style="padding: 12px 20px;"><b>${year}</b></td>
+                    <td style="padding: 12px 20px; text-align: center;">${prodStatus}</td>
+                    <td style="padding: 12px 20px; text-align: center;">${segStatus}</td>
+                    <td style="padding: 12px 20px; text-align: center;">${otbStatus}</td>
+                    <td style="padding: 12px 20px; text-align: right;">
+                        <button onclick="showYearDetails('${year}')" style="background:var(--primary); color:white; border:none; border-radius:6px; padding:4px 10px; font-size:0.75rem; cursor:pointer; margin-right:8px;">🔍 Ver Detalles</button>
+                        <button onclick="clearYear('${hotel}', '${year}')" style="background:none; border:none; cursor:pointer; color:#ef4444; font-size:0.9rem;" title="Borrar Año">🗑️</button>
+                    </td>
+                `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            function showYearDetails(year) {
+                const hotel = document.getElementById('hotelSelector').value;
+                const data = db[hotel][year];
+                if (!data) return;
+
+                // Ensure updates object exists for legacy data
+                const updates = data.updates || { prod: "N/A", seg: "N/A", otb: "N/A" };
+
+                // Build Month Lists
+                const getMonthsP = (obj) => {
+                    if (!obj || !obj["TOTAL_MASTER"]) return "Sin datos";
+                    // Chequear revenue > 0 por mes en TOTAL_MASTER
+                    const months = obj["TOTAL_MASTER"].revenue.map((v, i) => v > 0 ? SHORT_MONTHS_MAP_ARRAY[i] : null).filter(m => m);
+                    return months.length ? months.join(", ") : "Sin datos";
+                };
+
+                // Helper for Segmentation - scans all segments to find active months
+                const getMonthsS = (obj) => {
+                    if (!obj) return "Sin datos";
+                    const filledMonths = new Set();
+                    Object.values(obj).forEach(seg => {
+                        seg.revenue.forEach((v, i) => { if (v > 0) filledMonths.add(SHORT_MONTHS_MAP_ARRAY[i]); });
+                    });
+                    // Sort by calendar order
+                    const sorted = Array.from(filledMonths).sort((a, b) => SHORT_MONTHS_MAP[a.toUpperCase()] - SHORT_MONTHS_MAP[b.toUpperCase()]);
+                    return sorted.length ? sorted.join(", ") : "Sin datos";
+                };
+
+                const otbInfo = data.otb && data.otb.revenue.some(v => v > 0) ? "Cargado" : "Vacío";
+
+                const detailHTML = `
+                <table style="width:100%; border-collapse:collapse; margin-top:10px;">
+                    <tr style="border-bottom:1px solid #e2e8f0;">
+                        <td style="padding:8px; font-weight:600;">Módulo</td>
+                        <td style="padding:8px; font-weight:600;">Última Carga (Fecha/Hora)</td>
+                        <td style="padding:8px; font-weight:600;">Meses con Datos</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f1f5f9;">
+                        <td style="padding:8px;">📈 Producción</td>
+                        <td style="padding:8px; color:var(--primary); font-weight:500;">${updates.prod || (data.service?.["TOTAL_MASTER"] ? "Antiguo" : "-")}</td>
+                        <td style="padding:8px; font-size:0.85rem; color:#64748b;">${getMonthsP(data.service)}</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f1f5f9;">
+                        <td style="padding:8px;">👥 Segmentos</td>
+                        <td style="padding:8px; color:var(--secondary); font-weight:500;">${updates.seg || (Object.keys(data.segment || {}).length > 0 ? "Antiguo" : "-")}</td>
+                        <td style="padding:8px; font-size:0.85rem; color:#64748b;">${getMonthsS(data.segment)}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:8px;">🔮 OTB</td>
+                        <td style="padding:8px; color:#8b5cf6; font-weight:500;">${updates.otb || (data.otb?.revenue.some(v => v > 0) ? "Antiguo" : "-")}</td>
+                        <td style="padding:8px; font-size:0.85rem; color:#64748b;">${otbInfo}</td>
+                    </tr>
+                </table>
+            `;
+
+                document.getElementById('detailModalTitle').innerText = `Detalles de Datos: ${year}`;
+                document.getElementById('detailModalContent').innerHTML = detailHTML;
+                document.getElementById('detailModal').style.display = 'flex';
+            }
+
+
+
+        </script>
         <div id="debug-results"
             style="display:none; margin-top: 30px; padding: 20px; background: white; border-radius: 15px; border: 1px solid var(--border); box-shadow: var(--shadow);">
             <h3 style="margin-top:0; color: var(--primary);">📊 Resumen de Datos Detectados</h3>
@@ -503,7 +772,7 @@
             </div>
 
             <div id="advanced-config"
-                style="display:grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 25px; padding-bottom: 25px; border-bottom: 1px solid var(--border);">
+                style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 25px; padding-bottom: 25px; border-bottom: 1px solid var(--border);">
                 <div class="card" style="padding:15px; background: #f8fafc; border: 1.5px dashed #cbd5e1;">
                     <h3 style="font-size: 0.9rem; margin-bottom: 10px;">📉 Monitor de Pick-up (Semanal)</h3>
                     <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 15px;">Compara
@@ -520,6 +789,25 @@
                     <div style="display:flex; align-items:center; gap:10px;">
                         <input type="checkbox" id="budgetSyncToggle" onchange="saveOptions()">
                         <span style="font-size: 0.85rem; font-weight: 500;">Mostrar cumplimiento vs Budget</span>
+                    </div>
+                </div>
+                <div class="card" style="padding:15px; background: #f0fdf4; border: 1.5px dashed #86efac;">
+                    <h3 style="font-size: 0.9rem; margin-bottom: 10px;">🏨 Configuración de Inventario</h3>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 10px;">Define el nº total de
+                        habitaciones para el cálculo de ocupación.</p>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                        <div>
+                            <label style="font-size:0.7rem; font-weight:600;">Guadiana</label>
+                            <input type="number" id="roomsGuadiana" value="108"
+                                style="width:100%; padding:5px; border-radius:5px; border:1px solid #cbd5e1;"
+                                onchange="saveOptions()">
+                        </div>
+                        <div>
+                            <label style="font-size:0.7rem; font-weight:600;">Cumbria</label>
+                            <input type="number" id="roomsCumbria" value="59"
+                                style="width:100%; padding:5px; border-radius:5px; border:1px solid #cbd5e1;"
+                                onchange="saveOptions()">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -608,10 +896,8 @@
         </details>
 
         <script>
-            // Solo mostrar zona de gestión si estamos en LOCAL (file://)
-            if (window.location.protocol === 'file:') {
-                document.getElementById('admin-management-zone').style.display = 'block';
-            }
+            // Mostrar zona de gestión (siempre disponible para gestión local)
+            document.getElementById('admin-management-zone').style.display = 'block';
         </script>
     </div>
 
@@ -634,6 +920,24 @@
             loadOptions();
         };
 
+        const SHORT_MONTHS_MAP = {
+            "ENE": 0, "JAN": 0, "FEB": 1, "MAR": 2, "ABR": 3, "APR": 3, "MAY": 4, "JUN": 5,
+            "JUL": 6, "AGO": 7, "AUG": 7, "SEP": 8, "OCT": 9, "NOV": 10, "DIC": 11, "DEC": 11
+        };
+        const SHORT_MONTHS_MAP_ARRAY = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+        function clearYear(hotel, year) {
+            if (confirm(`¿Estás seguro de que quieres borrar todos los datos del año ${year}?`)) {
+                if (db[hotel] && db[hotel][year]) {
+                    delete db[hotel][year];
+                    saveData();
+                    renderDatabaseSummary();
+                    showToast(`Datos del año ${year} borrados correctamente.`, 'success');
+                }
+            }
+        }
+
+
         function toggleAdvancedPanels() {
             const panel = document.getElementById('advanced-config');
             panel.style.display = panel.style.display === 'none' ? 'grid' : 'none';
@@ -642,7 +946,9 @@
         function saveOptions() {
             config.options = {
                 pickupEnabled: document.getElementById('pickupToggle').checked,
-                budgetSyncEnabled: document.getElementById('budgetSyncToggle').checked
+                budgetSyncEnabled: document.getElementById('budgetSyncToggle').checked,
+                roomsGuadiana: parseInt(document.getElementById('roomsGuadiana').value) || 108,
+                roomsCumbria: parseInt(document.getElementById('roomsCumbria').value) || 59
             };
             saveData();
         }
@@ -651,6 +957,8 @@
             if (config.options) {
                 document.getElementById('pickupToggle').checked = config.options.pickupEnabled || false;
                 document.getElementById('budgetSyncToggle').checked = config.options.budgetSyncEnabled || false;
+                if (config.options.roomsGuadiana) document.getElementById('roomsGuadiana').value = config.options.roomsGuadiana;
+                if (config.options.roomsCumbria) document.getElementById('roomsCumbria').value = config.options.roomsCumbria;
             }
             // Hide by default if not previously open or just to keep it clean
             document.getElementById('advanced-config').style.display = 'none';
@@ -662,11 +970,24 @@
             historyBody.innerHTML = '';
 
             const logs = config[hotel]?.logs || [];
-            logs.slice(-8).reverse().forEach((log, idx) => {
+
+            // FILTRO: Solo mostrar logs de HOY
+            const todayStr = new Date().toLocaleDateString('es-ES'); // ej: "26/1/2026" o "26/01/2026"
+            // Normalizar: a veces Date.toLocaleString incluye hora o cambia formato
+
+            const todayLogs = logs.filter(log => {
+                // log.timestamp suele ser "dd/mm/yyyy, hh:mm:ss"
+                return log.timestamp.startsWith(todayStr);
+            });
+
+            // Mostrar los últimos 15 de hoy (o todos los de hoy)
+            todayLogs.reverse().forEach((log, idx) => {
+                // Find original index to allow deletion
+                const realIdx = logs.indexOf(log);
+
                 const tr = document.createElement('tr');
-                const realIdx = logs.length - 1 - idx;
                 tr.innerHTML = `
-                    <td>${log.timestamp}</td>
+                    <td>${log.timestamp.split(',')[1] || log.timestamp}</td> <!-- Solo Hora -->
                     <td>${hotel}</td>
                     <td>${log.type}</td>
                     <td>${log.period}</td>
@@ -678,18 +999,29 @@
                 historyBody.appendChild(tr);
             });
 
+            if (todayLogs.length === 0) {
+                historyBody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:15px;">No hay actividad hoy.</td></tr>';
+            }
+
             // Update next expected dates
             const lastProd = config[hotel]?.lastProdDate || "01-01-26";
+            const lastHist = config[hotel]?.lastHistDate || "Pendiente";
             const lastSeg = config[hotel]?.lastSegDate || "01-01-26";
             const lastOtb = config[hotel]?.lastOtbDate || "Pendiente";
 
             document.getElementById('nextDateProd').innerText = calculateNextDay(lastProd);
             document.getElementById('nextDateSeg').innerText = calculateNextDay(lastSeg);
             document.getElementById('otbStateText').innerText = lastOtb;
+            document.getElementById('histStateText').innerText = lastHist;
+
 
             if (config[hotel]?.lastProdDate) {
                 document.getElementById('prodStatus').innerText = "Actualizado hasta " + lastProd;
                 document.getElementById('prodStatus').className = "status-badge status-up";
+            }
+            if (config[hotel]?.lastHistDate) {
+                document.getElementById('histStatus').innerText = "Cargado";
+                document.getElementById('histStatus').className = "status-badge status-up";
             }
             if (config[hotel]?.lastSegDate) {
                 document.getElementById('segStatus').innerText = "Actualizado hasta " + lastSeg;
@@ -704,6 +1036,8 @@
             const logoImg = document.getElementById('hotelLogo');
             if (hotel === 'Guadiana') logoImg.src = 'Imagen/logo-guadiana.svg';
             else if (hotel === 'Cumbria') logoImg.src = 'Imagen/logo-cumbria.svg';
+
+            renderDatabaseSummary();
         }
 
         function calculateNextDay(dateStr) {
@@ -717,7 +1051,7 @@
 
         // --- FILE PROCESSING ---
         function setupDropZones() {
-            ['Prod', 'Seg', 'Otb'].forEach(type => {
+            ['Prod', 'Hist', 'Seg', 'Otb'].forEach(type => {
                 const zone = document.getElementById('dropZone' + type);
                 const input = document.getElementById('file' + type);
 
@@ -728,15 +1062,19 @@
                 zone.ondrop = (e) => {
                     e.preventDefault();
                     zone.classList.remove('dragging');
-                    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0], type === 'Otb' ? 'Prevision' : type);
+                    handleFile(e.dataTransfer.files[0], type); // Pass raw type
                 };
                 input.onchange = (e) => {
-                    if (e.target.files.length) handleFile(e.target.files[0], type === 'Otb' ? 'Prevision' : type);
+                    if (e.target.files.length) handleFile(e.target.files[0], type);
                 };
             });
         }
 
         async function handleFile(file, type) {
+            // Map type for internal logic if needed
+            let logicType = type;
+            if (type === 'Otb') logicType = 'Prevision';
+
             const hotel = document.getElementById('hotelSelector').value;
             document.getElementById('loader').style.display = 'flex';
 
@@ -758,9 +1096,11 @@
 
                     // Update config/logs
                     if (!config[hotel]) config[hotel] = { logs: [] };
+
                     if (type === 'Prod') config[hotel].lastProdDate = period;
+                    else if (type === 'Hist') config[hotel].lastHistDate = period;
                     else if (type === 'Seg') config[hotel].lastSegDate = period;
-                    else if (type === 'Prevision') config[hotel].lastOtbDate = period;
+                    else if (type === 'Otb') config[hotel].lastOtbDate = period;
 
                     // SYNC lastUpdate to main DB
                     if (!db[hotel]) db[hotel] = {};
@@ -778,24 +1118,49 @@
                     if (!config[hotel].logs) config[hotel].logs = [];
                     config[hotel].logs.push({
                         timestamp: new Date().toLocaleString('es-ES'),
-                        type: type === 'Prod' ? 'Producción' : (type === 'Seg' ? 'Segmentos' : 'Previsiones'),
+                        type: type === 'Prod' ? 'Producción' : (type === 'Hist' ? 'Histórico' : (type === 'Seg' ? 'Segmentos' : 'Previsiones')),
                         period: period
                     });
 
                     saveData();
                     setTimeout(() => {
                         document.getElementById('loader').style.display = 'none';
-                        alert(`¡Archivo de ${type} cargado con éxito!`);
+                        showToast(`✅ Archivo de ${type === 'Hist' ? 'Histórico' : (type === 'Prod' ? 'Producción' : (type === 'Seg' ? 'Segmentos' : 'Previsión'))} cargado correctamente`, 'success');
                         updateHistory();
                     }, 500);
 
                 } catch (err) {
                     console.error(err);
-                    alert("Error al procesar el Excel. Verifica el formato.");
+                    showToast("❌ Error al procesar el Excel. Verifica el formato.", "error");
                     document.getElementById('loader').style.display = 'none';
                 }
             };
             reader.readAsArrayBuffer(file);
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+
+            let icon = 'ℹ️';
+            let color = 'var(--primary)';
+
+            if (type === 'success') { icon = '✅'; color = 'var(--secondary)'; }
+            if (type === 'error') { icon = '❌'; color = '#ef4444'; }
+            if (type === 'warning') { icon = '⚠️'; color = '#f59e0b'; }
+
+            toast.style.borderLeftColor = color;
+            toast.innerHTML = `<span style="font-size:1.2rem;">${icon}</span> <span>${message}</span>`;
+
+            container.appendChild(toast);
+
+            // Remove after 4 seconds
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)';
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
         }
 
         function processDataForDB(data, fileName, hotel, type) {
@@ -826,22 +1191,21 @@
             const periodLabel = dateInfo ? dateInfo.full : "Carga Masiva";
             dbYear.lastUpdate = periodLabel;
 
-            const SHORT_MONTHS_MAP = {
-                "ENE": 0, "JAN": 0, "FEB": 1, "MAR": 2, "ABR": 3, "APR": 3, "MAY": 4, "JUN": 5,
-                "JUL": 6, "AGO": 7, "AUG": 7, "SEP": 8, "OCT": 9, "NOV": 10, "DIC": 11, "DEC": 11
-            };
+
+
+            // SHORT_MONTHS_MAP is now Global
+
 
             const PRODUCTION_GROUPS = {
-                "HABITACION": ["HABITACION", "ALOJAMIENTO", "ESTANCIA", "DUI", "DOBLE", "SUPERIOR", "SUITE", "CUADRUPLE", "TRIPLE", "FAMILIAR", "LATE CHECK OUT", "AMPLIACION", "CAMA SUPLETORIA"],
+                "HABITACION": ["HABITACION", "ALOJAMIENTO", "ESTANCIA", "DUI", "DOBLE", "SUPERIOR", "SUITE", "CUADRUPLE", "TRIPLE", "FAMILIAR", "LATE CHECK OUT", "AMPLIACION", "CAMA SUPLETORIA", "REGARGO GDS"],
                 "DESAYUNOS": ["DESAYUNO BUFFET", "DESAYUNO GRUPO", "DESAYUNO", "BUFFET"],
                 "RESTAURANTE": ["RESTAURANTE", "CENA", "ALMUERZO", "CENA GRUPO", "ALMUERZO GRUPO", "CATERING", "RESTAURANTE CATERING"],
-                "OFICINAS": ["ALQUILER RETENCIONES", "OFICINA", "RETENCIONES"],
+                "OFICINAS": ["ALQUILER RETENCIONES", "OFICINA", "RETENCIONES", "ALQUILER PLAZAS GARAJE", "FIANZA", "DOMICILIACION EMPRESAS", "GARAJE", "PARKING"],
                 "EVENTOS": ["COFFEE BREAK", "SALONES/ALQUILER", "AUDIOVISUALES", "SALON", "ALQUILER", "EVENTO"],
                 "CAFETERIA": ["CAFETERIA", "BAR"],
                 "MINIBAR": ["MINIBAR"],
                 "SPA": ["SPA", "BALNEARIO", "MASAJE", "TRATAMIENTO"],
-                "PARKING": ["GARAJE", "PARKING"],
-                "VARIOS": ["LAVANDERIA", "ARTESANIA", "FAX", "TELÉFONO", "VARIOS", "SUPLEMENTO", "MASCOTA", "CUNA", "UPGRADE"]
+                "VARIOS": ["LAVANDERIA", "ARTESANIA", "FAX", "TELÉFONO", "VARIOS", "SUPLEMENTO", "MASCOTA", "CUNA", "UPGRADE", "LIMPIEZA", "MENSAJERIA"]
             };
 
             const getGroupID = (n) => {
@@ -868,7 +1232,47 @@
                 else if (itemType === 'pax') dbYear.service[k].pax[monthIdx] += val;
             };
 
-            if (type === 'Prod') {
+            const touchedMonths = new Set();
+            const resetMonthData = (mIdx, isSegment) => {
+                if (isSegment) {
+                    // Reset Segments for this month
+                    if (dbYear.segment) {
+                        Object.values(dbYear.segment).forEach(s => {
+                            if (s.revenue) s.revenue[mIdx] = 0;
+                            if (s.rooms) s.rooms[mIdx] = 0;
+                        });
+                    }
+                } else {
+                    // Reset Services (Production) for this month
+                    if (dbYear.service) {
+                        Object.values(dbYear.service).forEach(s => {
+                            if (s.revenue) s.revenue[mIdx] = 0;
+                            if (s.rooms) s.rooms[mIdx] = 0;
+                            if (s.pax) s.pax[mIdx] = 0;
+                        });
+                    }
+                    // Also reset daily data for this month if we are overwriting it
+                    // To do this simply, we filter out keys belonging to this month
+                    if (dbYear.daily) {
+                        const prefix = `${reportYear}-${String(mIdx + 1).padStart(2, '0')}`;
+                        // FIX: Do not perform bulk delete here, as it might delete data from other files if this is a daily update.
+                        // Instead, we will overwrite daily keys EXPLICITLY in the loop below.
+                        // However, if the user wants "Latest Update Prevails" for the WHOLE month, we should clear it.
+                        // Given the user uploads cumulative files or daily files, the safest approach for "Daily Production"
+                        // is to trust the file's columns.
+
+                        // If we are resetting the month, we should probably clear the daily records for that month too
+                        // to avoid "ghost days" that were in a previous upload but not in this one (rare for daily logs).
+                        Object.keys(dbYear.daily).forEach(k => {
+                            if (k.startsWith(prefix)) delete dbYear.daily[k];
+                        });
+                    }
+                }
+                console.log(`🧹 Cleared existing data for Month Index ${mIdx} (Overwrite mode)`);
+            };
+
+            if (type === 'Prod' || type === 'Hist') {
+                // ... (rest of logic)
                 // 1. ESCANEO UNIVERSAL DE FILAS MAESTRAS
                 let rowFechas = null, rowHab = null, rowPax = null, rowPro = null;
                 let masterIndices = new Set();
@@ -964,18 +1368,45 @@
                         mIdx = dateInfo ? dateInfo.month : 0;
                     }
 
-                    // 3. Check Dates (Excel Serial or Date Object)
+                    // 3. Check Dates (Excel Serial, Date Object, OR String Regex)
                     if (mIdx === -1) {
                         let dateObj = null;
-                        if (headerCell instanceof Date) dateObj = headerCell;
-                        else if (typeof headerCell === 'number' && headerCell > 30000) dateObj = new Date((headerCell - 25569) * 86400 * 1000);
+                        if (headerCell instanceof Date) {
+                            dateObj = headerCell;
+                        } else if (typeof headerCell === 'number' && headerCell > 30000) {
+                            dateObj = new Date((headerCell - 25569) * 86400 * 1000);
+                        } else {
+                            // Try Regex for strings like "23/02", "23-02", "23/02/2026"
+                            const dateMatch = String(header).match(/^(\d{1,2})[-\/](\d{1,2})(?:[-\/](\d{2,4}))?$/);
+                            if (dateMatch) {
+                                const d = parseInt(dateMatch[1]);
+                                const m = parseInt(dateMatch[2]) - 1; // 0-indexed
+                                let y = reportYear; // Default to file year
+                                if (dateMatch[3]) {
+                                    y = dateMatch[3];
+                                    if (y.length === 2) y = "20" + y;
+                                }
 
-                        if (dateObj) {
+                                if (m >= 0 && m <= 11 && d >= 1 && d <= 31) {
+                                    dateObj = new Date(y, m, d);
+                                }
+                            }
+                        }
+
+                        if (dateObj && !isNaN(dateObj.getTime())) {
                             mIdx = dateObj.getMonth();
+                            // NEW: Also set specDate here so we don't have to re-parse it later
+                            // We attach it to a temporary property on the loop scope or re-use logic below
                         }
                     }
 
                     if (mIdx >= 0 && mIdx <= 11) {
+                        // RESET LOGIC: First time we see this month in the file, clear it from DB
+                        if (!touchedMonths.has(mIdx)) {
+                            resetMonthData(mIdx, false);
+                            touchedMonths.add(mIdx);
+                        }
+
                         validColsCount++;
                         const rms = parseVal(rowHab ? rowHab[c] : 0);
                         applyVal("TOTAL_MASTER", rms, mIdx, 'rms');
@@ -987,18 +1418,51 @@
                         let specDate = null;
                         if (headerCell instanceof Date) specDate = headerCell;
                         else if (typeof headerCell === 'number' && headerCell > 30000) specDate = new Date((headerCell - 25569) * 86400 * 1000);
+                        else {
+                            // Re-parse string date if needed (or rely on what we found above)
+                            const dateMatch = String(header).match(/^(\d{1,2})[-\/](\d{1,2})(?:[-\/](\d{2,4}))?$/);
+                            if (dateMatch) {
+                                const d = parseInt(dateMatch[1]);
+                                const m = parseInt(dateMatch[2]) - 1;
+                                let y = reportYear;
+                                if (dateMatch[3]) {
+                                    y = dateMatch[3];
+                                    if (y.length === 2) y = "20" + y;
+                                }
+                                specDate = new Date(y, m, d);
+                            }
+                        }
 
-                        if (specDate) {
+                        if (specDate && !isNaN(specDate.getTime())) {
                             if (!dbYear.daily) dbYear.daily = {};
                             const iso = specDate.toISOString().split('T')[0];
                             dbYear.daily[iso] = rms;
                         }
 
+                        // LOOP through rows to gather detail data
+                        // CRITICAL FIX: Stop processing if we hit a "Budget" or "Last Year" section
+                        // These reports often stack tables: Real matches first, then Budget, then Last Year.
+                        // We must STOP to avoid summing Budget into Real.
+                        let stopProcessing = false;
+
                         for (let r = 0; r < data.length; r++) {
+                            if (stopProcessing) break;
                             if (masterIndices.has(r)) continue;
+
                             const rowItem = data[r];
                             if (!rowItem || !rowItem[0]) continue;
-                            const concept = String(rowItem[0]).trim();
+
+                            const concept = String(rowItem[0]).trim().toUpperCase();
+
+                            // DETECT SECTION BREAKERS
+                            if (concept.includes("PRESUPUESTO") || concept.includes("BUDGET") ||
+                                concept.includes("AÑO ANTERIOR") || concept.includes("LAST YEAR") ||
+                                concept.includes("COMPARATIVO") || concept.includes("VARIACION")) {
+                                console.log(`🛑 Stopping Production scan at row ${r} due to section header: ${concept}`);
+                                stopProcessing = true;
+                                break;
+                            }
+
                             const gid = getGroupID(concept);
                             if (gid && gid !== "OMIT") {
                                 applyVal(concept, parseVal(rowItem[c]), mIdx, 'rev');
@@ -1069,11 +1533,23 @@
 
                 if (!db[hotel][detectedYear]) db[hotel][detectedYear] = { service: {}, segment: {}, lastUpdate: "" };
                 const dbYear = db[hotel][detectedYear];
-                dbYear.segment = {};
+                // Ensure Segment structure exists
+                if (!dbYear.segment) dbYear.segment = {};
 
                 let currentSeg = null;
                 let filledHab = false;
                 let filledPro = false;
+
+                // Reset logic for Segments not easily inserted in loops, so we do it based on colMap
+                // 1. Identify all months in this file from colMap
+                const monthsInFile = new Set();
+                colMap.forEach(m => { if (m >= 0) monthsInFile.add(m); });
+                monthsInFile.forEach(m => {
+                    if (!touchedMonths.has(m)) {
+                        resetMonthData(m, true);
+                        touchedMonths.add(m);
+                    }
+                });
 
                 for (let r = 0; r < data.length; r++) {
                     const row = data[r];
@@ -1095,8 +1571,8 @@
                         }
                     }
 
-                    const isHab = rowType === 'rms';
-                    const isPro = rowType === 'rev';
+                    let isHab = rowType === 'rms';
+                    let isPro = rowType === 'rev';
 
                     // Detección de nombre de Segmento
                     if (col0 && !isHab && !isPro) {
@@ -1110,6 +1586,26 @@
                     } else if (!col0 && (isHab || isPro)) {
                         if ((isHab && filledHab) || (isPro && filledPro)) {
                             currentSeg = "TOTAL";
+                        }
+                    }
+
+                    // FALLBACK: If we have a segment name but NO explicit row type (e.g. data on same row)
+                    if (currentSeg && !isHab && !isPro) {
+                        // Check if we have numbers in mapped columns
+                        let hasNum = false;
+                        for (let c = 2; c < row.length; c++) {
+                            if (colMap[c] !== undefined && colMap[c] >= 0 && parseVal(row[c]) > 0) {
+                                hasNum = true; break;
+                            }
+                        }
+                        if (hasNum) {
+                            // Assume type based on Filename or Default to Revenue
+                            const fNameUpper = normalizeStr(fileName);
+                            if (fNameUpper.includes("HAB") || fNameUpper.includes("RN") || fNameUpper.includes("ROOM") || fNameUpper.includes("OCUPACION")) {
+                                isHab = true;
+                            } else {
+                                isPro = true;
+                            }
                         }
                     }
 
@@ -1194,20 +1690,63 @@
 
                 if (!dbYear.daily) dbYear.daily = {};
                 const hasDaily = Object.keys(dailyCols).length > 0;
-                if (hasDaily) dbYear.otb.rooms.fill(0); // Reset only if we have high-res data
+
+                // RESET LOGIC FOR OTB: Identify all months present in this file
+                // and clear them ONCE to ensure "Latest Prevails"
+                const otbMonths = new Set();
+
+                // 1. From Month Columns
+                Object.keys(monthCols).forEach(m => otbMonths.add(parseInt(m)));
+
+                // 2. From Daily Columns
+                Object.values(dailyCols).forEach(iso => {
+                    const parts = iso.split('-');
+                    if (parts.length === 3) {
+                        const m = parseInt(parts[1]) - 1; // 0-indexed
+                        if (m >= 0 && m <= 11) otbMonths.add(m);
+                    }
+                });
+
+                otbMonths.forEach(m => {
+                    if (!touchedMonths.has(m)) {
+                        // We re-use resetMonthData but we need to function slightly differently for OTB
+                        // Actually, resetMonthData clears service/segment/daily.
+                        // For OTB (Prevision), we specifically want to clear dbYear.otb arrays + daily OTB.
+
+                        // Clear Main OTB Arrays for this month
+                        if (dbYear.otb) {
+                            if (dbYear.otb.revenue) dbYear.otb.revenue[m] = 0;
+                            if (dbYear.otb.rooms) dbYear.otb.rooms[m] = 0;
+                            if (dbYear.otb.breakdown) {
+                                Object.values(dbYear.otb.breakdown).forEach(arr => arr[m] = 0);
+                            }
+                        }
+
+                        // Clear Daily Data for this month (same as Production)
+                        if (dbYear.daily) {
+                            const prefix = `${reportYear}-${String(m + 1).padStart(2, '0')}`;
+                            Object.keys(dbYear.daily).forEach(k => {
+                                if (k.startsWith(prefix)) delete dbYear.daily[k];
+                            });
+                        }
+
+                        console.log(`🧹 Cleared OTB data for Month Index ${m}`);
+                        touchedMonths.add(m);
+                    }
+                });
 
                 console.log("🔮 OTB Processing:", {
                     hasDaily,
                     dailyColsCount: Object.keys(dailyCols).length,
                     monthColsCount: Object.keys(monthCols).length,
-                    dailyCols,
-                    monthCols
+                    affectedMonths: Array.from(otbMonths)
                 });
 
                 let foundRMS = false;
                 let foundREV = false;
                 let rmsRowCount = 0;
                 let revRowCount = 0;
+                let targetArray; // Moved declaration up
 
                 for (let r = 0; r < data.length; r++) {
                     const row = data[r];
@@ -1306,7 +1845,6 @@
                         }
 
                         // Decide where to store the data
-                        let targetArray;
                         if (rowType === 'rms') {
                             targetArray = dbYear.otb.rooms;
                         } else if (category) {
@@ -1322,7 +1860,29 @@
                         if (hasDaily) {
                             for (const [col, iso] of Object.entries(dailyCols)) {
                                 const val = parseVal(row[col]);
-                                if (rowType === 'rms') dbYear.daily[iso] = val;
+
+                                // Initialize as object if missing or if it was a legacy number
+                                if (!dbYear.daily[iso] || typeof dbYear.daily[iso] !== 'object') {
+                                    const oldVal = (typeof dbYear.daily[iso] === 'number') ? dbYear.daily[iso] : 0;
+                                    dbYear.daily[iso] = { rooms: oldVal, revenue: 0 };
+                                }
+
+                                if (rowType === 'rms') dbYear.daily[iso].rooms = val;
+                                // Only capture Revenue from the TOTAL PROD row (or generic revenue), not breakdown
+                                if (rowType === 'rev' && (!category || category === 'habitacion')) {
+                                    // If we confirm this is TOTAL revenue or ROOM revenue, add it.
+                                    // For simplicity, let's assume if it is NOT a specific F&B category, it's relevant for ADR.
+                                    // User's Excel has "Prod" (Total) and "Habitación" (Room Rev). 
+                                    // Ideally we want Total Prod for RevPAC, but usually ADR is Room Rev / Rooms.
+                                    // Let's stick to using the row found as 'rev'. If multiple rev rows exist, this might accumulate, which is risky.
+                                    // The user's screenshot has 'Prod' and 'Habitación'.
+                                    // Let's rely on 'rowType === rev' and overwrite if it's a "better" source, or just accumulate?
+                                    // Accumulation is dangerous if we have both Total and Room Rev.
+                                    // Let's only take it if it matches "PRODUCCION" or "TOTAL" or "HABITACION".
+                                    if (firstCellNorm.includes("HABITACION") || firstCellNorm === "PROD" || firstCellNorm === "PRODUCCION") {
+                                        dbYear.daily[iso].revenue = val;
+                                    }
+                                }
 
                                 const mIdx = parseInt(iso.split('-')[1]) - 1;
                                 if (mIdx >= 0 && mIdx < 12) targetArray[mIdx] += val;
@@ -1580,11 +2140,22 @@
                 return;
             }
             const hotel = document.getElementById('hotelSelector').value;
-            if (confirm(`⚠️ ¿Borrar TODOS los datos del Hotel ${hotel}? Los datos de otros hoteles se mantendrán.`)) {
-                delete db[hotel];
-                delete config[hotel];
+            if (confirm(`⚠️ ¿Borrar TODOS los datos del Hotel ${hotel} (y posibles duplicados)?`)) {
+                // Fuzzy Delete: Delete exact key AND any key containing the name
+                const target = hotel.toUpperCase();
+                Object.keys(db).forEach(k => {
+                    if (k.toUpperCase().includes(target) || target.includes(k.toUpperCase())) {
+                        delete db[k];
+                    }
+                });
+                Object.keys(config).forEach(k => {
+                    if (k.toUpperCase().includes(target) || target.includes(k.toUpperCase())) {
+                        delete config[k];
+                    }
+                });
+
                 saveData();
-                alert(`Datos del hotel ${hotel} borrados.`);
+                alert(`Datos del hotel ${hotel} (y relacionados) borrados.`);
                 location.reload();
             }
         }
@@ -1596,25 +2167,34 @@
                 return;
             }
             const hotel = document.getElementById('hotelSelector').value;
-            if (confirm(`⚠️ ¿Borrar solo los datos de Previsiones (OTB) del Hotel ${hotel}? Los datos de producción real se mantendrán.`)) {
-                if (db[hotel]) {
-                    for (const year in db[hotel]) {
-                        if (db[hotel][year].otb) {
-                            db[hotel][year].otb.revenue = new Array(12).fill(0);
-                            db[hotel][year].otb.rooms = new Array(12).fill(0);
+            if (confirm(`⚠️ ¿Borrar solo los datos de Previsiones (OTB) del Hotel ${hotel}?`)) {
+                const target = hotel.toUpperCase();
+                let deletedCount = 0;
+
+                Object.keys(db).forEach(k => {
+                    if (k.toUpperCase().includes(target) || target.includes(k.toUpperCase())) {
+                        const hData = db[k];
+                        for (const year in hData) {
+                            if (hData[year].otb) {
+                                hData[year].otb.revenue = new Array(12).fill(0);
+                                hData[year].otb.rooms = new Array(12).fill(0);
+                                hData[year].otb.breakdown = {}; // Clear breakdown too
+                            }
+                            if (hData[year].daily) hData[year].daily = {};
                         }
-                        // IMPORTANTE: También borrar los datos diarios de previsiones
-                        if (db[hotel][year].daily) {
-                            db[hotel][year].daily = {};
-                        }
+                        deletedCount++;
                     }
-                    // También limpiar la fecha de última actualización de OTB en config
-                    if (config[hotel]) {
-                        delete config[hotel].lastOtbDate;
+                });
+
+                // También limpiar la fecha de última actualización de OTB en config
+                Object.keys(config).forEach(k => {
+                    if (k.toUpperCase().includes(target) || target.includes(k.toUpperCase())) {
+                        if (config[k]) delete config[k].lastOtbDate;
                     }
-                }
+                });
+
                 saveData();
-                alert(`Previsiones del hotel ${hotel} borradas correctamente (incluidos datos diarios).`);
+                alert(`Previsiones del hotel ${hotel} borradas correctamente (${deletedCount} registros limpiados).`);
                 location.reload();
             }
         }
@@ -1628,6 +2208,17 @@
             }
         }
     </script>
+    <!-- Detail Modal -->
+    <div id="detailModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal"
+                onclick="document.getElementById('detailModal').style.display='none'">&times;</span>
+            <div class="modal-header">
+                <h3 id="detailModalTitle" style="color: var(--primary);">Detalles</h3>
+            </div>
+            <div id="detailModalContent"></div>
+        </div>
+    </div>
 </body>
 
 </html>

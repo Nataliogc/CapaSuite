@@ -357,11 +357,14 @@
         /* TABLE */
         .table-wrap {
             width: 100%;
-            overflow-x: auto;
+            overflow: auto;
+            /* Handles both x and y scroll */
+            max-height: 75vh;
+            /* Limits height so vertical scroll happens HERE */
             border-radius: 0 0 var(--radius) var(--radius);
             display: block;
             max-width: 100%;
-            width: 100%;
+            position: relative;
         }
 
         @media (max-width: 1000px) {
@@ -394,7 +397,10 @@
             border-bottom: 2px solid var(--border);
             position: sticky;
             top: 0;
-            z-index: 10;
+            z-index: 100;
+            /* Increased z-index */
+            box-shadow: 0 1px 0 #e2e8f0;
+            /* Force border visibility when scrolling */
 
             /* STRICT DIMENSIONS */
             width: 70px;
@@ -415,7 +421,8 @@
             text-align: left;
             position: sticky;
             left: 0;
-            z-index: 20;
+            z-index: 102;
+            /* Higher than normal headers */
             background: #f1f5f9;
             border-right: 1px solid var(--border);
             width: 95px;
@@ -1436,7 +1443,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
                         data.forEach(d => {
                             if (d.dateISO) {
-                                let foundOTB = 0;
+                                let foundOTB = -1; // Sentinel value to distinguish "not found" vs "0"
                                 const parts = d.dateISO.split('-');
                                 const mStr = parts[1];
                                 const dStr = parts[2];
@@ -1445,25 +1452,45 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                                 const years = Object.keys(hData);
                                 for (const y of years) {
                                     if (hData[y] && hData[y].daily) {
+                                        // FORMATO ESTRICTO DE CLAVE
+                                        // La base de datos guarda "YYYY-MM-DD"
                                         const tryKey = `${y}-${mStr}-${dStr}`;
-                                        if (hData[y].daily[tryKey]) {
+
+                                        // Búsqueda Directa
+                                        if (hData[y].daily[tryKey] !== undefined) {
                                             foundOTB = hData[y].daily[tryKey];
                                             break;
                                         }
                                     }
                                 }
 
-                                // If found, update the data model and HTML
-                                if (foundOTB > 0) {
-                                    d.otbRooms = foundOTB;
-                                    d.occupancy = foundOTB;
-                                    // Regenerate HTML with new OTB data (calling parseDate which now has OTB logic too)
-                                    // passing 0 as occVal initially to avoid double render, but parseDate logic will handle it.
-                                    // Actually, better to manually inject into parseDate call:
-                                    const meta = d.dateMeta || {};
-                                    // Re-render pill
-                                    const res = parseDate(meta.currentMonth, meta.dNum, meta.dName, foundOTB);
-                                    d.dateHtml = res.html;
+                                // If found, update the data model
+                                if (foundOTB !== -1) {
+                                    let otbRms = 0;
+                                    let otbRev = 0;
+
+                                    if (typeof foundOTB === 'number') {
+                                        otbRms = foundOTB;
+                                    } else if (typeof foundOTB === 'object') {
+                                        otbRms = foundOTB.rooms || 0;
+                                        otbRev = foundOTB.revenue || 0;
+                                    }
+
+                                    if (otbRms !== 0) {
+                                        d.otbRooms = otbRms;
+                                        d.occupancy = otbRms;
+
+                                        // Calculate ADR if Revenue is available
+                                        if (otbRev > 0) {
+                                            d.otbADR = otbRev / otbRms;
+                                        }
+
+                                        // Regenerate HTML with new OTB data
+                                        const meta = d.dateMeta || {};
+                                        // Re-render pill
+                                        const res = parseDate(meta.currentMonth, meta.dNum, meta.dName, otbRms);
+                                        d.dateHtml = res.html;
+                                    }
                                 }
                             }
                         });
@@ -1695,8 +1722,13 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     </td>`;
                 } else if (myStatus === 'minStay') {
                     html += `<td><span class="price-minstay" title="Estancia mínima requerida">M</span></td>`;
-                } else if (myStatus === 'noData') {
-                    html += `<td><span style="color:#cbd5e1">-</span></td>`;
+                } else if (!myP || myP === 0 || myStatus === 'noData') {
+                    // Fallback to OTB ADR if available
+                    if (d.otbADR && d.otbADR > 0) {
+                        html += `<td class="price-val" style="font-size:1.1rem; color: #4f46e5;" title="Precio Medio (ADR) calculado de Previsiones">${d.otbADR.toFixed(0)}€</td>`;
+                    } else {
+                        html += `<td><span style="color:#cbd5e1">-</span></td>`;
+                    }
                 } else {
                     html += `<td class="price-val" style="font-size:1.1rem;">${myP.toFixed(0)}€</td>`;
                 }

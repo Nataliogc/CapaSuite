@@ -488,7 +488,7 @@
         // Repost of core logic from AnalisisProduccion.html but locked to segments
         const MONTH_ORDER = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
         const SHORT_MONTHS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-        const HOTELS = { "Guadiana": { name: "Hotel Guadiana", rooms: 80 }, "Cumbria": { name: "Hotel Cumbria", rooms: 120 } };
+        const HOTELS = { "Guadiana": { name: "Hotel Guadiana", rooms: 108 }, "Cumbria": { name: "Hotel Cumbria", rooms: 59 } }; // Default Updated values
 
         let db = {};
         let currentHotel = "Guadiana";
@@ -517,6 +517,18 @@
         }
 
         function loadData() {
+            // Load Config for Rooms
+            const configData = CapaStorage.getItem('upload_config_db_v2');
+            if (configData) {
+                try {
+                    const conf = JSON.parse(configData);
+                    if (conf.options) {
+                        if (conf.options.roomsGuadiana) HOTELS["Guadiana"].rooms = conf.options.roomsGuadiana;
+                        if (conf.options.roomsCumbria) HOTELS["Cumbria"].rooms = conf.options.roomsCumbria;
+                    }
+                } catch (e) { console.error("Config Error", e); }
+            }
+
             const s = CapaStorage.getItem(STORAGE_KEY);
             if (s) {
                 try {
@@ -661,6 +673,26 @@
                 } else if (!col0 && (isHab || isPro)) {
                     if ((isHab && filledHab) || (isPro && filledPro)) {
                         currentSeg = "TOTAL";
+                    }
+                }
+
+                // FALLBACK: If we have a segment name but NO explicit row type (e.g. data on same row)
+                if (currentSeg && !isHab && !isPro) {
+                    // Check if we have numbers in mapped columns
+                    let hasNum = false;
+                    for (let c = 2; c < row.length; c++) {
+                        if (colMap[c] !== undefined && colMap[c] >= 0 && parseVal(row[c]) > 0) {
+                            hasNum = true; break;
+                        }
+                    }
+                    if (hasNum) {
+                        // Assume type based on Filename or Default to Revenue
+                        const fNameUpper = normalizeStr(fileName);
+                        if (fNameUpper.includes("HAB") || fNameUpper.includes("RN") || fNameUpper.includes("ROOM") || fNameUpper.includes("OCUPACION")) {
+                            isHab = true;
+                        } else {
+                            isPro = true;
+                        }
                     }
                 }
 

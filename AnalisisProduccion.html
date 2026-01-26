@@ -437,7 +437,7 @@
                             <option value="occ">Ocupación (%)</option>
                         </select>
                     </div>
-                    <div class="chart-container"><canvas id="mainChart"></canvas></div>
+                    <div class="chart-container" style="width:100%;"><canvas id="mainChart"></canvas></div>
                 </div>
                 <div class="card chart-card">
                     <div class="kpi-label">Pace Report: Gasto Complementario por Pax</div>
@@ -485,16 +485,15 @@
         const HOTELS = { "Guadiana": { rooms: 80 }, "Cumbria": { rooms: 120 } };
 
         const PRODUCTION_GROUPS = {
-            "HABITACION": { name: "1. Habitación", keys: ["HABITACIÓN", "HABITACION", "ALOJAMIENTO", "ESTANCIA", "DUI", "DOBLE", "SUPERIOR", "SUITE", "CUADRUPLE", "TRIPLE", "FAMILIAR", "LATE CHECK OUT", "AMPLIACION", "CAMA SUPLETORIA"] },
+            "HABITACION": { name: "1. Habitación", keys: ["HABITACIÓN", "HABITACION", "ALOJAMIENTO", "ESTANCIA", "DUI", "DOBLE", "SUPERIOR", "SUITE", "CUADRUPLE", "TRIPLE", "FAMILIAR", "LATE CHECK OUT", "AMPLIACION", "CAMA SUPLETORIA", "REGARGO GDS"] },
             "DESAYUNOS": { name: "2. Desayunos", keys: ["DESAYUNO BUFFET", "DESAYUNO GRUPO", "DESAYUNO", "BUFFET"] },
             "RESTAURANTE": { name: "3. Restaurante", keys: ["RESTAURANTE", "CENA", "ALMUERZO", "CENA GRUPO", "ALMUERZO GRUPO", "CATERING", "RESTAURANTE CATERING"] },
-            "OFICINAS": { name: "9. Alquiler de Oficinas", keys: ["ALQUILER RETENCIONES", "OFICINA", "RETENCIONES"] },
+            "OFICINAS": { name: "9. Alquiler de Oficinas", keys: ["ALQUILER RETENCIONES", "OFICINA", "RETENCIONES", "ALQUILER PLAZAS GARAJE", "FIANZA", "DOMICILIACION EMPRESAS", "GARAJE", "PARKING"] },
             "EVENTOS": { name: "4. Eventos", keys: ["COFFEE BREAK", "SALONES/ALQUILER", "AUDIOVISUALES", "SALON", "ALQUILER", "EVENTO"] },
             "CAFETERIA": { name: "5. Cafetería", keys: ["CAFETERÍA/HAB", "CAFETERIA", "BAR"] },
             "MINIBAR": { name: "6. Minibar", keys: ["MINIBAR"] },
             "SPA": { name: "7. Spa", keys: ["SPA", "BALNEARIO", "MASAJE", "TRATAMIENTO"] },
-            "PARKING": { name: "8. Parking", keys: ["GARAJE", "PARKING"] },
-            "VARIOS": { name: "10. Varios", keys: ["LAVANDERÍA", "ARTESANÍA", "FAX", "TELÉFONO", "VARIOS", "LAVANDERIA", "ARTESANIA", "TELEFONO", "SUPLEMENTO", "MASCOTA", "CUNA", "UPGRADE"] }
+            "VARIOS": { name: "10. Varios", keys: ["LAVANDERÍA", "ARTESANÍA", "FAX", "TELÉFONO", "VARIOS", "LAVANDERIA", "ARTESANIA", "TELEFONO", "SUPLEMENTO", "MASCOTA", "CUNA", "UPGRADE", "LIMPIEZA", "MENSAJERIA"] }
         };
 
         let db = {};
@@ -697,9 +696,16 @@
             };
 
             // Loading Options from Config
-            const configS = CapaStorage.getItem('hotel_manager_config');
-            const appConfig = configS ? JSON.parse(configS) : {};
-            const options = (appConfig[currentHotel] && appConfig[currentHotel].options) ? appConfig[currentHotel].options : {};
+            const configS = CapaStorage.getItem('hotel_manager_config'); // Key for config is 'upload_config_db_v2' according to CargarDatos, but let's check
+            // Actually in CargarDatos: const CONFIG_KEY = 'upload_config_db_v2';
+            // Let's use the correct key
+            const configData = CapaStorage.getItem('upload_config_db_v2');
+            const appConfig = configData ? JSON.parse(configData) : {};
+            const options = (appConfig.options) ? appConfig.options : {};
+
+            // Dynamic Room Update
+            if (options.roomsGuadiana) HOTELS["Guadiana"].rooms = options.roomsGuadiana;
+            if (options.roomsCumbria) HOTELS["Cumbria"].rooms = options.roomsCumbria;
 
             const trend = (ty, ly, lm, key) => {
                 let res = '';
@@ -1093,12 +1099,25 @@
             const months = midx === -1 ? [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] : [midx];
             months.forEach(m => {
                 const pTY = (totalTY.pax && totalTY.pax[m]) || 0;
-                const cTY = (groupedTY.SPA.revenue[m] || 0) + (groupedTY.PARKING.revenue[m] || 0) + (groupedTY.MINIBAR.revenue[m] || 0) + (groupedTY.VARIOS.revenue[m] || 0);
+                // PARKING is now inside OFICINAS, so we don't sum it separately here or we depend on where it ended up. 
+                // Previous logic summed SPA + PARKING + MINIBAR + VARIOS.
+                // Since PARKING is now OFICINAS, we could include OFICINAS if that was the intent, but usually Offices don't correlate to Pax.
+                // Let's safe guard the access.
+                const valSpa = (groupedTY.SPA && groupedTY.SPA.revenue && groupedTY.SPA.revenue[m]) || 0;
+                const valMinibar = (groupedTY.MINIBAR && groupedTY.MINIBAR.revenue && groupedTY.MINIBAR.revenue[m]) || 0;
+                const valVarios = (groupedTY.VARIOS && groupedTY.VARIOS.revenue && groupedTY.VARIOS.revenue[m]) || 0;
+                // removed PARKING as it is not a top level key anymore
+
+                const cTY = valSpa + valMinibar + valVarios;
                 tyPace.push(pTY > 0 ? (cTY / pTY).toFixed(2) : 0);
 
-                if (groupedLY && groupedLY.SPA && totalLY && totalLY.pax) {
+                if (totalLY && totalLY.pax) {
                     const pLY = (totalLY.pax[m]) || 0;
-                    const cLY = (groupedLY.SPA.revenue[m] || 0) + (groupedLY.PARKING.revenue[m] || 0) + (groupedLY.MINIBAR.revenue[m] || 0) + (groupedLY.VARIOS.revenue[m] || 0);
+                    const valSpaLY = (groupedLY && groupedLY.SPA && groupedLY.SPA.revenue && groupedLY.SPA.revenue[m]) || 0;
+                    const valMinibarLY = (groupedLY && groupedLY.MINIBAR && groupedLY.MINIBAR.revenue && groupedLY.MINIBAR.revenue[m]) || 0;
+                    const valVariosLY = (groupedLY && groupedLY.VARIOS && groupedLY.VARIOS.revenue && groupedLY.VARIOS.revenue[m]) || 0;
+
+                    const cLY = valSpaLY + valMinibarLY + valVariosLY;
                     lyPace.push(pLY > 0 ? (cLY / pLY).toFixed(2) : 0);
                 } else {
                     lyPace.push(0);
