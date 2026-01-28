@@ -595,6 +595,7 @@
             <a href="AnalisisSegmentos.html">👥 Segmentos</a>
             <a href="AnalisisCompetencia.html" class="active">⚖️ Competencia</a>
             <a href="AnalisisIA.html" style="color:#f59e0b; font-weight:800;">✨ CapaAI</a>
+            <a href="AnalisisCalendario.html">📅 Calendario</a>
             <a href="CalculadoraPresupuesto.html">💰 Presupuesto</a>
             <a href="CargarDatos.html">⚙️ Config</a>
         </div>
@@ -728,6 +729,7 @@
 
     <script>
         // --- LOGIC & STATE ---
+        const HOTEL_CAPACITY = { "Guadiana": 108, "Cumbria": 59 };
         let rawData = [];
         let processedData = [];
         let competitorsList = [];
@@ -1231,7 +1233,18 @@
                 competitorsList.forEach(comp => {
                     const val = parseVal(rawData[comp.rowIdx][c]);
                     dayObj.hotels[comp.name] = val;
-                    if (val.price > 0 && !val.sold) compPrices.push(val.price);
+
+                    // EXCLUSION LOGIC (Per User Request)
+                    const nLow = comp.name.toLowerCase();
+                    const isLibere = nLow.includes("líbere") || nLow.includes("libere") || nLow.includes("ciudad real"); // Matches 'Líbere Ciudad Real'
+                    // We also exclude our own hotels from the competitive set average to treat it as "External Market"
+                    const isGuadiana = nLow.includes("guadiana");
+                    const isCumbria = nLow.includes("cumbria");
+
+                    // Only add to average if it's a valid competitor price and NOT on the exclusion list
+                    if (!isLibere && !isGuadiana && !isCumbria) {
+                        if (val.price > 0 && !val.sold) compPrices.push(val.price);
+                    }
                 });
 
                 if (cumbriaRow !== -1) dayObj.hotels["Cumbria"] = parseVal(rawData[cumbriaRow][c]);
@@ -1579,49 +1592,154 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 if (!sold && myP > 0 && d.compAvg > 0) {
                     const diff = ((myP - d.compAvg) / d.compAvg) * 100;
                     let cls = 'gap-ok';
+                    let actionText = "Mantener";
+                    let actionColor = "#94a3b8";
 
-                    // Logic for Recommendation
-                    // Strategy: Stay within +/- 10% of market
-                    if (diff < -15) {
-                        // Too cheap -> Opportunity to raise
-                        cls = 'gap-low'; // Orange warning
-                        const target = (d.compAvg * 0.95).toFixed(0);
-                        actionHtml = `<span style="color:#16a34a; font-weight:700;">▲ ${target}€</span>`;
-                    } else if (diff > 20) {
-                        // Too expensive -> Risk of losing occ
-                        cls = 'gap-high'; // Red warning
-                        const target = (d.compAvg * 1.1).toFixed(0);
-                        actionHtml = `<span style="color:#dc2626; font-weight:700;">▼ ${target}€</span>`;
-                    } else {
-                        // Good
-                        actionHtml = `<span style="color:#94a3b8; font-size:0.8rem;">Mantener</span>`;
+                    // --- ADVANCED REVENUE LOGIC ---
+                    const cap = (activeHotel === 'Cumbria') ? 59 : 108; // Fallback hardcoded just in case global sync fails
+                    // Prefer OTB (Future) but fall back to Occ (Past/Today)
+                    const rooms = d.otbRooms || d.occupancy || 0;
+                    const occPct = (rooms / cap) * 100;
+
+                    // 1. LEAD TIME (Antelación)
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const targetDate = new Date(d.dateISO);
+                    const diffTime = targetDate - today;
+                    const daysOut = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                    // 2. COMPETITOR PRESSURE (Sold Outs)
+                    let soldComps = 0;
+                    competitorsList.forEach(c => {
+                        const cData = d.hotels[c.name];
+                        if (cData && (cData.sold || cData.status === 'sold')) soldComps++;
+                    });
+
+                    // --- DECISION MATRIX ---
+
+                    // RULE 1: COMPRESSION (Competitors Full) -> AGGRESSIVE YIELD
+                    if (soldComps >= 1) {
+                        // If competitors are selling out, we rarely drop price unless we are empty
+                        if (occPct < 30 && daysOut < 3) {
+                            // Only drop if desperate last minute
+                            actionText = "Mantener";
+                            actionColor = "#f59e0b"; // Caution
+                        } else {
+                            // Capitalize on demand
+                            if (diff < 20) {
+                                const target = (d.compAvg * 1.25).toFixed(0);
+                                actionText = `▲▲ ${target}€ (Demanda)`;
+                                actionColor = "#16a34a"; // Strong Green
+                                cls = 'gap-low';
+                            } else {
+                                actionText = "Mantener (Llenos)";
+                                actionColor = "#166534"; // Dark Green
+                            }
+                        }
                     }
+                    // RULE 2: HIGH OCCUPANCY (>75%)
+                    else if (occPct > 75) {
+                        if (diff < 5) {
+                            const target = (d.compAvg * 1.2).toFixed(0);
+                            actionText = `▲ ${target}€ (Últimas)`;
+                            actionColor = "#16a34a";
+                        } else {
+                            actionText = "Mantener (Alta)";
+                            actionColor = "#3b82f6";
+                        }
+                    }
+                    // RULE 3: DISTRESSED INVENTORY (Low Occ + Last Minute)
+                    else if (occPct < 40 && daysOut >= 0 && daysOut < 7) {
+                        if (diff > 5) { // If we are even slightly more expensive
+                            const target = (d.compAvg * 0.9).toFixed(0);
+                            actionText = `▼ ${target}€ (Liq.)`;
+                            actionColor = "#dc2626"; // Alert Red
+                            cls = 'gap-high';
+                        } else {
+                            actionText = "Mantener (Baja)";
+                        }
+                    }
+                    // RULE 4: FAR OUT MOMENTUM (Good Pace early on)
+                    else if (occPct > 40 && daysOut > 45) {
+                        // We are filling too fast too early
+                        if (diff < 15) {
+                            const target = (d.compAvg * 1.15).toFixed(0);
+                            actionText = `▲ ${target}€ (Pace)`;
+                            actionColor = "#10b981";
+                        } else {
+                            actionText = "Mantener";
+                        }
+                    }
+                    // RULE 5: STANDARD COMPETITIVE (The rest)
+                    else {
+                        // BRAND POSITIONING LOGIC
+                        if (activeHotel === 'Guadiana') {
+                            // PREMIUM STRATEGY (Guadiana is superior category)
+                            // We expect to be more expensive than the average market
+                            if (diff < -5) {
+                                // We are cheaper or equal to market -> HUGE Opportunity to raise
+                                cls = 'gap-low';
+                                const target = (d.compAvg * 1.1).toFixed(0);
+                                actionText = `▲ ${target}€ (Subir)`;
+                                actionColor = "#16a34a";
+                            } else if (diff > 30) {
+                                // Only warn if we are >30% more expensive
+                                cls = 'gap-high';
+                                const target = (d.compAvg * 1.25).toFixed(0);
+                                actionText = `▼ ${target}€ (Ajustar)`;
+                                actionColor = "#dc2626";
+                            } else {
+                                actionText = "Correcto (Premium)";
+                                actionColor = "#3b82f6"; // Blue OK
+                            }
+                        } else {
+                            // STANDARD STRATEGY (Cumbria)
+                            // Should track market closely
+                            if (diff < -15) {
+                                cls = 'gap-low';
+                                const target = (d.compAvg * 0.95).toFixed(0);
+                                actionText = `▲ ${target}€`;
+                                actionColor = "#16a34a";
+                            } else if (diff > 15) {
+                                cls = 'gap-high';
+                                const target = (d.compAvg * 1.05).toFixed(0);
+                                actionText = `▼ ${target}€`;
+                                actionColor = "#dc2626";
+                            } else {
+                                actionText = "En rango";
+                                actionColor = "#94a3b8";
+                            }
+                        }
+                    }
+
+                    actionHtml = `<span style="color:${actionColor}; font-weight:700; font-size:0.8rem;">${actionText}</span>`;
 
                     gapHtml = `<span class="gap-badge ${cls}">${diff > 0 ? '+' : ''}${diff.toFixed(0)}%</span>`;
                 }
 
                 // Row content
                 // --- CAPASUITE DYNAMIC RENDERING ---
-                const HOTEL_CAPACITY = (activeHotel === 'Cumbria') ? 59 : 108;
+                // const HOTEL_CAPACITY = (activeHotel === 'Cumbria') ? 59 : 108; // REMOVED to avoid conflict
                 const dynamic = getDynamicDateHtml(d, activeHotel);
 
                 // FIX: Use OTB if real occupancy is missing (common for future dates)
                 const currentOcc = (dynamic.occ > 0) ? dynamic.occ : dynamic.otb;
 
                 let alertHtml = '';
-                const occPct = (currentOcc / HOTEL_CAPACITY) * 100;
+                const capacityVal = HOTEL_CAPACITY[activeHotel] || 100;
+                const occPct2 = (currentOcc / capacityVal) * 100;
 
-                if (occPct >= 96) {
-                    const isOver = currentOcc > HOTEL_CAPACITY;
+                if (occPct2 >= 96) {
+                    const isOver = currentOcc > capacityVal;
                     const isOpen = (my && !my.sold && my.price > 0 && my.status !== 'sold' && my.status !== 'closed');
 
                     if (isOver && isOpen) {
-                        alertHtml = `<div title="¡Alerta Crítica! Ventas abiertas con overbooking (${currentOcc}/${HOTEL_CAPACITY})" style="margin-top:3px; padding:2px; border-radius:3px; background:#fee2e2; border:1px solid #ef4444; font-size:0.65rem; color:#991b1b; font-weight:800; display:flex; align-items:center; justify-content:center; gap:2px; width:100%;">
+                        alertHtml = `<div title="¡Alerta Crítica! Ventas abiertas con overbooking (${currentOcc}/${capacityVal})" style="margin-top:3px; padding:2px; border-radius:3px; background:#fee2e2; border:1px solid #ef4444; font-size:0.65rem; color:#991b1b; font-weight:800; display:flex; align-items:center; justify-content:center; gap:2px; width:100%;">
                             <span>⚠️</span> STOP
                         </div>`;
                     } else {
-                        alertHtml = `<div title="Ocupación alta (${occPct.toFixed(0)}%)" style="margin-top:2px; font-size:0.65rem; color:#c2410c; font-weight:700; display:flex; align-items:center; justify-content:center; gap:2px;">
-                            <span>🔥</span> ${occPct.toFixed(0)}%
+                        alertHtml = `<div title="Ocupación alta (${occPct2.toFixed(0)}%)" style="margin-top:2px; font-size:0.65rem; color:#c2410c; font-weight:700; display:flex; align-items:center; justify-content:center; gap:2px;">
+                            <span>🔥</span> ${occPct2.toFixed(0)}%
                         </div>`;
                     }
                 }
