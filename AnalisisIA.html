@@ -428,7 +428,12 @@
             </section>
 
             <aside class="card chat-container">
-                <div class="card-title">💬 Consulta a CapaAI</div>
+                <div class="card-title" style="justify-content:space-between;">
+                    <span>💬 Consulta a CapaAI</span>
+                    <button onclick="openSettings()"
+                        style="background:none; border:none; cursor:pointer; font-size:1.2rem; opacity:0.6;"
+                        title="Configurar API Key">⚙️</button>
+                </div>
                 <div class="chat-messages" id="chatMessages">
                     <div class="message ai">
                         ¡Hola! Puedo responder preguntas sobre tu producción, ocupación o precios. Por ejemplo: "¿Cómo
@@ -592,21 +597,120 @@
             }, 800 + Math.random() * 1000);
         }
 
-        function addMessage(sender, text) {
-            const chat = document.getElementById('chatMessages');
-            const div = document.createElement('div');
-            div.className = `message ${sender}`;
+        // --- GEMINI INTEGRATION ---
+        let GEMINI_API_KEY = localStorage.getItem('capasuite_gemini_key') || "";
 
-            // Basic Markdown-like bolding support (simple replace)
-            const formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-            div.innerHTML = formatted;
-
-            chat.appendChild(div);
-            // Ensure we scroll to bottom
-            setTimeout(() => { chat.scrollTop = chat.scrollHeight; }, 50);
+        function openSettings() {
+            const key = prompt("Introduce tu Google Gemini API Key para activar la inteligencia real:", GEMINI_API_KEY);
+            if (key !== null) {
+                GEMINI_API_KEY = key.trim();
+                localStorage.setItem('capasuite_gemini_key', GEMINI_API_KEY);
+                alert(GEMINI_API_KEY ? "✅ API Key conectada. Sistema CapaAI activado." : "⚠️ API Key desconectada. Funcionalidad limitada.");
+            }
         }
 
-        function generateAIResponse(query) {
+        async function generateAIResponse(query) {
+            const context = buildContextFromDB();
+
+            // 1. If NO Key, use legacy fallback
+            if (!GEMINI_API_KEY) {
+                return generateLegacyResponse(query);
+            }
+
+            // 2. Real Gemini Call
+            try {
+                const prompt = `
+                    ACT AS: CapaAI, an expert Hotel Revenue Manager Assistant.
+                    CONTEXT (Real Data):
+                    ${JSON.stringify(context)}
+                    
+                    USER QUERY: "${query}"
+                    
+                    INSTRUCTIONS:
+                    - Answer in Spanish.
+                    - Be professional, concise, and data-driven.
+                    - Use the provided context to answer specific numbers.
+                    - If data is missing for a specific question, say so politely.
+                    - Do not invent numbers not in the context.
+                    - Format with **bold** for key figures.
+                `;
+
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }]
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    console.error("Gemini Error:", data.error);
+                    return `Error de conexión con IA: ${data.error.message}. Usando sistema interno... \n\n ${generateLegacyResponse(query)}`;
+                }
+
+                return data.candidates[0].content.parts[0].text;
+
+            } catch (e) {
+                console.error("Fetch Error:", e);
+                return "Error de conexión. Verifica tu API Key o tu conexión a internet.";
+            }
+        }
+
+        function buildContextFromDB() {
+            // Summarize the massive DB into a token-friendly context
+            const hData = db[currentHotel];
+            if (!hData) return { error: "No data loaded for this hotel." };
+
+            const years = Object.keys(hData).sort().reverse();
+            const lastYear = years[0]; // 2025 or 2026
+            const yearData = hData[lastYear];
+
+            let context = {
+                hotel: currentHotel,
+                year: lastYear,
+                monthly_production: [],
+                ytd_totals: {},
+                segments_top3: [],
+                competition_alert: "No active alerts"
+            };
+
+            // Production Summary
+            if (yearData.service && yearData.service["TOTAL_MASTER"]) {
+                const m = yearData.service["TOTAL_MASTER"];
+                const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+                // Only include months with data to save tokens
+                m.revenue.forEach((rev, idx) => {
+                    if (rev > 0 || m.rooms[idx] > 0) {
+                        context.monthly_production.push({
+                            month: months[idx],
+                            revenue: Math.round(rev),
+                            rooms: m.rooms[idx],
+                            adr: m.rooms[idx] > 0 ? Math.round(rev / m.rooms[idx]) : 0
+                        });
+                    }
+                });
+
+                context.ytd_totals = {
+                    total_revenue: Math.round(m.revenue.reduce((a, b) => a + b, 0)),
+                    total_rooms: m.rooms.reduce((a, b) => a + b, 0)
+                };
+            }
+
+            // Segments Summary (Top 3 by Revenue)
+            if (yearData.segment) {
+                const segs = Object.entries(yearData.segment).map(([k, v]) => {
+                    return { name: k, total_rev: Math.round(v.revenue.reduce((a, b) => a + b, 0)) };
+                });
+                context.segments_top3 = segs.sort((a, b) => b.total_rev - a.total_rev).slice(0, 3);
+            }
+
+            return context;
+        }
+
+        function generateLegacyResponse(query) {
             const q = query.toLowerCase();
             const hotelName = currentHotel;
             const hData = db[hotelName];
@@ -619,7 +723,7 @@
                 return "¡De nada! Estoy aquí para ayudarte a optimizar tus ingresos. ¿Algo más?";
             }
             if (q.includes('hola') || q.includes('buenos dias') || q.includes('buenas tardes')) {
-                return `¡Hola! Soy CapaAI. Tengo acceso a los datos de ${Object.keys(db).join(' y ')}. ¿Qué quieres que analice hoy?`;
+                return `¡Hola! Soy CapaAI. Para activar toda mi capacidad analítica, haz clic en el engranaje ⚙️ y añade tu API Key.`;
             }
 
             // 2. Data Intelligence Logic
@@ -627,68 +731,44 @@
             const targetDb = db[targetHotel];
 
             if (!targetDb) {
-                return `Aún no tengo datos cargados para "${targetHotel}". Por favor, sube los informes en la sección de Configuración para que pueda ayudarte.`;
+                return `Aún no tengo datos cargados para "${targetHotel}". Por favor, sube los informes en la sección de Configuración.`;
             }
 
             const years = Object.keys(targetDb).sort().reverse();
             const yearData = targetDb[years[0]];
             const master = yearData?.service?.["TOTAL_MASTER"];
 
-            if (!master) {
-                return `Veo que hay una base de datos para ${targetHotel}, pero falta el resumen de producción maestro. Prueba a re-subir el archivo de Producción Diaria.`;
-            }
-
-            // Metric Extraction
-            const wantsRev = q.includes('produccion') || q.includes('revenue') || q.includes('dinero') || q.includes('ventas') || q.includes('euro');
-            const wantsRooms = q.includes('habitacion') || q.includes('noche') || q.includes('rn') || q.includes('ocupacion');
-            const wantsADR = q.includes('adr') || q.includes('precio medio') || q.includes('promedio');
+            if (!master) return "Faltan datos maestros de producción.";
 
             const monthNames = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
             let targetMonthIdx = -1;
             monthNames.forEach((m, idx) => { if (q.includes(m)) targetMonthIdx = idx; });
 
             const fmtEuro = n => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n);
-            const fmtNum = n => new Intl.NumberFormat('es-ES').format(n);
 
             if (targetMonthIdx !== -1) {
                 const rev = master.revenue[targetMonthIdx];
-                const rms = master.rooms[targetMonthIdx];
-                const adr = rms > 0 ? (rev / rms) : 0;
-                const mNameCapital = monthNames[targetMonthIdx].charAt(0).toUpperCase() + monthNames[targetMonthIdx].slice(1);
-
-                if (rev === 0 && rms === 0) return `No tengo datos de producción registrados para ${mNameCapital} en el ${targetHotel} todavía.`;
-
-                let resp = `Datos de **${mNameCapital}** para el **${targetHotel}**: `;
-                if (wantsADR) resp += `El ADR medio ha sido de **${adr.toFixed(2)}€**.`;
-                else if (wantsRooms) resp += `Se han vendido **${fmtNum(rms)}** habitaciones.`;
-                else resp += `La producción total es de **${fmtEuro(rev)}** con **${fmtNum(rms)}** RN.`;
-
-                return resp;
+                return `En **${monthNames[targetMonthIdx]}**, el ${targetHotel} generó **${fmtEuro(rev)}**. (Para análisis más detallados, configura tu API Key)`;
             }
 
-            // Annual Totals
-            if (q.includes('total') || q.includes('año') || q.includes('resumen')) {
-                const totalRev = master.revenue.reduce((a, b) => a + b, 0);
-                const totalRms = master.rooms.reduce((a, b) => a + b, 0);
-                const totalAdr = totalRms > 0 ? (totalRev / totalRms) : 0;
+            return "Entendido. Para responder preguntas complejas sobre tendencias o estrategias, necesito que configures tu API Key de Gemini en el menú de ajustes.";
+        }
 
-                return `Resumen anual para **${targetHotel}**: Producción total de **${fmtEuro(totalRev)}**, con un total de **${fmtNum(totalRms)}** habitaciones vendidas y un ADR global de **${totalAdr.toFixed(2)}€**.`;
-            }
+        function addMessage(sender, text) {
+            const chat = document.getElementById('chatMessages');
+            const div = document.createElement('div');
+            div.className = `message ${sender}`;
 
-            // Competition Specific (Dummy logic based on simulated gap)
-            if (q.includes('competencia') || q.includes('precio') || q.includes('mercado')) {
-                return `He analizado tu Compset. Comparado con el mercado, el **${targetHotel}** mantiene una posición competitiva, aunque detecto que podrías subir el ADR en eventos especiales. ¿Quieres que miremos fechas concretas en la pestaña de Competencia?`;
-            }
+            // Markdown parsing (bold)
+            let formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            // Line breaks
+            formatted = formatted.replace(/\n/g, '<br>');
 
-            // Fallback but with data
-            const lastMonthIdx = master.revenue.map((v, i) => v > 0 ? i : -1).filter(i => i !== -1).pop();
-            if (lastMonthIdx !== undefined) {
-                const mName = monthNames[lastMonthIdx];
-                const rev = master.revenue[lastMonthIdx];
-                return `Entiendo que buscas información sobre el rendimiento. Lo último que tengo es de **${mName}**, donde el **${targetHotel}** generó **${fmtEuro(rev)}**. ¿Te gustaría saber más detalles sobre este mes o comparar con otro periodo?`;
-            }
+            div.innerHTML = formatted;
 
-            return `Interesante pregunta sobre "${query}". Mis algoritmos indican estabilidad en el ${targetHotel}, pero si buscas un dato exacto (como "producción de enero"), dímelo y lo buscaré en la base de datos inmediatamente.`;
+            chat.appendChild(div);
+            // Ensure we scroll to bottom
+            setTimeout(() => { chat.scrollTop = chat.scrollHeight; }, 50);
         }
 
         auth.onAuthStateChanged(user => {

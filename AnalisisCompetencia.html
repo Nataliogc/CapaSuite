@@ -973,7 +973,24 @@
 
         // --- PARSING ---
         function analyze() {
+            // 1. CAPTURE PREVIOUS DATA FOR COMPARISON
+            let prevMap = {};
+            try {
+                const savedJson = CapaStorage.getItem('revenue_data_v2');
+                if (savedJson) {
+                    const saved = JSON.parse(savedJson);
+                    if (saved.data && Array.isArray(saved.data)) {
+                        saved.data.forEach(d => {
+                            if (d.dateISO && d.hotels) {
+                                prevMap[d.dateISO] = d.hotels;
+                            }
+                        });
+                    }
+                }
+            } catch (e) { console.warn("Could not load previous data for comparison", e); }
+
             processedData = []; // RESET DATA
+
             let guadianaRow = -1;
             let cumbriaRow = -1;
 
@@ -1232,7 +1249,25 @@
                 let compPrices = [];
                 competitorsList.forEach(comp => {
                     const val = parseVal(rawData[comp.rowIdx][c]);
+
+                    // SEARCH PREVIOUS PRICE
+                    let changeInfo = null; // { dir: 'up'|'down', prev: 45 }
+                    if (prevMap[dayObj.dateISO] && prevMap[dayObj.dateISO][comp.name]) {
+                        const prevEntry = prevMap[dayObj.dateISO][comp.name];
+                        // Ensure we are comparing valid prices
+                        if (prevEntry && prevEntry.price > 0 && val.price > 0 && !val.sold && !prevEntry.sold) {
+                            if (val.price > prevEntry.price) {
+                                changeInfo = { dir: 'up', prev: prevEntry.price };
+                            } else if (val.price < prevEntry.price) {
+                                changeInfo = { dir: 'down', prev: prevEntry.price };
+                            }
+                        }
+                    }
+                    val.change = changeInfo;
+
                     dayObj.hotels[comp.name] = val;
+
+
 
                     // EXCLUSION LOGIC (Per User Request)
                     const nLow = comp.name.toLowerCase();
@@ -1258,6 +1293,13 @@
             }
 
             // DIAGNOSTIC LOG (Console)
+            const changeCount = processedData.reduce((acc, d) => {
+                return acc + Object.values(d.hotels).filter(h => h.change).length;
+            }, 0);
+
+            // Check if we actually had previous data to compare against
+            const hadPrevData = Object.keys(prevMap).length > 0;
+
             console.log(`✅ Loaded ${processedData.length} days. First ISO: ${processedData[0]?.dateISO}`);
             logD(`✅ FIN: ${processedData.length} días cargados.`);
 
@@ -1271,6 +1313,16 @@
 
                 saveData();
                 renderAll();
+
+                // USER FEEDBACK
+                if (changeCount > 0) {
+                    alert(`✅ Análisis Completo: Se han detectado ${changeCount} cambios de precio respecto a la última carga.`);
+                } else if (hadPrevData) {
+                    alert("ℹ️ Análisis Completo: Comparado con datos anteriores, pero NO se han detectado cambios de precio (Precios idénticos).");
+                } else {
+                    alert("✨ Primera Carga: Datos guardados. Si subes un nuevo archivo mañana, verás las flechas de cambio de precio.");
+                }
+
             } else {
                 const debugInfo = `
 Guadiana Row: ${guadianaRow}
@@ -1806,7 +1858,23 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         html += `<td><span class="price-minstay" title="Estancia mínima">M</span></td>`;
                     } else {
                         const style = (!sold && hData.price < myP) ? "color:#ef4444; font-weight:600;" : "color:var(--text-light);";
-                        html += `<td style="${style}">${hData.price.toFixed(0)}€</td>`;
+
+                        let priceContent = `${hData.price.toFixed(0)}€`;
+                        if (hData.change) {
+                            if (hData.change.dir === 'up') {
+                                priceContent += ` <span style="font-size:0.7em; color:var(--danger); display:inline-flex; flex-direction:column; line-height:1; vertical-align:middle; margin-left:2px;">
+                                    <span>▲</span>
+                                    <span style="font-size:0.8em;">${hData.change.prev}</span>
+                                </span>`;
+                            } else {
+                                priceContent += ` <span style="font-size:0.7em; color:var(--success); display:inline-flex; flex-direction:column; line-height:1; vertical-align:middle; margin-left:2px;">
+                                    <span>▼</span>
+                                    <span style="font-size:0.8em;">${hData.change.prev}</span>
+                                </span>`;
+                            }
+                        }
+
+                        html += `<td style="${style}">${priceContent}</td>`;
                     }
                 });
 

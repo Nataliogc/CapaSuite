@@ -381,6 +381,8 @@
                     <option value="Guadiana">Guadiana</option>
                     <option value="Cumbria">Cumbria</option>
                 </select>
+                <img id="dynamicHotelLogo" src="Imagen/logo-guadiana.svg" style="height: 45px; margin-left:10px;"
+                    alt="Hotel Logo">
             </div>
             <div class="control-group">
                 <label>Año</label>
@@ -766,6 +768,10 @@
             const year = parseInt(document.getElementById('yearSelector').value);
             const hotel = document.getElementById('hotelSelector').value;
             const metric = document.getElementById('metricSelector').value; // 'price' or 'occupancy'
+
+            // UPDATE LOGO
+            const logo = document.getElementById('dynamicHotelLogo');
+            if (logo) logo.src = (hotel === 'Cumbria') ? 'Imagen/logo-cumbria.svg' : 'Imagen/logo-guadiana.svg';
 
             const months = [
                 "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",

@@ -301,6 +301,102 @@
             color: white;
         }
 
+        /* SPECIAL AI CARD */
+        .card-special {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            grid-column: span 1;
+            /* Default to 1 column */
+        }
+
+        /* Make AI card span 2 cols on slightly larger screens if grid allows */
+        @media (min-width: 800px) {
+            .cards-grid {
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            }
+
+            .card-special {
+                grid-column: span 2;
+            }
+        }
+
+        .card-special::before {
+            display: none;
+            /* No top border gradient needed */
+        }
+
+        .card-special:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 15px 30px rgba(124, 58, 237, 0.3);
+        }
+
+        .card-header-special {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .icon-ai {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            backdrop-filter: blur(10px);
+        }
+
+        .icon-cal {
+            background: linear-gradient(135deg, #eff6ff, #dbeafe);
+            color: #3b82f6;
+        }
+
+        .card:hover .icon-cal {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .badge-ai {
+            background: #f59e0b;
+            color: #1e293b;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .badge-beta {
+            background: #818cf8;
+            color: white;
+        }
+
+        .card-special h3 {
+            color: white;
+            font-size: 1.2rem;
+            margin-bottom: 8px;
+        }
+
+        .card-special p {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+            max-width: 90%;
+        }
+
+        .cta-pill {
+            display: inline-block;
+            background: white;
+            color: var(--primary);
+            font-weight: 800;
+            font-size: 0.75rem;
+            padding: 6px 14px;
+            border-radius: 99px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: all 0.2s;
+        }
+
+        .card-special:hover .cta-pill {
+            background: #f59e0b;
+            color: #1e293b;
+            transform: translateX(5px);
+        }
+
         .card h3 {
             font-size: 0.95rem;
             font-weight: 700;
@@ -580,59 +676,65 @@
         </div>
 
         <div class="cards-grid">
-
-            <a href="AnalisisSegmentos.html" class="card">
-                <span class="badge badge-live">SEGMENTOS</span>
-                <div class="card-icon icon-prod">👥</div>
-                <h3>Producción por Segmentos</h3>
-                <p>Análisis detallado de canales de venta, OTAs, grupos y segmentación de clientes.</p>
+            <!-- 1. CapaAI (Featured) -->
+            <a href="AnalisisIA.html" class="card card-special">
+                <div class="card-content">
+                    <div class="card-header-special">
+                        <div class="card-icon icon-ai">✨</div>
+                        <span class="badge badge-ai">PRO</span>
+                    </div>
+                    <h3>CapaAI Assistant</h3>
+                    <p>Tu analista inteligente 24/7. Auditoría de datos, alertas de precio y chat interactivo.</p>
+                    <div class="cta-pill">CONSULTAR AHORA &rarr;</div>
+                </div>
             </a>
 
+            <!-- 2. Producción -->
             <a href="AnalisisProduccion.html" class="card">
                 <span class="badge badge-live">PRODUCCIÓN</span>
                 <div class="card-icon icon-prod">📈</div>
                 <h3>Análisis de Producción</h3>
-                <p>Análisis Pace, evolución mensual y auditoría detallada de ingresos por servicios y departamentos.</p>
+                <p>Análisis Pace, evolución mensual y auditoría detallada de ingresos.</p>
             </a>
 
-            <a href="AnalisisIA.html" class="module-card"
-                style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color:white;">
-                <div class="module-icon" style="background: rgba(255,255,255,0.2); color:white;">✨</div>
-                <h3>CapaAI Assistant</h3>
-                <p style="color: rgba(255,255,255,0.8);">Tu analista inteligente 24/7. Auditoría de datos, alertas de
-                    precio y chat interactivo.</p>
-                <div class="module-badge"
-                    style="background: #f59e0b; color: #1e293b; font-weight:800; font-size: 10px; padding: 4px 10px; border-radius: 99px; display: inline-block; margin-top: 15px;">
-                    PRUEBA LA IA</div>
-            </a>
-            <a href="CalculadoraPresupuesto.html" class="module-card">
-                <span class="badge badge-live">LIVE</span>
-                <div class="card-icon icon-budget">💰</div>
-                <h3>Presupuestos 2026</h3>
-                <p>Calculadora de Revenue, ADR y ocupación con simulaciones.</p>
+            <!-- 3. Segmentos -->
+            <a href="AnalisisSegmentos.html" class="card">
+                <span class="badge badge-live">SEGMENTOS</span>
+                <div class="card-icon icon-prod">👥</div>
+                <h3>Producción por Segmentos</h3>
+                <p>Detalle de canales, OTAs, grupos y segmentación de clientes.</p>
             </a>
 
+            <!-- 4. Competencia -->
             <a href="AnalisisCompetencia.html" class="card">
-                <span class="badge badge-live">LIVE</span>
+                <span class="badge badge-live">MERCADO</span>
                 <div class="card-icon icon-market">⚡</div>
                 <h3>Análisis de Mercado</h3>
-                <p>Inteligencia de precios y oportunidades de Revenue.</p>
+                <p>Inteligencia de precios, comp-set y oportunidades de Revenue.</p>
             </a>
 
+            <!-- 5. Presupuestos -->
+            <a href="CalculadoraPresupuesto.html" class="card">
+                <span class="badge badge-live">SIMULADOR</span>
+                <div class="card-icon icon-budget">💰</div>
+                <h3>Presupuestos 2026</h3>
+                <p>Calculadora de Revenue, ADR y ocupación con escenarios.</p>
+            </a>
+
+            <!-- 6. Calendario -->
+            <a href="AnalisisCalendario.html" class="card">
+                <span class="badge badge-live">EVENTOS</span>
+                <div class="card-icon icon-cal">📅</div>
+                <h3>Calendario Eventos</h3>
+                <p>Visualización térmica de demanda y eventos de plaza.</p>
+            </a>
+
+            <!-- 7. Configuración -->
             <a href="CargarDatos.html" class="card">
-                <span class="badge badge-new">NUEVO</span>
+                <span class="badge badge-new">IMPORTAR</span>
                 <div class="card-icon icon-upload">📊</div>
                 <h3>Cargar Datos</h3>
                 <p>Importa informes de Producción y Segmentos desde Excel.</p>
-            </a>
-
-
-            <a href="AnalisisCalendario.html" class="card">
-                <span class="badge badge-new" style="background:#818cf8; color:white;">BETA</span>
-                <div class="card-icon" style="background: linear-gradient(135deg, #e0e7ff, #c7d2fe); color: #3730a3;">📅
-                </div>
-                <h3>Calendario Eventos</h3>
-                <p>Visualización térmica de demanda, tarifas y eventos locales.</p>
             </a>
         </div>
     </main>
