@@ -706,7 +706,18 @@
 
             if (!db[currentHotel][detectedYear]) db[currentHotel][detectedYear] = { segment: {}, lastUpdate: "" };
             const dbYear = db[currentHotel][detectedYear];
-            dbYear.segment = {};
+            if (!dbYear.segment) dbYear.segment = {};
+
+            // FIX: Don't wipe the whole year. Only clear months present in THIS file to allow merging and prevent double counting.
+            const monthsInFile = new Set(colMap.filter(m => m !== undefined && m !== null && m >= 0));
+            if (monthsInFile.size > 0) {
+                Object.values(dbYear.segment).forEach(seg => {
+                    monthsInFile.forEach(m => {
+                        if (seg.revenue) seg.revenue[m] = 0;
+                        if (seg.rooms) seg.rooms[m] = 0;
+                    });
+                });
+            }
 
             let currentSeg = null;
 

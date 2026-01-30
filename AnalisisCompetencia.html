@@ -821,6 +821,13 @@
         window.addEventListener('load', initView);
 
         function initView() {
+            // Check if user requested a new upload (preserving history for comparison)
+            if (sessionStorage.getItem('coming_from_new_upload')) {
+                sessionStorage.removeItem('coming_from_new_upload');
+                console.log("⚠️ Force Upload Mode: Skipping auto-restore to allow new file upload.");
+                return;
+            }
+
             const saved = CapaStorage.getItem('revenue_data_v2');
             if (saved) {
                 try {
@@ -853,8 +860,9 @@
         }
 
         function clearData() {
-            if (confirm('¿Subir nuevo archivo? Se perderán los datos actuales.')) {
-                CapaStorage.removeItem('revenue_data_v2');
+            if (confirm('¿Subir nuevo archivo? Los datos actuales se usarán para calcular las diferencias (flechas de precio).')) {
+                // Do NOT delete localStorage. We want to compare against it.
+                sessionStorage.setItem('coming_from_new_upload', 'true');
                 location.reload();
             }
         }
@@ -868,11 +876,34 @@
                 lastUpdate: new Date().toISOString()
             };
             try {
+                // 1. Try Main Save
                 CapaStorage.setItem('revenue_data_v2', JSON.stringify(payload));
+
+                // 2. Save Lite History (Critical for comparison functionality)
+                const lite = getLiteData(processedData);
+                CapaStorage.setItem('revenue_history_lite', JSON.stringify(lite));
+
                 updateOutdatedStatus();
             } catch (e) {
                 console.warn("Quota exceeded, cannot save state");
             }
+        }
+
+        function getLiteData(data) {
+            const lite = {};
+            data.forEach(d => {
+                if (d.dateISO && d.hotels) {
+                    lite[d.dateISO] = {};
+                    Object.keys(d.hotels).forEach(h => {
+                        const hotelData = d.hotels[h];
+                        lite[d.dateISO][h] = {
+                            price: hotelData.price,
+                            sold: hotelData.sold
+                        };
+                    });
+                }
+            });
+            return lite;
         }
 
         function updateOutdatedStatus() {
@@ -975,19 +1006,36 @@
         function analyze() {
             // 1. CAPTURE PREVIOUS DATA FOR COMPARISON
             let prevMap = {};
+            let historySource = "none";
+
+            // A. Try Lite History (Best for performance & reliability)
             try {
-                const savedJson = CapaStorage.getItem('revenue_data_v2');
-                if (savedJson) {
-                    const saved = JSON.parse(savedJson);
-                    if (saved.data && Array.isArray(saved.data)) {
-                        saved.data.forEach(d => {
-                            if (d.dateISO && d.hotels) {
-                                prevMap[d.dateISO] = d.hotels;
-                            }
-                        });
-                    }
+                const liteJson = CapaStorage.getItem('revenue_history_lite');
+                if (liteJson) {
+                    prevMap = JSON.parse(liteJson);
+                    historySource = "lite";
                 }
-            } catch (e) { console.warn("Could not load previous data for comparison", e); }
+            } catch (e) { }
+
+            // B. Fallback to Full Data
+            if (Object.keys(prevMap).length === 0) {
+                try {
+                    const savedJson = CapaStorage.getItem('revenue_data_v2');
+                    if (savedJson) {
+                        const saved = JSON.parse(savedJson);
+                        if (saved.data && Array.isArray(saved.data)) {
+                            saved.data.forEach(d => {
+                                if (d.dateISO && d.hotels) {
+                                    prevMap[d.dateISO] = d.hotels;
+                                }
+                            });
+                            historySource = "full";
+                        }
+                    }
+                } catch (e) { console.warn("Could not load previous data for comparison", e); }
+            }
+
+            console.log("History loaded via:", historySource, "Keys:", Object.keys(prevMap).length);
 
             processedData = []; // RESET DATA
 
@@ -1320,7 +1368,8 @@
                 } else if (hadPrevData) {
                     alert("ℹ️ Análisis Completo: Comparado con datos anteriores, pero NO se han detectado cambios de precio (Precios idénticos).");
                 } else {
-                    alert("✨ Primera Carga: Datos guardados. Si subes un nuevo archivo mañana, verás las flechas de cambio de precio.");
+                    const stStatus = CapaStorage.isAvailable ? "OK" : "Limitado";
+                    alert(`✨ Primera Carga (o Historial no disponible).\n\nA partir de ahora se guardará un historial ligero para asegurar la comparación futura.\nEstado Memoria: ${stStatus}`);
                 }
 
             } else {
