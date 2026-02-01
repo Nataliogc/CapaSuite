@@ -522,7 +522,7 @@
                     const rms = rooms[currentMonthIdx];
                     const adr = rms > 0 ? (rev / rms).toFixed(2) : 0;
 
-                    addInsight('positive', '📈 Rendimiento Mensual', `En <b>${mName}</b> has generado <b>${new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(rev)}</b> con un ADR de <b>${adr}€</b>. Vas por buen camino.`);
+                    addInsight('positive', '📈 Rendimiento Mensual', `En <b>${mName}</b> has generado <b>${new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(rev)}</b> con un ADR de <b>${adr}€</b>. Vas por buen camino.`, 'AnalisisProduccion.html');
                 }
             }
 
@@ -530,7 +530,7 @@
             if (yearData.otb && yearData.otb.revenue) {
                 const totalOTB = yearData.otb.revenue.reduce((a, b) => a + b, 0);
                 if (totalOTB > 0) {
-                    addInsight('ai', '🔮 Previsiones (OTB)', `Tienes una previsión de carga de <b>${new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(totalOTB)}</b> adicional para este ejercicio. Representa un potencial de crecimiento significativo.`);
+                    addInsight('ai', '🔮 Previsiones (OTB)', `Tienes una previsión de carga de <b>${new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(totalOTB)}</b> adicional para este ejercicio. Representa un potencial de crecimiento significativo.`, 'AnalisisProduccion.html');
                 }
             }
 
@@ -546,7 +546,7 @@
                             return my && !my.sold && my.price > 0 && my.price < d.compAvg * 0.85;
                         });
                         if (lowDays.length > 0) {
-                            addInsight('warning', '💰 Oportunidad de Precio', `He detectado <b>${lowDays.length} días</b> donde tu precio está más de un 15% por debajo del mercado. Podrías estar perdiendo revenue.`);
+                            addInsight('warning', '💰 Oportunidad de Precio', `He detectado <b>${lowDays.length} días</b> donde tu precio está más de un 15% por debajo del mercado. Podrías estar perdiendo revenue.`, 'AnalisisCompetencia.html');
                         }
                     }
                 } catch (e) { }
@@ -554,7 +554,7 @@
 
             // 4. DATA INTEGRITY CHECK
             if (!yearData.segment || Object.keys(yearData.segment).length < 3) {
-                addInsight('critical', '⚠️ Datos de Segmentos Incompletos', `Parece que falta el desglose por mercados. Te recomiendo subir el informe de segmentos para un análisis más profundo.`);
+                addInsight('critical', '🚨 Datos de Segmentos Incompletos', `Parece que falta el desglose por mercados. Te recomiendo subir el informe de segmentos para un análisis más profundo.`, 'AnalisisSegmentos.html');
             }
 
             if (container.innerHTML === '') {
@@ -562,17 +562,40 @@
             }
         }
 
-        function addInsight(type, title, text) {
+        function addInsight(type, title, text, linkUrl = null) {
             const container = document.getElementById('ai-insights');
             const icon = type === 'positive' ? '✅' : (type === 'warning' ? '💡' : (type === 'critical' ? '🚨' : '✨'));
             const div = document.createElement('div');
             div.className = `insight-item ${type}`;
+            div.style.display = 'flex';
+            div.style.justifyContent = 'space-between';
+            div.style.alignItems = 'center';
+
+            let linkButton = '';
+            if (linkUrl) {
+                linkButton = `<a href="${linkUrl}" class="action-btn" style="
+                    background: var(--primary);
+                    color: white;
+                    text-decoration: none;
+                    padding: 8px 16px;
+                    border-radius: 8px;
+                    font-size: 0.75rem;
+                    font-weight: 700;
+                    white-space: nowrap;
+                    margin-left: 20px;
+                    transition: all 0.2s;
+                " onmouseover="this.style.opacity=0.9" onmouseout="this.style.opacity=1">Ver Detalle →</a>`;
+            }
+
             div.innerHTML = `
-                <div class="insight-icon">${icon}</div>
-                <div class="insight-content">
-                    <h4>${title}</h4>
-                    <p>${text}</p>
+                <div style="display:flex; gap:15px; align-items:flex-start;">
+                    <div class="insight-icon">${icon}</div>
+                    <div class="insight-content">
+                        <h4 style="margin: 0 0 5px 0; font-size:1rem;">${title}</h4>
+                        <p style="margin: 0; font-size:0.85rem;">${text}</p>
+                    </div>
                 </div>
+                ${linkButton}
             `;
             container.appendChild(div);
         }

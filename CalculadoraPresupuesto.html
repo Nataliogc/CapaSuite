@@ -60,18 +60,17 @@
             background-color: var(--bg-body);
             color: var(--text-main);
             margin: 0;
-            padding: 20px;
-            font-size: 14px;
-            line-height: 1.5;
+            padding: 10px;
+            font-size: 13px;
+            line-height: 1.4;
         }
 
         .app-container {
-            max-width: 1300px;
-            margin: 0 auto;
+            width: 100%;
+            margin: 0;
             display: flex;
             flex-direction: column;
-            gap: 20px;
-            width: 98%;
+            gap: 15px;
         }
 
         /* HEADER */
@@ -79,29 +78,37 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: var(--bg-card);
-            padding: 20px 30px;
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
+            background: #ffffff;
+            padding: 24px 32px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(226, 232, 240, 0.7);
+            margin-bottom: 25px;
         }
 
         .header-title h1 {
             margin: 0;
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--text-main);
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: -0.02em;
         }
 
         .header-title p {
-            margin: 4px 0 0;
+            margin: 2px 0 0;
             color: var(--text-muted);
-            font-size: 0.9rem;
+            font-size: 0.85rem;
+            font-weight: 500;
         }
 
         .strategy-control {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
+            background: #f8fafc;
+            padding: 8px 16px;
+            border-radius: 14px;
+            border: 1px solid #e2e8f0;
         }
 
         .select-wrapper {
@@ -109,62 +116,86 @@
         }
 
         select {
-            padding: 10px 16px;
-            border-radius: 8px;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 16px;
+            padding: 10px 40px 10px 16px;
+            border-radius: 12px;
             border: 1px solid var(--border);
             font-family: var(--font-main);
             font-size: 0.9rem;
             color: var(--text-main);
-            background-color: #fff;
+            background-color: #ffffff;
             cursor: pointer;
             outline: none;
-            transition: border-color 0.2s;
-            min-width: 250px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            min-width: 140px;
+            font-weight: 600;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
         }
 
         select:hover {
             border-color: var(--primary);
+            background-color: #fff;
+            box-shadow: 0 2px 10px rgba(79, 70, 229, 0.08);
+            transform: translateY(-1px);
         }
 
         select:focus {
             border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.12);
+            background-color: #fff;
         }
 
-        /* KPI CARDS */
+        /* KPI CARDS - COMPACT BAR */
         .kpi-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-            gap: 20px;
+            display: flex;
+            gap: 12px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
         }
 
         .card {
             background: var(--bg-card);
-            border-radius: var(--radius);
-            padding: 20px;
-            box-shadow: var(--shadow);
+            border-radius: 12px;
+            padding: 12px 16px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
             border: 1px solid var(--border);
         }
 
+        .kpi-card {
+            min-width: 200px;
+            flex: 0 1 auto;
+        }
+
         .kpi-card h3 {
-            margin: 0 0 10px 0;
-            font-size: 0.85rem;
+            margin: 0 0 4px 0;
+            font-size: 0.7rem;
             color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            font-weight: 600;
+            font-weight: 700;
+        }
+
+        .kpi-content {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
         }
 
         .kpi-value {
-            font-size: 1.8rem;
-            font-weight: 700;
+            font-size: 1.35rem;
+            font-weight: 800;
             color: var(--text-main);
+            line-height: 1;
         }
 
         .kpi-trend {
-            font-size: 0.9rem;
-            margin-top: 5px;
-            font-weight: 500;
+            font-size: 0.7rem;
+            font-weight: 700;
+            white-space: nowrap;
         }
 
         .trend-up {
@@ -175,33 +206,37 @@
             color: var(--danger);
         }
 
-        /* TABS */
         .tabs {
             display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
+            gap: 4px;
         }
 
         .tab-btn {
-            background: transparent;
-            border: none;
-            padding: 12px 24px;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            padding: 6px 12px;
             font-family: var(--font-main);
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--text-muted);
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #64748b;
             cursor: pointer;
-            border-bottom: 3px solid transparent;
+            border-radius: 8px;
             transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
         }
 
         .tab-btn:hover {
+            background: #fff;
             color: var(--primary);
+            border-color: var(--primary);
         }
 
         .tab-btn.active {
-            color: var(--primary);
-            border-bottom-color: var(--primary);
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+            box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
         }
 
         .section {
@@ -261,10 +296,26 @@
             min-width: 1200px;
         }
 
+        #editorTable {
+            min-width: unset;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        #editorTable th,
+        #editorTable td {
+            text-align: center !important;
+            padding: 12px 15px;
+        }
+
+        #editorTable .text-left {
+            text-align: left !important;
+        }
+
         thead th {
             text-align: right;
-            padding: 12px 16px;
-            font-size: 0.8rem;
+            padding: 8px 10px;
+            font-size: 0.75rem;
             font-weight: 600;
             color: var(--text-muted);
             border-bottom: 2px solid var(--border);
@@ -285,7 +336,7 @@
 
         tbody td {
             text-align: right;
-            padding: 12px 16px;
+            padding: 6px 8px;
             border-bottom: 1px solid var(--border);
             color: var(--text-main);
             font-variant-numeric: tabular-nums;
@@ -307,21 +358,90 @@
 
         /* Inputs */
         input.editable {
-            width: 80px;
-            padding: 6px 10px;
+            width: 100px;
+            padding: 8px 12px;
             border: 1px solid var(--border);
-            border-radius: 6px;
+            border-radius: 8px;
             text-align: right;
             font-family: var(--font-main);
-            font-weight: 600;
+            font-weight: 700;
             transition: all 0.2s;
             background: #fff;
+            color: var(--primary-dark);
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
         }
 
         input.editable:focus {
             outline: none;
             border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15), inset 0 1px 2px rgba(0, 0, 0, 0.05);
+            background: #fdfdff;
+        }
+
+        .occ-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+
+        /* Bidirectional Growth Bars */
+        .growth-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: flex-end;
+            padding-right: 10px;
+        }
+
+        .growth-bar-axis {
+            width: 70px;
+            height: 16px;
+            background: #f1f5f9;
+            position: relative;
+            display: flex;
+            align-items: center;
+            border-radius: 1px;
+        }
+
+        .growth-bar-axis::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            border-left: 1px dashed #94a3b8;
+            z-index: 1;
+        }
+
+        .growth-bar {
+            height: 70%;
+            position: absolute;
+            z-index: 2;
+            transition: width 0.3s ease;
+        }
+
+        .growth-bar-pos {
+            left: 50%;
+            background: linear-gradient(90deg, #93c5fd, #3b82f6);
+            border: 1px solid #2563eb;
+            border-radius: 0 2px 2px 0;
+        }
+
+        .growth-bar-neg {
+            right: 50%;
+            background: linear-gradient(270deg, #fca5a5, #ef4444);
+            border: 1px solid #dc2626;
+            border-radius: 2px 0 0 2px;
+        }
+
+        .growth-val {
+            font-size: 0.8rem;
+            font-weight: 700;
+            min-width: 35px;
+            text-align: right;
         }
 
         /* Utilities */
@@ -334,15 +454,23 @@
         }
 
         .bg-group-rev {
-            background-color: rgba(16, 185, 129, 0.03);
+            background-color: rgba(16, 185, 129, 0.04) !important;
         }
 
         .bg-group-adr {
-            background-color: rgba(59, 130, 246, 0.03);
+            background-color: rgba(59, 130, 246, 0.04) !important;
         }
 
         .bg-group-occ {
-            background-color: rgba(245, 158, 11, 0.03);
+            background-color: rgba(245, 158, 11, 0.05) !important;
+        }
+
+        .border-sep {
+            border-right: 2px solid #cbd5e1 !important;
+        }
+
+        .bg-neutral {
+            background-color: #f8fafc;
         }
 
         .text-success {
@@ -380,14 +508,39 @@
             font-weight: 800;
         }
 
-        /* BONUS PAGE */
+        .bonus-table thead th,
+        .bonus-table tbody td,
+        .bonus-table tfoot td {
+            text-align: right;
+            padding: 12px 15px;
+        }
+
+        .bonus-table thead th {
+            background: #f8fafc;
+        }
+
+        .bonus-table tbody td {
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .bonus-table .text-left {
+            text-align: left !important;
+        }
+
         .bonus-highlight-row td {
             background-color: #f0fdf4 !important;
+            border-bottom: 1px solid #dcfce7 !important;
         }
 
         .bonus-cell {
             color: var(--primary-dark);
             font-weight: 700;
+        }
+
+        .bonus-month-check {
+            color: #10b981;
+            margin-left: 8px;
+            font-size: 0.9rem;
         }
 
         /* TOP NAVIGATION */
@@ -487,73 +640,89 @@
 
         <!-- HEADER -->
         <header>
-            <div style="display: flex; align-items: center; gap: 20px;">
-                <a href="index.html" title="Volver al Inicio" style="display:flex; align-items:center;">
-                    <img src="Imagen/logo, CapaSuite.png" alt="CapaSuite" style="height: 40px; width: auto;">
-                </a>
-                <img id="hotelLogo" src="Imagen/logo-guadiana.svg" alt="Hotel" style="height: 35px; width: auto;">
+            <div style="display: flex; align-items: center; gap: 24px;">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <a href="index.html" title="Volver al Inicio" style="display:flex; align-items:center;">
+                        <img src="Imagen/logo, CapaSuite.png" alt="CapaSuite" style="height: 44px; width: auto;">
+                    </a>
+                    <div style="width: 1px; height: 32px; background: #e2e8f0;"></div>
+                    <img id="hotelLogo" src="Imagen/logo-guadiana.svg" alt="Hotel"
+                        style="height: 38px; width: auto; max-width: 120px;">
+                </div>
                 <div class="header-title">
-                    <h1>Presupuestos 2026</h1>
+                    <h1 id="main-title">Presupuestos 2026</h1>
                     <p>Panel Avanzado de Presupuestos y Control</p>
                 </div>
+
+                <!-- TABS INTEGRATED IN HEADER - COMPACT VERSION -->
+                <nav class="tabs"
+                    style="margin-bottom: 0; margin-left: 20px; border-left: 1px solid #e2e8f0; padding-left: 20px;">
+                    <button class="tab-btn" onclick="switchTab('tab-dashboard')">📊 Panel</button>
+                    <button class="tab-btn active" onclick="switchTab('tab-detail')">📑 Detalle</button>
+                    <button class="tab-btn" onclick="switchTab('tab-bonus')">💰 Incentivos</button>
+                </nav>
             </div>
+
             <div class="strategy-control">
                 <div class="select-wrapper">
-                    <select id="hotelSelector" onchange="switchHotel()">
-                        <option value="Guadiana">Hotel Guadiana</option>
-                        <option value="Cumbria">Hotel Cumbria</option>
+                    <select id="hotelSelector" onchange="switchHotel()" style="min-width: 160px;">
+                        <option value="Guadiana">🏠 Hotel Guadiana</option>
+                        <option value="Cumbria">🏠 Hotel Cumbria</option>
                     </select>
                 </div>
-                <label for="strategySelector"
-                    style="font-weight: 500; font-size: 0.9rem; margin-left: 10px;">Estrategia:</label>
                 <div class="select-wrapper">
-                    <select id="strategySelector" onchange="loadStrategy()">
-                        <option value="original">Propuesta Central (Original)</option>
-                        <option value="optionB" selected>✅ Opción B: Lógica (Recomendada)</option>
-                        <option value="optionC">💰 Opción C: Maximizar Precio</option>
-                        <option value="optionD">🚀 Opción D: OTB + Yield Histórico</option>
+                    <select id="yearSelector" onchange="switchHotel()" style="min-width: 90px; text-align: center;">
+                        <option value="2025">📅 2025</option>
+                        <option value="2026" selected>📅 2026</option>
+                        <option value="2027">📅 2027</option>
+                        <option value="2028">📅 2028</option>
+                        <option value="2029">📅 2029</option>
+                        <option value="2030">📅 2030</option>
+                    </select>
+                </div>
+                <div style="width: 1px; height: 24px; background: #cbd5e1; margin: 0 2px; opacity: 0.5;"></div>
+                <div class="select-wrapper">
+                    <select id="strategySelector" onchange="loadStrategy()"
+                        style="min-width: 260px; background-color: #fff;">
+                        <option value="official" selected>📈 Presupuesto Oficial</option>
+                        <option value="optionB">✅ Opción B: Lógica</option>
+                        <option value="optionC">💰 Opción C: Maximizar</option>
+                        <option value="optionD">🚀 Opción D: OTB + Yield</option>
                     </select>
                 </div>
             </div>
         </header>
 
-        <!-- KPI DASHBOARD -->
         <div class="kpi-grid">
             <div class="card kpi-card">
-                <h3>Total Revenue 2026</h3>
-                <div class="kpi-value" id="kpi-revenue">0 €</div>
-                <div class="kpi-trend" id="kpi-rev-trend">+0.0% vs 2025</div>
+                <h3 id="label-total-rev">Total Revenue 2026</h3>
+                <div class="kpi-content">
+                    <div class="kpi-value" id="kpi-revenue">0 €</div>
+                    <div class="kpi-trend" id="kpi-rev-trend">+0.0% vs 2025</div>
+                </div>
             </div>
             <div class="card kpi-card">
                 <h3>ADR Promedio</h3>
-                <div class="kpi-value" id="kpi-adr">0 €</div>
-                <div class="kpi-trend" id="kpi-adr-trend">+0.0% vs 2025</div>
+                <div class="kpi-content">
+                    <div class="kpi-value" id="kpi-adr">0 €</div>
+                    <div class="kpi-trend" id="kpi-adr-trend">+0.0% vs 2025</div>
+                </div>
             </div>
             <div class="card kpi-card">
                 <h3>Ocupación Media</h3>
-                <div class="kpi-value" id="kpi-occ">0%</div>
-                <div class="kpi-trend" id="kpi-occ-trend">Target: > 70%</div>
-            </div>
-            <div class="card kpi-card">
-                <h3>Bonus Proyectado</h3>
-                <div class="kpi-value" style="color: var(--primary-dark);" id="kpi-bonus">0 €</div>
-                <div class="kpi-trend">Comisión del 4%</div>
+                <div class="kpi-content">
+                    <div class="kpi-value" id="kpi-occ">0%</div>
+                    <div class="kpi-trend" id="kpi-occ-trend">Target: > 70%</div>
+                </div>
             </div>
         </div>
 
-        <!-- TABS -->
-        <div>
-            <div class="tabs">
-                <button class="tab-btn active" onclick="switchTab('tab-dashboard')">📊 Panel de Control</button>
-                <button class="tab-btn" onclick="switchTab('tab-detail')">📑 Vista Detallada</button>
-                <button class="tab-btn" onclick="switchTab('tab-bonus')">💰 Calculadora de Incentivos</button>
-            </div>
-        </div>
+        <!-- KPI DASHBOARD -->
 
         <!-- MAIN CONTENT -->
 
         <!-- DASHBOARD VIEW -->
-        <div id="tab-dashboard" class="section active">
+        <div id="tab-dashboard" class="section">
             <div class="charts-container">
                 <div class="chart-card">
                     <canvas id="mainChart"></canvas>
@@ -565,17 +734,55 @@
 
             <div class="table-container">
                 <!-- Simplified Editor Table -->
-                <div style="padding: 15px; background: #fff; border-bottom: 1px solid var(--border);">
-                    <h3 style="margin:0;">Edición Rápida (Revenue & ADR)</h3>
+                <div
+                    style="padding: 15px; background: #fff; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 20px;">
+                    <h3 style="margin:0;" id="editorTitle">Elaboración del Presupuesto</h3>
+                    <div style="display: flex; gap: 10px;">
+                        <button
+                            onclick="currentRev = hotelData[currentHotel].real2025.rev.map(v => v); currentAdr = hotelData[currentHotel].real2025.adr.map(v => v); updateAll();"
+                            class="btn" style="background: #f1f5f9; color: #475569; font-size: 0.8rem;">
+                            🔄 Resetear a Real 2025
+                        </button>
+                        <button onclick="saveCustomBudget()" class="btn btn-primary"
+                            style="padding: 8px 16px; font-size: 0.85rem;" id="saveBtn">
+                            💾 Guardar Presupuesto Oficial
+                        </button>
+                    </div>
                 </div>
                 <div class="table-responsive">
                     <table id="editorTable">
                         <thead>
-                            <tr>
-                                <th>Mes</th>
-                                <th>Revenue 2026 (Target)</th>
-                                <th>ADR Target</th>
-                                <th>Ocupación Resultante</th>
+                            <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+                                <th rowspan="2" style="text-align: left; vertical-align: middle; padding-left: 15px;">
+                                    Mes</th>
+                                <th colspan="3"
+                                    style="text-align: center; background: #fdf2f2; color: #991b1b; font-size: 0.75rem; letter-spacing: 0.05em; border-right: 2px solid #fee2e2;">
+                                    HISTÓRICO 2025 (Referencia)</th>
+                                <th colspan="4"
+                                    style="text-align: center; background: #eff6ff; color: #1e40af; font-size: 0.75rem; letter-spacing: 0.05em; border-right: 1px solid #dbeafe;">
+                                    OBJETIVO 2026 (Presupuesto)</th>
+                                <th colspan="4"
+                                    style="text-align: center; background: #f0fdf4; color: #166534; font-size: 0.75rem; letter-spacing: 0.05em;">
+                                    VARIACIÓN Y KPI</th>
+                            </tr>
+                            <tr style="background: #fff; font-size: 0.65rem;">
+                                <!-- Historico -->
+                                <th style="color: #64748b; background: #fef9f9;">Revenue</th>
+                                <th style="color: #64748b; background: #fef9f9;">RN</th>
+                                <th style="color: #64748b; background: #fef9f9; border-right: 2px solid #fee2e2;">ADR
+                                </th>
+                                <!-- Objetivo -->
+                                <th style="background: #f0f7ff; color: #1e40af; width: 80px;">% Subida</th>
+                                <th style="background: #f0f7ff; color: var(--primary); border-left: 1px solid #dbeafe;">
+                                    Rev Target</th>
+                                <th style="background: #f0f7ff; color: var(--primary);">ADR Target</th>
+                                <th style="background: #f0f7ff; color: #c2410c; border-right: 1px solid #dbeafe;">RN
+                                    Target</th>
+                                <!-- KPIs -->
+                                <th style="color: #64748b;">RN %</th>
+                                <th style="color: #64748b;">ADR %</th>
+                                <th style="color: #64748b;">RRev %</th>
+                                <th style="color: #64748b;">Ocup %</th>
                             </tr>
                         </thead>
                         <tbody id="editorBody"></tbody>
@@ -585,32 +792,39 @@
         </div>
 
         <!-- DETAILED TABLE VIEW -->
-        <div id="tab-detail" class="section">
+        <div id="tab-detail" class="section active">
+            <div style="margin-bottom: 10px; font-size: 0.85rem; color: var(--text-muted); padding-left: 5px;">
+                💡 <b>VENDIDO 26:</b> Muestra la producción real de habitaciones (meses cerrados) + OTB actual (meses
+                futuros).
+            </div>
             <div class="table-container table-responsive">
                 <table id="fullTable">
                     <thead>
                         <tr>
-                            <th rowspan="2" class="text-left">Mes</th>
-                            <th rowspan="2">Capacidad</th>
-                            <th colspan="3" class="bg-group-rev">INGRESOS (Revenue)</th>
-                            <th colspan="3" class="bg-group-adr">PRECIO MEDIO (ADR)</th>
-                            <th colspan="3" class="bg-group-occ">HABITACIONES (RN)</th>
+                            <th rowspan="2" class="text-left border-sep">Mes</th>
+                            <th rowspan="2" class="border-sep">Capacidad</th>
+                            <th colspan="3" class="bg-group-rev border-sep">INGRESOS (Revenue)</th>
+                            <th colspan="3" class="bg-group-adr border-sep">PRECIO MEDIO (ADR)</th>
+                            <th colspan="3" class="bg-group-occ border-sep">HABITACIONES (RN)</th>
                             <th colspan="2">OCUPACIÓN %</th>
                         </tr>
                         <tr>
-                            <th class="bg-group-rev" style="font-size: 0.75rem;">Real 25</th>
-                            <th class="bg-group-rev">OBJETIVO 26</th>
-                            <th class="bg-group-rev">Var %</th>
+                            <th class="bg-group-rev" style="font-size: 0.7rem;">Real 25</th>
+                            <th class="bg-group-rev">OBJ 26 + <span
+                                    style="font-size: 0.7rem; color: var(--primary);">REAL 26</span></th>
+                            <th class="bg-group-rev border-sep">Var %</th>
 
-                            <th class="bg-group-adr" style="font-size: 0.75rem;">Real 25</th>
-                            <th class="bg-group-adr">OBJETIVO 26</th>
-                            <th class="bg-group-adr">Var %</th>
+                            <th class="bg-group-adr" style="font-size: 0.7rem;">Real 25</th>
+                            <th class="bg-group-adr">OBJ 26 + <span
+                                    style="font-size: 0.7rem; color: var(--primary);">REAL 26</span></th>
+                            <th class="bg-group-adr border-sep">Var %</th>
 
-                            <th class="bg-group-occ" style="font-size: 0.75rem;">Real 25</th>
-                            <th class="bg-group-occ">NECESARIO</th>
-                            <th class="bg-group-occ">Var %</th>
+                            <th class="bg-group-occ" style="font-size: 0.7rem;">Real 25</th>
+                            <th class="bg-group-occ">OBJ 26 + <span style="font-size: 0.7rem; color: #c2410c;">REAL
+                                    26</span></th>
+                            <th class="bg-group-occ border-sep">Var %</th>
 
-                            <th style="font-size: 0.75rem;">Real 25</th>
+                            <th style="font-size: 0.7rem;">Real 25</th>
                             <th>OBJ 26</th>
                         </tr>
                     </thead>
@@ -635,25 +849,28 @@
                 <table class="bonus-table">
                     <thead>
                         <tr>
-                            <th class="text-left">Mes</th>
-                            <th>Objetivo (Target)</th>
-                            <th>Vendido / OTB (Real)</th>
-                            <th>Desviación</th>
-                            <th>Superávit (€)</th>
-                            <th style="background-color: var(--primary); color: white;">BONUS 4% (€)</th>
+                            <th class="text-left" style="width: 150px;">MES</th>
+                            <th>OBJETIVO (TARGET)</th>
+                            <th>VENDIDO / OTB (REAL)</th>
+                            <th>DESVIACIÓN</th>
+                            <th>SUPERÁVIT (€)</th>
+                            <th style="background-color: var(--primary); color: white; border-bottom: none;">BONUS 4%
+                                (€)</th>
                         </tr>
                     </thead>
                     <tbody id="bonusBody"></tbody>
                     <tfoot>
                         <tr>
-                            <td class="text-left">TOTAL ANUAL</td>
-                            <td id="t2_target">0 €</td>
-                            <td id="t2_sold">0 €</td>
-                            <td id="t2_gap">0 €</td>
-                            <td id="t2_surplus">0 €</td>
+                            <td class="text-left" style="font-weight: 800; background: #eef2ff;">TOTAL ANUAL</td>
+                            <td id="t2_target" style="font-weight: 700; background: #eef2ff;">0 €</td>
+                            <td id="t2_sold" style="font-weight: 700; background: #eef2ff;">0 €</td>
+                            <td id="t2_gap" style="font-weight: 700; background: #eef2ff;">0 €</td>
+                            <td id="t2_surplus" style="font-weight: 700; background: #eef2ff;">0 €</td>
                             <td id="t2_bonus"
-                                style="background-color: var(--primary); color: white; font-size: 1.1rem;">0 €</td>
+                                style="background-color: var(--primary); color: white; font-size: 1.3rem; font-weight: 800; border-top: none;">
+                                0 €</td>
                         </tr>
+                    </tfoot>
                     </tfoot>
                 </table>
             </div>
@@ -675,8 +892,9 @@
                 otbData: new Array(12).fill(0),
                 strategies: {
                     original: {
-                        rev: [66789, 71441, 106875, 130251, 125309, 118652, 121962, 131039, 148593, 163911, 114738, 95813],
-                        adr: [61.50, 61.80, 75.00, 70.33, 69.50, 70.50, 69.10, 61.09, 62.91, 62.16, 64.28, 62.50]
+                        name: "Presupuesto Oficial (Objetivo +4,5%)",
+                        rev: [48728, 68308, 89982, 117837, 168341, 112215, 135720, 130172, 149670, 153014, 111277, 94975],
+                        adr: [60.00, 70.80, 80.50, 82.80, 92.00, 73.60, 78.50, 69.20, 68.60, 69.30, 66.40, 66.80]
                     },
                     optionB: {
                         rev: [66127, 69000, 96875, 130251, 138309, 118652, 121962, 131039, 148593, 164020, 114738, 95813],
@@ -694,29 +912,35 @@
             },
             Cumbria: {
                 logo: 'Imagen/logo-cumbria.svg',
-                capacity: [3720, 3360, 3720, 3600, 3720, 3600, 3720, 3720, 3600, 3720, 3600, 3720],
+                capacity: [1829, 1652, 1829, 1770, 1829, 1770, 1829, 1829, 1770, 1829, 1770, 1829],
                 real2025: {
-                    rev: [78000, 85000, 98000, 125000, 148000, 135000, 155000, 145000, 140000, 135000, 115000, 98000],
-                    adr: [66.00, 69.00, 73.00, 76.00, 86.00, 83.00, 89.00, 85.00, 83.00, 79.00, 75.00, 71.00],
-                    rn: [1182, 1232, 1342, 1645, 1721, 1627, 1742, 1706, 1687, 1709, 1533, 1380]
+                    // Adjusted to estimated Room Production levels (~75-80% of total)
+                    rev: [58500, 63750, 73500, 93750, 111000, 101250, 116250, 108750, 105000, 101250, 86250, 73500],
+                    adr: [62.00, 64.00, 68.00, 72.00, 82.00, 78.00, 84.00, 80.00, 78.00, 74.00, 70.00, 66.00],
+                    rn: [943, 996, 1080, 1302, 1353, 1298, 1383, 1359, 1346, 1368, 1232, 1113]
                 },
                 otbData: new Array(12).fill(0),
+                otbRN: new Array(12).fill(0),
                 strategies: {
                     original: {
-                        rev: [88000, 92000, 108000, 135000, 158000, 145000, 168000, 158000, 155000, 148000, 128000, 115000],
-                        adr: [71.00, 73.00, 76.00, 79.00, 89.00, 86.00, 93.00, 89.00, 86.00, 83.00, 79.00, 76.00]
+                        name: "Propuesta Habitación (Original)",
+                        rev: [66000, 69000, 81000, 101000, 118000, 108000, 126000, 118000, 116000, 111000, 96000, 86000],
+                        adr: [70.00, 70.00, 75.00, 78.00, 87.00, 83.00, 91.00, 87.00, 86.00, 81.00, 78.00, 77.00]
                     },
                     optionB: {
-                        rev: [84000, 90000, 105000, 132000, 155000, 142000, 165000, 155000, 152000, 145000, 125000, 112000],
-                        adr: [72.00, 74.00, 77.00, 81.00, 91.00, 88.00, 96.00, 92.00, 89.00, 86.00, 81.00, 79.00]
+                        name: "Opción B: Lógica Hab. (Recomendada)",
+                        rev: [63000, 67500, 78750, 99000, 116250, 106500, 123750, 116250, 114000, 108750, 93750, 84000],
+                        adr: [61.00, 62.00, 72.00, 74.33, 76.50, 75.50, 76.10, 65.09, 66.91, 66.16, 65.50, 64.80]
                     },
                     optionC: {
-                        rev: [84000, 90000, 115000, 138000, 162000, 148000, 172000, 162000, 158000, 152000, 132000, 118000],
-                        adr: [73.00, 76.00, 83.00, 86.00, 96.00, 91.00, 101.00, 96.00, 93.00, 91.00, 86.00, 83.00]
+                        name: "Opción C: ADR agresivo (+8%)",
+                        rev: [44200, 51000, 72250, 89250, 110500, 97750, 119000, 110500, 106250, 102000, 85000, 72250],
+                        adr: [65.00, 66.00, 75.00, 78.00, 80.00, 78.00, 82.00, 75.00, 72.00, 70.00, 68.00, 65.00]
                     },
                     optionD: {
-                        rev: [88000, 94000, 118000, 142000, 165000, 148000, 172000, 162000, 158000, 152000, 132000, 118000],
-                        adr: [74.00, 77.00, 85.00, 88.00, 98.00, 91.00, 101.00, 96.00, 93.00, 91.00, 86.00, 83.00]
+                        name: "Opción D: OTB + Yield Habitación",
+                        rev: [46200, 53500, 75000, 92000, 115000, 100000, 125000, 115000, 110000, 105000, 90000, 78000],
+                        adr: [68.00, 69.00, 78.00, 82.00, 85.00, 82.00, 88.00, 82.00, 80.00, 78.00, 75.00, 72.00]
                     }
                 }
             }
@@ -725,32 +949,244 @@
         const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
         let currentHotel = "Guadiana";
+        let currentYear = "2026";
         let currentRev = [];
         let currentAdr = [];
         let chartInstance = null;
         let pieInstance = null;
 
+        const PRODUCTION_GROUPS = {
+            "HABITACION": { name: "1. Habitación", keys: ["HABITACIÓN", "HABITACION", "ALOJAMIENTO", "ESTANCIA", "DUI", "DOBLE", "SUPERIOR", "SUITE", "CUADRUPLE", "TRIPLE", "FAMILIAR", "LATE CHECK OUT", "AMPLIACION", "CAMA SUPLETORIA", "REGARGO GDS", "HAB", "PAX", "ALOJ", "HABITACIÓ"] },
+            "DESAYUNOS": { name: "2. Desayunos", keys: ["DESAYUNO BUFFET", "DESAYUNO GRUPO", "DESAYUNO", "BUFFET"] },
+            "RESTAURANTE": { name: "3. Restaurante", keys: ["RESTAURANTE", "CENA", "ALMUERZO", "CENA GRUPO", "ALMUERZO GRUPO", "CATERING", "RESTAURANTE CATERING"] },
+            "OFICINAS": { name: "9. Alquileres", keys: ["ALQUILER RETENCIONES", "OFICINA", "RETENCIONES", "FIANZA", "DOMICILIACION EMPRESAS", "LIMPIEZA"] },
+            "EVENTOS": { name: "4. Eventos", keys: ["COFFEE BREAK", "SALONES/ALQUILER", "AUDIOVISUALES", "SALON", "ALQUILER", "EVENTO"] },
+            "CAFETERIA": { name: "5. Cafetería", keys: ["CAFETERÍA/HAB", "CAFETERIA", "BAR"] },
+            "MINIBAR": { name: "6. Minibar", keys: ["MINIBAR"] },
+            "SPA": { name: "7. Spa", keys: ["SPA", "BALNEARIO", "MASAJE", "TRATAMIENTO"] },
+            "VARIOS": { name: "10. Varios", keys: ["LAVANDERÍA", "ARTESANÍA", "FAX", "TELÉFONO", "VARIOS", "LAVANDERIA", "ARTESANIA", "TELEFONO", "SUPLEMENTO", "MASCOTA", "CUNA", "UPGRADE", "MENSAJERIA", "GARAJE", "PARKING", "ALQUILER PLAZAS GARAJE"] }
+        };
+
+        const normalizeStr = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[.\/-]/g, "").toUpperCase().trim();
+
+        function getGroupID(name) {
+            const norm = normalizeStr(name);
+            // Strictly OMIT master totals and their variations to avoid falling back to total prod
+            // Use exact matches or specific phrases to avoid omitting "TOTAL HABITACION"
+            const exactOmits = ["TOTAL", "TOTAL MASTER", "PROD TOTAL", "TOTAL PROD", "TOTAL HOTEL", "PRODUCTO TOTAL"];
+            const phraseOmits = ["PRODUCCION TOTAL", "TOTAL PRODUCCION", "PRODUCCIO TOTAL", "TOTAL PRODUCCIO", "TOTAL PRODUCCION MASTER"];
+
+            if (exactOmits.includes(norm)) return "OMIT";
+            if (phraseOmits.some(o => norm.includes(o))) return "OMIT";
+
+            // Special metric mapping
+            if (norm === "HAB" || norm === "RMS" || norm === "RN") return "HABITACION";
+            if (norm === "PAX" || norm === "PERS" || norm === "PERSONAS") return "VARIOS";
+
+            const eventKeywords = ["COFFEE", "SALA", "SALON", "EVENTO", "ALQUILER", "AUDIOVISUAL", "OFICINA"];
+            for (const [id, g] of Object.entries(PRODUCTION_GROUPS)) {
+                if (id === "RESTAURANTE" && eventKeywords.some(k => norm.includes(k))) continue;
+                if (g.keys.some(k => norm.includes(normalizeStr(k)))) return id;
+            }
+            return "VARIOS";
+        }
+
+        // Robust Room Data Resolution (Subtotal-aware Summation)
+        function resolveRoomData(serviceObj) {
+            const rev = new Array(12).fill(0);
+            const rn = new Array(12).fill(0);
+            if (!serviceObj) return { rev, rn };
+
+            const roomServices = [];
+            const subtotalRows = [];
+
+            Object.values(serviceObj).forEach(s => {
+                const name = normalizeStr(s.name);
+                const gid = getGroupID(s.name);
+
+                // Secondary filter: If it's a known OMIT row or name contains TOTAL PROD/etc, definitely skip it
+                if (gid === "OMIT") return;
+                const lowName = name.toLowerCase();
+                if (lowName.includes("total prod") || lowName.includes("prod total") || lowName.includes("produccion total") || lowName.includes("total hotel") || lowName === "total" || lowName.includes("produccion hotel")) return;
+
+                if (gid === "HABITACION") {
+                    if (name.includes("TOTAL") || name.includes("SUBTOTAL")) {
+                        // Priority for "TOTAL ALOJAMIENTO" or similar. 
+                        // EXCLUDE general "TOTAL PRODUCCION" even if it matches HABITACION keys by mistake
+                        if ((name.includes("ALOJAMIENTO") || name.includes("HABITACION") || name.includes("ESTANCIA")) && !name.includes("PRODUCCION TOTAL")) {
+                            subtotalRows.push(s);
+                        }
+                    } else {
+                        roomServices.push(s);
+                    }
+                }
+            });
+
+            // Logic:
+            // 1. If we have subtotal rows (like "TOTAL ALOJAMIENTO"), pick the best one.
+            // 2. Otherwise, if we have individual room service rows, sum them.
+            // 3. DO NOT fallback to TOTAL_MASTER if we are looking for ROOM REVENUE specifically, 
+            //    unless we have absolutely nothing else (and even then it's risky).
+
+            if (subtotalRows.length > 0) {
+                const best = subtotalRows.reduce((a, b) => {
+                    const sumA = a.revenue ? a.revenue.reduce((x, y) => x + y, 0) : 0;
+                    const sumB = b.revenue ? b.revenue.reduce((x, y) => x + y, 0) : 0;
+                    return sumB > sumA ? b : a;
+                });
+                for (let i = 0; i < 12; i++) {
+                    rev[i] = best.revenue ? (best.revenue[i] || 0) : 0;
+                    rn[i] = best.rooms ? (best.rooms[i] || 0) : (best.rms ? (best.rms[i] || 0) : 0);
+                }
+            } else if (roomServices.length > 0) {
+                roomServices.forEach(s => {
+                    for (let i = 0; i < 12; i++) {
+                        rev[i] += s.revenue ? (s.revenue[i] || 0) : 0;
+                        rn[i] += s.rooms ? (s.rooms[i] || 0) : (s.rms ? (s.rms[i] || 0) : 0);
+                    }
+                });
+            } else if (serviceObj["TOTAL_MASTER"] && !Object.keys(serviceObj).some(k => normalizeStr(k).includes("HABITAC"))) {
+                // Extreme fallback only if no other service segments are present
+                const m = serviceObj["TOTAL_MASTER"];
+                for (let i = 0; i < 12; i++) {
+                    rev[i] = m.revenue ? (m.revenue[i] || 0) : 0;
+                    rn[i] = m.rooms ? (m.rooms[i] || 0) : (m.rms ? (m.rms[i] || 0) : 0);
+                }
+            }
+            return { rev, rn };
+        }
+
         function init() {
             switchHotel();
+
+            // Sync from Cloud Listener
+            window.addEventListener('capasuite-data-synced', () => {
+                console.log("☁️ Syncing Budget from Cloud...");
+                switchHotel();
+            });
         }
 
         function switchHotel() {
             currentHotel = document.getElementById('hotelSelector').value;
+            currentYear = document.getElementById('yearSelector').value;
             const h = hotelData[currentHotel];
             document.getElementById('hotelLogo').src = h.logo;
 
-            // Try to load OTB from DB
-            // Try to load OTB from DB
-            const db = JSON.parse(CapaStorage.getItem('hotel_manager_db_v2')) || {};
-            const year = "2026";
-            if (db[currentHotel] && db[currentHotel][year] && db[currentHotel][year].otb) {
-                const importedOTB = db[currentHotel][year].otb.revenue;
-                if (importedOTB) {
-                    h.otbData = [...importedOTB];
-                }
+
+
+
+
+            // Load Real 2025 data from the database
+            const dbRealData = JSON.parse(CapaStorage.getItem('hotel_manager_db_v2')) || {};
+            const prevYear = String(parseInt(currentYear) - 1); // "2025" when currentYear is "2026"
+
+            console.log(`🔍 Cargando Real ${prevYear} para ${currentHotel}...`);
+
+            // Data is stored as: db[hotelName][year].service
+            if (dbRealData[currentHotel] && dbRealData[currentHotel][prevYear] && dbRealData[currentHotel][prevYear].service) {
+                const servicesData = dbRealData[currentHotel][prevYear].service;
+                const { rev, rn } = resolveRoomData(servicesData);
+                const adr = rev.map((r, i) => rn[i] > 0 ? r / rn[i] : 0);
+
+                console.log(`✅ Datos Real ${prevYear} cargados:`, {
+                    enero: { rev: rev[0].toFixed(0), rn: rn[0], adr: adr[0].toFixed(2) },
+                    source: `db["${currentHotel}"]["${prevYear}"].service`
+                });
+
+                h.real2025 = {
+                    rev: [...rev],
+                    rn: [...rn],
+                    adr: [...adr]
+                };
             } else {
-                // If hotel not in DB, ensure it's zeros
-                h.otbData = new Array(12).fill(0);
+                console.warn(`⚠️ No hay datos guardados para ${currentHotel} ${prevYear}, usando defaults`);
+
+                // Fallback to defaults if no data found
+                const defaults = {
+                    Guadiana: {
+                        rev: [46630, 65367, 86107, 112763, 161092, 107383, 129876, 124567, 143225, 146425, 106485, 90885],
+                        rn: [800, 950, 1100, 1400, 1800, 1500, 1700, 1850, 2100, 2300, 1650, 1400],
+                        adr: [58.29, 68.81, 78.28, 80.55, 89.49, 71.59, 76.40, 67.33, 68.20, 63.66, 64.54, 64.92]
+                    },
+                    Cumbria: {
+                        rev: [50000, 52000, 60000, 65000, 75000, 70000, 80000, 75000, 72000, 70000, 65000, 60000],
+                        rn: [800, 820, 900, 950, 1050, 1000, 1100, 1050, 1020, 1000, 950, 900],
+                        adr: [62.50, 63.41, 66.67, 68.42, 71.43, 70.00, 72.73, 71.43, 70.59, 70.00, 68.42, 66.67]
+                    }
+                };
+
+                h.real2025 = (currentYear === "2026" && defaults[currentHotel])
+                    ? JSON.parse(JSON.stringify(defaults[currentHotel]))
+                    : {
+                        rev: new Array(12).fill(0),
+                        rn: new Array(12).fill(0),
+                        adr: new Array(12).fill(0)
+                    };
+            }
+            h.otbData = new Array(12).fill(0);
+            h.otbRN = new Array(12).fill(0);
+
+
+            // Update Dynamic Titles (with null checks for elements that may not exist)
+            const headerTitle = document.querySelector('.header-title h1');
+            if (headerTitle) headerTitle.innerText = `Presupuestos ${currentYear}`;
+
+            const editorTitle = document.getElementById('editorTitle');
+            if (editorTitle) editorTitle.innerText = `Elaboración del Presupuesto de ${currentYear}`;
+
+            const labelTotalRev = document.getElementById('label-total-rev');
+            if (labelTotalRev) labelTotalRev.innerText = `Total Revenue ${currentYear}`;
+
+            const headerCurrYearSold = document.getElementById('header-curr-year-sold');
+            if (headerCurrYearSold) headerCurrYearSold.innerText = `Vendido ${currentYear.slice(-2)}`;
+
+            const headerCurrYearTarget = document.getElementById('header-curr-year-target');
+            if (headerCurrYearTarget) headerCurrYearTarget.innerText = `Revenue (Target)`;
+
+            const headerPrevYear = document.getElementById('header-prev-year');
+            if (headerPrevYear) headerPrevYear.innerText = `Real ${prevYear}`;
+
+            const db = JSON.parse(CapaStorage.getItem('hotel_manager_db_v2')) || {};
+
+            // Real 2025 is already loaded above (lines 1076-1120), don't overwrite it
+            // Just load CURRENT YEAR OTB data here
+
+            // 2. Load CURRENT YEAR OTB (Vendido) from DB
+            if (db[currentHotel] && db[currentHotel][currentYear]) {
+                const cyData = db[currentHotel][currentYear];
+                let realRoomRev = new Array(12).fill(0);
+                let realRoomRN = new Array(12).fill(0);
+
+                if (cyData.service) {
+                    const cyResolved = resolveRoomData(cyData.service);
+                    realRoomRev = cyResolved.rev;
+                    realRoomRN = cyResolved.rn;
+                }
+
+                let otbRoomRev = new Array(12).fill(0);
+                let otbRoomRN = new Array(12).fill(0);
+                if (cyData.otb) {
+                    otbRoomRev = cyData.otb.revenue || new Array(12).fill(0);
+                    otbRoomRN = cyData.otb.rooms || new Array(12).fill(0);
+                }
+
+                const now = new Date();
+                const curM = now.getMonth();
+                const curY = now.getFullYear();
+                const budgetYear = parseInt(currentYear);
+
+                for (let i = 0; i < 12; i++) {
+                    const isClosed = (budgetYear < curY) || (budgetYear === curY && i < curM);
+                    if (isClosed && realRoomRev.some(v => v > 0)) {
+                        // Prioritize ACTUAL Room Production for closed months
+                        h.otbData[i] = realRoomRev[i] || 0;
+                        h.otbRN[i] = realRoomRN[i] || 0;
+                    } else {
+                        // For future/current months, use OTB as floor but keep Real if it's already higher
+                        h.otbData[i] = Math.max(realRoomRev[i] || 0, otbRoomRev[i] || 0);
+                        h.otbRN[i] = Math.max(realRoomRN[i] || 0, otbRoomRN[i] || 0);
+                    }
+                }
             }
 
             loadStrategy();
@@ -767,16 +1203,111 @@
         function loadStrategy() {
             const h = hotelData[currentHotel];
             const key = document.getElementById('strategySelector').value;
-            currentRev = [...h.strategies[key].rev];
-            currentAdr = [...h.strategies[key].adr];
+            const real = h.real2025; // This is now always the latest 2025 Real data
+
+            if (key === 'official') {
+                const db = JSON.parse(CapaStorage.getItem('hotel_manager_db_v2')) || {};
+                const customKey = `custom_budget_${currentYear}`;
+                const custom = (db[currentHotel] && db[currentHotel][customKey]) ? db[currentHotel][customKey] : null;
+
+                if (custom && custom.rev && custom.rev.length === 12 && custom.rev.some(v => v > 0)) {
+                    currentRev = [...custom.rev];
+                    currentAdr = [...custom.adr];
+                } else {
+                    // Fallback: Real 2025 + reasonable growth
+                    currentRev = real.rev.map(v => v * 1.050);
+                    currentAdr = real.adr.map(v => v * 1.030);
+                }
+            } else {
+                // Dynamic Strategies
+                if (key === 'original') {
+                    currentRev = real.rev.map(v => v * 1.045);
+                    currentAdr = real.adr.map(v => v * 1.028);
+                } else if (key === 'optionB') {
+                    currentRev = real.rev.map(v => v * 1.075);
+                    currentAdr = real.adr.map(v => v * 1.040);
+                } else if (key === 'optionC') {
+                    currentRev = real.rev.map(v => v * 1.120);
+                    currentAdr = real.adr.map(v => v * 1.060);
+                } else if (key === 'optionD') {
+                    currentRev = real.rev.map((v, i) => {
+                        const otbVal = (h.otbData && h.otbData[i]) ? h.otbData[i] : 0;
+                        return Math.max(v * 1.15, otbVal * 1.025);
+                    });
+                    currentAdr = real.adr.map(v => v * 1.080);
+                } else {
+                    currentRev = real.rev.map(v => v);
+                    currentAdr = real.adr.map(v => v);
+                }
+            }
+
+            // Global Safety: Never allow zeros if historical data exists
+            if (currentRev.every(v => v === 0) && real.rev.some(v => v > 0)) {
+                currentRev = real.rev.map(v => v);
+                currentAdr = real.adr.map(v => v);
+            }
+
             updateAll();
         }
 
+        function applyMonthIncrease(idx, pct) {
+            const h = hotelData[currentHotel];
+            const p = parseFloat(pct) / 100;
+            const rev25 = h.real2025.rev[idx];
+
+            // New Target
+            currentRev[idx] = rev25 * (1 + p);
+
+            // Maintain RN to calc ADR
+            const rnPrev = h.real2025.rn[idx] || 1;
+            currentAdr[idx] = currentRev[idx] / rnPrev;
+
+            updateAll();
+        }
+
+        function saveCustomBudget() {
+            const db = JSON.parse(CapaStorage.getItem('hotel_manager_db_v2')) || {};
+            if (!db[currentHotel]) db[currentHotel] = {};
+
+            const customKey = `custom_budget_${currentYear}`;
+            db[currentHotel][customKey] = {
+                rev: [...currentRev],
+                adr: [...currentAdr],
+                lastSave: new Date().toLocaleString('es-ES')
+            };
+
+            CapaStorage.setItem('hotel_manager_db_v2', JSON.stringify(db));
+
+            const btn = document.getElementById('saveBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `✅ ${currentYear} Guardado y Protegido`;
+            btn.style.background = "#10b981";
+            btn.style.borderColor = "#10b981";
+
+            document.getElementById('strategySelector').value = 'official';
+
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.style.background = "";
+                btn.style.borderColor = "";
+            }, 3000);
+        }
+
         function updateValue(type, index, val) {
-            const v = parseFloat(val);
-            if (isNaN(v)) return;
+            // Robust parsing: Remove dots (thousands), replace comma with dot (decimal)
+            let cleanVal = String(val).replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, '');
+            const v = parseFloat(cleanVal);
+
+            if (isNaN(v)) {
+                updateAll(); // Revert to previous value on invalid input
+                return;
+            }
             if (type === 'rev') currentRev[index] = v;
             if (type === 'adr') currentAdr[index] = v;
+            if (type === 'rn') {
+                // If user changes RN, we update Revenue based on current ADR
+                currentRev[index] = v * currentAdr[index];
+            }
             updateAll();
         }
 
@@ -793,58 +1324,118 @@
             const editorBody = document.getElementById('editorBody');
             editorBody.innerHTML = '';
 
-            let t_rev25 = 0, t_rev26 = 0, t_adr_acc = 0, t_rn26 = 0, t_cap = 0, t_bonus = 0;
+            let t_rev25 = 0, t_rev26 = 0, t_rn25 = 0, t_rn26 = 0, t_cap = 0;
 
             for (let i = 0; i < 12; i++) {
+                const rev25 = h.real2025.rev[i] || 0;
+                const rn25 = h.real2025.rn[i] || 0;
+                const adr25 = h.real2025.adr[i] || 0;
+
+                // Safety: If for some reason current targets are zero but historical has data, initialize them
+                if (currentRev[i] === 0 && rev25 > 0) currentRev[i] = rev25;
+                if (currentAdr[i] === 0 && adr25 > 0) currentAdr[i] = adr25;
+
                 const rev = currentRev[i];
                 const adr = currentAdr[i];
                 const rn = adr > 0 ? Math.round(rev / adr) : 0;
                 const occ = (rn / h.capacity[i]) * 100;
 
-                // Totales acumulados
-                t_rev25 += h.real2025.rev[i];
+                t_rev25 += rev25;
+                t_rn25 += rn25;
                 t_rev26 += rev;
                 t_rn26 += rn;
                 t_cap += h.capacity[i];
 
-                // Bonus logic for KPI
-                const sold = h.otbData[i];
-                const surplus = Math.max(0, sold - rev);
-                t_bonus += (surplus * 0.04);
-
-                const occStyle = occ > 100 ? 'color: var(--danger); font-weight:800;' : (occ > 80 ? 'color: var(--warning);' : 'color: var(--success);');
+                const varRev = rev25 > 0 ? ((rev - rev25) / rev25 * 100) : 0;
+                const varAdr = adr25 > 0 ? ((adr - adr25) / adr25 * 100) : 0;
+                const varRn = rn25 > 0 ? ((rn - rn25) / rn25 * 100) : 0;
 
                 editorBody.innerHTML += `
-                <tr>
-                    <td class="text-left font-bold">${months[i]}</td>
-                    <td><input type="number" class="editable" value="${rev}" onchange="updateValue('rev', ${i}, this.value)"></td>
-                    <td><input type="number" class="editable" value="${adr.toFixed(2)}" step="0.5" onchange="updateValue('adr', ${i}, this.value)"></td>
-                    <td style="${occStyle}">${occ.toFixed(1)}%</td>
-                </tr>
-            `;
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <td class="text-left font-bold" style="padding: 12px 15px; color:#1e293b; background: #fdfdfd;">${months[i]}</td>
+                    
+                    <!-- HISTORICO 2025 -->
+                    <td style="text-align: right; color:#94a3b8; font-size: 0.75rem; background: #fefafa;">${formatInt(rev25)} €</td>
+                    <td style="text-align: right; color:#94a3b8; font-size: 0.75rem; background: #fefafa;">
+                        ${(rn25 === 0 && rev25 > 0) ? '<span title="Falta dato de Habitaciones" style="cursor:help;">⚠️ 0</span>' : rn25}
+                    </td>
+                    <td style="text-align: right; color:#94a3b8; font-size: 0.75rem; background: #fefafa; border-right: 2px solid #fee2e2;">
+                        ${(adr25 === 0 && rev25 > 0) ? '<span title="Calculado sin Habitaciones" style="cursor:help; color:#f59e0b;">0.0 €</span>' : adr25.toFixed(1) + ' €'}
+                    </td>
+                    
+                    <!-- OBJETIVO 2026 -->
+                    <td style="text-align: center; background: #f0f7ff;">
+                        <input type="number" step="0.5" value="${varRev.toFixed(1)}" 
+                            style="width: 65px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px; text-align: center; font-weight: 700; color: ${varRev >= 0 ? '#1e40af' : '#ef4444'};"
+                            onchange="applyMonthIncrease(${i}, this.value)">
+                    </td>
+                    <td style="padding: 8px 5px; border-left: 1px solid #dbeafe; background: #f8fafc;">
+                        <input type="text" class="editable" 
+                            style="width: 110px; text-align: right; background: #fff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 5px 10px; font-weight:700; color:#4f46e5;"
+                            value="${formatInt(rev)} €" 
+                            onfocus="this.value = this.value.replace(/\\./g, '').replace(' €', '')"
+                            onblur="this.value = formatInt(this.value) + ' €'"
+                            onchange="updateValue('rev', ${i}, this.value)">
+                    </td>
+                    <td style="padding: 8px 5px; background: #f8fafc;">
+                        <input type="text" class="editable" 
+                            style="width: 85px; text-align: right; background: #fff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 5px 10px; font-weight:700; color:#4f46e5;"
+                            value="${formatNum(adr)} €" 
+                            onfocus="this.value = this.value.replace(/\\./g, '').replace(',', '.').replace(' €', '')"
+                            onblur="const v = parseFloat(this.value.replace(',', '.')); if(!isNaN(v)) this.value = formatNum(v) + ' €'"
+                            onchange="updateValue('adr', ${i}, this.value)">
+                    </td>
+                    <td style="padding: 8px 5px; border-right: 1px solid #dbeafe; background: #f8fafc;">
+                        <input type="text" class="editable" 
+                            style="width: 65px; text-align: right; background: #fff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 5px 10px; font-weight:700; color:#c2410c;"
+                            value="${formatInt(rn)}" 
+                            onfocus="this.value = this.value.replace(/\\./g, '')"
+                            onblur="this.value = formatInt(this.value)"
+                            onchange="updateValue('rn', ${i}, this.value)">
+                    </td>
+
+                    <!-- KPIs Y VARIACION -->
+                    <td style="text-align: right; font-weight: 600; font-size: 0.8rem; color: ${varRn >= 0 ? '#10b981' : '#ef4444'}">${(varRn > 0 ? '+' : '') + varRn.toFixed(0)}%</td>
+                    <td style="text-align: right; font-weight: 600; font-size: 0.8rem; color: ${varAdr >= 0 ? '#10b981' : '#ef4444'}">${(varAdr > 0 ? '+' : '') + varAdr.toFixed(0)}%</td>
+                    <td style="text-align: right; font-weight: 700; font-size: 0.85rem; color: ${varRev >= 0 ? '#10b981' : '#ef4444'}">${(varRev > 0 ? '+' : '') + varRev.toFixed(1)}%</td>
+                    <td style="text-align: center; padding: 0 10px;">
+                        <span class="occ-badge ${occ > 100 ? 'occ-badge-danger' : (occ > 80 ? 'occ-badge-warning' : 'occ-badge-success')}" style="font-size: 0.75rem;">${occ.toFixed(1)}%</span>
+                    </td>
+                </tr>`;
             }
 
-            // Update KPI Cards
-            const totalAdr = t_rn26 > 0 ? t_rev26 / t_rn26 : 0;
-            const totalOcc = (t_rn26 / t_cap) * 100;
-            const totalRev25 = t_rev25;
-            const growth = ((t_rev26 - totalRev25) / totalRev25) * 100;
+            // Update Global KPIs
+            const totalAdr26 = t_rn26 > 0 ? t_rev26 / t_rn26 : 0;
+            const totalOcc26 = (t_rn26 / t_cap) * 100;
+            const totalGrowth = t_rev25 > 0 ? ((t_rev26 - t_rev25) / t_rev25) * 100 : 0;
 
             document.getElementById('kpi-revenue').innerText = formatMoney(t_rev26);
             const kpiTrend = document.getElementById('kpi-rev-trend');
-            kpiTrend.innerHTML = `${growth > 0 ? '▲' : '▼'} ${growth.toFixed(1)}% vs 2025`;
-            kpiTrend.className = `kpi-trend ${growth >= 0 ? 'trend-up' : 'trend-down'}`;
+            if (kpiTrend) {
+                kpiTrend.innerHTML = `${totalGrowth >= 0 ? '+' : ''}${totalGrowth.toFixed(1)}%`;
+                kpiTrend.className = `kpi-trend ${totalGrowth >= 0 ? 'trend-up' : 'trend-down'}`;
+            }
 
-            document.getElementById('kpi-adr').innerText = formatMoney(totalAdr).replace('€', ''); // Just number maybe?
+            // ADR KPI
+            document.getElementById('kpi-adr').innerText = totalAdr26.toFixed(1) + " €";
+            const adr25_total = t_rn25 > 0 ? t_rev25 / t_rn25 : 0;
+            const adrGrowth = adr25_total > 0 ? ((totalAdr26 - adr25_total) / adr25_total * 100) : 0;
+            const adrTrend = document.getElementById('kpi-adr-trend');
+            if (adrTrend) {
+                adrTrend.innerHTML = `${adrGrowth >= 0 ? '+' : ''}${adrGrowth.toFixed(1)}%`;
+                adrTrend.className = `kpi-trend ${adrGrowth >= 0 ? 'trend-up' : 'trend-down'}`;
+            }
 
-            // ADR Trend vs 2025 avg
-            const avgAdr25 = 63.67; // approx derived from data
-            const adrGrowth = ((totalAdr - avgAdr25) / avgAdr25) * 100;
-            document.getElementById('kpi-adr-trend').innerText = `${adrGrowth > 0 ? '+' : ''}${adrGrowth.toFixed(1)}% vs 2025`;
-
-            document.getElementById('kpi-occ').innerText = totalOcc.toFixed(1) + "%";
-
-            document.getElementById('kpi-bonus').innerText = formatMoney(t_bonus);
+            // OCC KPI
+            document.getElementById('kpi-occ').innerText = totalOcc26.toFixed(1) + "%";
+            const occ25_total = t_cap > 0 ? (t_rn25 / t_cap) * 100 : 0;
+            const occGrowth = totalOcc26 - occ25_total;
+            const occTrend = document.getElementById('kpi-occ-trend');
+            if (occTrend) {
+                const growthPct = occ25_total > 0 ? ((totalOcc26 - occ25_total) / occ25_total * 100) : 0;
+                occTrend.innerHTML = `${growthPct >= 0 ? '+' : ''}${growthPct.toFixed(1)}%`;
+                occTrend.className = `kpi-trend ${growthPct >= 0 ? 'trend-up' : 'trend-down'}`;
+            }
         }
 
         function renderCharts() {
@@ -852,7 +1443,7 @@
             const ctx = document.getElementById('mainChart').getContext('2d');
             const ctxPie = document.getElementById('pieChart').getContext('2d');
 
-            // Main Chart (Revenue vs Last Year)
+            const prevYear = String(parseInt(currentYear) - 1);
             if (chartInstance) chartInstance.destroy();
             chartInstance = new Chart(ctx, {
                 type: 'line',
@@ -860,7 +1451,7 @@
                     labels: months,
                     datasets: [
                         {
-                            label: 'Real 2025',
+                            label: `Real ${prevYear}`,
                             data: h.real2025.rev,
                             borderColor: '#94a3b8',
                             backgroundColor: 'rgba(148, 163, 184, 0.1)',
@@ -869,7 +1460,7 @@
                             borderDash: [5, 5]
                         },
                         {
-                            label: 'Forecast OTB 2026',
+                            label: `Forecast OTB ${currentYear}`,
                             data: h.otbData,
                             borderColor: '#8b5cf6', // Violeta
                             backgroundColor: 'transparent',
@@ -879,7 +1470,7 @@
                             tension: 0.4
                         },
                         {
-                            label: 'Objetivo 2026',
+                            label: `Objetivo ${currentYear}`,
                             data: currentRev,
                             borderColor: '#4f46e5', // Primary
                             backgroundColor: 'rgba(79, 70, 229, 0.05)',
@@ -901,7 +1492,7 @@
                     },
                     plugins: {
                         legend: { position: 'top' },
-                        title: { display: true, text: 'Evolución de Ingresos (Revenue Comparison)' }
+                        title: { display: true, text: `Evolución de Ingresos ${currentYear} vs ${prevYear}` }
                     },
                     scales: {
                         y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
@@ -960,7 +1551,7 @@
             const tfoot = document.getElementById('fullFoot');
             tbody.innerHTML = '';
 
-            let t_cap = 0, t_rev25 = 0, t_rev26 = 0, t_rn25 = 0, t_rn26 = 0;
+            let t_cap = 0, t_rev25 = 0, t_rev26 = 0, t_rev26Real = 0, t_rn25 = 0, t_rn26 = 0, t_rn26Real = 0;
 
             for (let i = 0; i < 12; i++) {
                 const rev = currentRev[i];
@@ -968,61 +1559,100 @@
                 const rn = adr > 0 ? Math.round(rev / adr) : 0;
                 const occ = (rn / h.capacity[i]) * 100;
 
+                const rev26Real = h.otbData[i] || 0;
+                const rn26Real = h.otbRN[i] || 0;
+                const adr26Real = rn26Real > 0 ? rev26Real / rn26Real : 0;
+
                 // Variaciones
-                const varRev = ((rev - h.real2025.rev[i]) / h.real2025.rev[i]) * 100;
-                const varAdr = ((adr - h.real2025.adr[i]) / h.real2025.adr[i]) * 100;
-                const varRn = ((rn - h.real2025.rn[i]) / h.real2025.rn[i]) * 100;
+                const varRev = h.real2025.rev[i] > 0 ? ((rev - h.real2025.rev[i]) / h.real2025.rev[i]) * 100 : 0;
+                const varAdr = h.real2025.adr[i] > 0 ? ((adr - h.real2025.adr[i]) / h.real2025.adr[i]) * 100 : 0;
+                const varRn = h.real2025.rn[i] > 0 ? ((rn - h.real2025.rn[i]) / h.real2025.rn[i]) * 100 : 0;
 
                 // Running Totals
                 t_cap += h.capacity[i];
                 t_rev25 += h.real2025.rev[i];
                 t_rev26 += rev;
+                t_rev26Real += rev26Real;
                 t_rn25 += h.real2025.rn[i];
                 t_rn26 += rn;
+                t_rn26Real += rn26Real;
 
                 const occClass = occ > 100 ? 'occ-warning' : '';
 
+                const now = new Date();
+                const curM = now.getMonth();
+                const curY = now.getFullYear();
+                const isClosed = (parseInt(currentYear) < curY) || (parseInt(currentYear) === curY && i < curM);
+
+                const mainRevClass = isClosed ? 'color:var(--primary); font-weight:700;' : 'font-weight:600;';
+                const mainRNClass = isClosed ? 'color:#c2410c; font-weight:700;' : '';
+
                 tbody.innerHTML += `<tr>
-                <td>${months[i]}</td>
-                <td style="color:#64748b;">${formatNum(h.capacity[i])}</td>
+                <td style="padding: 4px 8px;" class="bg-neutral border-sep">${months[i]} ${isClosed ? '📉' : ''}</td>
+                <td style="color:#64748b; font-size: 0.8rem;" class="bg-neutral border-sep">${formatNum(h.capacity[i])}</td>
                 
-                <td style="color:#94a3b8;">${formatNum(h.real2025.rev[i])}€</td>
-                <td style="font-weight:600;">${formatNum(rev)}€</td>
-                <td class="${varRev >= 0 ? 'text-success' : 'text-danger'}">${(varRev > 0 ? '+' : '')}${varRev.toFixed(1)}%</td>
+                <td style="color:#94a3b8; font-size: 0.8rem;" class="bg-group-rev">${formatNum(h.real2025.rev[i])}€</td>
+                <td class="bg-group-rev">
+                    <div style="${isClosed ? 'font-size:0.7rem; color:#94a3b8;' : 'font-weight:600;'}">${formatNum(rev)}€</div>
+                    <div style="${isClosed ? 'font-size:1rem; color:var(--primary); font-weight:700;' : 'font-size:0.7rem; color:var(--primary); font-weight:700;'}">${formatNum(rev26Real)}€</div>
+                </td>
+                <td class="bg-group-rev border-sep ${varRev >= 0 ? 'text-success' : 'text-danger'}" style="font-size: 0.85rem;">${h.real2025.rev[i] > 0 ? (varRev > 0 ? '+' : '') + varRev.toFixed(1) + '%' : '-'}</td>
 
-                <td style="color:#94a3b8;">${h.real2025.adr[i].toFixed(1)}€</td>
-                <td style="font-weight:600;">${adr.toFixed(2)}€</td>
-                <td class="${varAdr >= 0 ? 'text-success' : 'text-danger'}">${(varAdr > 0 ? '+' : '')}${varAdr.toFixed(1)}%</td>
+                <td style="color:#94a3b8; font-size: 0.8rem;" class="bg-group-adr">${h.real2025.adr[i].toFixed(1)}€</td>
+                <td class="bg-group-adr">
+                    <div style="${isClosed ? 'font-size:0.7rem; color:#94a3b8;' : 'font-weight:600;'}">${adr.toFixed(2)}€</div>
+                    <div style="${isClosed ? 'font-size:1rem; color:var(--primary); font-weight:700;' : 'font-size:0.7rem; color:var(--primary);'}">${adr26Real.toFixed(1)}€</div>
+                </td>
+                <td class="bg-group-adr border-sep ${varAdr >= 0 ? 'text-success' : 'text-danger'}" style="font-size: 0.85rem;">${h.real2025.adr[i] > 0 ? (varAdr > 0 ? '+' : '') + varAdr.toFixed(1) + '%' : '-'}</td>
 
-                <td style="color:#94a3b8;">${formatNum(h.real2025.rn[i])}</td>
-                <td>${formatNum(rn)}</td>
-                <td class="${varRn >= 0 ? 'text-success' : 'text-danger'}">${(varRn > 0 ? '+' : '')}${varRn.toFixed(1)}%</td>
+                <td style="color:#94a3b8; font-size: 0.8rem;" class="bg-group-occ">${formatNum(h.real2025.rn[i])}</td>
+                <td class="bg-group-occ">
+                    <div style="${isClosed ? 'font-size:0.7rem; color:#94a3b8;' : ''}">${formatNum(rn)}</div>
+                    <div style="${isClosed ? 'font-size:1rem; color:#c2410c; font-weight:700;' : 'font-size:0.7rem; color:#c2410c; font-weight:700;'}">${formatNum(rn26Real)}</div>
+                </td>
+                <td class="bg-group-occ border-sep ${varRn >= 0 ? 'text-success' : 'text-danger'}" style="font-size: 0.85rem;">${h.real2025.rn[i] > 0 ? (varRn > 0 ? '+' : '') + varRn.toFixed(1) + '%' : '-'}</td>
 
-                <td style="color:#94a3b8;">${(h.real2025.rn[i] / h.capacity[i] * 100).toFixed(1)}%</td>
-                <td class="${occClass}">${occ.toFixed(1)}%</td>
+                <td style="color:#94a3b8; font-size: 0.8rem;">${(h.real2025.rn[i] / h.capacity[i] * 100).toFixed(1)}%</td>
+                <td class="${occClass}" style="font-weight: 600;">${((isClosed ? rn26Real : rn) / h.capacity[i] * 100).toFixed(1)}%</td>
             </tr>`;
             }
 
-            // Totals Footer
-            const t_adr25 = t_rev25 / t_rn25;
-            const t_adr26 = t_rev26 / t_rn26;
-            const t_occ25 = t_rn25 / t_cap * 100;
-            const t_occ26 = t_rn26 / t_cap * 100;
-            const tv_rev = ((t_rev26 - t_rev25) / t_rev25) * 100;
+            // Totals
+            const t_adr25 = t_rn25 > 0 ? t_rev25 / t_rn25 : 0;
+            const t_adr26 = t_rn26 > 0 ? t_rev26 / t_rn26 : 0;
+            const t_adr26Real = t_rn26Real > 0 ? t_rev26Real / t_rn26Real : 0;
+            const t_occ25 = t_cap > 0 ? t_rn25 / t_cap * 100 : 0;
+
+            // For total occ, we blend Real (past) + Budget (future)
+            const blendedRN = t_rn26Real; // Or logic to sum correctly
+            const t_occ26 = t_cap > 0 ? t_rn26 / t_cap * 100 : 0;
+
+            const tv_rev = t_rev25 > 0 ? ((t_rev26 - t_rev25) / t_rev25 * 100) : 0;
+
+            const prevYear = String(parseInt(currentYear) - 1);
 
             tfoot.innerHTML = `<tr>
             <td>TOTAL</td>
             <td>${formatNum(t_cap)}</td>
             <td>${formatMoney(t_rev25)}</td>
-            <td>${formatMoney(t_rev26)}</td>
+            <td>
+                <div style="font-weight:700;">${formatMoney(t_rev26)}</div>
+                <div style="font-size:0.75rem; color:var(--primary);">${formatMoney(t_rev26Real)}</div>
+            </td>
             <td>${(tv_rev > 0 ? '+' : '') + tv_rev.toFixed(1)}%</td>
             
             <td>${t_adr25.toFixed(2)}€</td>
-            <td>${t_adr26.toFixed(2)}€</td>
+            <td>
+                <div style="font-weight:700;">${t_adr26.toFixed(2)}€</div>
+                <div style="font-size:0.75rem; color:var(--primary);">${t_adr26Real.toFixed(2)}€</div>
+            </td>
             <td>-</td>
             
             <td>${formatNum(t_rn25)}</td>
-            <td>${formatNum(t_rn26)}</td>
+            <td>
+                <div style="font-weight:700;">${formatNum(t_rn26)}</div>
+                <div style="font-size:0.75rem; color:#c2410c;">${formatNum(t_rn26Real)}</div>
+            </td>
             <td>-</td>
             
             <td>${t_occ25.toFixed(1)}%</td>
@@ -1040,7 +1670,7 @@
                 const target = currentRev[i];
                 const sold = h.otbData[i];
                 const surplus = Math.max(0, sold - target);
-                const gap = target - sold;
+                const diff = sold - target;
                 const bonus = surplus * 0.04;
 
                 t_target += target;
@@ -1048,35 +1678,48 @@
                 t_surplus += surplus;
                 t_bonus += bonus;
 
-                // highlight checked months
                 const isMet = sold >= target;
                 const rowClass = isMet ? 'bonus-highlight-row' : '';
-                const statusIcon = isMet ? '✅' : '';
+                const statusIcon = isMet ? '<span class="bonus-month-check">✅</span>' : '';
 
                 tbody.innerHTML += `<tr class="${rowClass}">
-                <td class="text-left font-bold">${months[i]} ${statusIcon}</td>
-                <td style="color:var(--text-muted);">${formatMoney(target)}</td>
-                <td style="font-weight:bold;">${formatMoney(sold)}</td>
-                <td class="${gap <= 0 ? 'text-success' : 'text-danger'}">${gap <= 0 ? '+' : '-'}${formatMoney(Math.abs(gap))}</td>
-                <td>${surplus > 0 ? formatMoney(surplus) : '-'}</td>
-                <td style="${bonus > 0 ? 'color:var(--primary); font-weight:700;' : ''}">${bonus > 0 ? formatMoney(bonus) : '-'}</td>
+                <td class="text-left font-bold" style="color: #1e293b;">${months[i]} ${statusIcon}</td>
+                <td style="color: #64748b;">${formatMoney(target)}</td>
+                <td style="font-weight: 600; color: #0f172a;">${formatMoney(sold)}</td>
+                <td style="font-weight: 600;" class="${diff >= 0 ? 'text-success' : 'text-danger'}">
+                    ${diff > 0 ? '+' : (diff < 0 ? '' : '')}${formatMoney(diff).replace('0,00 €', '0 €')}
+                </td>
+                <td style="color: #475569;">${surplus > 0 ? formatMoney(surplus) : '-'}</td>
+                <td style="font-weight: 700; color: var(--primary-dark); background-color: ${isMet ? 'rgba(79, 70, 229, 0.03)' : 'transparent'};">
+                    ${bonus > 0 ? formatMoney(bonus) : '-'}
+                </td>
             </tr>`;
             }
 
+            const totalDiff = t_sold - t_target;
             document.getElementById("t2_target").innerText = formatMoney(t_target);
             document.getElementById("t2_sold").innerText = formatMoney(t_sold);
-            document.getElementById("t2_gap").innerText = formatMoney(t_target - t_sold);
+            document.getElementById("t2_gap").innerText = (totalDiff > 0 ? '+' : '') + formatMoney(totalDiff);
             document.getElementById("t2_surplus").innerText = formatMoney(t_surplus);
             document.getElementById("t2_bonus").innerText = formatMoney(t_bonus);
         }
 
         const formatMoney = (n) => {
-            if (n === 0 || n === null || n === undefined) return "0 €";
-            return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".") + " €";
+            if (n === 0 || n === null || n === undefined) return "0,00 €";
+            return Number(n).toLocaleString('es-ES', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }) + " €";
         };
         const formatNum = (n) => {
             if (n === 0 || n === null || n === undefined) return "0";
-            return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+            return Number(n).toLocaleString('es-ES', {
+                maximumFractionDigits: 2
+            });
+        };
+        const formatInt = (n) => {
+            if (n === 0 || n === null || n === undefined) return "0";
+            return Math.round(n).toLocaleString('es-ES');
         };
         auth.onAuthStateChanged(user => {
             if (user) {

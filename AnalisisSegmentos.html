@@ -617,7 +617,12 @@
         function refreshAvailableYears() {
             const y = (db[currentHotel] && typeof db[currentHotel] === 'object') ? Object.keys(db[currentHotel]) : [];
             if (y.length) {
-                currentYear = y.sort().reverse()[0];
+                const systemYear = new Date().getFullYear().toString();
+                if (y.includes(systemYear)) {
+                    currentYear = systemYear;
+                } else {
+                    currentYear = y.sort().reverse()[0];
+                }
             } else {
                 currentYear = "";
             }
@@ -852,6 +857,7 @@
             const mTotals = new Array(12).fill(0);
             const mRooms = new Array(12).fill(0);
             concepts.forEach(c => {
+                if (normalizeStr(c.name) === "TOTAL" || normalizeStr(c.name) === "TOTAL_MASTER") return;
                 for (let i = 0; i < 12; i++) {
                     mTotals[i] += c.revenue[i];
                     mRooms[i] += c.rooms[i];
@@ -862,6 +868,7 @@
             const mRoomsPrev = new Array(12).fill(0);
             if (dataPrev) {
                 Object.values(dataPrev.segment).forEach(c => {
+                    if (normalizeStr(c.name) === "TOTAL" || normalizeStr(c.name) === "TOTAL_MASTER") return;
                     for (let i = 0; i < 12; i++) {
                         mTotalsPrev[i] += c.revenue[i];
                         mRoomsPrev[i] += c.rooms[i];

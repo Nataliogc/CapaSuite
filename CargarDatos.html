@@ -1339,27 +1339,31 @@
 
 
             const PRODUCTION_GROUPS = {
-                "HABITACION": ["HABITACION", "ALOJAMIENTO", "ESTANCIA", "DUI", "DOBLE", "SUPERIOR", "SUITE", "CUADRUPLE", "TRIPLE", "FAMILIAR", "LATE CHECK OUT", "AMPLIACION", "CAMA SUPLETORIA", "REGARGO GDS"],
-                "DESAYUNOS": ["DESAYUNO BUFFET", "DESAYUNO GRUPO", "DESAYUNO", "BUFFET"],
-                "RESTAURANTE": ["RESTAURANTE", "CENA", "ALMUERZO", "CENA GRUPO", "ALMUERZO GRUPO", "CATERING", "RESTAURANTE CATERING"],
-                "OFICINAS": ["ALQUILER RETENCIONES", "OFICINA", "RETENCIONES", "FIANZA", "DOMICILIACION EMPRESAS", "LIMPIEZA"],
-                "EVENTOS": ["COFFEE BREAK", "SALONES/ALQUILER", "AUDIOVISUALES", "SALON", "ALQUILER", "EVENTO"],
-                "CAFETERIA": ["CAFETERIA", "BAR"],
-                "MINIBAR": ["MINIBAR"],
-                "SPA": ["SPA", "BALNEARIO", "MASAJE", "TRATAMIENTO"],
-                "VARIOS": ["LAVANDERIA", "ARTESANIA", "FAX", "TELÉFONO", "VARIOS", "SUPLEMENTO", "MASCOTA", "CUNA", "UPGRADE", "MENSAJERIA", "GARAJE", "PARKING", "ALQUILER PLAZAS GARAJE"]
+                "HABITACION": { name: "1. Habitación", keys: ["HABITACIÓN", "HABITACION", "ALOJAMIENTO", "ESTANCIA", "DUI", "DOBLE", "SUPERIOR", "SUITE", "CUADRUPLE", "TRIPLE", "FAMILIAR", "LATE CHECK OUT", "AMPLIACION", "CAMA SUPLETORIA", "REGARGO GDS", "HABITACIÓ"] },
+                "DESAYUNOS": { name: "2. Desayunos", keys: ["DESAYUNO BUFFET", "DESAYUNO GRUPO", "DESAYUNO", "BUFFET"] },
+                "RESTAURANTE": { name: "3. Restaurante", keys: ["RESTAURANTE", "CENA", "ALMUERZO", "CENA GRUPO", "ALMUERZO GRUPO", "CATERING", "RESTAURANTE CATERING"] },
+                "OFICINAS": { name: "9. Alquileres", keys: ["ALQUILER RETENCIONES", "OFICINA", "RETENCIONES", "FIANZA", "DOMICILIACION EMPRESAS", "LIMPIEZA"] },
+                "EVENTOS": { name: "4. Eventos", keys: ["COFFEE BREAK", "SALONES/ALQUILER", "AUDIOVISUALES", "SALON", "ALQUILER", "EVENTO"] },
+                "CAFETERIA": { name: "5. Cafetería", keys: ["CAFETERÍA", "CAFETERIA", "BAR"] },
+                "MINIBAR": { name: "6. Minibar", keys: ["MINIBAR"] },
+                "SPA": { name: "7. Spa", keys: ["SPA", "BALNEARIO", "MASAJE", "TRATAMIENTO"] },
+                "VARIOS": { name: "10. Varios", keys: ["LAVANDERÍA", "ARTESANÍA", "FAX", "TELÉFONO", "VARIOS", "LAVANDERIA", "ARTESANIA", "TELEFONO", "SUPLEMENTO", "MASCOTA", "CUNA", "UPGRADE", "MENSAJERIA", "GARAJE", "PARKING", "ALQUILER PLAZAS GARAJE"] }
             };
 
             const getGroupID = (n) => {
                 const norm = normalizeStr(n);
-                // Solo omitir si es exactamente la cabecera maestra o contiene TOTAL PRODUCCION
-                if (norm === "HAB" || norm === "PAX" || norm === "PRO" || norm === "MXH" ||
-                    norm === "PRODUCCION TOTAL" || norm === "TOTAL PRODUCCION") return null;
+                // Omisiones de totales maestros
+                if (norm === "PRODUCCION TOTAL" || norm === "TOTAL PRODUCCION" || norm === "TOTAL MASTER" || norm === "TOTAL") return "OMIT";
+
+                // Si la fila es una métrica pura (HAB, PAX, PRO), la marcamos para el procesador
+                if (norm === "HAB" || norm === "RMS" || norm === "RN" || norm === "RMS" || norm === "RN") return "METRIC_RMS";
+                if (norm === "PAX" || norm === "PERS" || norm === "PERSONAS") return "METRIC_PAX";
+                if (norm === "PRO" || norm === "REV" || norm === "PROD" || norm === "VTA") return "METRIC_REV";
 
                 const eventKeywords = ["COFFEE", "SALA", "SALON", "EVENTO", "ALQUILER", "AUDIOVISUAL", "OFICINA"];
-                for (const [id, keys] of Object.entries(PRODUCTION_GROUPS)) {
+                for (const [id, g] of Object.entries(PRODUCTION_GROUPS)) {
                     if (id === "RESTAURANTE" && eventKeywords.some(k => norm.includes(k))) continue;
-                    if (keys.some(k => norm.includes(k))) return id;
+                    if (g.keys.some(k => norm.includes(normalizeStr(k)))) return id;
                 }
                 return "VARIOS";
             };
@@ -1424,7 +1428,7 @@
                     const first = normalizeStr(row[0]);
 
                     // Advanced detection of master rows (Hab, Pax, Production)
-                    if (rowHab === null && (first === "HAB" || first === "RMS" || first === "RN" || first === "ESTANCIAS" || first.includes("HAB.") || first === "HABITACIONES")) {
+                    if (rowHab === null && (first === "HAB" || first === "RMS" || first === "RN" || first === "ESTANCIAS" || first.includes("HAB.") || first === "HABITACIONES" || first === "OCUPACION" || first === "OCC" || first === "ROOMS" || first === "UNIDADES" || first.includes("ESTANCIA") || first.includes("NOCHES"))) {
                         rowHab = row; masterIndices.add(r);
                     }
                     if (rowPax === null && (first === "PAX" || first === "PERSONAS" || first === "PAX." || first === "PER." || first === "ADULTOS" || first === "NIÑOS")) {
@@ -1476,7 +1480,8 @@
 
                 if (!rowHab) {
                     for (let r = 0; r < Math.min(data.length, 10); r++) {
-                        if (normalizeStr(data[r] ? data[r][0] : "").startsWith("HAB")) { rowHab = data[r]; break; }
+                        const n = normalizeStr(data[r] ? data[r][0] : "");
+                        if (n.startsWith("HAB") || n.startsWith("OCUP") || n === "RN" || n === "RMS" || n.includes("ESTANCIA")) { rowHab = data[r]; break; }
                     }
                 }
                 if (!rowPro) {
@@ -1601,6 +1606,7 @@
                         // CRITICAL FIX: Stop processing if we hit a "Budget" or "Last Year" section
                         // These reports often stack tables: Real matches first, then Budget, then Last Year.
                         // We must STOP to avoid summing Budget into Real.
+                        let currentGroupLabel = "VARIOS";
                         let stopProcessing = false;
 
                         for (let r = 0; r < data.length; r++) {
@@ -1608,9 +1614,11 @@
                             if (masterIndices.has(r)) continue;
 
                             const rowItem = data[r];
-                            if (!rowItem || !rowItem[0]) continue;
+                            if (!rowItem) continue;
 
-                            const concept = String(rowItem[0]).trim().toUpperCase();
+                            const rawA = String(rowItem[0] || "").trim();
+                            const concept = rawA.toUpperCase();
+                            const colB = normalizeStr(rowItem[1]);
 
                             // DETECT SECTION BREAKERS
                             if (concept.includes("PRESUPUESTO") || concept.includes("BUDGET") ||
@@ -1621,9 +1629,23 @@
                                 break;
                             }
 
-                            const gid = getGroupID(concept);
-                            if (gid && gid !== "OMIT") {
-                                applyVal(concept, parseVal(rowItem[c]), mIdx, 'rev');
+                            const gid = getGroupID(rawA);
+
+                            // Si detectamos un nuevo grupo por nombre (ej: "1. Habitación")
+                            if (gid && !gid.startsWith("METRIC_") && gid !== "OMIT") {
+                                currentGroupLabel = rawA;
+                            }
+
+                            // Detectar métrica (isHab, isPro, isPax)
+                            // Puede venir en Col B o ser detectado por el nombre en Col A
+                            const isHab = colB === "HAB" || colB === "RMS" || colB === "RN" || gid === "METRIC_RMS";
+                            const isPax = colB === "PAX" || colB === "PERS" || gid === "METRIC_PAX";
+                            // Por defecto, si no es Hab/Pax y tenemos un gid válido (o estamos en un grupo activo), es Revenue
+                            const isPro = colB === "PRO" || colB === "REV" || colB === "VTA" || colB === "ING" || gid === "METRIC_REV" || (!isHab && !isPax && gid && gid !== "OMIT");
+
+                            if (currentGroupLabel && (isHab || isPro || isPax)) {
+                                const type = isHab ? 'rms' : (isPax ? 'pax' : 'rev');
+                                applyVal(currentGroupLabel, parseVal(rowItem[c]), mIdx, type);
                             }
                         }
                     }
@@ -1811,49 +1833,178 @@
                 let dailyCols = {}; // { colIndex: dateISO }
                 const SHORT_MONTHS_MAP = { "ENE": 0, "JAN": 0, "FEB": 1, "MAR": 2, "ABR": 3, "APR": 3, "MAY": 4, "JUN": 5, "JUL": 6, "AGO": 7, "AUG": 7, "SEP": 8, "OCT": 9, "NOV": 10, "DIC": 11, "DEC": 11 };
 
+                // EXTRACT YEARS FROM FILENAME (Robust Sort)
+                // e.g. "Listado... 2026 ... 2027" -> [2026, 2027]
+                const allYearsInFile = (fileName.match(/20\d{2}/g) || [new Date().getFullYear()]).map(Number).sort((a, b) => a - b);
+                const startYearFile = allYearsInFile[0];
+
+                // We need to find the specific header row first
+                let headerRowIndex = -1;
                 for (let r = 0; r < Math.min(data.length, 50); r++) {
                     const row = data[r] || [];
+                    // Heuristic: row with many dates
+                    let dateCount = 0;
                     for (let c = 0; c < row.length; c++) {
-                        const cellRaw = row[c];
-                        if (cellRaw === null || cellRaw === undefined) continue;
+                        const cell = row[c];
+                        if (cell instanceof Date) dateCount++;
+                        else if (String(cell).match(/(\d{1,2})[\/-](\d{1,2})/)) dateCount++;
+                    }
+                    if (dateCount > 5) { headerRowIndex = r; break; }
+                }
+                if (headerRowIndex === -1) headerRowIndex = 0; // Fallback
 
-                        if (cellRaw instanceof Date) {
-                            dailyCols[c] = cellRaw.toISOString().split('T')[0];
-                            continue;
-                        }
+                const headerRow = data[headerRowIndex] || [];
+                let currentYearTracker = startYearFile;
+                let lastMonthIndex = -1;
 
+                // Iterate columns to map Dates
+                for (let c = 0; c < headerRow.length; c++) {
+                    const cellRaw = headerRow[c];
+                    if (cellRaw === null || cellRaw === undefined) continue;
+
+                    let dObj = null;
+
+                    if (cellRaw instanceof Date) {
+                        dObj = cellRaw;
+                        // Just trust the Date object if it has a valid year? 
+                        // Excel parser usually gets the year right if the cell format is full date.
+                        // If cell format is "dd-mm" Excel might auto-assign current year? 
+                        // Let's verify year. If it's 1900 or 1899, fix it?
+                        // Usually xlsx library does a good job.
+                    } else {
                         const cellStr = String(cellRaw).trim();
-                        const cellNorm = normalizeStr(cellStr);
-
                         // Check for Day format (e.g. 25/01, 25-01, 25/01/2026)
                         const dayMatch = cellStr.match(/(\d{1,2})[\/-](\d{1,2})([\/-](\d{2,4}))?/);
                         if (dayMatch) {
-                            const d = dayMatch[1].padStart(2, '0');
-                            const m = dayMatch[2].padStart(2, '0');
+                            const d = parseInt(dayMatch[1]);
+                            const m = parseInt(dayMatch[2]) - 1; // 0-11
 
-                            // Default to current year if not detected
-                            if (!detectedYear) {
-                                detectedYear = new Date().getFullYear();
+                            let y = currentYearTracker;
+
+                            if (dayMatch[4]) {
+                                // Explicit year in string
+                                const yStr = dayMatch[4];
+                                y = (yStr.length === 2) ? parseInt("20" + yStr) : parseInt(yStr);
+                            } else {
+                                // Infer Year based on rollover
+                                // If we jumped from Dec (11) to Jan (0), increment year
+                                if (lastMonthIndex === 11 && m === 0) {
+                                    currentYearTracker++;
+                                    y = currentYearTracker;
+                                }
+                                // Initial sanity check: if first col is Jan, and filename says 2026, we good.
+                                // If first col is Dec, and filename says 2026, we good.
                             }
 
-                            let y = dayMatch[4] || detectedYear;
-                            if (y && String(y).length === 2) y = "20" + y;
-
-                            dailyCols[c] = `${y}-${m}-${d}`;
-                            continue;
-                        }
-
-                        for (const [mName, mIdx] of Object.entries(SHORT_MONTHS_MAP)) {
-                            if (cellNorm.startsWith(mName)) {
-                                monthCols[mIdx] = c;
+                            dObj = new Date(y, m, d);
+                            lastMonthIndex = m;
+                        } else {
+                            // Check Monthly Headers
+                            const cellNorm = normalizeStr(cellStr);
+                            for (const [mName, mIdx] of Object.entries(SHORT_MONTHS_MAP)) {
+                                if (cellNorm.startsWith(mName)) {
+                                    monthCols[mIdx] = c;
+                                }
                             }
                         }
                     }
-                    if (Object.keys(dailyCols).length >= 5 || Object.keys(monthCols).length >= 2) break;
+
+                    if (dObj && !isNaN(dObj.getTime())) {
+                        const m = dObj.getMonth();
+                        // Double check rollover for Date objects too (just in case)
+                        if (lastMonthIndex === 11 && m === 0) {
+                            // If dObj year is same as last, force increment? 
+                            // Rare case for Date objects, usually they are absolute.
+                        }
+                        const y = dObj.getFullYear();
+                        // Correction: If dObj.year is 1899/1900 (Time only?), fix it.
+                        // Not common in OTB headers.
+
+                        // Correct the tracker if explicit year found
+                        if (y > currentYearTracker) currentYearTracker = y;
+                        lastMonthIndex = m;
+
+                        const iso = `${y}-${String(m + 1).padStart(2, '0')}-${String(dObj.getDate()).padStart(2, '0')}`;
+                        dailyCols[c] = iso;
+                    }
                 }
 
                 if (!dbYear.daily_otb) dbYear.daily_otb = {};
                 const hasDaily = Object.keys(dailyCols).length > 0;
+
+                // PRE-CLEAR YEARS: Now we know exactly which years are involved based on dailyCols
+                const yearsToClear = new Set();
+
+                // 1. From Daily Cols
+                Object.values(dailyCols).forEach(iso => yearsToClear.add(iso.split('-')[0]));
+
+                // 2. From Filename matches (in case header parsing failed but we want to be safe)
+                allYearsInFile.forEach(y => yearsToClear.add(String(y)));
+
+                // 3. Current Report Year
+                yearsToClear.add(String(reportYear));
+
+                // EXECUTE CLEAR
+                yearsToClear.forEach(yStr => {
+                    const y = String(yStr);
+                    if (db[hotel][y] && db[hotel][y].otb) {
+                        const targetOt = db[hotel][y].otb;
+
+                        // --- SNAPSHOT FOR PICK-UP ---
+                        // Before wiping, save the current state as "Previous" if it has data
+                        const hasData = targetOt.revenue.some(v => v > 0) || targetOt.rooms.some(v => v > 0);
+
+                        if (hasData) {
+                            // Logic: When do we update the snapshot?
+                            // 1. If no snapshot exists.
+                            // 2. If the snapshot is from a DIFFERENT day?
+                            // Actually, simpler: Always shift current -> prev. 
+                            // BUT if user uploads file twice in 5 mins (correction), prev becomes the file from 5 mins ago (pickup = 0).
+                            // User wants "De un día a otro".
+                            // Let's assume one valid upload per day. If they re-upload, they probably want to fix the current day, 
+                            // so we should KEEP the snapshot from "Yesterday".
+
+                            // Get date of current data (stored in updates.otb or lastUpdate?)
+                            const currentUpdateDate = db[hotel][y].updates ? db[hotel][y].updates.otb : "";
+                            const todayDate = new Date().toLocaleDateString('es-ES'); // Simple "D/M/YYYY"
+
+                            // If the data we are about to wipe is NOT from today (meaning it's yesterday's or older), 
+                            // then it qualifies as a valid "Previous" state.
+                            // If the data IS from today, it means we already uploaded once today, so the 'otb_prev' 
+                            // currently stored is likely from yesterday (or older). We should NOT overwrite it with today's buggy upload.
+
+                            // However, 'manualDate' or 'period' variable gives the date of the NEW file being uploaded.
+                            // We don't know that yet inside this loop easily without parsing. 
+                            // But we know 'db[hotel][y].otb' is what sits in DB NOW.
+
+                            let isDataFromToday = false;
+                            if (currentUpdateDate && currentUpdateDate.includes(todayDate)) isDataFromToday = true;
+                            // Heuristic: If period string contains today's DD/MM/YYYY
+
+                            if (!db[hotel][y].otb_prev || !isDataFromToday) {
+                                // Save Snapshot
+                                db[hotel][y].otb_prev = JSON.parse(JSON.stringify(targetOt));
+                                db[hotel][y].otb_prev.snapshotDate = currentUpdateDate || new Date().toLocaleString();
+                                console.log(`📸 OTB Snapshot taken for ${y} (Date: ${currentUpdateDate})`);
+                            } else {
+                                console.log(`🛡️ Preserving existing OTB Snapshot for ${y} (Current data is already from today)`);
+                            }
+                        }
+                        // -----------------------------
+
+                        if (targetOt.revenue) targetOt.revenue.fill(0);
+                        if (targetOt.rooms) targetOt.rooms.fill(0);
+                        if (targetOt.breakdown) Object.values(targetOt.breakdown).forEach(arr => arr.fill(0));
+
+                        // Clear daily otb for this year
+                        if (db[hotel][y].daily_otb) {
+                            // It's safer to clear everything or filter? 
+                            // Let's clear ALL daily otb for the year to avoid ghosts.
+                            db[hotel][y].daily_otb = {};
+                        }
+                        console.log(`🧹 Full OTB Clear for Year: ${y}`);
+                    }
+                });
 
                 // RESET LOGIC FOR OTB: Identify all months present in this file
                 // and clear them ONCE to ensure "Latest Prevails"
@@ -2016,77 +2167,139 @@
                             // If it has a category, initialize its array in breakdown if needed
                             if (!dbYear.otb.breakdown[category]) dbYear.otb.breakdown[category] = new Array(12).fill(0);
                             targetArray = dbYear.otb.breakdown[category];
+
+                            // If this is room revenue, ALSO store in the main revenue array
+                            if (category === 'habitacion') {
+                                // Sync room revenue to the main otb.revenue for compatibility
+                                // However, we must be careful not to let 'total' rows overwrite this later
+                                targetArray = dbYear.otb.revenue;
+                            }
+                        } else if (firstCellNorm.includes("TOTAL") || firstCellNorm.includes("PRODUCTO") || firstCellNorm.includes("PRODUCCIO")) {
+                            // This is likely a total row. We store it in breakdown but NOT in main revenue 
+                            // to avoid double counting or overwriting specific room revenue.
+                            if (!dbYear.otb.breakdown["TOTAL_FILE"]) dbYear.otb.breakdown["TOTAL_FILE"] = new Array(12).fill(0);
+                            targetArray = dbYear.otb.breakdown["TOTAL_FILE"];
                         } else {
-                            targetArray = dbYear.otb.revenue; // Fallback to generic total
+                            targetArray = dbYear.otb.revenue; // Fallback for other generic revenue
                         }
 
                         console.log(`📊 Processing OTB row ${r} [${rowType}/${category || 'generic'}]:`, firstCell, 'avg:', avgSample.toFixed(2));
 
                         if (hasDaily) {
+                            const uniqueYearsTouched = new Set();
+                            if (detectedYear) uniqueYearsTouched.add(String(detectedYear));
+
                             for (const [col, iso] of Object.entries(dailyCols)) {
                                 const val = parseVal(row[col]);
+                                if (val === 0) continue;
 
-                                // Initialize as object if missing or if it was a legacy number
-                                // Initialize as object if missing (OTB ALWAYS uses objects for rooms/rev)
-                                if (!dbYear.daily_otb[iso] || typeof dbYear.daily_otb[iso] !== 'object') {
-                                    dbYear.daily_otb[iso] = { rooms: 0, revenue: 0 };
+                                const [yStr, mStr, dStr] = iso.split('-');
+                                const year = yStr;
+                                uniqueYearsTouched.add(year);
+                                const mIdx = parseInt(mStr) - 1;
+
+                                // Ensure DB structure for this Year
+                                if (!db[hotel][year]) {
+                                    db[hotel][year] = {
+                                        service: {},
+                                        segment: {},
+                                        otb: { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0), breakdown: {} },
+                                        daily_otb: {},
+                                        lastUpdate: new Date().toLocaleDateString('es-ES')
+                                    };
+                                }
+                                const targetDbYear = db[hotel][year];
+                                if (!targetDbYear.otb) targetDbYear.otb = { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0), breakdown: {} };
+                                if (!targetDbYear.daily_otb) targetDbYear.daily_otb = {};
+
+                                // Initialize as object if missing
+                                if (!targetDbYear.daily_otb[iso] || typeof targetDbYear.daily_otb[iso] !== 'object') {
+                                    targetDbYear.daily_otb[iso] = { rooms: 0, revenue: 0 };
                                 }
 
-                                if (rowType === 'rms') dbYear.daily_otb[iso].rooms = val;
-                                // Only capture Revenue from the TOTAL PROD row (or generic revenue), not breakdown
+                                if (rowType === 'rms') targetDbYear.daily_otb[iso].rooms = val;
+                                // Only capture Revenue from the TOTAL PROD or HABITACION row for daily log
                                 if (rowType === 'rev' && (!category || category === 'habitacion')) {
-                                    // If we confirm this is TOTAL revenue or ROOM revenue, add it.
-                                    // For simplicity, let's assume if it is NOT a specific F&B category, it's relevant for ADR.
-                                    // User's Excel has "Prod" (Total) and "Habitación" (Room Rev). 
-                                    // Ideally we want Total Prod for RevPAC, but usually ADR is Room Rev / Rooms.
-                                    // Let's stick to using the row found as 'rev'. If multiple rev rows exist, this might accumulate, which is risky.
-                                    // The user's screenshot has 'Prod' and 'Habitación'.
-                                    // Let's rely on 'rowType === rev' and overwrite if it's a "better" source, or just accumulate?
-                                    // Accumulation is dangerous if we have both Total and Room Rev.
-                                    // Let's only take it if it matches "PRODUCCION" or "TOTAL" or "HABITACION".
-                                    // Flexible detection for OTB Revenue
                                     if (firstCellNorm.includes("HABITACION") || firstCellNorm === "PRO" || firstCellNorm === "PROD" || firstCellNorm === "PRODUCCION" ||
                                         firstCellNorm.includes("TOTAL") || firstCellNorm.includes("INGRESO")) {
-                                        dbYear.daily_otb[iso].revenue = val;
+                                        targetDbYear.daily_otb[iso].revenue = val;
                                     }
                                 }
 
-                                const mIdx = parseInt(iso.split('-')[1]) - 1;
-                                if (mIdx >= 0 && mIdx < 12) targetArray[mIdx] += val;
+                                // RESOLVE TARGET ARRAY FOR THIS YEAR dynamically
+                                let targetArr;
+                                if (rowType === 'rms') {
+                                    targetArr = targetDbYear.otb.rooms;
+                                } else if (category) {
+                                    if (!targetDbYear.otb.breakdown) targetDbYear.otb.breakdown = {};
+                                    if (!targetDbYear.otb.breakdown[category]) targetDbYear.otb.breakdown[category] = new Array(12).fill(0);
+                                    targetArr = targetDbYear.otb.breakdown[category];
+                                } else {
+                                    targetArr = targetDbYear.otb.revenue;
+                                }
+
+                                if (mIdx >= 0 && mIdx < 12) targetArr[mIdx] += val;
                             }
+
+                            // Track all years we modified to re-calc totals later
+                            if (!window.otbTouchedYears) window.otbTouchedYears = new Set();
+                            uniqueYearsTouched.forEach(y => window.otbTouchedYears.add(y));
+
                         } else if (Object.keys(monthCols).length > 0) {
+                            // MONTHLY LOGIC (Usually single year, but let's be safe if cols > 12?)
                             for (let mIdx = 0; mIdx < 12; mIdx++) {
                                 const col = monthCols[mIdx];
                                 if (col !== undefined && row[col] !== undefined) {
-                                    targetArray[mIdx] = parseVal(row[col]);
+                                    // For now, monthly columns usually imply the base year. 
+                                    // Supporting multi-year in monthly columns would require specific headers like "Jan 26", "Jan 27" 
+                                    // which our detector map doesn't yet support fully (it maps ENE->0). 
+                                    // For this specific bug (Daily file), the block above handles it.
+                                    // We stick to 'targetArray' (base year) here.
+                                    if (targetArray) targetArray[mIdx] = parseVal(row[col]);
                                 }
                             }
+                            if (!window.otbTouchedYears) window.otbTouchedYears = new Set();
+                            window.otbTouchedYears.add(String(detectedYear));
+
                         } else {
+                            // No headers recognized
                             let startIndex = -1;
                             for (let c = 1; c < row.length; c++) {
                                 if (parseVal(row[c]) > 0) { startIndex = c; break; }
                             }
                             if (startIndex !== -1 && row.length >= startIndex + 12) {
                                 for (let mIdx = 0; mIdx < 12; mIdx++) {
-                                    targetArray[mIdx] = parseVal(row[startIndex + mIdx]);
+                                    if (targetArray) targetArray[mIdx] = parseVal(row[startIndex + mIdx]);
                                 }
                             } else if (startIndex !== -1) {
                                 const m = dateInfo ? dateInfo.month : 0;
-                                targetArray[m] = parseVal(row[startIndex]);
+                                if (targetArray) targetArray[m] = parseVal(row[startIndex]);
                             }
+                            if (!window.otbTouchedYears) window.otbTouchedYears = new Set();
+                            window.otbTouchedYears.add(String(detectedYear));
                         }
                     }
                 }
 
-                // Re-calculate TOTAL Revenue from breakdown components to ensure consistency
-                if (dbYear.otb.breakdown && Object.keys(dbYear.otb.breakdown).length > 0) {
-                    dbYear.otb.revenue.fill(0);
-                    Object.values(dbYear.otb.breakdown).forEach(arr => {
-                        arr.forEach((val, idx) => {
-                            dbYear.otb.revenue[idx] += val;
-                        });
+                // Re-calculate TOTAL Revenue from breakdown components for ALL touched years
+                if (window.otbTouchedYears) {
+                    window.otbTouchedYears.forEach(year => {
+                        if (db[hotel][year] && db[hotel][year].otb) {
+                            const yOtb = db[hotel][year].otb;
+                            if (yOtb.breakdown && Object.keys(yOtb.breakdown).length > 0) {
+                                yOtb.revenue.fill(0);
+                                Object.values(yOtb.breakdown).forEach(arr => {
+                                    arr.forEach((val, idx) => {
+                                        yOtb.revenue[idx] += val;
+                                    });
+                                });
+                                console.log(`🔄 Recalculated Totals for Year ${year}`);
+                            }
+                        }
                     });
+                    delete window.otbTouchedYears; // Cleanup
                 }
+
 
                 // SAVE FIRST, THEN FEEDBACK
                 saveData();

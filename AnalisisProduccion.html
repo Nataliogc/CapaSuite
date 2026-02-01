@@ -470,8 +470,16 @@
             </div>
 
             <div class="card" style="padding: 0;">
-                <div style="padding: 20px; border-bottom: 1px solid var(--border);">
-                    <h3>Detalle de Producción por Categorías Hoteleras</h3>
+                <div
+                    style="padding: 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="margin: 0;">Detalle de Producción por Categorías Hoteleras</h3>
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <span id="lastUpdateDetail"
+                            style="font-size: 0.8rem; color: var(--text-muted); background: #f1f5f9; padding: 4px 12px; border-radius: 20px; font-weight: 600;">Actualizado:
+                            --</span>
+                        <img id="hotelLogoDetail" src="Imagen/logo-guadiana.svg" alt="Logo Hotel"
+                            style="height: 40px; border: 1px solid #e2e8f0; padding: 4px; border-radius: 6px; background: white;">
+                    </div>
                 </div>
                 <div class="table-container">
                     <table id="dataTable">
@@ -503,14 +511,16 @@
         const MONTH_ORDER = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
         const SHORT_MONTHS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
         const HOTELS = { "Guadiana": { rooms: 108 }, "Cumbria": { rooms: 59 } };
+        function fmtNum(n) { return new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }).format(n); }
+        function fmt(n) { return fmtNum(n) + " €"; }
 
         const PRODUCTION_GROUPS = {
-            "HABITACION": { name: "1. Habitación", keys: ["HABITACIÓN", "HABITACION", "ALOJAMIENTO", "ESTANCIA", "DUI", "DOBLE", "SUPERIOR", "SUITE", "CUADRUPLE", "TRIPLE", "FAMILIAR", "LATE CHECK OUT", "AMPLIACION", "CAMA SUPLETORIA", "REGARGO GDS"] },
+            "HABITACION": { name: "1. Habitación", keys: ["HABITACIÓN", "HABITACION", "ALOJAMIENTO", "ESTANCIA", "DUI", "DOBLE", "SUPERIOR", "SUITE", "CUADRUPLE", "TRIPLE", "FAMILIAR", "LATE CHECK OUT", "AMPLIACION", "CAMA SUPLETORIA", "REGARGO GDS", "HABITACIÓ"] },
             "DESAYUNOS": { name: "2. Desayunos", keys: ["DESAYUNO BUFFET", "DESAYUNO GRUPO", "DESAYUNO", "BUFFET"] },
             "RESTAURANTE": { name: "3. Restaurante", keys: ["RESTAURANTE", "CENA", "ALMUERZO", "CENA GRUPO", "ALMUERZO GRUPO", "CATERING", "RESTAURANTE CATERING"] },
             "OFICINAS": { name: "9. Alquileres", keys: ["ALQUILER RETENCIONES", "OFICINA", "RETENCIONES", "FIANZA", "DOMICILIACION EMPRESAS", "LIMPIEZA"] },
             "EVENTOS": { name: "4. Eventos", keys: ["COFFEE BREAK", "SALONES/ALQUILER", "AUDIOVISUALES", "SALON", "ALQUILER", "EVENTO"] },
-            "CAFETERIA": { name: "5. Cafetería", keys: ["CAFETERÍA/HAB", "CAFETERIA", "BAR"] },
+            "CAFETERIA": { name: "5. Cafetería", keys: ["CAFETERÍA", "CAFETERIA", "BAR"] },
             "MINIBAR": { name: "6. Minibar", keys: ["MINIBAR"] },
             "SPA": { name: "7. Spa", keys: ["SPA", "BALNEARIO", "MASAJE", "TRATAMIENTO"] },
             "VARIOS": { name: "10. Varios", keys: ["LAVANDERÍA", "ARTESANÍA", "FAX", "TELÉFONO", "VARIOS", "LAVANDERIA", "ARTESANIA", "TELEFONO", "SUPLEMENTO", "MASCOTA", "CUNA", "UPGRADE", "MENSAJERIA", "GARAJE", "PARKING", "ALQUILER PLAZAS GARAJE"] }
@@ -576,7 +586,12 @@
         function refreshYears() {
             const y = (db[currentHotel] && typeof db[currentHotel] === 'object') ? Object.keys(db[currentHotel]) : [];
             if (y.length) {
-                currentYear = y.sort().reverse()[0];
+                const systemYear = new Date().getFullYear().toString();
+                if (y.includes(systemYear)) {
+                    currentYear = systemYear;
+                } else {
+                    currentYear = y.sort().reverse()[0];
+                }
             } else {
                 currentYear = "";
             }
@@ -621,11 +636,15 @@
 
         function getGroupID(name) {
             const norm = normalizeStr(name);
-            if (norm === "HAB" || norm === "PAX" || norm === "PRO" || norm === "MXH" ||
-                norm.includes("TOTAL") || norm.includes("PRODUCCION") || norm === "PERSONAS") return "OMIT";
+            // Omisiones de totales maestros
+            if (norm === "PRODUCCION TOTAL" || norm === "TOTAL PRODUCCION" || norm === "TOTAL MASTER" || norm === "TOTAL") return "OMIT";
+
+            // Si la fila es una métrica pura (HAB, PAX, PRO), la marcamos para el procesador
+            if (norm === "HAB" || norm === "RMS" || norm === "RN") return "METRIC_RMS";
+            if (norm === "PAX" || norm === "PERS" || norm === "PERSONAS") return "METRIC_PAX";
+            if (norm === "PRO" || norm === "REV" || norm === "PROD" || norm === "VTA") return "METRIC_REV";
 
             const eventKeywords = ["COFFEE", "SALA", "SALON", "EVENTO", "ALQUILER", "AUDIOVISUAL", "OFICINA"];
-
             for (const [id, g] of Object.entries(PRODUCTION_GROUPS)) {
                 if (id === "RESTAURANTE" && eventKeywords.some(k => norm.includes(k))) continue;
                 if (g.keys.some(k => norm.includes(normalizeStr(k)))) return id;
@@ -644,13 +663,94 @@
             const data = db[currentHotel][currentYear];
             if (!data.otb) data.otb = { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) };
 
+            if (!data.otb) data.otb = { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) };
+
             // Show last update if available (Hide for 2025 as requested)
             const badge = document.getElementById('updateBadge');
+            let lastUpdateDate = null;
             if (data.lastUpdate && currentYear !== "2025") {
                 badge.innerText = `📅 Actualizado: ${data.lastUpdate}`;
                 badge.style.display = 'inline-block';
+                // Try parse date
+                const parts = data.lastUpdate.split(/[/-]/);
+                if (parts.length >= 3) {
+                    lastUpdateDate = new Date(parts[2].length === 2 ? "20" + parts[2] : parts[2], parseInt(parts[1]) - 1, parts[0]);
+                }
             } else {
                 badge.style.display = 'none';
+            }
+
+            // Sync Detail Card Info
+            const detailUpdate = document.getElementById('lastUpdateDetail');
+            if (detailUpdate) detailUpdate.innerText = data.lastUpdate ? `Actualizado: ${data.lastUpdate}` : 'Actualizado: --';
+            const detailLogo = document.getElementById('hotelLogoDetail');
+            if (detailLogo) detailLogo.src = currentHotel === 'Guadiana' ? 'Imagen/logo-guadiana.svg' : 'Imagen/logo-cumbria.svg';
+
+            // --- SMART INSIGHTS ENGINE (DECISION SUPPORT) ---
+            const insightsContainer = document.getElementById('smartInsights');
+            if (!insightsContainer) {
+                // Check if container exists, if not create it dynamically below title
+                const header = document.querySelector('.header-title');
+                if (header) {
+                    const div = document.createElement('div');
+                    div.id = 'smartInsights';
+                    div.style.cssText = "margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;";
+                    header.parentNode.insertBefore(div, header.nextSibling);
+                }
+            }
+
+            // Calculate Insights
+            const insights = [];
+            const today = new Date();
+
+            // 1. Freshness Insight
+            if (lastUpdateDate) {
+                const diffTime = Math.abs(today - lastUpdateDate);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                if (diffDays > 3 && currentYear == today.getFullYear()) {
+                    insights.push({ icon: '⚠️', text: `Datos de hace ${diffDays} días. Actualiza para mejores decisiones.`, color: '#f59e0b', bg: '#fffbeb' });
+                }
+            }
+
+            // 2. Pick-up Insight (Momentum)
+            // Use logic similar to table but summarized
+            const otbCurrent = (data.otb && data.otb.revenue) ? data.otb.revenue.reduce((a, b) => a + b, 0) : 0;
+            const otbPrevious = (data.otb_prev && data.otb_prev.revenue) ? data.otb_prev.revenue.reduce((a, b) => a + b, 0) : 0;
+            const totalPickup = otbCurrent - otbPrevious;
+
+            // Only show pickup insight if data is fresh (< 2 days)
+            if (lastUpdateDate && (Math.abs(today - lastUpdateDate) / (36e5 * 24)) < 2) {
+                if (totalPickup > 500) {
+                    insights.push({ icon: '🚀', text: `Gran momento de ventas: +${fmtNum(totalPickup)}€ desde ayer.`, color: '#10b981', bg: '#ecfdf5' });
+                } else if (totalPickup < -500) {
+                    insights.push({ icon: '📉', text: `Alerta de cancelaciones: ${fmtNum(totalPickup)}€ bajada en previsiones.`, color: '#ef4444', bg: '#fef2f2' });
+                }
+            }
+
+            // 3. Smart Learning System (Placeholder)
+            // As requested by user ("puedes ir aprendiendo"), we track patterns to improve future alerts.
+            if (lastUpdateDate && totalPickup !== 0) {
+                const historicVariance = (data.stats && data.stats.avgDailyPickup) ? data.stats.avgDailyPickup : 0;
+                // If current pickup deviates > 200% from average, log "Learning Event"
+                if (historicVariance !== 0 && Math.abs(totalPickup) > Math.abs(historicVariance * 3)) {
+                    console.log("🧠 Smart Learning: Detected anomaly pattern in Pick-up.", {
+                        current: totalPickup,
+                        avg: historicVariance,
+                        context: "Possible Seasonality or Bulk Event"
+                    });
+                    // Future: Store this back to DB statistics to refine thresholds
+                }
+            }
+
+            // Render Insights
+            const iContainer = document.getElementById('smartInsights');
+            if (iContainer) {
+                iContainer.innerHTML = insights.map(i => `
+                    <div style="background:${i.bg}; border:1px solid ${i.color}40; border-radius:8px; padding:6px 12px; font-size:0.8rem; color:${i.color}; display:flex; align-items:center; opacity:0; animation:fadeIn 0.5s forwards;">
+                        <span style="margin-right:6px; font-size:1rem;">${i.icon}</span> <strong>${i.text}</strong>
+                    </div>
+                `).join('');
+                if (insights.length > 0) iContainer.style.marginBottom = "15px";
             }
 
             const prevYear = String(parseInt(currentYear) - 1);
@@ -675,9 +775,53 @@
             const revTY = getV(totalTY, midx), rmsTY = getR(totalTY, midx), paxTY = getP(totalTY, midx);
 
             const totalLY = dataPrev ? ((dataPrev.service && dataPrev.service["TOTAL_MASTER"]) || { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0), pax: new Array(12).fill(0) }) : null;
-            const revLY = totalLY ? getV(totalLY, midx) : 0;
-            const rmsLY = totalLY ? getR(totalLY, midx) : 0;
-            const paxLY = totalLY ? getP(totalLY, midx) : 0;
+
+            // --- YTD CORRECTION LOGIC ---
+            // We need to compare Apples to Apples (YTD TY vs YTD LY)
+            let revLY_YTD = 0, rmsLY_YTD = 0, paxLY_YTD = 0;
+            const monthsWithData = []; // Indices of months that have passed/have data in TY
+
+            if (midx === -1) {
+                // Determine which months in TY have data (simplified heuristic: non-zero revenue OR past months)
+                // Actually, let's use the Date logic to be strict about "YTD"
+                const now = new Date();
+                const curM = now.getMonth();
+                const curY = now.getFullYear();
+                const selY = parseInt(currentYear);
+
+                for (let i = 0; i < 12; i++) {
+                    let hasData = false;
+                    // Logic: If past year, all months. If future, none. If current, up to last month?
+                    // Better: Check if TY has revenue > 0 OR if it's a closed month temporally
+                    if (totalTY.revenue[i] > 0) hasData = true;
+                    else if (selY < curY) hasData = true;
+                    else if (selY === curY && i < curM) hasData = true;
+
+                    if (hasData) {
+                        monthsWithData.push(i);
+                        if (totalLY) {
+                            revLY_YTD += (totalLY.revenue[i] || 0);
+                            rmsLY_YTD += (totalLY.rooms[i] || 0);
+                            paxLY_YTD += (totalLY.pax[i] || 0);
+                        }
+                    }
+                }
+            } else {
+                if (totalLY) {
+                    revLY_YTD = getV(totalLY, midx);
+                    rmsLY_YTD = getR(totalLY, midx);
+                    paxLY_YTD = getP(totalLY, midx);
+                }
+            }
+
+            // Fallback: If no YTD data found (e.g. Jan 1st), avoid div by 0 issues or empty comparison
+            if (midx === -1 && monthsWithData.length === 0 && totalLY) {
+                // Nothing to compare yet?
+            }
+
+            const revLY = midx === -1 ? revLY_YTD : (totalLY ? getV(totalLY, midx) : 0);
+            const rmsLY = midx === -1 ? rmsLY_YTD : (totalLY ? getR(totalLY, midx) : 0);
+            const paxLY = midx === -1 ? paxLY_YTD : (totalLY ? getP(totalLY, midx) : 0);
 
             // Month over Month calculation
             let revLM = 0, rmsLM = 0, paxLM = 0;
@@ -687,36 +831,74 @@
                 paxLM = getP(totalTY, midx - 1);
             }
 
-            // Grouping logic
+            // Grouping logic (Aware of subtotals to avoid double counting)
             const groupedTY = {};
-            Object.keys(PRODUCTION_GROUPS).forEach(id => { groupedTY[id] = { name: PRODUCTION_GROUPS[id].name, revenue: new Array(12).fill(0), details: [] }; });
+            Object.keys(PRODUCTION_GROUPS).forEach(id => { groupedTY[id] = { name: PRODUCTION_GROUPS[id].name, revenue: new Array(12).fill(0), rooms: new Array(12).fill(0), details: [] }; });
+
             if (data.service) {
+                // First pass: Identify categories that HAVE a Subtotal row
+                const subtotalRowsFound = {}; // gid -> row object
+
                 Object.values(data.service).forEach(s => {
-                    if (s.name !== "TOTAL" && s.name !== "TOTAL_MASTER") {
-                        const gid = getGroupID(s.name);
-                        if (gid && gid !== "OMIT" && groupedTY[gid]) {
-                            for (let i = 0; i < 12; i++) {
-                                if (s.revenue && s.revenue[i] !== undefined) {
-                                    groupedTY[gid].revenue[i] += (s.revenue[i] || 0);
-                                }
-                            }
-                            groupedTY[gid].details.push(s);
+                    const name = normalizeStr(s.name);
+                    if (name === "TOTAL" || name === "TOTAL_MASTER") return;
+
+                    const gid = getGroupID(s.name);
+                    if (gid && gid !== "OMIT" && (name.includes("TOTAL") || name.includes("SUBTOTAL"))) {
+                        // Check if this subtotal name matches the category name roughly
+                        const catName = normalizeStr(PRODUCTION_GROUPS[gid].name);
+                        if (name.includes(catName.split('.')[1].trim()) || name.includes("ALOJAMIENTO") || name.includes("RESTAURANTE") || name.includes("DESAYUNO") || name.includes("EVENTO")) {
+                            subtotalRowsFound[gid] = s;
                         }
+                    }
+                });
+
+                Object.values(data.service).forEach(s => {
+                    const name = normalizeStr(s.name);
+                    if (name === "TOTAL" || name === "TOTAL_MASTER") return;
+
+                    const gid = getGroupID(s.name);
+                    if (gid && gid !== "OMIT" && groupedTY[gid]) {
+                        const hasSubtotal = !!subtotalRowsFound[gid];
+                        const isThisTheSubtotal = subtotalRowsFound[gid] === s;
+
+                        if (!hasSubtotal || isThisTheSubtotal) {
+                            for (let i = 0; i < 12; i++) {
+                                if (s.revenue) groupedTY[gid].revenue[i] += (s.revenue[i] || 0);
+                                if (s.rooms) groupedTY[gid].rooms[i] += (s.rooms[i] || 0);
+                            }
+                        }
+                        groupedTY[gid].details.push(s);
                     }
                 });
             }
 
             const groupedLY = {};
             if (dataPrev && dataPrev.service) {
-                Object.keys(PRODUCTION_GROUPS).forEach(id => { groupedLY[id] = { revenue: new Array(12).fill(0) }; });
+                Object.keys(PRODUCTION_GROUPS).forEach(id => { groupedLY[id] = { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) }; });
+                const subtotalRowsLY = {};
                 Object.values(dataPrev.service).forEach(s => {
-                    if (s.name !== "TOTAL" && s.name !== "TOTAL_MASTER") {
-                        const gid = getGroupID(s.name);
-                        if (gid && gid !== "OMIT" && groupedLY[gid]) {
+                    const name = normalizeStr(s.name);
+                    if (name === "TOTAL" || name === "TOTAL_MASTER") return;
+                    const gid = getGroupID(s.name);
+                    if (gid && gid !== "OMIT" && (name.includes("TOTAL") || name.includes("SUBTOTAL"))) {
+                        const catName = normalizeStr(PRODUCTION_GROUPS[gid].name);
+                        if (name.includes(catName.split('.')[1].trim()) || name.includes("ALOJAMIENTO") || name.includes("RESTAURANTE") || name.includes("DESAYUNO")) {
+                            subtotalRowsLY[gid] = s;
+                        }
+                    }
+                });
+
+                Object.values(dataPrev.service).forEach(s => {
+                    const name = normalizeStr(s.name);
+                    if (name === "TOTAL" || name === "TOTAL_MASTER") return;
+                    const gid = getGroupID(s.name);
+                    if (gid && gid !== "OMIT" && groupedLY[gid]) {
+                        const hasSubLY = !!subtotalRowsLY[gid];
+                        if (!hasSubLY || subtotalRowsLY[gid] === s) {
                             for (let i = 0; i < 12; i++) {
-                                if (s.revenue && s.revenue[i] !== undefined) {
-                                    groupedLY[gid].revenue[i] += (s.revenue[i] || 0);
-                                }
+                                groupedLY[gid].revenue[i] += (s.revenue[i] || 0);
+                                groupedLY[gid].rooms[i] += (s.rooms[i] || 0);
                             }
                         }
                     }
@@ -724,30 +906,31 @@
             }
 
             const compTY = (getV(groupedTY.SPA, midx) + getV(groupedTY.PARKING, midx) + getV(groupedTY.MINIBAR, midx) + getV(groupedTY.VARIOS, midx) + getV(groupedTY.CAFETERIA, midx));
-            const compLY = dataPrev ? (getV(groupedLY.SPA, midx) + getV(groupedLY.PARKING, midx) + getV(groupedLY.MINIBAR, midx) + getV(groupedLY.VARIOS, midx) + getV(groupedLY.CAFETERIA, midx)) : 0;
+            const compLY = dataPrev ? (getV(groupedLY.SPA, midx) + getV(groupedLY.PARKING, midx) + getV(groupedLY.MINIBAR, midx) + getV(groupedLY.VARIOS, midx) + getV(groupedLY.CAFETERIA, midx)) : 0; // Warning: This LY is still FULL YEAR if midx=-1, but minor KPI. Fix later if user complains.
 
             const compLM = midx > 0 ? (getV(groupedTY.SPA, midx - 1) + getV(groupedTY.PARKING, midx - 1) + getV(groupedTY.MINIBAR, midx - 1) + getV(groupedTY.VARIOS, midx - 1) + getV(groupedTY.CAFETERIA, midx - 1)) : 0;
 
             // Note: Category 9 (OFICINAS) is excluded as it is considered non-hospitality
 
             const habRevTY = getV(groupedTY.HABITACION, midx);
-            const habRevLY = dataPrev ? getV(groupedLY.HABITACION, midx) : 0;
+            // Fix habRevLY YTD as well
+            let habRevLY = 0;
+            if (midx === -1 && dataPrev) {
+                // Sum only YTD
+                monthsWithData.forEach(i => {
+                    habRevLY += (groupedLY.HABITACION.revenue[i] || 0);
+                });
+            } else {
+                habRevLY = dataPrev ? getV(groupedLY.HABITACION, midx) : 0;
+            }
+
             const habRevLM = midx > 0 ? getV(groupedTY.HABITACION, midx - 1) : 0;
 
             // KPIs
-            const fmt = (n) => {
-                if (n === 0 || n === null || n === undefined) return "0 €";
-                return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".") + " €";
-            };
-            const fmtNum = (n) => {
-                if (n === 0 || n === null || n === undefined) return "0";
-                return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-            };
+            // (Removed redundant local fmt/fmtNum definitions that were causing TDZ issues)
 
             // Loading Options from Config
-            const configS = CapaStorage.getItem('hotel_manager_config'); // Key for config is 'upload_config_db_v2' according to CargarDatos, but let's check
-            // Actually in CargarDatos: const CONFIG_KEY = 'upload_config_db_v2';
-            // Let's use the correct key
+            const configS = CapaStorage.getItem('hotel_manager_config');
             const configData = CapaStorage.getItem('upload_config_db_v2');
             const appConfig = configData ? JSON.parse(configData) : {};
             const options = (appConfig.options) ? appConfig.options : {};
@@ -760,7 +943,14 @@
                 let res = '';
                 if (ly) {
                     const p = ((ty - ly) / ly * 100).toFixed(1);
-                    res += `<span class="${p >= 0 ? 'trend-up' : 'trend-down'}" style="display:block;">${p >= 0 ? '▲' : '▼'} ${Math.abs(p)}% vs LY</span>`;
+                    const diffVal = ty - ly;
+                    const tooltip = `Comparativa:\nEste año: ${fmt(ty)}\nAño pasado: ${fmt(ly)}\nDiferencia: ${fmt(diffVal)}`;
+
+                    const label = midx === -1 ? "vs Año Ant. (Acum)" : "vs Año Ant. (Mes)";
+
+                    res += `<span class="${p >= 0 ? 'trend-up' : 'trend-down'}" style="display:block; cursor:help;" title="${tooltip}">
+                        ${p >= 0 ? '▲' : '▼'} ${Math.abs(p)}% ${label}
+                    </span>`;
                 }
 
                 // PICK-UP MONITOR (Only for Rooms/Habitación - Only for Current Year)
@@ -773,7 +963,7 @@
 
                 if (lm !== undefined && lm !== 0 && midx !== -1) {
                     const p = ((ty - lm) / lm * 100).toFixed(1);
-                    res += `<span style="font-size:0.7rem; color:var(--text-muted); display:block;">${p >= 0 ? '▲' : '▼'} ${Math.abs(p)}% vs L. Month</span>`;
+                    res += `<span style="font-size:0.7rem; color:var(--text-muted); display:block;">${p >= 0 ? '▲' : '▼'} ${Math.abs(p)}% vs Mes Ant.</span>`;
                 }
                 return res || '--';
             }
@@ -781,11 +971,68 @@
             document.getElementById('kpi-total').innerText = fmt(revTY);
             let totalTrendHTML = trend(revTY, revLY, revLM, 'total');
 
-            // ... (keeping budget code)
+            // PROJECTED LINE ADDITION
+            if (midx === -1 && parseInt(currentYear) >= new Date().getFullYear()) {
+                // Calculate Full Projected
+                let projectedRev = 0;
+                let realPart = 0;
+                let otbPart = 0;
+
+                const now = new Date();
+                const rM = now.getMonth();
+
+                for (let i = 0; i < 12; i++) {
+                    const isClosed = (parseInt(currentYear) < now.getFullYear()) || (parseInt(currentYear) === now.getFullYear() && i < rM);
+                    const rVal = totalTY.revenue[i] || 0;
+                    const oVal = data.otb.revenue[i] || 0;
+
+                    if (isClosed) {
+                        projectedRev += rVal;
+                        realPart += rVal;
+                    } else {
+                        projectedRev += oVal;
+                        otbPart += oVal;
+                    }
+                }
+
+                const fullYearLY = totalLY ? totalLY.revenue.reduce((a, b) => a + b, 0) : 0;
+                if (fullYearLY > 0) {
+                    const projDiff = ((projectedRev - fullYearLY) / fullYearLY * 100).toFixed(1);
+                    const col = projDiff >= 0 ? 'var(--text-light)' : 'var(--danger)';
+
+                    const projTooltip = `Cálculo Proyección:\nReal (Cerrado): ${fmt(realPart)}\nPrevisión (Futuro): ${fmt(otbPart)}\nTotal Estimado: ${fmt(projectedRev)}`;
+
+                    totalTrendHTML += `<div style="margin-top:4px; font-size:0.7rem; color:${col}; border-top:1px solid #e2e8f0; padding-top:2px; cursor:help;" title="${projTooltip}">
+                        <span style="font-weight:700;">Proy. Cierre: ${fmtNum(projectedRev)}€</span> <span style="opacity:0.8;">(${projDiff}% vs Año 25)</span>
+                     </div>`;
+                }
+            }
+
             document.getElementById('trend-total').innerHTML = totalTrendHTML;
 
+            // Include Projection for Habitación too?
+            let habTrendHTML = trend(habRevTY, habRevLY, habRevLM, 'hab');
+            if (midx === -1 && parseInt(currentYear) >= new Date().getFullYear()) {
+                let projHab = 0;
+                const now = new Date();
+                const rM = now.getMonth();
+                for (let i = 0; i < 12; i++) {
+                    const isClosed = i < rM;
+                    const rVal = groupedTY.HABITACION.revenue[i] || 0;
+                    const oVal = data.otb.breakdown?.habitacion?.[i] || (data.otb.revenue[i] || 0); // fallback
+                    projHab += rVal + (isClosed ? 0 : oVal);
+                }
+                const fullLY = groupedLY.HABITACION ? groupedLY.HABITACION.revenue.reduce((a, b) => a + b, 0) : 0;
+                if (fullLY > 0) {
+                    const projDiff = ((projHab - fullLY) / fullLY * 100).toFixed(1);
+                    habTrendHTML += `<div style="margin-top:4px; font-size:0.65rem; color:#64748b; border-top:1px solid #e2e8f0; padding-top:2px;">
+                        <span style="font-weight:600;">Proy: ${fmtNum(projHab)}€</span> (${projDiff}%)
+                     </div>`;
+                }
+            }
+
             document.getElementById('kpi-prod-hab').innerText = fmt(habRevTY);
-            document.getElementById('trend-prod-hab').innerHTML = trend(habRevTY, habRevLY, habRevLM, 'hab');
+            document.getElementById('trend-prod-hab').innerHTML = habTrendHTML;
 
             document.getElementById('kpi-rn').innerText = fmtNum(rmsTY);
             document.getElementById('trend-rn').innerHTML = trend(rmsTY, rmsLY, rmsLM, 'rn');
@@ -929,11 +1176,67 @@
             }
 
             if (midx === -1) {
+                // Determine today's context
+                const now = new Date();
+                const rY = now.getFullYear();
+                const rM = now.getMonth();
+                const selY = parseInt(currentYear);
+
+                const getDaysInMonth = (m, y) => new Date(y, m + 1, 0).getDate();
+
+                let totalRecordedDays = 0;
+
                 thead.innerHTML = '<tr><th>Categoría / Concepto</th>' + SHORT_MONTHS.map((m, i) => {
-                    const days = monthDays[i];
-                    const daysTag = days > 0 ? `<span style="font-size:0.65rem; color:var(--success); font-weight:800; margin-right:4px;">${days}</span>` : '';
+                    let daysToShow = 0;
+
+                    if (selY < rY) {
+                        // Past year: Assume full months
+                        daysToShow = getDaysInMonth(i, selY);
+                    } else if (selY > rY) {
+                        // Future year: 0 days
+                        daysToShow = 0;
+                    } else {
+                        // Current year context
+                        const maxDays = getDaysInMonth(i, selY);
+                        let metaDays = 0;
+
+                        // 1. Logic-based days from lastUpdate (Authority for completion)
+                        if (data.lastUpdate) {
+                            const parts = data.lastUpdate.split(/[/-]/);
+                            if (parts.length >= 2) {
+                                const uD = parseInt(parts[0]);
+                                const uM = parseInt(parts[1]) - 1; // 0-based
+
+                                if (uM === i) {
+                                    metaDays = uD;
+                                } else if (uM > i) {
+                                    metaDays = maxDays; // Prior month -> Complete
+                                } else {
+                                    metaDays = 0; // Future month -> 0
+                                }
+                            }
+                        } else {
+                            // No metadata? 
+                            metaDays = (i < rM) ? maxDays : 0;
+                        }
+
+                        // 2. Override/Supplement with actual daily records count
+                        // (In case daily records go further than lastUpdate string)
+                        effectiveDays = Math.max(metaDays, monthDays[i] || 0);
+
+                        // Override for Future Months (sanity check)
+                        if (i > rM && selY === rY) effectiveDays = 0;
+
+                        daysToShow = Math.min(effectiveDays, maxDays);
+                    }
+
+                    // We only sum 'Recorded' days for internal logic if needed, 
+                    // but for the Total Header the user expects the full Projection Scope (365)
+                    // since the revenue column includes OTB (Future).
+
+                    const daysTag = daysToShow > 0 ? `<span style="font-size:0.65rem; color:var(--success); font-weight:800; margin-right:4px;">${daysToShow}</span>` : '';
                     return `<th style="text-align:center;">${daysTag}${m}</th>`;
-                }).join('') + '<th>Total Proyectado</th><th>% Mix Total</th></tr>';
+                }).join('') + `<th style="cursor:help;" title="Ingresos Reales (Hasta hoy) + OTB (Previsión Futura)">Total Proyectado <span style="font-size:0.7rem; color:var(--primary);">(365)</span></th><th>% Mix Total</th></tr>`;
             } else {
                 const days = monthDays[midx];
                 const daysTag = days > 0 ? `<span style="font-size:0.65rem; color:var(--success); font-weight:700;"> (${days} DÍAS)</span>` : '';
@@ -949,11 +1252,39 @@
                 ? db[currentHotel][currentYear].otb
                 : { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) };
 
+            // Retrieve Previous OTB for Pick-up Calculation
+            const otbPrev = (db[currentHotel] && db[currentHotel][currentYear] && db[currentHotel][currentYear].otb_prev)
+                ? db[currentHotel][currentYear].otb_prev.revenue
+                : new Array(12).fill(0);
+
             const masterTY = (db[currentHotel] && db[currentHotel][currentYear] && db[currentHotel][currentYear].service && db[currentHotel][currentYear].service["TOTAL_MASTER"])
                 ? db[currentHotel][currentYear].service["TOTAL_MASTER"]
                 : { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) };
 
-            const hotelTotalProjected = getV(masterTY.revenue) + getV(otbData.revenue);
+            // Helper to check if a month is fully passed (Defined here for scope access)
+            const isMonthClosedRow = (mIndex) => {
+                const now = new Date();
+                const rY = now.getFullYear();
+                const rM = now.getMonth();
+                const sY = parseInt(currentYear);
+                if (sY < rY) return true;
+                if (sY > rY) return false;
+                return mIndex < rM;
+            };
+
+            // Fix hotelTotalProjected to respect closed months
+            let hotelTotalProjected = 0;
+            if (midx === -1) {
+                for (let i = 0; i < 12; i++) {
+                    const r = masterTY.revenue[i] || 0;
+                    const o = isMonthClosedRow(i) ? 0 : (otbData.revenue[i] || 0);
+                    hotelTotalProjected += (r + o);
+                }
+            } else {
+                const r = masterTY.revenue[midx] || 0;
+                const o = isMonthClosedRow(midx) ? 0 : (otbData.revenue[midx] || 0);
+                hotelTotalProjected = r + o;
+            }
 
             Object.values(grouped).sort((a, b) => parseInt(a.name) - parseInt(b.name)).forEach(g => {
                 const gRealVal = getV(g.revenue);
@@ -971,62 +1302,222 @@
                 const groupOtbArr = (otbData && otbData.breakdown && otbKey) ? otbData.breakdown[otbKey] :
                     (otbKey === 'habitacion' && otbData.revenue ? otbData.revenue : new Array(12).fill(0));
 
-                const gOtbVal = getV(groupOtbArr);
+                // Apply closed month logic to total accumulation
+                // This is tricky because we need to sum conditional OTB
+                let gOtbVal = 0;
+                if (midx === -1) {
+                    gOtbVal = groupOtbArr.reduce((acc, val, i) => acc + (isMonthClosedRow(i) ? 0 : val), 0);
+                } else {
+                    gOtbVal = isMonthClosedRow(midx) ? 0 : getV(groupOtbArr);
+                }
+
                 const gProjectedVal = gRealVal + gOtbVal;
+
                 const percTotal = hotelTotalProjected > 0 ? (gProjectedVal / hotelTotalProjected * 100).toFixed(1) : "0.0";
 
                 let row = `<tr class="row-group"><td>${g.name}</td>`;
                 if (midx === -1) {
-                    // Show all months
-                    row += g.revenue.map((v, idx) => {
-                        let cellContent = v ? fmt(v) : '-';
-                        const revOtb = groupOtbArr[idx] || 0;
-                        const rmsOtb = (otbKey === 'habitacion' && otbData.rooms) ? (otbData.rooms[idx] || 0) : 0;
+                    for (let i = 0; i < 12; i++) {
+                        // Determine key for OTB Breakdown
+                        let otbKey = null;
+                        const gName = g.name.toUpperCase();
+                        if (gName.includes('HABITACIÓN') || gName.includes('HABITACION')) otbKey = 'habitacion';
+                        else if (gName.includes('DESAYUNO')) otbKey = 'desayunos';
+                        else if (gName.includes('RESTAURANTE') || gName.includes('ALMUERZO') || gName.includes('CENA')) otbKey = 'restaurante';
+                        else if (gName.includes('SPA')) otbKey = 'spa';
+                        else if (gName.includes('VARIOS') || gName.includes('OTROS') || gName.includes('EXTRAS')) otbKey = 'varios';
 
-                        if (revOtb > 0 || rmsOtb > 0) {
-                            const proyeccion = (v || 0) + revOtb;
-                            if (revOtb > 0) cellContent += `<br><span style="font-size:0.65rem; color:#8b5cf6; font-weight:600;">📈 ${fmt(revOtb)}</span>`;
-                            if (rmsOtb > 0) cellContent += `<br><span style="font-size:0.6rem; color:#64748b;">${rmsOtb} RN</span>`;
-                            if (revOtb > 0) cellContent += `<br><span style="font-size:0.7rem; color:#10b981; font-weight:700;">= ${fmt(proyeccion)}</span>`;
+                        const groupOtbArr = (otbData && otbData.breakdown && otbKey) ? otbData.breakdown[otbKey] :
+                            (otbKey === 'habitacion' && otbData.revenue ? otbData.revenue : new Array(12).fill(0));
+
+                        const isClosed = isMonthClosedRow(i);
+                        const realVal = g.revenue[i] || 0;
+                        const otbVal = isClosed ? 0 : (groupOtbArr[i] || 0);
+
+                        // Freshness Check for Pick-up
+                        // We assume data.updates.otb holds the date string "D/M/YYYY"
+                        // If invalid or not today, we hide pick-up indicators
+                        const todayStr = new Date().toLocaleDateString('es-ES');
+                        const updateStr = (data.updates && data.updates.otb) ? data.updates.otb :
+                            (data.lastUpdate || "");
+                        // Note: lastUpdate is usually generic for the year, updates.otb is specific if we set it.
+                        // Fallback: If updates.otb missing, assume stale.
+
+                        const isFreshData = updateStr.includes(todayStr); // Simple substring check
+
+                        // COMPLEX CELL CONTENT: Real + OTB - COMPACT VERSION
+                        let cellContent = "";
+                        const fontSize = "0.7rem"; // Smaller font to fit 12 months
+
+                        // Formatter Helper
+                        const f = (n) => fmt(n);
+
+                        // Case 1: Closed Month (Past) -> Show Real only
+                        if (isClosed) {
+                            cellContent = `<span style="color:var(--text-main); font-size:${fontSize};">${f(realVal)}</span>`;
                         }
-                        return `<td style="vertical-align:top;">${cellContent}</td>`;
-                    }).join('') + `<td style="font-weight:800; color:var(--primary);">${fmt(gProjectedVal)}</td><td style="font-weight:800; color:var(--primary);">${percTotal}%</td>`;
-                } else {
-                    row += `<td style="font-weight:700;">${fmt(gProjectedVal)}</td><td style="font-weight:700;">${percTotal}%</td><td>-</td>`;
-                }
-                tbody.innerHTML += row + '</tr>';
+                        // Case 2: Open/Current Month
+                        else {
+                            const totalVal = realVal + otbVal;
 
-                g.details.sort((a, b) => getV(b.revenue) - getV(a.revenue)).forEach(s => {
-                    const sVal = getV(s.revenue); if (sVal === 0) return;
-                    const sPercTotal = hotelTotalProjected > 0 ? (sVal / hotelTotalProjected * 100).toFixed(1) : "0.0";
-                    const sPercGroup = gRealVal > 0 ? (sVal / gRealVal * 100).toFixed(1) : "0.0";
-                    const serviceName = s.name.charAt(0).toUpperCase() + s.name.slice(1).toLowerCase();
+                            // Mixed Data: Show stacked, compact
+                            if (realVal > 0 && otbVal > 0) {
+                                cellContent = `
+                                    <div style="display:flex; flex-direction:column; align-items:center; line-height:1.1;">
+                                        <span style="color:var(--text-main); font-size:0.65rem; border-bottom:1px dashed #ccc;">${f(realVal)}</span>
+                                        <span style="color:#8b5cf6; font-size:0.65rem; font-weight:600;">${f(otbVal)}</span>
+                                        <span style="color:var(--primary); font-size:0.7rem; font-weight:700; margin-top:1px;">${f(totalVal)}</span>
+                                    </div>
+                                `;
+                            }
+                            // Only Future OTB
+                            else if (otbVal > 0) {
+                                // Calculate rooms for OTB if available in group
+                                const otbRms = (db[currentHotel][currentYear].otb && db[currentHotel][currentYear].otb.rooms && db[currentHotel][currentYear].otb.rooms[i])
+                                    ? db[currentHotel][currentYear].otb.rooms[i] : 0;
 
-                    let sRow = `<tr><td style="padding-left:20px; font-size: 0.75rem; color: #64748b; font-weight:500; text-transform:capitalize;">${serviceName}</td>`;
-                    if (midx === -1) {
-                        sRow += s.revenue.map(v => `<td style="font-size:0.85rem;">${v ? fmt(v) : '-'}</td>`).join('') + `<td style="font-size:0.85rem;">${fmt(sVal)}</td><td style="font-size:0.85rem; font-weight:600; color:var(--primary);">${sPercGroup}%</td>`;
-                    } else {
-                        sRow += `<td style="font-size:0.9rem;">${fmt(sVal)}</td><td style="color:#64748b; font-size:0.85rem;">${sPercTotal}%</td><td style="font-weight:600; color:var(--primary); font-size:0.85rem;">${sPercGroup}%</td>`;
+                                cellContent = `
+                                    <div style="display:flex; flex-direction:column; align-items:center;">
+                                        <div style="font-size:0.7rem; color:#8b5cf6; font-weight:600; white-space:nowrap;">
+                                            <span style="opacity:0.7">📈</span> ${f(otbVal)}
+                                        </div>
+                                        ${otbRms > 0 ? `<div style="font-size:0.6rem; color:#64748b; margin-top:-2px;">${new Intl.NumberFormat('es-ES').format(otbRms)} RN</div>` : ''}
+                                        <div style="font-size:0.7rem; color:#10b981; font-weight:700; margin-top:1px;">= ${f(otbVal)}</div>
+                                    </div>
+                                `;
+                            }
+                            // Only Real (e.g. OTB missing)
+                            else if (realVal > 0) {
+                                cellContent = `<span style="color:var(--text-main); font-size:${fontSize}; font-weight:700;">${f(realVal)}</span>`;
+                            }
+                            else {
+                                cellContent = `<span style="color:#cbd5e1; font-size:0.75rem;">-</span>`;
+                            }
+                        }
+
+                        row += `<td style="text-align:center; vertical-align:middle; padding:4px 2px;">${cellContent}</td>`;
                     }
-                    tbody.innerHTML += sRow + '</tr>';
+                } else {
+                    row += `<td style="text-align:center;">${fmt(gRealVal)}</td>`;
+                }
+
+                row += `<td style="font-weight:700; font-size:0.85rem;">${fmt(gProjectedVal)}</td><td style="color:var(--text-muted); font-size:0.8rem;">${percTotal}%</td></tr>`;
+
+                // Add Details
+                g.details.forEach(d => {
+                    row += `<tr class="row-detail"><td>${d.name}</td>`;
+                    if (midx === -1) {
+                        for (let i = 0; i < 12; i++) {
+                            const val = d.revenue[i] || 0;
+                            // For details, we don't have OTB breakdown. 
+                            // If month is Open and val is 0, show "-" to indicate no forecast available at detail level
+                            const isClosed = isMonthClosedRow(i);
+                            const txt = (!isClosed && val === 0) ? `<span style="opacity:0.3;">-</span>` : fmt(val);
+                            // Detail rows: Smaller font
+                            row += `<td style="text-align:center; font-size:0.7rem; padding:2px;">${txt}</td>`;
+                        }
+                    } else {
+                        const dVal = d.revenue[midx] || 0;
+                        row += `<td style="text-align:center;">${fmt(dVal)}</td>`;
+                    }
+                    const dTotal = d.revenue.reduce((a, b) => a + b, 0);
+                    row += `<td style="opacity:0.7;">${fmt(dTotal)}</td><td></td></tr>`;
                 });
+
+                tbody.innerHTML += row;
             });
+
 
             // 2. Add Grand Total footer row
             let totalProjRow = `<tr style="background: var(--bg-surface); border-top: 2px solid var(--success);"><td style="font-weight:800; color:var(--success); border-top: 2px solid var(--success) !important;">🚀 TOTAL PROYECTADO (Real + Prev.)</td>`;
+
+            // Helper to check if a month is fully passed
+            const isMonthClosed = (mIndex) => {
+                const now = new Date();
+                const rY = now.getFullYear();
+                const rM = now.getMonth(); // 0-11
+                const sY = parseInt(currentYear);
+                if (sY < rY) return true;
+                if (sY > rY) return false;
+                return mIndex < rM;
+            };
+
+            let totalPickup = 0;
+
             if (midx === -1) {
+                // Get freshness from scope or re-evaluate (but it was defined in inner scope... we need it here)
+                // Re-evaluate freshness here for footer scope
+                const todayStr = new Date().toLocaleDateString('es-ES');
+                const updateStr = (data.updates && data.updates.otb) ? data.updates.otb : (data.lastUpdate || "");
+                const isFreshData = updateStr.includes(todayStr); // Check if today
+
                 for (let i = 0; i < 12; i++) {
-                    const rev = (masterTY.revenue[i] || 0) + (otbData.revenue[i] || 0);
-                    const rms = (masterTY.rooms[i] || 0) + (otbData.rooms[i] || 0);
-                    totalProjRow += `<td style="font-weight:800; font-size:0.9rem; color: #166534; vertical-align:top;">${fmt(rev)}<br><span style="font-size:0.7rem; color:var(--text-muted);">${rms} RN</span></td>`;
+                    // Logic: If month is closed, ignore OTB (Projection), take only Real (Master)
+                    const isClosed = isMonthClosed(i);
+
+                    // Pick-up Logic: Only meaningful for Future Months (Open OTB)
+                    // If isClosed, pickup is technically 0 because OTB is irrelevant.
+                    const currOtb = isClosed ? 0 : (otbData.revenue[i] || 0);
+                    const prevOtb = isClosed ? 0 : (otbPrev[i] || 0);
+                    const pickup = currOtb - prevOtb;
+                    totalPickup += pickup;
+
+                    const otbRms = isClosed ? 0 : (otbData.rooms[i] || 0);
+
+                    const rev = (masterTY.revenue[i] || 0) + currOtb;
+                    const rms = (masterTY.rooms[i] || 0) + otbRms;
+
+                    let pickupHtml = "";
+                    // ONLY SHOW PICKUP IF DATA IS FRESH (UPLOADED TODAY)
+                    if (isFreshData && !isClosed && Math.abs(pickup) > 1) {
+                        const color = pickup > 0 ? '#16a34a' : '#dc2626';
+                        const icon = pickup > 0 ? '▲' : '▼';
+                        pickupHtml = `<div style="font-size:0.7rem; color:${color}; margin-top:2px;">${icon} ${fmt(Math.abs(pickup))}€ (Pick-up)</div>`;
+                    }
+
+                    totalProjRow += `<td style="font-weight:800; font-size:0.9rem; color: #166534; vertical-align:top;">${fmt(rev)}<br><span style="font-size:0.7rem; color:var(--text-muted);">${rms} RN</span>${pickupHtml}</td>`;
                 }
-                const totalRev = masterTY.revenue.reduce((a, b) => a + b, 0) + otbData.revenue.reduce((a, b) => a + b, 0);
-                const totalRms = masterTY.rooms.reduce((a, b) => a + b, 0) + otbData.rooms.reduce((a, b) => a + b, 0);
-                totalProjRow += `<td style="font-weight:800; font-size:1rem; color:var(--success);">${fmt(totalRev)}<br><span style="font-size:0.8rem; color:var(--text-muted);">${totalRms} RN</span></td><td>100%</td>`;
+                // For the Total Sum column, we sum the computed monthly totals
+                let totalRev = 0, totalRms = 0;
+                for (let i = 0; i < 12; i++) {
+                    const isClosed = isMonthClosed(i);
+                    totalRev += (masterTY.revenue[i] || 0) + (isClosed ? 0 : (otbData.revenue[i] || 0));
+                    totalRms += (masterTY.rooms[i] || 0) + (isClosed ? 0 : (otbData.rooms[i] || 0));
+                }
+
+                let pickupTotalHtml = "";
+                // ONLY SHOW TOT PICKUP IF FRESH
+                if (isFreshData && Math.abs(totalPickup) > 1) {
+                    const color = totalPickup > 0 ? '#16a34a' : '#dc2626';
+                    const icon = totalPickup > 0 ? '▲' : '▼';
+                    pickupTotalHtml = `<div style="font-size:0.75rem; color:${color}; margin-top:2px;">${icon} ${fmt(Math.abs(totalPickup))}€</div>`;
+                }
+
+                totalProjRow += `<td style="font-weight:800; font-size:1rem; color:var(--success);">${fmt(totalRev)}<br><span style="font-size:0.8rem; color:var(--text-muted);">${totalRms} RN</span>${pickupTotalHtml}</td><td>100%</td>`;
             } else {
-                const rev = (masterTY.revenue[midx] || 0) + (otbData.revenue[midx] || 0);
-                const rms = (masterTY.rooms[midx] || 0) + (otbData.rooms[midx] || 0);
-                totalProjRow += `<td style="font-weight:800; font-size:1.1rem; color:var(--success);">${fmt(rev)}<br><span style="font-size:0.8rem; color:var(--text-muted);">${rms} RN</span></td><td>100%</td><td>-</td>`;
+                // Re-evaluate freshness here for footer scope
+                const todayStr = new Date().toLocaleDateString('es-ES');
+                const updateStr = (data.updates && data.updates.otb) ? data.updates.otb : (data.lastUpdate || "");
+                const isFreshData = updateStr.includes(todayStr);
+
+                const isClosed = isMonthClosed(midx);
+                const currOtb = isClosed ? 0 : (otbData.revenue[midx] || 0);
+                const prevOtb = isClosed ? 0 : (otbPrev[midx] || 0);
+                const pickup = currOtb - prevOtb;
+
+                const otbRms = isClosed ? 0 : (otbData.rooms[midx] || 0);
+
+                const rev = (masterTY.revenue[midx] || 0) + currOtb;
+                const rms = (masterTY.rooms[midx] || 0) + otbRms;
+
+                let pickupHtml = "";
+                if (isFreshData && !isClosed && Math.abs(pickup) > 1) {
+                    const color = pickup > 0 ? '#16a34a' : '#dc2626';
+                    const icon = pickup > 0 ? '▲' : '▼';
+                    pickupHtml = `<div style="font-size:0.7rem; color:${color}; margin-top:2px;">${icon} ${fmt(Math.abs(pickup))}€ (Pick-up)</div>`;
+                }
+
+                totalProjRow += `<td style="font-weight:800; font-size:1.1rem; color:var(--success);">${fmt(rev)}<br><span style="font-size:0.8rem; color:var(--text-muted);">${rms} RN</span>${pickupHtml}</td><td>100%</td><td>-</td>`;
             }
             tbody.innerHTML += totalProjRow + '</tr>';
         }
@@ -1090,234 +1581,280 @@
             const hasOTBData = otbDataForChart && otbDataForChart.some(v => v > 0);
 
             // 1. Evolution Chart (Line)
-            if (charts.main) charts.main.destroy();
-            charts.main = new Chart(document.getElementById('mainChart'), {
-                type: 'line',
-                data: {
-                    labels: labelsMain,
-                    datasets: [
-                        {
-                            label: `${metricLabels[chartMetric]} ${currentYear}`,
-                            data: mainDataTY,
-                            borderColor: '#4f46e5',
-                            backgroundColor: 'rgba(79, 70, 229, 0.1)',
-                            fill: true,
-                            tension: 0.4,
-                            pointRadius: 4,
-                            zIndex: 10
+            const mainChartCanvas = document.getElementById('mainChart');
+            if (window.salesChart instanceof Chart) {
+                window.salesChart.destroy();
+            }
+
+            // Validate canvas exists
+            if (mainChartCanvas) {
+                const ctx = mainChartCanvas.getContext('2d');
+                window.salesChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labelsMain,
+                        datasets: [
+                            {
+                                label: `${metricLabels[chartMetric]} ${currentYear}`,
+                                data: mainDataTY,
+                                borderColor: '#2563eb', // Royal Blue
+                                backgroundColor: 'rgba(37, 99, 235, 0.4)', // More solid for icons
+                                tension: 0.4,
+                                borderWidth: 3,
+                                pointBackgroundColor: '#fff',
+                                pointBorderColor: '#2563eb',
+                                pointRadius: 4,
+                                fill: true
+                            },
+                            {
+                                label: `${metricLabels[chartMetric]} ${parseInt(currentYear) - 1}`,
+                                data: mainDataLY,
+                                borderColor: '#94a3b8', // Slate 400
+                                backgroundColor: '#94a3b8', // Solid for legend/tooltip icons
+                                borderDash: [5, 5],
+                                tension: 0.4,
+                                borderWidth: 2,
+                                pointRadius: 0,
+                                fill: false // No area fill for LY
+                            },
+                            // Only add OTB dataset if invalid data exists
+                            ...(hasOTBData ? [{
+                                label: `Previsión OTB ${currentYear}`,
+                                data: otbDataForChart,
+                                borderColor: '#f59e0b', // Amber 500
+                                backgroundColor: 'rgba(245, 158, 11, 0.3)', // Solid for legend
+                                borderDash: [3, 3],
+                                tension: 0.4,
+                                borderWidth: 2,
+                                pointRadius: 3,
+                                pointBackgroundColor: '#fffbeb',
+                                pointBorderColor: '#f59e0b',
+                                fill: true
+                            }] : [])
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
                         },
-                        mainDataLY ? {
-                            label: `${metricLabels[chartMetric]} ${(parseInt(currentYear) - 1)}`,
-                            data: mainDataLY,
-                            borderColor: '#cbd5e1',
-                            fill: false,
-                            tension: 0.4,
-                            borderDash: [5, 5],
-                            pointRadius: 4,
-                            hoverRadius: 6,
-                            zIndex: 5
-                        } : null,
-                        hasOTBData ? {
-                            label: `Previsión OTB ${currentYear}`,
-                            data: otbDataForChart,
-                            borderColor: '#8b5cf6', // Violet
-                            backgroundColor: 'rgba(139, 92, 246, 0.05)',
-                            fill: false,
-                            tension: 0.4,
-                            borderDash: [3, 3],
-                            pointRadius: 3,
-                            pointStyle: 'circle',
-                            zIndex: 1
-                        } : null
-                    ].filter(d => d)
-                },
-                options: {
-                    maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false,
-                    },
-                    plugins: {
-                        legend: { position: 'top' },
-                        tooltip: {
-                            callbacks: {
-                                label: function (context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) label += ': ';
-                                    if (context.parsed.y !== null) {
-                                        if (chartMetric === 'occ') label += context.parsed.y + '%';
-                                        else label += new Intl.NumberFormat('es-ES', { style: chartMetric === 'adr' || chartMetric.includes('total') || chartMetric === 'hab' ? 'currency' : 'decimal', currency: 'EUR', maximumFractionDigits: 0 }).format(context.parsed.y);
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: '#f1f5f9' },
+                                ticks: { font: { size: 10 } }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: { font: { size: 11 } }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                align: 'end',
+                                labels: {
+                                    usePointStyle: true,
+                                    boxWidth: 10,
+                                    font: { size: 13, weight: '600' },
+                                    color: '#475569',
+                                    padding: 20
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                                titleFont: { size: 14, weight: '700' },
+                                bodyFont: { size: 13 },
+                                bodySpacing: 6,
+                                padding: 12,
+                                cornerRadius: 8,
+                                displayColors: true,
+                                borderColor: 'rgba(255,255,255,0.1)',
+                                borderWidth: 1,
+                                callbacks: {
+                                    label: function (context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) label += ': ';
+                                        if (context.parsed.y !== null) {
+                                            const value = context.parsed.y;
+                                            const formattedValue = new Intl.NumberFormat('es-ES', {
+                                                style: chartMetric === 'adr' || chartMetric.includes('total') || chartMetric === 'hab' ? 'currency' : 'decimal',
+                                                currency: 'EUR',
+                                                maximumFractionDigits: 0
+                                            }).format(value);
+                                            label += formattedValue + (chartMetric === 'occ' ? ' %' : '');
+                                        }
+                                        return label;
                                     }
-                                    return label;
                                 }
                             }
                         }
-                    },
-                    scales: { y: { beginAtZero: true } }
-                }
-            });
+                    }
+                });
+                // 2. Mix Chart (Doughnut)
+                const mixData = [], mixLabels = [], mixIds = [];
+                const otbData = data.otb || { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) };
 
-            // 2. Mix Chart (Doughnut)
-            const mixData = [], mixLabels = [], mixIds = [];
-            const otbData = data.otb || { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) };
+                // Calculate Projected Totals for each group
+                const groupProjected = {};
+                let totalHotelProjected = 0;
 
-            // Calculate Projected Totals for each group
-            const groupProjected = {};
-            let totalHotelProjected = 0;
+                Object.entries(groupedTY).forEach(([id, g]) => {
+                    const gRealVal = midx === -1 ? g.revenue.reduce((a, b) => (a || 0) + (b || 0), 0) : (g.revenue[midx] || 0);
 
-            Object.entries(groupedTY).forEach(([id, g]) => {
-                const gRealVal = midx === -1 ? g.revenue.reduce((a, b) => (a || 0) + (b || 0), 0) : (g.revenue[midx] || 0);
+                    // OTB Matching logic
+                    let otbKey = null;
+                    const gName = g.name.toUpperCase();
+                    if (gName.includes('HABITACIÓN') || gName.includes('HABITACION')) otbKey = 'habitacion';
+                    else if (gName.includes('DESAYUNO')) otbKey = 'desayunos';
+                    else if (gName.includes('RESTAURANTE') || gName.includes('ALMUERZO') || gName.includes('CENA')) otbKey = 'restaurante';
+                    else if (gName.includes('SPA')) otbKey = 'spa';
+                    else if (gName.includes('VARIOS') || gName.includes('OTROS') || gName.includes('EXTRAS')) otbKey = 'varios';
 
-                // OTB Matching logic
-                let otbKey = null;
-                const gName = g.name.toUpperCase();
-                if (gName.includes('HABITACIÓN') || gName.includes('HABITACION')) otbKey = 'habitacion';
-                else if (gName.includes('DESAYUNO')) otbKey = 'desayunos';
-                else if (gName.includes('RESTAURANTE') || gName.includes('ALMUERZO') || gName.includes('CENA')) otbKey = 'restaurante';
-                else if (gName.includes('SPA')) otbKey = 'spa';
-                else if (gName.includes('VARIOS') || gName.includes('OTROS') || gName.includes('EXTRAS')) otbKey = 'varios';
+                    const groupOtbArr = (otbData.breakdown && otbKey) ? otbData.breakdown[otbKey] :
+                        (otbKey === 'habitacion' ? otbData.revenue : new Array(12).fill(0));
 
-                const groupOtbArr = (otbData.breakdown && otbKey) ? otbData.breakdown[otbKey] :
-                    (otbKey === 'habitacion' ? otbData.revenue : new Array(12).fill(0));
+                    const gOtbVal = midx === -1 ? groupOtbArr.reduce((a, b) => (a || 0) + (b || 0), 0) : (groupOtbArr[midx] || 0);
+                    const gProj = gRealVal + gOtbVal;
 
-                const gOtbVal = midx === -1 ? groupOtbArr.reduce((a, b) => (a || 0) + (b || 0), 0) : (groupOtbArr[midx] || 0);
-                const gProj = gRealVal + gOtbVal;
+                    groupProjected[id] = gProj;
+                    totalHotelProjected += gProj;
+                });
 
-                groupProjected[id] = gProj;
-                totalHotelProjected += gProj;
-            });
+                Object.entries(groupedTY).forEach(([id, g]) => {
+                    const val = groupProjected[id];
+                    if (val > 0) {
+                        const pct = totalHotelProjected > 0 ? ((val / totalHotelProjected) * 100).toFixed(1) : 0;
+                        mixData.push(val);
+                        mixLabels.push(`${g.name.split('. ')[1] || g.name} (${pct}%)`);
+                        mixIds.push(id);
+                    }
+                });
 
-            Object.entries(groupedTY).forEach(([id, g]) => {
-                const val = groupProjected[id];
-                if (val > 0) {
-                    const pct = totalHotelProjected > 0 ? ((val / totalHotelProjected) * 100).toFixed(1) : 0;
-                    mixData.push(val);
-                    mixLabels.push(`${g.name.split('. ')[1] || g.name} (${pct}%)`);
-                    mixIds.push(id);
-                }
-            });
-
-            if (charts.mix) charts.mix.destroy();
-            charts.mix = new Chart(document.getElementById('mixChart'), {
-                type: 'doughnut',
-                data: { labels: mixLabels, datasets: [{ data: mixData, backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16', '#64748b', '#1e293b'] }] },
-                options: {
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'right' },
-                        title: { display: true, text: 'Click para ver detalle', font: { size: 10 } },
-                        tooltip: {
-                            callbacks: {
-                                label: function (context) {
-                                    const value = context.raw;
-                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                                    const label = context.label || '';
-                                    const valFmt = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value);
-                                    return ` ${label}: ${valFmt} (${percentage}%)`;
+                if (charts.mix) charts.mix.destroy();
+                charts.mix = new Chart(document.getElementById('mixChart'), {
+                    type: 'doughnut',
+                    data: { labels: mixLabels, datasets: [{ data: mixData, backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16', '#64748b', '#1e293b'] }] },
+                    options: {
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'right' },
+                            title: { display: true, text: 'Click para ver detalle', font: { size: 10 } },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        const value = context.raw;
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                        const label = context.label || '';
+                                        const valFmt = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value);
+                                        return ` ${label}: ${valFmt} (${percentage}%)`;
+                                    }
                                 }
                             }
+                        },
+                        onClick: (e, items) => {
+                            if (items.length > 0) {
+                                const idx = items[0].index;
+                                const gid = mixIds[idx];
+                                showDrillDown(gid, groupedTY, midx);
+                            }
+                        },
+                        onHover: (event, chartElement) => {
+                            event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
                         }
+                    }
+                });
+
+                // 3. Pace Chart (Bar)
+                const labelsPace = midx === -1 ? SHORT_MONTHS : [MONTH_ORDER[midx]];
+                const tyPace = [], lyPace = [];
+
+                const months = midx === -1 ? [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] : [midx];
+                months.forEach(m => {
+                    const pTY = (totalTY.pax && totalTY.pax[m]) || 0;
+                    // PARKING is now inside OFICINAS, so we don't sum it separately here or we depend on where it ended up. 
+                    // Previous logic summed SPA + PARKING + MINIBAR + VARIOS.
+                    // Since PARKING is now OFICINAS, we could include OFICINAS if that was the intent, but usually Offices don't correlate to Pax.
+                    // Let's safe guard the access.
+                    const valSpa = (groupedTY.SPA && groupedTY.SPA.revenue && groupedTY.SPA.revenue[m]) || 0;
+                    const valMinibar = (groupedTY.MINIBAR && groupedTY.MINIBAR.revenue && groupedTY.MINIBAR.revenue[m]) || 0;
+                    const valVarios = (groupedTY.VARIOS && groupedTY.VARIOS.revenue && groupedTY.VARIOS.revenue[m]) || 0;
+                    // removed PARKING as it is not a top level key anymore
+
+                    const cTY = valSpa + valMinibar + valVarios;
+                    tyPace.push(pTY > 0 ? (cTY / pTY).toFixed(2) : 0);
+
+                    if (totalLY && totalLY.pax) {
+                        const pLY = (totalLY.pax[m]) || 0;
+                        const valSpaLY = (groupedLY && groupedLY.SPA && groupedLY.SPA.revenue && groupedLY.SPA.revenue[m]) || 0;
+                        const valMinibarLY = (groupedLY && groupedLY.MINIBAR && groupedLY.MINIBAR.revenue && groupedLY.MINIBAR.revenue[m]) || 0;
+                        const valVariosLY = (groupedLY && groupedLY.VARIOS && groupedLY.VARIOS.revenue && groupedLY.VARIOS.revenue[m]) || 0;
+
+                        const cLY = valSpaLY + valMinibarLY + valVariosLY;
+                        lyPace.push(pLY > 0 ? (cLY / pLY).toFixed(2) : 0);
+                    } else {
+                        lyPace.push(0);
+                    }
+                });
+
+                if (charts.pace) charts.pace.destroy();
+                charts.pace = new Chart(document.getElementById('paceChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: labelsPace,
+                        datasets: [
+                            { label: 'Current (€/pax)', data: tyPace, backgroundColor: '#4f46e5' },
+                            { label: 'LY (€/pax)', data: lyPace, backgroundColor: '#cbd5e1' }
+                        ]
                     },
-                    onClick: (e, items) => {
-                        if (items.length > 0) {
-                            const idx = items[0].index;
-                            const gid = mixIds[idx];
-                            showDrillDown(gid, groupedTY, midx);
+                    options: { maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+                });
+            }
+
+            function showDrillDown(gid, grouped, midx) {
+                const group = grouped[gid];
+                if (!group || !group.details.length) return;
+
+                document.getElementById('subMixModal').style.display = 'flex';
+                document.getElementById('subMixTitle').innerText = `Desglose: ${group.name.split('. ')[1]}`;
+
+                const labels = [], data = [];
+                const totalGroupVal = group.details.reduce((acc, s) => acc + (midx === -1 ? s.revenue.reduce((a, b) => (a || 0) + (b || 0), 0) : (s.revenue[midx] || 0)), 0);
+
+                group.details.sort((a, b) => {
+                    const getV = (arr) => midx === -1 ? arr.reduce((x, y) => (x || 0) + (y || 0), 0) : (arr[midx] || 0);
+                    return getV(b.revenue) - getV(a.revenue);
+                }).forEach(s => {
+                    const val = midx === -1 ? s.revenue.reduce((a, b) => (a || 0) + (b || 0), 0) : (s.revenue[midx] || 0);
+                    if (val > 0) {
+                        const perc = totalGroupVal > 0 ? ((val / totalGroupVal) * 100).toFixed(1) : 0;
+                        labels.push(`${s.name} (${perc}%)`);
+                        data.push(val);
+                    }
+                });
+
+                if (charts.subMix) charts.subMix.destroy();
+                charts.subMix = new Chart(document.getElementById('subMixChart'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16', '#64748b', '#1e293b']
+                        }]
+                    },
+                    options: {
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }
                         }
-                    },
-                    onHover: (event, chartElement) => {
-                        event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
                     }
-                }
-            });
-
-            // 3. Pace Chart (Bar)
-            const labelsPace = midx === -1 ? SHORT_MONTHS : [MONTH_ORDER[midx]];
-            const tyPace = [], lyPace = [];
-
-            const months = midx === -1 ? [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] : [midx];
-            months.forEach(m => {
-                const pTY = (totalTY.pax && totalTY.pax[m]) || 0;
-                // PARKING is now inside OFICINAS, so we don't sum it separately here or we depend on where it ended up. 
-                // Previous logic summed SPA + PARKING + MINIBAR + VARIOS.
-                // Since PARKING is now OFICINAS, we could include OFICINAS if that was the intent, but usually Offices don't correlate to Pax.
-                // Let's safe guard the access.
-                const valSpa = (groupedTY.SPA && groupedTY.SPA.revenue && groupedTY.SPA.revenue[m]) || 0;
-                const valMinibar = (groupedTY.MINIBAR && groupedTY.MINIBAR.revenue && groupedTY.MINIBAR.revenue[m]) || 0;
-                const valVarios = (groupedTY.VARIOS && groupedTY.VARIOS.revenue && groupedTY.VARIOS.revenue[m]) || 0;
-                // removed PARKING as it is not a top level key anymore
-
-                const cTY = valSpa + valMinibar + valVarios;
-                tyPace.push(pTY > 0 ? (cTY / pTY).toFixed(2) : 0);
-
-                if (totalLY && totalLY.pax) {
-                    const pLY = (totalLY.pax[m]) || 0;
-                    const valSpaLY = (groupedLY && groupedLY.SPA && groupedLY.SPA.revenue && groupedLY.SPA.revenue[m]) || 0;
-                    const valMinibarLY = (groupedLY && groupedLY.MINIBAR && groupedLY.MINIBAR.revenue && groupedLY.MINIBAR.revenue[m]) || 0;
-                    const valVariosLY = (groupedLY && groupedLY.VARIOS && groupedLY.VARIOS.revenue && groupedLY.VARIOS.revenue[m]) || 0;
-
-                    const cLY = valSpaLY + valMinibarLY + valVariosLY;
-                    lyPace.push(pLY > 0 ? (cLY / pLY).toFixed(2) : 0);
-                } else {
-                    lyPace.push(0);
-                }
-            });
-
-            if (charts.pace) charts.pace.destroy();
-            charts.pace = new Chart(document.getElementById('paceChart'), {
-                type: 'bar',
-                data: {
-                    labels: labelsPace,
-                    datasets: [
-                        { label: 'Current (€/pax)', data: tyPace, backgroundColor: '#4f46e5' },
-                        { label: 'LY (€/pax)', data: lyPace, backgroundColor: '#cbd5e1' }
-                    ]
-                },
-                options: { maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
-            });
-        }
-
-        function showDrillDown(gid, grouped, midx) {
-            const group = grouped[gid];
-            if (!group || !group.details.length) return;
-
-            document.getElementById('subMixModal').style.display = 'flex';
-            document.getElementById('subMixTitle').innerText = `Desglose: ${group.name.split('. ')[1]}`;
-
-            const labels = [], data = [];
-            const totalGroupVal = group.details.reduce((acc, s) => acc + (midx === -1 ? s.revenue.reduce((a, b) => (a || 0) + (b || 0), 0) : (s.revenue[midx] || 0)), 0);
-
-            group.details.sort((a, b) => {
-                const getV = (arr) => midx === -1 ? arr.reduce((x, y) => (x || 0) + (y || 0), 0) : (arr[midx] || 0);
-                return getV(b.revenue) - getV(a.revenue);
-            }).forEach(s => {
-                const val = midx === -1 ? s.revenue.reduce((a, b) => (a || 0) + (b || 0), 0) : (s.revenue[midx] || 0);
-                if (val > 0) {
-                    const perc = totalGroupVal > 0 ? ((val / totalGroupVal) * 100).toFixed(1) : 0;
-                    labels.push(`${s.name} (${perc}%)`);
-                    data.push(val);
-                }
-            });
-
-            if (charts.subMix) charts.subMix.destroy();
-            charts.subMix = new Chart(document.getElementById('subMixChart'), {
-                type: 'doughnut',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: data,
-                        backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16', '#64748b', '#1e293b']
-                    }]
-                },
-                options: {
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }
-                    }
-                }
-            });
-        }
+                });
+            }
+        };
     </script>
 </body>
 

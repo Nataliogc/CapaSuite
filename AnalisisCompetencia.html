@@ -1437,6 +1437,18 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             let occ = 0;
             let otb = 0;
 
+            // Calculate Day Name from ISO (User Request)
+            let dayName = meta.dShort;
+            if (iso && iso !== 'INV-DATE') {
+                const parts = iso.split('-');
+                if (parts.length === 3) {
+                    // Month is 0-indexed
+                    const dObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                    const weekDays = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+                    dayName = weekDays[dObj.getDay()];
+                }
+            }
+
             try {
                 const pDbRaw = CapaStorage.getItem('hotel_manager_db_v2');
                 if (pDbRaw) {
@@ -1465,7 +1477,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     <div class="date-pill">
                         <div class="date-day">${meta.dNum}</div>
                         <div class="date-meta">
-                            <span>${meta.dShort}</span>
+                            <span style="font-weight:600; color:var(--text-main);">${dayName}</span>
                             <span>${meta.mShort}</span>
                             ${occValFix}
                             ${otbHtml}
@@ -1911,12 +1923,12 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         let priceContent = `${hData.price.toFixed(0)}€`;
                         if (hData.change) {
                             if (hData.change.dir === 'up') {
-                                priceContent += ` <span style="font-size:0.7em; color:var(--danger); display:inline-flex; flex-direction:column; line-height:1; vertical-align:middle; margin-left:2px;">
+                                priceContent += ` <span style="font-size:0.7em; color:var(--success); display:inline-flex; flex-direction:column; line-height:1; vertical-align:middle; margin-left:2px;">
                                     <span>▲</span>
                                     <span style="font-size:0.8em;">${hData.change.prev}</span>
                                 </span>`;
                             } else {
-                                priceContent += ` <span style="font-size:0.7em; color:var(--success); display:inline-flex; flex-direction:column; line-height:1; vertical-align:middle; margin-left:2px;">
+                                priceContent += ` <span style="font-size:0.7em; color:var(--danger); display:inline-flex; flex-direction:column; line-height:1; vertical-align:middle; margin-left:2px;">
                                     <span>▼</span>
                                     <span style="font-size:0.8em;">${hData.change.prev}</span>
                                 </span>`;
