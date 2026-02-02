@@ -1822,7 +1822,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
 
-            data.forEach(d => {
+            const rowsHTML = data.map(d => {
                 const my = d.hotels[activeHotel];
                 const myP = (my && !my.sold) ? my.price : 0;
                 const sold = my && my.sold;
@@ -1836,15 +1836,6 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     let cls = 'gap-ok';
                     let actionText = "Mantener";
                     let actionColor = "#94a3b8";
-
-                    // ... (Logic kept same as before, simplified for rendering) ...
-                    // RE-USE EXISTING ACTION HTML LOGIC FROM PREVIOUS STATE OR RE-CALCULATE
-                    // Since we are replacing the whole function, we must ensure the logic is present.
-                    // To save space/complexity in this snippet, I will rely on the fact that I am replacing the block 
-                    // and I must include the logic. 
-                    // HOWEVER, re-implementing the robust logic inside this replacement is risky if I miss details.
-                    // Better to just grab the actionHtml if it was pre-calculated or calculate it again.
-                    // The previous code calculated it inline. I will copy-paste the logic compressed.
 
                     // --- LOGIC RE-INSERTION ---
                     const cap = (activeHotel === 'Cumbria') ? 59 : 108;
@@ -1895,10 +1886,8 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
                 if (occPct2 >= 95) {
                     if (occPct2 >= 100 && isOpen) {
-                        // 100% and Open -> Critical Alert
                         alertHtml = `<div style="margin-top:2px; background:#fee2e2; border:1px solid #ef4444; color:#b91c1c; font-size:0.65rem; font-weight:800; padding:1px 3px; border-radius:4px; text-align:center;">⚠️ CERRAR?</div>`;
                     } else {
-                        // High Occ Warning
                         alertHtml = `<div style="margin-top:2px; color:#ea580c; font-size:0.65rem; font-weight:800; text-align:center;">🔥 ${occPct2.toFixed(0)}%</div>`;
                     }
                 }
@@ -1907,6 +1896,10 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 if (alertHtml) {
                     const metaClose = cellContent.lastIndexOf('</div></div>');
                     if (metaClose > -1) cellContent = cellContent.substring(0, metaClose) + alertHtml + "</div></div>";
+                    else if (cellContent.endsWith('</div>')) {
+                        // Fallback injection if the structure changed
+                        cellContent = cellContent.substring(0, cellContent.length - 6) + alertHtml + "</div>";
+                    }
                 }
 
                 let html = `<tr id="row-${d.dayIndex}">`;
@@ -1914,7 +1907,6 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
                 // My Price
                 const myStatus = my?.status || 'available';
-                // False closed check
                 let falseClosedAlert = "";
                 if ((sold || myStatus === 'sold') && currentOcc > 0 && currentOcc < capacityVal) {
                     const roomGap = capacityVal - currentOcc;
@@ -1936,7 +1928,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 html += `<td>${gapHtml}</td>`;
                 html += `<td>${actionHtml}</td>`;
 
-                // SIBLING COLUMN RENDERING
+                // SIBLING
                 if (siblingName) {
                     const hData = d.hotels[siblingName];
                     if (!hData || hData.status === 'noData') {
@@ -1959,31 +1951,31 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 }
 
                 // Competitors Loop
-                competitorsList.forEach(c => {
+                const compCols = competitorsList.map(c => {
                     const hData = d.hotels[c.name];
-                    if (!hData || hData.status === 'noData') {
-                        html += `<td>-</td>`;
-                    } else if (hData.sold || hData.status === 'sold') {
-                        html += `<td><span class="price-sold">S</span></td>`;
-                    } else if (hData.status === 'minStay') {
-                        html += `<td><span class="price-minstay" title="Estancia mínima">M</span></td>`;
-                    } else {
-                        const style = (!sold && hData.price < myP) ? "color:#ef4444; font-weight:600;" : "color:var(--text-light);";
-                        let priceContent = `${hData.price.toFixed(0)}€`;
-                        if (hData.change) {
-                            const dir = hData.change.dir;
-                            const color = dir === 'up' ? 'var(--success)' : 'var(--danger)';
-                            const arrow = dir === 'up' ? '▲' : '▼';
-                            priceContent += `<span style="display:inline-block; font-size:0.65rem; color:${color}; background:#fff; border:1px solid ${color}; padding:0px 2px; border-radius:3px; margin-left:3px; line-height:1.2; vertical-align:middle; font-weight:700;">${arrow}${hData.change.prev}</span>`;
-                        }
-                        html += `<td style="${style}">${priceContent}</td>`;
-                    }
-                });
+                    if (!hData || hData.status === 'noData') return `<td>-</td>`;
+                    if (hData.sold || hData.status === 'sold') return `<td><span class="price-sold">S</span></td>`;
+                    if (hData.status === 'minStay') return `<td><span class="price-minstay" title="Estancia mínima">M</span></td>`;
 
+                    const style = (!sold && hData.price < myP) ? "color:#ef4444; font-weight:600;" : "color:var(--text-light);";
+                    let priceContent = `${hData.price.toFixed(0)}€`;
+                    if (hData.change) {
+                        const dir = hData.change.dir;
+                        const color = dir === 'up' ? 'var(--success)' : 'var(--danger)';
+                        const arrow = dir === 'up' ? '▲' : '▼';
+                        priceContent += `<span style="display:inline-block; font-size:0.65rem; color:${color}; background:#fff; border:1px solid ${color}; padding:0px 2px; border-radius:3px; margin-left:3px; line-height:1.2; vertical-align:middle; font-weight:700;">${arrow}${hData.change.prev}</span>`;
+                    }
+                    return `<td style="${style}">${priceContent}</td>`;
+                }).join('');
+
+                html += compCols;
                 html += `</tr>`;
-                tbody.innerHTML += html;
-            });
+                return html;
+            }).join('');
+
+            tbody.innerHTML = rowsHTML;
         }
+
 
         function renderChart(data) {
             const ctx = document.getElementById('mainChart').getContext('2d');
