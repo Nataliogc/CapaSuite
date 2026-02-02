@@ -1045,6 +1045,22 @@
                         rn[i] += s.rooms ? (s.rooms[i] || 0) : (s.rms ? (s.rms[i] || 0) : 0);
                     }
                 });
+
+                // FALLBACK: If we have Revenue but NO Rooms from detailed services, try TOTAL_MASTER for rooms
+                const totalRn = rn.reduce((a, b) => a + b, 0);
+                const totalRev = rev.reduce((a, b) => a + b, 0);
+
+                if (totalRn === 0 && totalRev > 0 && serviceObj["TOTAL_MASTER"]) {
+                    const m = serviceObj["TOTAL_MASTER"];
+                    // Check if master has rooms
+                    const masterRooms = m.rooms ? m.rooms.reduce((a, b) => a + b, 0) : (m.rms ? m.rms.reduce((a, b) => a + b, 0) : 0);
+                    if (masterRooms > 0) {
+                        console.warn("⚠️ Detectado Revenue sin Habitaciones en desglose. Usando RN de TOTAL_MASTER.");
+                        for (let i = 0; i < 12; i++) {
+                            rn[i] = m.rooms ? (m.rooms[i] || 0) : (m.rms ? (m.rms[i] || 0) : 0);
+                        }
+                    }
+                }
             } else if (serviceObj["TOTAL_MASTER"] && !Object.keys(serviceObj).some(k => normalizeStr(k).includes("HABITAC"))) {
                 // Extreme fallback only if no other service segments are present
                 const m = serviceObj["TOTAL_MASTER"];
@@ -1631,7 +1647,31 @@
 
             const prevYear = String(parseInt(currentYear) - 1);
 
-            tfoot.innerHTML = `<tr>
+            tfoot.innerHTML = `<tr style="background-color: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+                <td style="font-size: 0.75rem; font-weight: 700; color: #64748b; padding-left: 10px;">REAL / OTB (Actual)</td>
+                <td>-</td>
+                <td style="text-align: right; font-size: 0.75rem; color: #94a3b8;">-</td>
+                <td style="text-align: right;">
+                    <span style="font-size: 0.8rem; font-weight: 700; color: var(--primary);">${formatMoney(t_rev26Real)}</span>
+                </td>
+                <td>-</td>
+                
+                <td style="text-align: right; font-size: 0.75rem; color: #94a3b8;">-</td>
+                <td style="text-align: right;">
+                    <span style="font-size: 0.8rem; font-weight: 700; color: var(--primary);">${t_adr26Real.toFixed(2)}€</span>
+                </td>
+                <td>-</td>
+                
+                <td style="text-align: right; font-size: 0.75rem; color: #94a3b8;">-</td>
+                <td style="text-align: right;">
+                    <span style="font-size: 0.8rem; font-weight: 700; color: #c2410c;">${formatNum(t_rn26Real)}</span>
+                </td>
+                <td>-</td>
+                
+                <td>-</td>
+                <td>-</td>
+            </tr>
+            <tr>
             <td>TOTAL</td>
             <td>${formatNum(t_cap)}</td>
             <td>${formatMoney(t_rev25)}</td>
