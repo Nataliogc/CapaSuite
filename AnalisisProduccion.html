@@ -1428,6 +1428,30 @@
             });
 
 
+            // 1.5 Add Real (Master) Row ONLY (Requested by User)
+            let realRow = `<tr style="background: #f1f5f9; border-top: 2px solid #cbd5e1;"><td style="font-weight:700; color:#475569;">DATOS REALES (Sin OTB)</td>`;
+            if (midx === -1) {
+                // Annual View
+                let grRev = 0;
+                let grRms = 0;
+                for (let i = 0; i < 12; i++) {
+                    const r = masterTY.revenue[i] || 0;
+                    const rms = masterTY.rooms[i] || 0;
+                    grRev += r;
+                    grRms += rms;
+                    const txt = r > 0 ? fmt(r) : `<span style="color:#cbd5e1">-</span>`;
+                    realRow += `<td style="text-align:center; font-size:0.8rem; color:#475569;">${txt}</td>`;
+                }
+                realRow += `<td style="font-weight:700; color:#475569;">${fmt(grRev)}<br><span style="font-size:0.7rem;">${grRms} RN</span></td><td>-</td>`;
+            } else {
+                // Month View
+                const r = masterTY.revenue[midx] || 0;
+                const rms = masterTY.rooms[midx] || 0;
+                realRow += `<td style="text-align:center; font-weight:700; color:#475569;">${fmt(r)}<br><span style="font-size:0.7rem;">${rms} RN</span></td><td>-</td><td>-</td>`;
+            }
+            realRow += `</tr>`;
+            tbody.innerHTML += realRow;
+
             // 2. Add Grand Total footer row
             let totalProjRow = `<tr style="background: var(--bg-surface); border-top: 2px solid var(--success);"><td style="font-weight:800; color:var(--success); border-top: 2px solid var(--success) !important;">🚀 TOTAL PROYECTADO (Real + Prev.)</td>`;
 
