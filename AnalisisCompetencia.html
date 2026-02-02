@@ -1244,15 +1244,43 @@
 
             // Find occupancy row
             let occupancyRow = -1;
+            // Priority 1: Exact matches or strong indicators near Valid Data
+            // We'll scan specifically for "Habitaciones" or "Ocupación" excluding "Competencia"/metrics
+            // Priority 1: Scan first 3 columns for "Habitaciones" or "Ocupación" or "Vendidas"
             for (let r = 0; r < rawData.length; r++) {
-                const first = String(rawData[r][0] || "").toLowerCase();
-                if (first.includes("ocupaci") || first.includes("occupancy") ||
-                    first.includes("rn") || first.includes("hb ocupadas") ||
-                    first.includes("habitaciones ocupadas")) {
-                    occupancyRow = r;
-                    break;
+                // Join first 3 cols to catch indented labels
+                const rowStr = (String(rawData[r][0] || "") + " " + String(rawData[r][1] || "") + " " + String(rawData[r][2] || "")).toLowerCase();
+
+                if (rowStr.includes("competencia") || rowStr.includes("mercado") || rowStr.includes("rank") || rowStr.includes("share")) continue;
+
+                if (rowStr.includes("ocupaci") || rowStr.includes("occupancy") ||
+                    (rowStr.includes("habitaciones") && !rowStr.includes("ingresos") && !rowStr.includes("precio")) ||
+                    rowStr.includes("vendidas") || rowStr.includes("unidades") || rowStr.includes("estancias")) {
+
+                    // Double check it has numbers
+                    let hasNums = 0;
+                    for (let k = startCol; k < Math.min(startCol + 10, rawData[r].length); k++) {
+                        if (!isNaN(parseFloat(rawData[r][k]))) hasNums++;
+                    }
+                    if (hasNums > 3) {
+                        occupancyRow = r;
+                        break;
+                    }
                 }
             }
+            // Priority 2: Relaxed search if nothing found
+            if (occupancyRow === -1) {
+                for (let r = 0; r < rawData.length; r++) {
+                    const first = String(rawData[r][0] || "").toLowerCase();
+                    if (first.includes("ocupaci") || first.includes("occupancy") ||
+                        (first.includes("habitaciones") && !first.includes("total")) ||
+                        first.includes("vendidas")) {
+                        occupancyRow = r;
+                        break;
+                    }
+                }
+            }
+            logD(`Occupancy Row detected at index: ${occupancyRow}`);
 
             // Build Data
             processedData = [];
@@ -1297,7 +1325,11 @@
 
                 // Format Date & Occupancy
                 let occ = 0;
-                if (occupancyRow !== -1) occ = parseFloat(rawData[occupancyRow][c]) || 0;
+                if (occupancyRow !== -1) {
+                    // Handle Spanish decimals (comma) just in case
+                    let rawVal = String(rawData[occupancyRow][c] || "").replace(',', '.');
+                    occ = parseFloat(rawVal) || 0;
+                }
 
                 const dateInfo = parseDate(currentMonth, dNum, dName);
 
@@ -1333,6 +1365,7 @@
                     hotels: {},
                     compAvg: 0,
                     dateISO: dateInfo.iso,
+                    occupancy: occ,
                     dateMeta: {
                         dNum,
                         dShort: dateInfo.dShort,
@@ -1529,63 +1562,46 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
         }
 
         function getDynamicDateHtml(d, hotel) {
-            const iso = d.dateISO;
             const meta = d.dateMeta;
-            let occ = 0;
-            let otb = 0;
+            let occ = d.occupancy || 0;
+            let otb = d.otbRooms || 0;
 
-            // Calculate Day Name from ISO (User Request)
+            // Date Formatting Logic
+            let dayNum = meta.dNum;
             let dayName = meta.dShort;
-            if (iso && iso !== 'INV-DATE') {
-                const parts = iso.split('-');
+            let monthName = "";
+
+            if (d.dateISO && d.dateISO !== 'INV-DATE') {
+                const parts = d.dateISO.split('-');
                 if (parts.length === 3) {
-                    // Month is 0-indexed
-                    const dObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-                    const weekDays = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-                    dayName = weekDays[dObj.getDay()];
+                    const dt = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                    const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+                    const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+                    dayName = days[dt.getDay()];
+                    monthName = months[dt.getMonth()];
                 }
             }
+            if (!monthName) monthName = meta.mShort || "";
 
-            try {
-                const pDbRaw = CapaStorage.getItem('hotel_manager_db_v2');
-                if (pDbRaw) {
-                    const pDb = (typeof pDbRaw === 'string') ? JSON.parse(pDbRaw) : pDbRaw;
-                    const hData = pDb[hotel];
-                    if (hData) {
-                        const yr = iso.split('-')[0];
-                        // 1. Get OTBs
-                        if (hData[yr]?.daily_otb?.[iso]) {
-                            const val = hData[yr].daily_otb[iso];
-                            otb = (typeof val === 'object') ? (val.rooms || 0) : val;
-                        }
-                        // 2. Get Real Occupancy
-                        if (hData[yr]?.daily?.[iso]) {
-                            occ = hData[yr].daily[iso];
-                        }
-                    }
-                }
-            } catch (e) { }
+            const occValFix = (occ > 0) ? `<div style="font-size: 0.65rem; color: #4f46e5; font-weight: 700; margin-top: 4px;">Hab: ${occ}</div>` : '';
+            const otbHtml = (otb > 0 && Number(otb) !== Number(occ)) ? `<div style="font-size: 0.6rem; color: #8b5cf6; font-weight: 600;">📈 ${otb} OTB</div>` : '';
 
-            const occValFix = (occ > 0) ? `<span style="display:block; font-size: 0.65rem; color: #4f46e5; font-weight: 700; margin-top: 2px;">Hab: ${occ}</span>` : '';
-            const otbHtml = (otb > 0 && Number(otb) !== Number(occ)) ? `<span style="display:block; font-size: 0.6rem; color: #8b5cf6; font-weight: 600; margin-top: 1px;">📈 ${otb} OTB</span>` : '';
-
-            return {
-                html: `
-                    <div class="date-pill">
-                        <div class="date-day">${meta.dNum}</div>
-                        <div class="date-meta">
-                            <span style="font-weight:600; color:var(--text-main);">${dayName}</span>
-                            <span>${meta.mShort}</span>
-                            <!-- Hidden per user request 
-                            ${occValFix}
-                            ${otbHtml} 
-                            -->
+            // New Layout: Big Number + Stacked Text
+            const html = `
+                <div style="text-align:left; padding-left:4px;">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:2px;">
+                        <span style="font-size:1.3rem; font-weight:800; color:#1e293b; line-height:1;">${dayNum}</span>
+                        <div style="display:flex; flex-direction:column; line-height:1.1;">
+                            <span style="font-size:0.75rem; font-weight:600; color:#334155;">${dayName}</span>
+                            <span style="font-size:0.65rem; color:#64748b;">${monthName}</span>
                         </div>
                     </div>
-                `,
-                occ: occ,
-                otb: otb
-            };
+                    ${occValFix}
+                    ${otbHtml}
+                </div>
+            `;
+
+            return { html: html, occ: occ, otb: otb };
         }
 
         function populateMonths() {
@@ -1661,8 +1677,8 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                                         }
                                     }
                                 }
-                                if (foundDailyOcc !== -1) {
-                                    d.occupancy = foundDailyOcc; // Update with live daily occupancy
+                                if (foundDailyOcc > 0) {
+                                    d.occupancy = foundDailyOcc; // Only update if we have a positive integer
                                 }
                             }
                         });
@@ -1874,11 +1890,17 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 const capacityVal = (activeHotel === 'Cumbria' ? 59 : 108); // Manual fallback
                 const occPct2 = (currentOcc / capacityVal) * 100;
 
-                if (occPct2 >= 96) {
-                    const isOver = currentOcc > capacityVal;
-                    const isOpen = (my && !my.sold && my.price > 0 && my.status !== 'sold');
-                    if (isOver && isOpen) alertHtml = `<div style="margin-top:3px; padding:2px; background:#fee2e2; border:1px solid #ef4444; font-size:0.65rem; color:#991b1b; font-weight:800; text-align:center;">⚠️ STOP</div>`;
-                    else alertHtml = `<div style="margin-top:2px; font-size:0.65rem; color:#c2410c; font-weight:700; text-align:center;">🔥 ${occPct2.toFixed(0)}%</div>`;
+                // Logic for High Occupancy / Open Rows
+                const isOpen = (my && !my.sold && my.price > 0 && my.status !== 'sold');
+
+                if (occPct2 >= 95) {
+                    if (occPct2 >= 100 && isOpen) {
+                        // 100% and Open -> Critical Alert
+                        alertHtml = `<div style="margin-top:2px; background:#fee2e2; border:1px solid #ef4444; color:#b91c1c; font-size:0.65rem; font-weight:800; padding:1px 3px; border-radius:4px; text-align:center;">⚠️ CERRAR?</div>`;
+                    } else {
+                        // High Occ Warning
+                        alertHtml = `<div style="margin-top:2px; color:#ea580c; font-size:0.65rem; font-weight:800; text-align:center;">🔥 ${occPct2.toFixed(0)}%</div>`;
+                    }
                 }
 
                 let cellContent = dynamic.html;
@@ -2152,7 +2174,13 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
         <div class="modal-content">
             <span class="close-modal" onclick="closeChartModal()">&times;</span>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                <h3 style="margin:0; color:var(--primary);">📈 Evolución de Tarifas</h3>
+                <div style="display:flex; align-items:center; gap:15px;">
+                    <h3 style="margin:0; color:var(--primary);">📈 Evolución de Tarifas</h3>
+                    <select id="modalMonthSelect" onchange="filterChartFromModal()"
+                        style="padding:6px; border-radius:6px; border:1px solid #e2e8f0; font-size:0.85rem; color:#475569; cursor:pointer; background:#f8fafc;">
+                        <option value="all">📅 Todo el Año</option>
+                    </select>
+                </div>
                 <div style="display:flex; gap:10px; font-size:0.8rem; align-items:center; margin-right: 20px;">
                     <span
                         style="display:inline-block; width:10px; height:10px; background:#4f46e5; border-radius:50%;"></span>
@@ -2171,8 +2199,25 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
     <script>
         function openChartModal() {
             document.getElementById('chartModal').style.display = 'block';
-            // Trigger resize to ensure chart renders correctly in new container
+
+            // Sync Options & Value from Main Selector
+            const mainSel = document.getElementById('monthSelector');
+            const modalSel = document.getElementById('modalMonthSelect');
+            if (mainSel && modalSel) {
+                modalSel.innerHTML = mainSel.innerHTML;
+                modalSel.value = mainSel.value;
+            }
+
             if (chartInstance) chartInstance.resize();
+        }
+
+        function filterChartFromModal() {
+            const val = document.getElementById('modalMonthSelect').value;
+            const mainSel = document.getElementById('monthSelector');
+            if (mainSel) {
+                mainSel.value = val;
+                renderAll(); // Updates Table & Chart
+            }
         }
         function closeChartModal() {
             document.getElementById('chartModal').style.display = 'none';
