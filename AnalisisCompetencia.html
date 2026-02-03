@@ -1433,9 +1433,26 @@
                     const hVal = dayObj.hotels[hName];
                     if (hVal && !hVal.change) {
                         let chInfo = null;
-                        if (prevMap[dayObj.dateISO] && prevMap[dayObj.dateISO][hName]) {
-                            const prevEntry = prevMap[dayObj.dateISO][hName];
-                            if (prevEntry && prevEntry.price > 0 && hVal.price > 0 && !hVal.sold && !prevEntry.sold) {
+
+                        // Smart Lookup in History
+                        let prevEntry = null;
+                        if (prevMap[dayObj.dateISO]) {
+                            // 1. Exact Match
+                            if (prevMap[dayObj.dateISO][hName]) {
+                                prevEntry = prevMap[dayObj.dateISO][hName];
+                            }
+                            // 2. Fuzzy Match (e.g. "Sercotel Guadiana" matches "Guadiana")
+                            else {
+                                const fuzzyKey = Object.keys(prevMap[dayObj.dateISO]).find(k =>
+                                    k.toLowerCase().includes(hName.toLowerCase()) ||
+                                    hName.toLowerCase().includes(k.toLowerCase())
+                                );
+                                if (fuzzyKey) prevEntry = prevMap[dayObj.dateISO][fuzzyKey];
+                            }
+                        }
+
+                        if (prevEntry && prevEntry.price > 0 && hVal.price > 0 && !hVal.sold && !prevEntry.sold) {
+                            if (Math.abs(hVal.price - prevEntry.price) > 0.5) { // Ignore tiny float diffs
                                 if (hVal.price > prevEntry.price) chInfo = { dir: 'up', prev: prevEntry.price };
                                 else if (hVal.price < prevEntry.price) chInfo = { dir: 'down', prev: prevEntry.price };
                             }
@@ -1884,7 +1901,9 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 // Logic for High Occupancy / Open Rows
                 const isOpen = (my && !my.sold && my.price > 0 && my.status !== 'sold');
 
-                if (occPct2 >= 95) {
+                if (currentOcc > capacityVal) {
+                    alertHtml = `<div style="margin-top:2px; background:#450a0a; border:1px solid #b91c1c; color:#fca5a5; font-size:0.65rem; font-weight:800; padding:1px 3px; border-radius:4px; text-align:center; box-shadow: 0 0 5px rgba(239, 68, 68, 0.4);">🚨 OVERBOOKING</div>`;
+                } else if (occPct2 >= 95) {
                     if (occPct2 >= 100 && isOpen) {
                         alertHtml = `<div style="margin-top:2px; background:#fee2e2; border:1px solid #ef4444; color:#b91c1c; font-size:0.65rem; font-weight:800; padding:1px 3px; border-radius:4px; text-align:center;">⚠️ CERRAR?</div>`;
                     } else {
