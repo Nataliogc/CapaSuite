@@ -1865,26 +1865,69 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     let soldComps = 0;
                     competitorsList.forEach(c => { if (d.hotels[c.name]?.sold) soldComps++; });
 
-                    if (soldComps >= 1) {
-                        if (occPct < 30 && daysOut < 3) { actionText = "Mantener"; actionColor = "#f59e0b"; }
-                        else if (diff < 20) { actionText = `▲▲ ${(d.compAvg * 1.25).toFixed(0)}€ (Demanda)`; actionColor = "#16a34a"; cls = 'gap-low'; }
-                        else { actionText = "Mantener (Llenos)"; actionColor = "#166534"; }
-                    } else if (occPct > 75) {
-                        if (diff < 5) { actionText = `▲ ${(d.compAvg * 1.2).toFixed(0)}€ (Últimas)`; actionColor = "#16a34a"; }
-                        else { actionText = "Mantener (Alta)"; actionColor = "#3b82f6"; }
-                    } else if (occPct < 40 && daysOut >= 0 && daysOut < 7) {
-                        if (diff > 5) { actionText = `▼ ${(d.compAvg * 0.9).toFixed(0)}€ (Liq.)`; actionColor = "#dc2626"; cls = 'gap-high'; }
-                    } else if (occPct > 40 && daysOut > 45) {
-                        if (diff < 15) { actionText = `▲ ${(d.compAvg * 1.15).toFixed(0)}€ (Pace)`; actionColor = "#10b981"; }
-                    } else {
-                        if (activeHotel === 'Guadiana') {
-                            if (diff < -5) { cls = 'gap-low'; actionText = `▲ ${(d.compAvg * 1.1).toFixed(0)}€ (Subir)`; actionColor = "#16a34a"; }
-                            else if (diff > 30) { cls = 'gap-high'; actionText = `▼ ${(d.compAvg * 1.25).toFixed(0)}€ (Ajustar)`; actionColor = "#dc2626"; }
-                            else { actionText = "Correcto (Premium)"; actionColor = "#3b82f6"; }
+                    // --- YIELD LOGIC 2.0 (Occupancy Driven) ---
+                    const mktPrice = d.compAvg;
+
+                    // 1. CRITICAL / OVERBOOKING (>90%)
+                    if (occPct >= 90) {
+                        // Very high demand -> Maximize Rate aggressively
+                        if (diff < 30) {
+                            actionText = `▲▲ ${(mktPrice * 1.4).toFixed(0)}€ (Últimas)`;
+                            actionColor = "#b91c1c"; // Dark Red intent
+                            cls = 'gap-low';
                         } else {
-                            if (diff < -15) { cls = 'gap-low'; actionText = `▲ ${(d.compAvg * 0.95).toFixed(0)}€`; actionColor = "#16a34a"; }
-                            else if (diff > 15) { cls = 'gap-high'; actionText = `▼ ${(d.compAvg * 1.05).toFixed(0)}€`; actionColor = "#dc2626"; }
-                            else { actionText = "En rango"; actionColor = "#94a3b8"; }
+                            actionText = "Mantener (Max)";
+                            actionColor = "#991b1b";
+                        }
+                    }
+                    // 2. HIGH OCCUPANCY (70-90%)
+                    else if (occPct >= 70) {
+                        // Strong position -> Target Premium (+15-20% vs Market)
+                        if (diff < 10) {
+                            actionText = `▲ ${(mktPrice * 1.2).toFixed(0)}€ (>70%)`;
+                            actionColor = "#16a34a"; // Green
+                            cls = 'gap-low';
+                        } else {
+                            actionText = "Bien (Alta)";
+                            actionColor = "#15803d";
+                        }
+                    }
+                    // 3. COMPETITORS SOLD OUT (Opportunity)
+                    else if (soldComps >= 1) {
+                        // Market is tight, we have room -> Capitalize
+                        if (diff < 20) {
+                            actionText = `▲ ${(mktPrice * 1.25).toFixed(0)}€ (Demanda)`;
+                            actionColor = "#16a34a";
+                        } else {
+                            actionText = "Mantener";
+                            actionColor = "#0f766e";
+                        }
+                    }
+                    // 4. LOW OCCUPANCY & LAST MINUTE (<40%, <7 days)
+                    else if (occPct < 40 && daysOut < 7) {
+                        // Distressed -> Liquidate but don't break floor
+                        if (diff > -10) {
+                            actionText = `▼ ${(mktPrice * 0.9).toFixed(0)}€ (Liq.)`;
+                            actionColor = "#dc2626"; // Red warning
+                            cls = 'gap-high';
+                        } else {
+                            actionText = "Mantener (Bajo)";
+                            actionColor = "#ca8a04";
+                        }
+                    }
+                    // 5. STANDARD POSITIONING
+                    else {
+                        // Default Logic
+                        if (activeHotel === 'Guadiana') {
+                            // Guadiana: Premium Positioning target
+                            if (diff < -5) { actionText = `▲ ${(mktPrice * 1.1).toFixed(0)}€`; actionColor = "#16a34a"; cls = 'gap-low'; }
+                            else if (diff > 35) { actionText = `▼ ${(mktPrice * 1.2).toFixed(0)}€`; actionColor = "#dc2626"; cls = 'gap-high'; }
+                            else { actionText = "En Rango"; actionColor = "#64748b"; }
+                        } else {
+                            // Cumbria: Competitive Positioning
+                            if (diff < -15) { actionText = `▲ ${(mktPrice * 0.95).toFixed(0)}€`; actionColor = "#16a34a"; cls = 'gap-low'; }
+                            else if (diff > 15) { actionText = `▼ ${(mktPrice * 1.05).toFixed(0)}€`; actionColor = "#dc2626"; cls = 'gap-high'; }
+                            else { actionText = "En Rango"; actionColor = "#64748b"; }
                         }
                     }
                     actionHtml = `<span style="color:${actionColor}; font-weight:700; font-size:0.8rem;">${actionText}</span>`;
@@ -1913,11 +1956,11 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
                 let cellContent = dynamic.html;
                 if (alertHtml) {
-                    const metaClose = cellContent.lastIndexOf('</div></div>');
-                    if (metaClose > -1) cellContent = cellContent.substring(0, metaClose) + alertHtml + "</div></div>";
-                    else if (cellContent.endsWith('</div>')) {
-                        // Fallback injection if the structure changed
-                        cellContent = cellContent.substring(0, cellContent.length - 6) + alertHtml + "</div>";
+                    const lastDivIndex = cellContent.lastIndexOf('</div>');
+                    if (lastDivIndex > -1) {
+                        cellContent = cellContent.substring(0, lastDivIndex) + alertHtml + cellContent.substring(lastDivIndex);
+                    } else {
+                        cellContent += alertHtml;
                     }
                 }
 
