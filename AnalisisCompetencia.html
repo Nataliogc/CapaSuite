@@ -1379,8 +1379,19 @@
 
                     // SEARCH PREVIOUS PRICE
                     let changeInfo = null;
-                    if (prevMap[dayObj.dateISO] && prevMap[dayObj.dateISO][comp.name]) {
-                        const prevEntry = prevMap[dayObj.dateISO][comp.name];
+                    if (prevMap[dayObj.dateISO]) {
+                        let prevEntry = prevMap[dayObj.dateISO][comp.name];
+
+                        // Fuzzy fallback if strict match fails (Robust against name variations like "Sercotel Guadiana" vs "Guadiana")
+                        if (!prevEntry) {
+                            const fuzzyKey = Object.keys(prevMap[dayObj.dateISO]).find(k =>
+                                k.toLowerCase().trim() === comp.name.toLowerCase().trim() ||
+                                k.toLowerCase().includes(comp.name.toLowerCase()) ||
+                                comp.name.toLowerCase().includes(k.toLowerCase())
+                            );
+                            if (fuzzyKey) prevEntry = prevMap[dayObj.dateISO][fuzzyKey];
+                        }
+
                         if (prevEntry && prevEntry.price > 0 && val.price > 0 && !val.sold && !prevEntry.sold) {
                             if (val.price > prevEntry.price) {
                                 changeInfo = { dir: 'up', prev: prevEntry.price };
