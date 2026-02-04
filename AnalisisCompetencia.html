@@ -1398,7 +1398,8 @@
                     const activeLow = activeHotel.toLowerCase();
 
                     // 1. Exclude explicitly blacklisted competitors (e.g. Libere)
-                    const isLibere = nLow.includes("líbere") || nLow.includes("libere") || nLow.includes("ciudad real");
+                    // Fix: Exclude ONLY Libere, do not exclude NH Ciudad Real
+                    const isLibere = nLow.includes("líbere") || nLow.includes("libere");
 
                     // 2. Exclude "My Hotel" (the one currently being analyzed)
                     const isMyHotel = nLow.includes(activeLow);
