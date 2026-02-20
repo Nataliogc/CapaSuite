@@ -1866,7 +1866,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     let actionText = "Mantener";
                     let actionColor = "#94a3b8";
 
-                    // --- LOGIC RE-INSERTION ---
+                    // --- SMART YIELD LOGIC 3.0 (Inteligencia Competitiva) ---
                     const cap = (activeHotel === 'Cumbria') ? 59 : 108;
                     const rooms = d.otbRooms || d.occupancy || 0;
                     const occPct = (rooms / cap) * 100;
@@ -1875,16 +1875,32 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     const daysOut = Math.ceil((targetDate - today) / (1000 * 60 * 60 * 24));
 
                     let soldComps = 0;
-                    competitorsList.forEach(c => { if (d.hotels[c.name]?.sold) soldComps++; });
+                    let compPricesArr = [];
+                    competitorsList.forEach(c => {
+                        const p = d.hotels[c.name];
+                        if (p?.sold) soldComps++;
+                        if (p?.price > 0 && !p?.sold) compPricesArr.push(p.price);
+                    });
 
-                    // --- YIELD LOGIC 2.0 (Occupancy Driven) ---
                     const mktPrice = d.compAvg;
+                    const lowestCompPrice = compPricesArr.length > 0 ? Math.min(...compPricesArr) : mktPrice;
+                    const highestCompPrice = compPricesArr.length > 0 ? Math.max(...compPricesArr) : mktPrice;
+
+                    let targetPrice = myP;
 
                     // 1. CRITICAL / OVERBOOKING (>90%)
                     if (occPct >= 90) {
-                        // Very high demand -> Maximize Rate aggressively
-                        if (diff < 30) {
-                            actionText = `▲▲ ${(mktPrice * 1.4).toFixed(0)}€ (Últimas)`;
+                        if (activeHotel === 'Guadiana') {
+                            // Ignoramos el más barato. Apuntamos por encima del más caro o un +30% del mercado
+                            targetPrice = Math.max(highestCompPrice * 1.05, mktPrice * 1.3);
+                        } else {
+                            // Cumbria (3 estrellas): Tope razonable para no irse a precios de 4 estrellas super premium
+                            targetPrice = Math.max(mktPrice * 1.2, lowestCompPrice + 30);
+                            if (targetPrice > highestCompPrice * 0.8) targetPrice = highestCompPrice * 0.8;
+                        }
+
+                        if (myP < targetPrice * 0.95) {
+                            actionText = `▲▲ ${targetPrice.toFixed(0)}€ (Últimas)`;
                             actionColor = "#b91c1c"; // Dark Red intent
                             cls = 'gap-low';
                         } else {
@@ -1892,54 +1908,78 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                             actionColor = "#991b1b";
                         }
                     }
-                    // 2. HIGH OCCUPANCY (70-90%)
-                    else if (occPct >= 70) {
-                        // Strong position -> Target Premium (+15-20% vs Market)
-                        if (diff < 10) {
-                            actionText = `▲ ${(mktPrice * 1.2).toFixed(0)}€ (>70%)`;
+                    // 2. HIGH OCCUPANCY (70-90%) OR COMPETITORS SOLD OUT
+                    else if (occPct >= 70 || soldComps >= 2) {
+                        // Posición fuerte.
+                        if (activeHotel === 'Guadiana') {
+                            targetPrice = Math.max(mktPrice * 1.15, highestCompPrice * 0.95);
+                        } else {
+                            // Cumbria: Mantenemos competitividad pero nos beneficiamos de la compresión, sin apuntar al highest (que será un 4 estrellas caro)
+                            targetPrice = Math.max(mktPrice * 1.05, lowestCompPrice * 1.15);
+                            if (targetPrice > 115) targetPrice = 115; // Un cap de seguridad general o dinámico a mktPrice * 1.2
+                            if (targetPrice > mktPrice * 1.25) targetPrice = mktPrice * 1.25;
+                        }
+
+                        let reasonText = occPct >= 70 ? ">70%" : "Comp. Llenos";
+                        if (myP < targetPrice * 0.95) {
+                            actionText = `▲ ${targetPrice.toFixed(0)}€ (${reasonText})`;
                             actionColor = "#16a34a"; // Green
                             cls = 'gap-low';
+                        } else if (myP > targetPrice * 1.1) {
+                            actionText = `▼ ${targetPrice.toFixed(0)}€ (Alta)`;
+                            actionColor = "#dc2626";
+                            cls = 'gap-high';
                         } else {
                             actionText = "Bien (Alta)";
                             actionColor = "#15803d";
                         }
                     }
-                    // 3. COMPETITORS SOLD OUT (Opportunity)
-                    else if (soldComps >= 1) {
-                        // Market is tight, we have room -> Capitalize
-                        if (diff < 20) {
-                            actionText = `▲ ${(mktPrice * 1.25).toFixed(0)}€ (Demanda)`;
-                            actionColor = "#16a34a";
-                        } else {
-                            actionText = "Mantener";
-                            actionColor = "#0f766e";
-                        }
-                    }
-                    // 4. LOW OCCUPANCY & LAST MINUTE (<40%, <7 days)
+                    // 3. LOW OCCUPANCY & LAST MINUTE (<40%, <7 days)
                     else if (occPct < 40 && daysOut < 7) {
-                        // Distressed -> Liquidate but don't break floor
-                        if (diff > -10) {
-                            actionText = `▼ ${(mktPrice * 0.9).toFixed(0)}€ (Liq.)`;
+                        // Urgencia -> Competimos agresivamente contra el PRECIO MÁS BAJO de la competencia
+                        targetPrice = (activeHotel === 'Guadiana') ? lowestCompPrice * 1.05 : lowestCompPrice * 0.95;
+                        const floor = (activeHotel === 'Guadiana') ? 50 : 40; // Suelo de precio
+                        if (targetPrice < floor) targetPrice = floor;
+
+                        if (myP > targetPrice * 1.05) {
+                            actionText = `▼▼ ${targetPrice.toFixed(0)}€ (Liq.)`;
                             actionColor = "#dc2626"; // Red warning
                             cls = 'gap-high';
+                        } else if (myP < targetPrice * 0.9) {
+                            actionText = `▲ ${targetPrice.toFixed(0)}€ (Subir)`;
+                            actionColor = "#16a34a";
+                            cls = 'gap-low';
                         } else {
                             actionText = "Mantener (Bajo)";
                             actionColor = "#ca8a04";
                         }
                     }
-                    // 5. STANDARD POSITIONING
+                    // 4. MEDIUM/STANDARD POSITIONING
                     else {
-                        // Default Logic
+                        // Mezcla inteligente entre el PRECIO MÁS BAJO y la MEDIA DE MERCADO según Ocupación
+                        // Ej: Si Occ=20%, pesamos más (80%) el precio bajo para ganar tracción.
+                        // Si Occ=60%, pesamos más (60%) la media para estabilizar.
+                        let weightLowest = 1 - (occPct / 100);
+                        targetPrice = (lowestCompPrice * weightLowest) + (mktPrice * (1 - weightLowest));
+
+                        // Perfil de marca
                         if (activeHotel === 'Guadiana') {
-                            // Guadiana: Premium Positioning target
-                            if (diff < -5) { actionText = `▲ ${(mktPrice * 1.1).toFixed(0)}€`; actionColor = "#16a34a"; cls = 'gap-low'; }
-                            else if (diff > 35) { actionText = `▼ ${(mktPrice * 1.2).toFixed(0)}€`; actionColor = "#dc2626"; cls = 'gap-high'; }
-                            else { actionText = "En Rango"; actionColor = "#64748b"; }
+                            targetPrice *= 1.1; // Guadiana tiene +10% de prima
                         } else {
-                            // Cumbria: Competitive Positioning
-                            if (diff < -15) { actionText = `▲ ${(mktPrice * 0.95).toFixed(0)}€`; actionColor = "#16a34a"; cls = 'gap-low'; }
-                            else if (diff > 15) { actionText = `▼ ${(mktPrice * 1.05).toFixed(0)}€`; actionColor = "#dc2626"; cls = 'gap-high'; }
-                            else { actionText = "En Rango"; actionColor = "#64748b"; }
+                            targetPrice *= 0.95; // Cumbria se sitúa ligeramente por debajo del pool estándar
+                        }
+
+                        if (myP > targetPrice * 1.1) {
+                            actionText = `▼ ${targetPrice.toFixed(0)}€ (Estabilizar)`;
+                            actionColor = "#ea580c";
+                            cls = 'gap-high';
+                        } else if (myP < targetPrice * 0.9) {
+                            actionText = `▲ ${targetPrice.toFixed(0)}€ (Ajustar)`;
+                            actionColor = "#16a34a";
+                            cls = 'gap-low';
+                        } else {
+                            actionText = "En Rango";
+                            actionColor = "#64748b";
                         }
                     }
                     actionHtml = `<span style="color:${actionColor}; font-weight:700; font-size:0.8rem;">${actionText}</span>`;
