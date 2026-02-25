@@ -228,6 +228,11 @@
             gap: 24px;
             width: 100%;
             max-width: 100%;
+            transition: grid-template-columns 0.3s ease;
+        }
+
+        .dashboard-grid.sidebar-collapsed {
+            grid-template-columns: 60px minmax(0, 1fr);
         }
 
         @media (max-width: 1000px) {
@@ -265,6 +270,38 @@
             justify-content: space-between;
             align-items: center;
             background: #fafafa;
+        }
+
+        .panel-heading.collapsible {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .panel-heading.collapsible:hover {
+            background: #f1f5f9;
+        }
+
+        .panel-heading.collapsible::after {
+            content: '▼';
+            font-size: 0.7rem;
+            color: var(--text-light);
+            transition: transform 0.2s;
+        }
+
+        .card.collapsed .panel-heading.collapsible::after {
+            transform: rotate(-90deg);
+        }
+
+        .card.collapsed .panel-body {
+            display: none;
+        }
+
+        .sidebar-collapsed .kpi-wrapper>*:not(#sidebarToggle) {
+            display: none !important;
+        }
+
+        .sidebar-collapsed aside.kpi-wrapper {
+            gap: 0;
         }
 
         .panel-body {
@@ -702,6 +739,12 @@
         <!-- LEFT COLUMN -->
         <aside class="kpi-wrapper">
 
+            <!-- SIDEBAR TOGGLE -->
+            <div onclick="toggleSidebar()" id="sidebarToggle" title="Contraer/Expandir Panel"
+                style="background:var(--primary); color:white; padding:8px; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow-sm); transition:all 0.2s;">
+                <span id="sidebar-toggle-icon">◀ Contraer</span>
+            </div>
+
             <!-- CHART TRIGGER MINI-BUTTON (COMPACT) -->
             <div onclick="openChartModal()" title="Ver Gráfico de Evolución"
                 style="background:var(--bg-surface); padding:8px; border-radius:8px; border:1px solid var(--border); cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow-sm); transition:all 0.2s;"
@@ -730,8 +773,8 @@
             </div>
 
             <!-- INSIGHTS -->
-            <div class="card">
-                <div class="panel-heading">⚡ Análisis Experto</div>
+            <div class="card" id="expertAnalysisCard">
+                <div class="panel-heading collapsible" onclick="toggleExpertAnalysis()">⚡ Análisis Experto</div>
                 <div class="panel-body">
                     <div id="insights-container" class="insight-list">
                         <!-- JS injected -->
@@ -790,6 +833,26 @@
             if (hotel === 'Guadiana') logoImg.src = 'Imagen/logo-guadiana.svg';
             else logoImg.src = 'Imagen/logo-cumbria.svg';
             activeHotel = hotel;
+        }
+
+        // --- UI TOGGLES ---
+        function toggleSidebar() {
+            const grid = document.getElementById('view-dashboard');
+            const icon = document.getElementById('sidebar-toggle-icon');
+            const isCollapsed = grid.classList.toggle('sidebar-collapsed');
+
+            if (isCollapsed) {
+                icon.innerText = '▶';
+                document.getElementById('sidebarToggle').title = "Expandir Panel";
+            } else {
+                icon.innerText = '◀ Contraer';
+                document.getElementById('sidebarToggle').title = "Contraer Panel";
+            }
+        }
+
+        function toggleExpertAnalysis() {
+            const card = document.getElementById('expertAnalysisCard');
+            card.classList.toggle('collapsed');
         }
 
         // --- ACTIONS ---
