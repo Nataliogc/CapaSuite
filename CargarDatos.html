@@ -1529,34 +1529,39 @@
                     }
 
                     // 3. Check Dates (Excel Serial, Date Object, OR String Regex)
-                    if (mIdx === -1) {
-                        let dateObj = null;
-                        if (headerCell instanceof Date) {
-                            dateObj = headerCell;
-                        } else if (typeof headerCell === 'number' && headerCell > 30000) {
-                            dateObj = new Date((headerCell - 25569) * 86400 * 1000);
-                        } else {
-                            // Try Regex for strings like "23/02", "23-02", "23/02/2026"
-                            const dateMatch = String(headerCell || "").trim().match(/^(\d{1,2})[-\/](\d{1,2})(?:[-\/](\d{2,4}))?$/);
-                            if (dateMatch) {
-                                const d = parseInt(dateMatch[1]);
-                                const m = parseInt(dateMatch[2]) - 1; // 0-indexed
-                                let y = reportYear; // Default to file year
-                                if (dateMatch[3]) {
-                                    y = dateMatch[3];
-                                    if (y.length === 2) y = "20" + y;
+                    let parsedDate = null;
+                    if (headerCell instanceof Date) {
+                        parsedDate = headerCell;
+                    } else if (typeof headerCell === 'number' && headerCell > 30000) {
+                        parsedDate = new Date((headerCell - 25569) * 86400 * 1000);
+                    } else {
+                        // Try Regex for strings like "23/02", "23-02", "23/02/2026", "23 FEB", "23-Feb"
+                        const strCell = String(headerCell || "").trim();
+                        const dateMatch = strCell.match(/^(\d{1,2})[-\/\s_]+([a-zA-Z]{3,}|\d{1,2})(?:[-\/\s_]+(\d{2,4}))?$/);
+                        if (dateMatch) {
+                            const d = parseInt(dateMatch[1]);
+                            let m = -1;
+                            if (isNaN(parseInt(dateMatch[2]))) {
+                                const mStr = dateMatch[2].toUpperCase();
+                                for (const [name, index] of Object.entries(SHORT_MONTHS_MAP)) {
+                                    if (mStr.startsWith(name)) { m = index; break; }
                                 }
-                                if (m >= 0 && m <= 11 && d >= 1 && d <= 31) {
-                                    dateObj = new Date(y, m, d);
-                                }
+                            } else {
+                                m = parseInt(dateMatch[2]) - 1; // 0-indexed
+                            }
+                            let y = reportYear; // Default to file year
+                            if (dateMatch[3]) {
+                                y = dateMatch[3];
+                                if (y.length === 2) y = "20" + y;
+                            }
+                            if (m >= 0 && m <= 11 && d >= 1 && d <= 31) {
+                                parsedDate = new Date(y, m, d);
                             }
                         }
+                    }
 
-                        if (dateObj && !isNaN(dateObj.getTime())) {
-                            mIdx = dateObj.getMonth();
-                            // NEW: Also set specDate here so we don't have to re-parse it later
-                            // We attach it to a temporary property on the loop scope or re-use logic below
-                        }
+                    if (parsedDate && !isNaN(parsedDate.getTime())) {
+                        mIdx = parsedDate.getMonth();
                     }
 
                     if (mIdx >= 0 && mIdx <= 11) {
@@ -1574,22 +1579,7 @@
                         hasData = true;
 
                         // Save Daily
-                        let specDate = null;
-                        if (headerCell instanceof Date) specDate = headerCell;
-                        else {
-                            // Re-parse string date if needed. IMPORTANT: Use headerCell directly, not normalized 'header'
-                            const dateMatch = String(headerCell || "").match(/^(\d{1,2})[-\/](\d{1,2})(?:[-\/](\d{2,4}))?$/);
-                            if (dateMatch) {
-                                const d = parseInt(dateMatch[1]);
-                                const m = parseInt(dateMatch[2]) - 1;
-                                let y = reportYear;
-                                if (dateMatch[3]) {
-                                    y = dateMatch[3];
-                                    if (y.length === 2) y = "20" + y;
-                                }
-                                specDate = new Date(y, m, d);
-                            }
-                        }
+                        let specDate = parsedDate;
 
                         if (specDate && !isNaN(specDate.getTime())) {
                             if (!dbYear.daily) dbYear.daily = {};

@@ -1604,6 +1604,39 @@
             // Check if OTB has actual data (not all zeros)
             const hasOTBData = otbDataForChart && otbDataForChart.some(v => v > 0);
 
+            // 4. Budget Data (Presupuesto)
+            let budgetDataForChart = null;
+            const customKey = `custom_budget_${currentYear}`;
+            const customBudget = (db[currentHotel] && db[currentHotel][customKey]) ? db[currentHotel][customKey] : null;
+
+            if (customBudget && customBudget.rev && customBudget.rev.length === 12 && customBudget.rev.some(v => v > 0)) {
+                if (chartMetric === 'total' || chartMetric === 'hab') {
+                    budgetDataForChart = customBudget.rev;
+                } else if (chartMetric === 'adr') {
+                    budgetDataForChart = customBudget.adr;
+                } else if (chartMetric === 'occ') {
+                    budgetDataForChart = customBudget.rev.map((r, i) => {
+                        const a = customBudget.adr[i];
+                        if (!a || a <= 0) return 0;
+                        const rn = r / a;
+                        const days = new Date(parseInt(currentYear), i + 1, 0).getDate(); // Exact days in month
+                        return ((rn / (HOTELS[currentHotel].rooms * days)) * 100).toFixed(1);
+                    });
+                }
+            } else {
+                // FALLBACK IF NO OFFICIAL BUDGET SAVED YET: use LY data + growth
+                if (mainDataLY && mainDataLY.length === 12) {
+                    if (chartMetric === 'total' || chartMetric === 'hab') {
+                        budgetDataForChart = mainDataLY.map(v => v * 1.050); // +5% revenue
+                    } else if (chartMetric === 'adr') {
+                        budgetDataForChart = mainDataLY.map(v => v * 1.030); // +3% ADR
+                    } else if (chartMetric === 'occ') {
+                        budgetDataForChart = mainDataLY.map(v => v); // Keep occ same as LY
+                    }
+                }
+            }
+            const hasBudgetData = budgetDataForChart && budgetDataForChart.some(v => parseFloat(v) > 0);
+
             // 1. Evolution Chart (Line)
             const mainChartCanvas = document.getElementById('mainChart');
             if (window.salesChart instanceof Chart) {
@@ -1654,6 +1687,18 @@
                                 pointBackgroundColor: '#fffbeb',
                                 pointBorderColor: '#f59e0b',
                                 fill: true
+                            }] : []),
+                            // Add Budget dataset
+                            ...(hasBudgetData ? [{
+                                label: `Presupuesto ${currentYear}`,
+                                data: budgetDataForChart,
+                                borderColor: '#10b981', // Emerald 500
+                                backgroundColor: 'transparent',
+                                borderDash: [4, 4],
+                                tension: 0.4,
+                                borderWidth: 3,
+                                pointRadius: 0,
+                                fill: false
                             }] : [])
                         ]
                     },
