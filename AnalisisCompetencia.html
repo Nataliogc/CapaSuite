@@ -718,6 +718,9 @@
                 <select id="monthSelector" class="form-select" onchange="renderAll()">
                     <option value="all">📅 Todo el Año</option>
                 </select>
+                <button class="btn"
+                    style="background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; font-weight:600;"
+                    onclick="openCompConfig()">⚙️ Competencia</button>
                 <button id="updateBtn" class="btn btn-primary" onclick="clearData()">↺ Nuevo Archivo</button>
             </div>
     </div>
@@ -822,9 +825,20 @@
         let rawData = [];
         let processedData = [];
         let competitorsList = [];
+        let ignoredCompetitors = new Set();
         let activeHotel = "Cumbria";
         let chartInstance = null;
         let distinctMonths = [];
+
+        // Load ignored competitors from memory
+        try {
+            const savedIgnored = localStorage.getItem('ignored_competitors');
+            if (savedIgnored) {
+                ignoredCompetitors = new Set(JSON.parse(savedIgnored));
+            }
+        } catch (e) {
+            console.warn("Failed to load ignored competitors from local storage", e);
+        }
 
         // --- UPDATE HOTEL LOGO ---
         function updateHotelLogo() {
@@ -1795,6 +1809,9 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
             document.getElementById('record-count').innerHTML = `${data.length} días analizados ${otbText}`;
 
+            // Recalculate dynamic market average based on active configuration
+            recalcMarketAverages(data);
+
             renderKPIs(data);
             renderChart(data);
             renderTable(data);
@@ -1901,13 +1918,17 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
             // Add Sibling Header
             if (siblingName) {
-                h += `<th title="${siblingName}" style="color:#4f46e5; font-weight:800; border-left:2px solid #e2e8f0;">${siblingName}</th>`;
+                const isIgnored = ignoredCompetitors.has(siblingName);
+                const opacityStyle = isIgnored ? "opacity: 0.35; filter: grayscale(100%); background:#f8fafc;" : "";
+                h += `<th title="${siblingName}" style="color:#4f46e5; font-weight:800; border-left:2px solid #e2e8f0; ${opacityStyle}">${siblingName}</th>`;
             }
 
             competitorsList.forEach(c => {
                 // Allow longer names since we now wrap text
                 const short = c.name.length > 25 ? c.name.substring(0, 25) + '..' : c.name;
-                h += `<th title="${c.name}">${short}</th>`;
+                const isIgnored = ignoredCompetitors.has(c.name);
+                const opacityStyle = isIgnored ? "opacity: 0.35; filter: grayscale(100%); background:#f8fafc;" : "";
+                h += `<th title="${c.name}" style="${opacityStyle}">${short}</th>`;
             });
             thead.innerHTML = h;
 
@@ -1937,13 +1958,8 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     const targetDate = new Date(d.dateISO);
                     const daysOut = Math.ceil((targetDate - today) / (1000 * 60 * 60 * 24));
 
-                    let soldComps = 0;
-                    let compPricesArr = [];
-                    competitorsList.forEach(c => {
-                        const p = d.hotels[c.name];
-                        if (p?.sold) soldComps++;
-                        if (p?.price > 0 && !p?.sold) compPricesArr.push(p.price);
-                    });
+                    let soldComps = d.activeSoldComps || 0;
+                    let compPricesArr = d.activeCompPrices || [];
 
                     const mktPrice = d.compAvg;
                     const lowestCompPrice = compPricesArr.length > 0 ? Math.min(...compPricesArr) : mktPrice;
@@ -2108,12 +2124,15 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 // SIBLING
                 if (siblingName) {
                     const hData = d.hotels[siblingName];
+                    const isIgnored = ignoredCompetitors.has(siblingName);
+                    const opacityStyle = isIgnored ? "opacity: 0.35; filter: grayscale(100%);" : "";
+
                     if (!hData || hData.status === 'noData') {
-                        html += `<td style="border-left:2px solid #e2e8f0; background:#f8fafc;">-</td>`;
+                        html += `<td style="border-left:2px solid #e2e8f0; background:#f8fafc; ${opacityStyle}">-</td>`;
                     } else if (hData.sold || hData.status === 'sold') {
-                        html += `<td style="border-left:2px solid #e2e8f0; background:#f8fafc;"><span class="price-sold">S</span></td>`;
+                        html += `<td style="border-left:2px solid #e2e8f0; background:#f8fafc; ${opacityStyle}"><span class="price-sold">S</span></td>`;
                     } else if (hData.status === 'minStay') {
-                        html += `<td style="border-left:2px solid #e2e8f0; background:#f8fafc;"><span class="price-minstay">M</span></td>`;
+                        html += `<td style="border-left:2px solid #e2e8f0; background:#f8fafc; ${opacityStyle}"><span class="price-minstay">M</span></td>`;
                     } else {
                         const style = (!sold && hData.price < myP) ? "color:#ef4444; font-weight:800;" : "color:var(--text-main); font-weight:700;";
                         let sContent = `${hData.price.toFixed(0)}€`;
@@ -2123,16 +2142,19 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                             const arrow = dir === 'up' ? '▲' : '▼';
                             sContent += `<span style="display:inline-block; font-size:0.65rem; color:${color}; background:#fff; border:1px solid ${color}; padding:0px 2px; border-radius:3px; margin-left:3px; line-height:1.2; vertical-align:middle; font-weight:700;">${arrow}${hData.change.prev}</span>`;
                         }
-                        html += `<td style="border-left:2px solid #e2e8f0; background:#f8fafc; font-size:1rem; ${style}">${sContent}</td>`;
+                        html += `<td style="border-left:2px solid #e2e8f0; background:#f8fafc; font-size:1rem; ${style} ${opacityStyle}">${sContent}</td>`;
                     }
                 }
 
                 // Competitors Loop
                 const compCols = competitorsList.map(c => {
                     const hData = d.hotels[c.name];
-                    if (!hData || hData.status === 'noData') return `<td>-</td>`;
-                    if (hData.sold || hData.status === 'sold') return `<td><span class="price-sold">S</span></td>`;
-                    if (hData.status === 'minStay') return `<td><span class="price-minstay" title="Estancia mínima">M</span></td>`;
+                    const isIgnored = ignoredCompetitors.has(c.name);
+                    const opacityStyle = isIgnored ? "opacity: 0.35; filter: grayscale(100%); background:#f8fafc;" : "";
+
+                    if (!hData || hData.status === 'noData') return `<td style="${opacityStyle}">-</td>`;
+                    if (hData.sold || hData.status === 'sold') return `<td style="${opacityStyle}"><span class="price-sold">S</span></td>`;
+                    if (hData.status === 'minStay') return `<td style="${opacityStyle}"><span class="price-minstay" title="Estancia mínima">M</span></td>`;
 
                     const style = (!sold && hData.price < myP) ? "color:#ef4444; font-weight:600;" : "color:var(--text-light);";
                     let priceContent = `${hData.price.toFixed(0)}€`;
@@ -2142,7 +2164,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         const arrow = dir === 'up' ? '▲' : '▼';
                         priceContent += `<span style="display:inline-block; font-size:0.65rem; color:${color}; background:#fff; border:1px solid ${color}; padding:0px 2px; border-radius:3px; margin-left:3px; line-height:1.2; vertical-align:middle; font-weight:700;">${arrow}${hData.change.prev}</span>`;
                     }
-                    return `<td style="${style}">${priceContent}</td>`;
+                    return `<td style="${style} ${opacityStyle}">${priceContent}</td>`;
                 }).join('');
 
                 html += compCols;
@@ -2332,12 +2354,116 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             dPanel.scrollTop = dPanel.scrollHeight;
         }
 
+        // --- COMPETENCIA CONFIG LOGIC ---
+        function openCompConfig() {
+            const container = document.getElementById('compListContainer');
+            container.innerHTML = '';
+
+            const allComps = new Set();
+
+            // Add sibling explicitly
+            let siblingName = activeHotel === "Guadiana" ? "Cumbria" : (activeHotel === "Cumbria" ? "Guadiana" : "");
+            if (siblingName) allComps.add(siblingName);
+
+            competitorsList.forEach(c => allComps.add(c.name));
+
+            Array.from(allComps).forEach(comp => {
+                const isChecked = !ignoredCompetitors.has(comp);
+                container.innerHTML += `
+                    <label style="display:flex; align-items:center; gap:10px; padding:10px; border:1px solid var(--border); border-radius:6px; cursor:pointer; background:var(--bg-body); transition:all 0.2s;">
+                        <input type="checkbox" style="width:18px; height:18px; accent-color:var(--primary);" 
+                               value="${comp}" ${isChecked ? 'checked' : ''} 
+                               onchange="toggleComp('${comp.replace(/'/g, "\\'")}', this.checked)">
+                        <span style="font-weight:600; font-size:14px; color:var(--text-main);">${comp}</span>
+                    </label>
+                `;
+            });
+
+            document.getElementById('compConfigModal').style.display = 'flex';
+        }
+
+        function toggleComp(compName, isChecked) {
+            if (isChecked) {
+                ignoredCompetitors.delete(compName);
+            } else {
+                ignoredCompetitors.add(compName);
+            }
+            localStorage.setItem('ignored_competitors', JSON.stringify(Array.from(ignoredCompetitors)));
+        }
+
+        function closeCompConfig() {
+            document.getElementById('compConfigModal').style.display = 'none';
+            renderAll();
+        }
+
+        function recalcMarketAverages(data) {
+            data.forEach(d => {
+                let compPrices = [];
+                let siblingName = activeHotel === "Guadiana" ? "Cumbria" : (activeHotel === "Cumbria" ? "Guadiana" : "");
+
+                const activeComps = [];
+                if (siblingName && !ignoredCompetitors.has(siblingName)) {
+                    activeComps.push(siblingName);
+                }
+
+                competitorsList.forEach(c => {
+                    const isMyHotel = c.name.toLowerCase().includes(activeHotel.toLowerCase());
+                    const isLibere = c.name.toLowerCase().includes("líbere") || c.name.toLowerCase().includes("libere");
+
+                    if (!isMyHotel && !isLibere && c.name !== siblingName && !ignoredCompetitors.has(c.name)) {
+                        activeComps.push(c.name);
+                    }
+                });
+
+                let soldComps = 0;
+
+                activeComps.forEach(compName => {
+                    const hData = d.hotels[compName];
+                    if (hData) {
+                        if (hData.sold) soldComps++;
+                        if (hData.price > 0 && !hData.sold) {
+                            compPrices.push(hData.price);
+                        }
+                    }
+                });
+
+                d.activeCompPrices = compPrices;
+                d.activeSoldComps = soldComps;
+
+                if (compPrices.length > 0) {
+                    d.compAvg = compPrices.reduce((a, b) => a + b, 0) / compPrices.length;
+                } else {
+                    d.compAvg = 0;
+                }
+            });
+        }
+
         // Run on load
         window.addEventListener('DOMContentLoaded', () => {
             logD("Sistema iniciado. Esperando archivo...");
             initApp();
         });
     </script>
+
+    <!-- COMPETITOR CONFIG MODAL -->
+    <div id="compConfigModal" class="modal" style="z-index:999999;">
+        <div class="modal-content" style="max-width:500px;">
+            <span class="close-modal" onclick="closeCompConfig()">&times;</span>
+            <h3 style="margin-top:0; color:var(--text-main);">⚙️ Configuración de Competencia</h3>
+            <p style="font-size:0.85rem; color:var(--text-light); margin-bottom:15px; line-height:1.4;">
+                Selecciona los hoteles que deseas <strong>incluir</strong> en el cálculo del Precio Medio de Mercado.
+                Esto afectará a los promedios globales y los consejos automáticos de precio.
+            </p>
+            <div id="compListContainer"
+                style="display:flex; flex-direction:column; gap:8px; margin-bottom:20px; max-height:350px; overflow-y:auto; padding-right:5px;">
+                <!-- Options injected here -->
+            </div>
+            <div style="display:flex; justify-content:flex-end;">
+                <button class="btn btn-primary" onclick="closeCompConfig()">Modificar y Recalcular</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Chart Modal -->
     <div id="chartModal" class="modal">
         <div class="modal-content">
