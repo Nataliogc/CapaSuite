@@ -1777,15 +1777,45 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         // 1. Sync for Active Hotel (High Priority)
                         if (dbActiveKey && pDb[dbActiveKey]) {
                             const hData = pDb[dbActiveKey];
-                            const yr = iso.split('-')[0];
-                            const otbInfo = hData[yr]?.daily_otb?.[iso] || hData["2025"]?.daily_otb?.[iso] || hData["2026"]?.daily_otb?.[iso];
-                            const prodInfo = hData[yr]?.daily?.[iso] || hData["2025"]?.daily?.[iso] || hData["2026"]?.daily?.[iso];
+                            const yrStr = iso.split('-')[0];
+                            const yrInt = parseInt(yrStr);
 
-                            if (otbInfo) {
+                            // Búsqueda profunda en años posibles (el año actual o el anterior/siguiente por si hubo desfase)
+                            const yearsToTry = [yrStr, String(yrInt - 1), String(yrInt + 1), "2025", "2026", "2027"];
+                            let otbInfo = null;
+                            let prodInfo = null;
+
+                            for (const y of yearsToTry) {
+                                if (hData[y]) {
+                                    if (hData[y].daily_otb?.[iso] !== undefined) {
+                                        otbInfo = hData[y].daily_otb[iso];
+                                        break;
+                                    }
+                                    // Fallback to month array if daily is missing
+                                    if (!otbInfo && hData[y].otb) {
+                                        const mIdx = parseInt(iso.split('-')[1]) - 1;
+                                        const rmsArr = hData[y].otb.rooms;
+                                        if (rmsArr && rmsArr[mIdx] > 0) {
+                                            // Solo si no hay datos diarios, usamos el promedio del mes como aproximación (o lo marcamos)
+                                            // Pero mejor no inventar si no hay daily_otb
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // Re-search production
+                            for (const y of yearsToTry) {
+                                if (hData[y] && hData[y].daily?.[iso] !== undefined) {
+                                    prodInfo = hData[y].daily[iso];
+                                    break;
+                                }
+                            }
+
+                            if (otbInfo !== null) {
                                 d.otbRooms = (typeof otbInfo === 'number') ? otbInfo : (otbInfo.rooms || 0);
                                 if (typeof otbInfo === 'object' && otbInfo.revenue > 0 && d.otbRooms > 0) d.otbADR = otbInfo.revenue / d.otbRooms;
                             }
-                            if (prodInfo) {
+                            if (prodInfo !== null) {
                                 d.occupancy = (typeof prodInfo === 'number') ? prodInfo : (prodInfo.rooms || 0);
                             }
                         }
