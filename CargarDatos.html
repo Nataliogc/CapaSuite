@@ -1947,7 +1947,8 @@
                         const val = row[c];
                         if (val === null || val === undefined || val === "" || val === 0) continue;
 
-                        const [y, mStr, dStr] = iso.split('-');
+                    const [yRaw, mStr, dStr] = iso.split('-');
+                    const y = (yRaw.length === 2) ? "20" + yRaw : yRaw;
                         const m = parseInt(mStr) - 1;
                         if (!db[hotel][y]) db[hotel][y] = { otb: { rooms: new Array(12).fill(0), revenue: new Array(12).fill(0) }, daily_otb: {}, lastUpdate: "" };
                         const targetYear = db[hotel][y];
