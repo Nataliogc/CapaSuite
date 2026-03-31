@@ -654,8 +654,8 @@
             let headerRowIndex = -1;
             let colMap = [];
 
-            // 1. Encontrar la verdadera fila de cabecera (buscando meses)
-            for (let r = 0; r < Math.min(data.length, 20); r++) {
+            // 1. Encontrar la verdadera fila de cabecera (buscando meses o fechas)
+            for (let r = 0; r < Math.min(data.length, 30); r++) {
                 const row = data[r] || [];
                 let monthsFound = 0;
                 let potentialColMap = [];
@@ -665,22 +665,18 @@
                     if (!cell) continue;
 
                     let mIdx = -1;
-
-                    // A. Texto
                     const s = normalizeStr(cell);
                     const SHORT_MONTHS_MAP = { "ENE": 0, "JAN": 0, "FEB": 1, "MAR": 2, "ABR": 3, "APR": 3, "MAY": 4, "JUN": 5, "JUL": 6, "AGO": 7, "AUG": 7, "SEP": 8, "OCT": 9, "NOV": 10, "DIC": 11, "DEC": 11 };
                     for (const [name, index] of Object.entries(SHORT_MONTHS_MAP)) {
                         if (s.startsWith(name)) { mIdx = index; break; }
                     }
 
-                    // B. Detectar fecha Excel (número > 40000) o Date Object
                     if (mIdx === -1) {
                         if (cell instanceof Date) {
                             mIdx = cell.getMonth();
                             const y = cell.getFullYear();
                             if (y > 2000) detectedYear = y.toString();
                         } else if (!isNaN(cell) && parseFloat(cell) > 40000) {
-                            // Excel serial date
                             const dateObj = new Date((cell - 25569) * 86400 * 1000);
                             mIdx = dateObj.getMonth();
                             const y = dateObj.getFullYear();
@@ -693,7 +689,6 @@
                         monthsFound++;
                     }
 
-                    // Detectar año por texto si no se sacó por fecha
                     const yrMatch = String(cell).match(/[.\s\/-](\d{2,4})$/);
                     if (yrMatch) {
                         const yFound = yrMatch[1].length === 2 ? "20" + yrMatch[1] : yrMatch[1];
@@ -714,7 +709,6 @@
             const dbYear = db[currentHotel][detectedYear];
             if (!dbYear.segment) dbYear.segment = {};
 
-            // FIX: Don't wipe the whole year. Only clear months present in THIS file to allow merging and prevent double counting.
             const monthsInFile = new Set(colMap.filter(m => m !== undefined && m !== null && m >= 0));
             if (monthsInFile.size > 0) {
                 Object.values(dbYear.segment).forEach(seg => {
@@ -727,67 +721,45 @@
 
             let currentSeg = null;
 
-
             for (let r = headerRowIndex + 1; r < data.length; r++) {
                 const row = data[r];
                 if (!row || row.length < 2) continue;
 
                 let rawColA = String(row[0] || "").trim();
-                const colB = normalizeStr(row[1] || "");
+                let rawColB = String(row[1] || "").trim();
                 const nColA = normalizeStr(rawColA);
+                const nColB = normalizeStr(rawColB);
 
-                // Detectar métrica (flexible)
-                const isHab = colB === "HAB" || colB.includes("RN") || colB.includes("RM") || colB.includes("OCU") || colB.includes("HAB");
-                const isPro = colB === "PRO" || colB.includes("REV") || colB.includes("ING") || colB.includes("VTA") || colB.includes("PRO");
+                // --- DETECCIÓN DE MÉTRICA ---
+                // Solo "Hab." (con punto) o "Hab" (exacto) para Room Nights
+                const isHab = nColB === "HAB" || nColB === "RMS" || nColB === "RN" || nColB === "HAB.";
+                
+                // Solo "Habitación" y "Desayuno" para Producción
+                const isPro = nColB.includes("HABITACION") || nColB.includes("DESAYUNO") || nColB === "ALOJAMIENTO";
 
-                // Filtros de filas basura / totales
-                if (nColA.includes("TOTAL") || nColA.includes("RESUMEN") || nColA === "SUMA") continue;
-                if (nColA.includes("VARIOS") && nColA.includes("21")) continue; // Exclude "Varios 21% Iva"
-                if (rawColA === "" && (colB === "TOTAL" || colB.includes("RESULTADO"))) continue;
+                // Si no es Hab ni Pro, y hay texto en A o B, podría ser un nuevo segmento
+                const isMetric = isHab || isPro || nColB === "PAX" || nColB === "PROD" || nColB.includes("ALMUERZO") || nColB.includes("CENA") || nColB.includes("SPA") || nColB.includes("VARIOS");
 
-                // --- GESTIÓN DE SEGMENTOS IMPLANTANDO LÓGICA DE CONTINUIDAD ---
-
-                // Si la celda A tiene texto...
-                if (rawColA !== "") {
-                    // NO queremos que "SEG" o "SEGMENTO" sean nombres de segmento validos.
-                    // A menudo son solo cabeceras repetidas.
-                    if (nColA === "SEG" || nColA === "SEGMENTO") {
-                        // Si nos encontramos una fila que SOLO pone "SEG" en A,
-                        // puede ser el inicio del bloque "sin nombre" (S/S).
-                        // Si NO tenemos segmento activo, asumimos que empieza el S/S.
-                        if (!currentSeg) {
-                            currentSeg = "S/S";
-                        } else {
-                            // Si YA tenemos un segmento activo (ej: AGENCIAS), 
-                            // y aparece "SEGMENTO" de nuevo, lo ignoramos, 
-                            // asumiendo que es una cabecera para el SIGUIENTE bloque de datos de AGENCIAS
-                            // o simplemente ruido. Mantenemos currentSeg = AGENCIAS.
-                        }
-                    } else {
-                        // Es un nombre legítimo (AGENCIAS, GRUPOS, ETC)
+                // --- GESTIÓN DE SEGMENTOS ---
+                if (rawColA !== "" && !isMetric) {
+                    // Si hay texto en A y no es una fila de métrica, es el nombre del segmento
+                    if (nColA !== "SEG" && nColA !== "SEGMENTO" && nColA !== "TOTAL") {
                         currentSeg = rawColA;
                     }
-                } else {
-                    // Si A está vacío...
-                    if (!currentSeg) {
-                        // Y no tenemos segmento previo (caso especial inicio fila 1)
-                        if (isHab || isPro) currentSeg = "S/S";
-                    }
-                    // Si ya tenemos currentSeg, lo mantenemos (continuidad)
+                } else if (rawColA === "" && rawColB !== "" && !isMetric) {
+                    // Si A está vacío pero B tiene algo que no es métrica, podría ser el segmento (formato alternativo)
+                    currentSeg = rawColB;
                 }
 
-                if (!currentSeg) continue;
-                if (!isHab && !isPro) continue; // Si no es fila de datos, pasamos
-
-                // Asegurar que nunca se cuele "SEG" como nombre final
-                if (normalizeStr(currentSeg) === "SEG") currentSeg = "S/S";
+                if (!currentSeg || nColA === "TOTAL") continue;
+                if (!isHab && !isPro) continue; // Solo procesamos las filas solicitadas
 
                 if (!dbYear.segment[currentSeg]) {
                     dbYear.segment[currentSeg] = { name: currentSeg, revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) };
                 }
                 const segObj = dbYear.segment[currentSeg];
 
-                // Extraer datos
+                // --- EXTRACCIÓN DE DATOS ---
                 for (let c = 0; c < row.length; c++) {
                     const midx = colMap[c];
                     if (midx === undefined || midx < 0) continue;

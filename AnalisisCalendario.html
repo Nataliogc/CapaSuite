@@ -146,29 +146,29 @@
             background: #ffffff;
             border: 1px solid #e2e8f0;
             border-radius: var(--radius-lg);
-            padding: 24px;
+            padding: 15px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
             transition: var(--transition);
         }
 
         .month-title {
-            font-size: 1.25rem;
+            font-size: 1.1rem;
             font-weight: 800;
             color: #1e293b;
-            margin-bottom: 20px;
-            padding-left: 10px;
+            margin-bottom: 12px;
+            padding-left: 8px;
             border-left: 4px solid var(--primary);
         }
 
         .days-header {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
-            margin-bottom: 15px;
+            margin-bottom: 8px;
             text-align: center;
         }
 
         .day-label {
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             font-weight: 800;
             color: var(--text-muted);
             text-transform: uppercase;
@@ -177,6 +177,7 @@
         .days-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
+<<<<<<< HEAD
             gap: 6px;
         }
 
@@ -184,9 +185,11 @@
 
         /* DAY CELL (Apple/Google Style) */
         .day-cell {
+<<<<<<< HEAD
             aspect-ratio: 1/1;
             background: #ffffff;
             border-radius: 8px;
+=======
             border: 1px solid #e2e8f0;
             padding: 2px 4px; /* More compact */
             display: flex;
@@ -238,31 +241,56 @@
         .p-down { background: #fee2e2; color: #ef4444; padding: 1px 4px; border-radius: 3px; font-weight: 800; font-size: 0.5rem; margin-top: 1px; }
         .p-equal { background: #f1f5f9; color: #94a3b8; padding: 1px 4px; border-radius: 3px; font-weight: 800; font-size: 0.5rem; margin-top: 1px; }
 
-        /* LEGEND */
-        .calendar-legend {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            font-weight: 700;
+        .day-stats { 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            gap: 1px; 
+            margin-top: auto; 
+            padding-top: 3px; 
+            border-top: 1px solid #f1f5f9;
+            width: 100%;
         }
-        .legend-boxes { display: flex; gap: 4px; }
-        .legend-box { width: 12px; height: 12px; border-radius: 2px; }
+        
+        .day-otb { 
+            font-size: 0.55rem; 
+            font-weight: 700; 
+            color: #6366f1; 
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
 
-        /* HEATMAP */
-        .heat-1 { background-color: #e0f2fe !important; }
-        .heat-2 { background-color: #bae6fd !important; }
-        .heat-3 { background-color: #7dd3fc !important; }
-        .heat-4 { background-color: #38bdf8 !important; }
-        .heat-5 { background-color: #0284c7 !important; color: white !important; }
+        .pickup-badge {
+            font-size: 0.5rem;
+            font-weight: 800;
+            padding: 1px 2px;
+            border-radius: 2px;
+            display: inline-flex;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .pickup-pos { background: #dcfce7; color: #166534; }
+        .pickup-neg { background: #fee2e2; color: #991b1b; }
+        .pickup-neutral { background: #f1f5f9; color: #475569; }
 
-        .is-past { opacity: 0.3; filter: grayscale(1); }
-        .is-weekend { color: #ef4444; }
-        .is-full { border: 2px solid #ef4444 !important; }
-        .has-event { border: 2px solid #22c55e !important; }
+        .calendar-legend { display: flex; align-items: center; gap: 8px; font-size: 0.7rem; color: var(--text-muted); font-weight: 700; }
+        .legend-boxes { display: flex; gap: 3px; }
+        .legend-box { width: 10px; height: 10px; border-radius: 2px; }
 
-        /* TOOLTIP (Image match) */
+        .heat-1 { background-color: #ffffff !important; }
+        .heat-2 { background-color: #f0f9ff !important; }
+        .heat-3 { background-color: #e0f2fe !important; }
+        .heat-4 { background-color: #bae6fd !important; }
+        .heat-5 { background-color: #7dd3fc !important; border: 1px solid #0284c7 !important; }
+
+        .is-past { opacity: 0.3; filter: grayscale(1); border-style: dashed; }
+        .is-weekend { background: #f9fafb !important; }
+        .is-weekend .day-num { color: #ef4444; }
+        .is-full { border: 1.2px solid #ef4444 !important; }
+        .has-event { border: 1.2px solid #6366f1 !important; }
+
+        /* TOOLTIP (Improved) */
         #tooltip {
             position: fixed;
             z-index: 9999;
@@ -407,36 +435,42 @@
         }
 
         function enrichRevenueData() {
-            Object.keys(revenueData).forEach(iso => {
-                const d = revenueData[iso];
-                const parts = iso.split('-');
-                const year = parts[0];
+            // We need to ensure we cover all dates of the year, not just those in revenueData
+            const yearStr = document.getElementById('yearSelector').value;
+            const year = parseInt(yearStr);
 
-                if (!d.occupancyData) d.occupancyData = {};
+            // Create placeholders for all 365 days if they don't exist
+            for (let m = 0; m < 12; m++) {
+                const daysInM = new Date(year, m + 1, 0).getDate();
+                for (let d = 1; d <= daysInM; d++) {
+                    const iso = `${year}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                    if (!revenueData[iso]) revenueData[iso] = { dateISO: iso, hotels: {}, occupancyData: {} };
+                    if (!revenueData[iso].occupancyData) revenueData[iso].occupancyData = {};
 
-                ['Guadiana', 'Cumbria'].forEach(hName => {
-                    const hKey = Object.keys(db).find(k => k.toLowerCase().includes(hName.toLowerCase()));
-                    if (hKey && db[hKey][year]) {
-                        const yearData = db[hKey][year];
-                        let otb = 0, occ = 0, otb_prev = null;
+                    ['Guadiana', 'Cumbria'].forEach(hName => {
+                        const hKey = Object.keys(db).find(k => k.toLowerCase().includes(hName.toLowerCase()));
+                        if (hKey && db[hKey][yearStr]) {
+                            const yearData = db[hKey][yearStr];
+                            let otb = 0, occ = 0, otb_prev = null;
 
-                        if (yearData.daily_otb && yearData.daily_otb[iso]) {
-                            const v = yearData.daily_otb[iso];
-                            otb = (typeof v === 'object') ? (v.rooms || 0) : v;
+                            if (yearData.daily_otb && yearData.daily_otb[iso]) {
+                                const v = yearData.daily_otb[iso];
+                                otb = (typeof v === 'object') ? (v.rooms || 0) : v;
+                            }
+                            if (yearData.daily && yearData.daily[iso]) {
+                                occ = yearData.daily[iso].rooms || yearData.daily[iso];
+                            }
+                            // SNAPSHOT FOR PICK-UP
+                            if (yearData.otb_prev && yearData.otb_prev.daily_otb && yearData.otb_prev.daily_otb[iso]) {
+                                const vPrev = yearData.otb_prev.daily_otb[iso];
+                                otb_prev = (typeof vPrev === 'object') ? (vPrev.rooms || 0) : vPrev;
+                            }
+
+                            revenueData[iso].occupancyData[hName] = { otb, occ, otb_prev };
                         }
-                        if (yearData.daily && yearData.daily[iso]) {
-                            occ = yearData.daily[iso].rooms || yearData.daily[iso];
-                        }
-                        // SNAPSHOT FOR PICK-UP
-                        if (yearData.otb_prev && yearData.otb_prev.daily_otb && yearData.otb_prev.daily_otb[iso]) {
-                            const vPrev = yearData.otb_prev.daily_otb[iso];
-                            otb_prev = (typeof vPrev === 'object') ? (vPrev.rooms || 0) : vPrev;
-                        }
-
-                        d.occupancyData[hName] = { otb, occ, otb_prev };
-                    }
-                });
-            });
+                    });
+                }
+            }
         }
 
         function renderCalendar() {
@@ -491,16 +525,9 @@
                     const roomsSold = (hData.occ > 0) ? hData.occ : hData.otb;
                     const occPct = (roomsSold / capacity) * 100;
                     
-                    let valText = "";
-                    let heatmapVal = 0;
-                    if (metric === 'price') {
-                        const p = (dData.hotels && dData.hotels[hotel]) ? (dData.hotels[hotel].price || dData.hotels[hotel]) : 0;
-                        valText = p > 0 ? `${Math.round(p)}€` : "";
-                        heatmapVal = p;
-                    } else {
-                        valText = roomsSold > 0 ? `${Math.round(occPct)}%` : "";
-                        heatmapVal = occPct;
-                    }
+                    let heatmapVal = metric === 'price' ? 
+                        ((dData.hotels && dData.hotels[hotel]) ? (dData.hotels[hotel].price || dData.hotels[hotel]) : 0) : 
+                        occPct;
 
                     const cell = document.createElement('div');
                     cell.className = 'day-cell';
@@ -508,7 +535,17 @@
                     if (dateObj.getDay() === 0 || dateObj.getDay() === 6) cell.classList.add('is-weekend');
                     if (occPct >= 98) cell.classList.add('is-full');
 
-                    // Heatmap logic (Scale 1-5 like in image)
+                    // Pickup Logic
+                    const otbNow = hData.otb || 0;
+                    const otbPrev = hData.otb_prev;
+                    let pickupHtml = '';
+                    if (otbPrev !== null && otbPrev !== undefined) {
+                        const diff = otbNow - otbPrev;
+                        const pClass = diff > 0 ? 'pickup-pos' : (diff < 0 ? 'pickup-neg' : 'pickup-neutral');
+                        const pIcon = diff > 0 ? '▲' : (diff < 0 ? '▼' : '=');
+                        pickupHtml = `<span class="pickup-badge ${pClass}">${pIcon}${Math.abs(diff) || ''}</span>`;
+                    }
+
                     if (heatmapVal > 0) {
                         const range = maxVal - minVal;
                         const score = range > 0 ? (heatmapVal - minVal) / range : 0.5;
@@ -519,7 +556,6 @@
                         else cell.classList.add('heat-1');
                     }
 
-                    // Event Border (Image match)
                     const ev = rawEvents.find(e => iso >= e.start && iso <= e.end);
                     if (ev) cell.classList.add('has-event');
 

@@ -577,13 +577,25 @@
     </header>
 
     <script>
-        // BYPASS LOGIN INMEDIATO PARA LOCALHOST
+        // MODO LOCAL: Saltar bypass si estamos en localhost
+        // Forzamos visibilidad del contenido si es local para evitar flicker
         (function() {
             const h = window.location.hostname;
-            const isLocal = h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '';
+            const isLocal = h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '' || window.location.protocol === 'file:';
             const forceLogin = localStorage.getItem('force_login_once');
             if (isLocal && !forceLogin) {
-                document.write('<style>#login-container { display: none !important; }</style>');
+                document.documentElement.style.visibility = 'hidden'; 
+                document.addEventListener('DOMContentLoaded', () => {
+                    const loginSection = document.getElementById('login-container');
+                    const mainContent = document.getElementById('dashboard-main');
+                    const mainHeader = document.getElementById('mainHeader');
+                    const mainNav = document.getElementById('mainNav');
+                    if (loginSection) loginSection.style.display = 'none';
+                    if (mainContent) mainContent.style.display = 'flex';
+                    if (mainHeader) mainHeader.style.display = 'flex';
+                    if (mainNav) mainNav.style.display = 'flex';
+                    document.documentElement.style.visibility = 'visible';
+                });
             }
         })();
     </script>
@@ -594,11 +606,11 @@
             <h2>Acceso a CapaSuite</h2>
             <div class="login-field">
                 <label>Usuario o Email</label>
-                <input type="text" id="email" placeholder="Admin o usuario@empresa.com">
+                <input type="text" id="email" value="comunicaciones@hotelguadiana.es" placeholder="Admin o usuario@empresa.com">
             </div>
             <div class="login-field">
                 <label>Clave de Acceso</label>
-                <input type="password" id="password" placeholder="••••••••">
+                <input type="password" id="password" value="Suite2026" placeholder="••••••••">
             </div>
             <button class="login-btn" onclick="handleLogin()">Entrar al Portal</button>
             <p id="login-error" style="color: #ef4444; font-size: 0.8rem; margin-top: 15px; display: none;"></p>
@@ -631,8 +643,10 @@
             const userEmailEl = document.getElementById('userEmail');
 
             const h = window.location.hostname;
-            const isLocal = h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '';
+            const isLocal = h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '' || window.location.protocol === 'file:';
             const forceLogin = localStorage.getItem('force_login_once');
+
+            console.log("🔐 Auth Check:", { h, isLocal, forceLogin, user: user ? user.email : 'null' });
 
             if (user) {
                 localStorage.removeItem('force_login_once'); // Reset
@@ -655,7 +669,7 @@
                 }
             } else {
                 if (isLocal && !forceLogin) {
-                    // MODO LOCAL AUTOMÁTICO
+                    // MODO LOCAL AUTOMÁTICO - Fuerza mostrar todo
                     loginSection.style.display = 'none';
                     mainContent.style.display = 'flex';
                     mainHeader.style.display = 'flex';
