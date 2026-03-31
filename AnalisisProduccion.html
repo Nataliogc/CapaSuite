@@ -1300,7 +1300,7 @@
                 else if (gName.includes('SPA')) otbKey = 'spa';
                 else if (gName.includes('VARIOS') || gName.includes('OTROS') || gName.includes('EXTRAS')) otbKey = 'varios';
 
-                const groupOtbArr = (otbData && otbData.breakdown && otbKey) ? otbData.breakdown[otbKey] :
+                const groupOtbArr = (otbData && otbData.breakdown && otbKey && otbData.breakdown[otbKey]) ? otbData.breakdown[otbKey] :
                     (otbKey === 'habitacion' && otbData.revenue ? otbData.revenue : new Array(12).fill(0));
 
                 // Apply closed month logic to total accumulation
@@ -1328,7 +1328,7 @@
                         else if (gName.includes('SPA')) otbKey = 'spa';
                         else if (gName.includes('VARIOS') || gName.includes('OTROS') || gName.includes('EXTRAS')) otbKey = 'varios';
 
-                        const groupOtbArr = (otbData && otbData.breakdown && otbKey) ? otbData.breakdown[otbKey] :
+                        const groupOtbArr = (otbData && otbData.breakdown && otbKey && otbData.breakdown[otbKey]) ? otbData.breakdown[otbKey] :
                             (otbKey === 'habitacion' && otbData.revenue ? otbData.revenue : new Array(12).fill(0));
 
                         const isClosed = isMonthClosedRow(i);
@@ -1783,8 +1783,8 @@
                     else if (gName.includes('SPA')) otbKey = 'spa';
                     else if (gName.includes('VARIOS') || gName.includes('OTROS') || gName.includes('EXTRAS')) otbKey = 'varios';
 
-                    const groupOtbArr = (otbData.breakdown && otbKey) ? otbData.breakdown[otbKey] :
-                        (otbKey === 'habitacion' ? otbData.revenue : new Array(12).fill(0));
+                    const groupOtbArr = (otbData && otbData.breakdown && otbKey && otbData.breakdown[otbKey]) ? otbData.breakdown[otbKey] :
+                        (otbKey === 'habitacion' && otbData.revenue ? otbData.revenue : new Array(12).fill(0));
 
                     const gOtbVal = midx === -1 ? groupOtbArr.reduce((a, b) => (a || 0) + (b || 0), 0) : (groupOtbArr[midx] || 0);
                     const gProj = gRealVal + gOtbVal;

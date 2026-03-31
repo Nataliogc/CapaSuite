@@ -712,7 +712,7 @@
 
         function aggregateServices(serviceDb, midx) {
             const result = { summary: {}, totalRev: 0, totalRms: 0, raw: [] };
-            const getVal = (arr) => midx === -1 ? arr.reduce((a,b)=>a+b, 0) : arr[midx];
+            const getVal = (arr) => midx === -1 ? (arr || []).reduce((a,b)=>a+b, 0) : (arr ? arr[midx] : 0);
 
             Object.entries(serviceDb).forEach(([name, obj]) => {
                 if (name === "TOTAL_MASTER" || name.includes("TOTAL")) return;

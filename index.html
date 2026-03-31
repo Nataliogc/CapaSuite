@@ -577,13 +577,25 @@
     </header>
 
     <script>
-        // BYPASS LOGIN INMEDIATO PARA LOCALHOST
+        // MODO LOCAL: Saltar bypass si estamos en localhost
+        // Forzamos visibilidad del contenido si es local para evitar flicker
         (function() {
             const h = window.location.hostname;
-            const isLocal = h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '';
+            const isLocal = h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '' || window.location.protocol === 'file:';
             const forceLogin = localStorage.getItem('force_login_once');
             if (isLocal && !forceLogin) {
-                document.write('<style>#login-container { display: none !important; }</style>');
+                document.documentElement.style.visibility = 'hidden'; 
+                document.addEventListener('DOMContentLoaded', () => {
+                    const loginSection = document.getElementById('login-container');
+                    const mainContent = document.getElementById('dashboard-main');
+                    const mainHeader = document.getElementById('mainHeader');
+                    const mainNav = document.getElementById('mainNav');
+                    if (loginSection) loginSection.style.display = 'none';
+                    if (mainContent) mainContent.style.display = 'flex';
+                    if (mainHeader) mainHeader.style.display = 'flex';
+                    if (mainNav) mainNav.style.display = 'flex';
+                    document.documentElement.style.visibility = 'visible';
+                });
             }
         })();
     </script>
@@ -631,8 +643,10 @@
             const userEmailEl = document.getElementById('userEmail');
 
             const h = window.location.hostname;
-            const isLocal = h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '';
+            const isLocal = h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '' || window.location.protocol === 'file:';
             const forceLogin = localStorage.getItem('force_login_once');
+
+            console.log("🔐 Auth Check:", { h, isLocal, forceLogin, user: user ? user.email : 'null' });
 
             if (user) {
                 localStorage.removeItem('force_login_once'); // Reset
@@ -655,7 +669,7 @@
                 }
             } else {
                 if (isLocal && !forceLogin) {
-                    // MODO LOCAL AUTOMÁTICO
+                    // MODO LOCAL AUTOMÁTICO - Fuerza mostrar todo
                     loginSection.style.display = 'none';
                     mainContent.style.display = 'flex';
                     mainHeader.style.display = 'flex';

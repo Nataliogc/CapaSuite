@@ -24,11 +24,33 @@ const SYNC_DB_KEY = "hotel_manager_db_v2";
 const SYNC_CONFIG_KEY = "upload_config_db_v2";
 const SYNC_COMP_KEY = "revenue_data_v2";
 
+// MODO LOCAL: Saltarse login si estamos en localhost
+const _h = window.location.hostname;
+const _isLocalBypass = (_h === 'localhost' || _h === '127.0.0.1' || _h === '::1' || _h === '' || window.location.protocol === 'file:') && !localStorage.getItem('force_login_once');
+
+if (_isLocalBypass) {
+    console.log("🚀 MODO LOCAL detectado. Bypass activo.");
+    window._capasuite_local_mode = true;
+}
+
 /**
  * Función para proteger las páginas
  */
 function checkAuth() {
     return new Promise((resolve) => {
+        // En modo local, resolvemos inmediatamente sin esperar a Firebase
+        if (_isLocalBypass) {
+            // Actualizar UI de nav global si existe (cuando cargue el DOM)
+            document.addEventListener('DOMContentLoaded', () => {
+                const navEmail = document.getElementById('userEmailNav');
+                if (navEmail) {
+                    navEmail.innerHTML = '<span style="color:#ef4444; font-weight:800; cursor:pointer;" onclick="localStorage.setItem(\'force_login_once\', \'true\'); location.reload()">🚀 MODO LOCAL (Inicia Sesión para Nube)</span>';
+                }
+            });
+            resolve({ email: 'Local Mode', uid: 'local', isLocal: true });
+            return;
+        }
+
         cloudAuth.onAuthStateChanged(async (user) => {
             const currentPath = window.location.pathname;
             const isHome = currentPath.endsWith('index.html') || currentPath.endsWith('/') || currentPath === "";
@@ -54,10 +76,8 @@ function checkAuth() {
                     window._initialDownloadDone = true;
                     await downloadFromCloud();
                     // Refrescar página si hay funciones de renderizado
-                    if (typeof render === 'function') render();
-                    if (typeof updateAll === 'function') updateAll();
-                    if (typeof init === 'function') init();
-                    if (typeof initView === 'function') initView();
+                    const globalUpdate = window.updateAll || window.renderAll || window.render || window.init || window.initView;
+                    if (typeof globalUpdate === 'function') globalUpdate();
                 }
                 resolve(user);
             }
