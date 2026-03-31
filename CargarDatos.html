@@ -1922,9 +1922,9 @@
                     const colB = String(row[1] || "").trim();
                     const rowLabel = normalizeStr(colA + " " + colB);
                     
-                    const isRMS = rowLabel.includes("HAB") || rowLabel.includes("RMS") || rowLabel.includes("RN") || rowLabel.includes("OCUP");
-                    const isREV = rowLabel.includes("PROD") || rowLabel.includes("VENTA") || rowLabel.includes("VALOR") || rowLabel.includes("TOTAL");
-                    const isEV = rowLabel.includes("EVENTO") || rowLabel.includes("HITO") || rowLabel.includes("COMENTARIO") || rowLabel.includes("FESTIVO");
+                    const isRMS = rowLabel.includes("hab") || rowLabel.includes("rms") || rowLabel.includes("rn") || rowLabel.includes("ocup") || rowLabel.includes("vendidas");
+                    const isREV = rowLabel.includes("prod") || rowLabel.includes("venta") || rowLabel.includes("valor") || rowLabel.includes("total") || rowLabel.includes("ingreso");
+                    const isEV = rowLabel.includes("evento") || rowLabel.includes("hito") || rowLabel.includes("comentario") || rowLabel.includes("festivo");
 
                     if (!isRMS && !isREV && !isEV) continue;
 
