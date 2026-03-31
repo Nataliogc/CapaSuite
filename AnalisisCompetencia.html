@@ -1780,7 +1780,8 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         const hData = pDb[dbActiveKey];
                         const yrStr = iso.split('-')[0];
                         const yrInt = parseInt(yrStr);
-                        const yearsToTry = [yrStr, String(yrInt - 1), String(yrInt + 1), "2025", "2026", "2027"];
+                        const yrShort = yrStr.slice(-2);
+                        const yearsToTry = [yrStr, yrShort, String(yrInt - 1), String(yrInt + 1), "2025", "25", "2026", "26", "2027", "27"];
                         let otbInfo = null, prodInfo = null;
                         for (const y of yearsToTry) {
                             if (hData[y]) {
