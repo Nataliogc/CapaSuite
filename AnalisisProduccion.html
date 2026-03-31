@@ -991,8 +991,9 @@
                         projectedRev += rVal;
                         realPart += rVal;
                     } else {
-                        projectedRev += oVal;
-                        otbPart += oVal;
+                        const cellVal = Math.max(rVal, oVal);
+                        projectedRev += cellVal;
+                        otbPart += cellVal;
                     }
                 }
 
@@ -1307,9 +1308,11 @@
                 // This is tricky because we need to sum conditional OTB
                 let gOtbVal = 0;
                 if (midx === -1) {
-                    gOtbVal = groupOtbArr.reduce((acc, val, i) => acc + (isMonthClosedRow(i) ? 0 : val), 0);
+                    if (groupOtbArr && Array.isArray(groupOtbArr)) {
+                        gOtbVal = groupOtbArr.reduce((acc, val, i) => acc + (isMonthClosedRow(i) ? 0 : (val || 0)), 0);
+                    }
                 } else {
-                    gOtbVal = isMonthClosedRow(midx) ? 0 : getV(groupOtbArr);
+                    gOtbVal = isMonthClosedRow(midx) ? 0 : (parseFloat(getV(groupOtbArr)) || 0);
                 }
 
                 const gProjectedVal = gRealVal + gOtbVal;
@@ -1328,8 +1331,10 @@
                         else if (gName.includes('SPA')) otbKey = 'spa';
                         else if (gName.includes('VARIOS') || gName.includes('OTROS') || gName.includes('EXTRAS')) otbKey = 'varios';
 
-                        const groupOtbArr = (otbData && otbData.breakdown && otbKey) ? otbData.breakdown[otbKey] :
-                            (otbKey === 'habitacion' && otbData.revenue ? otbData.revenue : new Array(12).fill(0));
+                        let groupOtbArr = (otbData && otbData.breakdown && otbKey && otbData.breakdown[otbKey]) ? otbData.breakdown[otbKey] :
+                            (otbKey === 'habitacion' && otbData && otbData.revenue ? otbData.revenue : new Array(12).fill(0));
+                        
+                        if (!Array.isArray(groupOtbArr)) groupOtbArr = new Array(12).fill(0);
 
                         const isClosed = isMonthClosedRow(i);
                         const realVal = g.revenue[i] || 0;
@@ -1925,6 +1930,18 @@
                 });
             }
         };
+
+        // Auth State Listener
+        auth.onAuthStateChanged((user) => {
+            const emailSpan = document.getElementById('userEmailNav');
+            if (user) {
+                if (emailSpan) emailSpan.innerText = user.email;
+            } else {
+                if (emailSpan) emailSpan.innerText = "Modo Local";
+                // If not in local bypass, redirect? 
+                // Skip for now to avoid locking the user out
+            }
+        });
     </script>
 </body>
 

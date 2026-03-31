@@ -1972,16 +1972,16 @@
                             if (currentUpdateDate && currentUpdateDate.includes(todayDate)) isDataFromToday = true;
                             // Heuristic: If period string contains today's DD/MM/YYYY
 
-                            if (!db[hotel][y].otb_prev || !isDataFromToday) {
+                            // CHANGE: Always save snapshot for "Instant Pickup" comparison, as requested.
+                            // This ensures that loading the same file twice shows 0 difference.
+                            if (true) { // removed isDataFromToday check
                                 // Save Snapshot (Annual + Daily)
                                 db[hotel][y].otb_prev = JSON.parse(JSON.stringify(targetOt));
                                 if (db[hotel][y].daily_otb) {
                                     db[hotel][y].otb_prev.daily_otb = JSON.parse(JSON.stringify(db[hotel][y].daily_otb));
                                 }
                                 db[hotel][y].otb_prev.snapshotDate = currentUpdateDate || new Date().toLocaleString();
-                                console.log(`📸 Full OTB Snapshot (Annual + Daily) taken for ${y} (Date: ${currentUpdateDate})`);
-                            } else {
-                                console.log(`🛡️ Preserving existing OTB Snapshot for ${y} (Current data is already from today)`);
+                                console.log(`📸 Instant OTB Snapshot taken for ${y} (Previous: ${currentUpdateDate})`);
                             }
                         }
                         // -----------------------------

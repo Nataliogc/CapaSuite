@@ -640,6 +640,16 @@
         let charts = {};
         const DB_KEY = "hotel_manager_db_v2";
 
+        // Auth State Listener
+        auth.onAuthStateChanged((user) => {
+            const emailSpan = document.getElementById('userEmailNav');
+            if (user) {
+                if (emailSpan) emailSpan.innerText = user.email;
+            } else {
+                if (emailSpan) emailSpan.innerText = "Modo Local";
+            }
+        });
+
         // Chart.js Default Config for Dark Design
         Chart.defaults.color = '#94a3b8';
         Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
@@ -715,9 +725,9 @@
             const getVal = (arr) => midx === -1 ? arr.reduce((a,b)=>a+b, 0) : arr[midx];
 
             Object.entries(serviceDb).forEach(([name, obj]) => {
-                if (name === "TOTAL_MASTER" || name.includes("TOTAL")) return;
-                const rev = getVal(obj.revenue);
-                const rms = getVal(obj.rooms);
+                if (name === "TOTAL_MASTER" || name.includes("TOTAL_PROD") || name.toUpperCase() === "TOTAL") return;
+                const rev = getVal(obj.revenue || []);
+                const rms = getVal(obj.rooms || []);
                 if (rev === 0 && rms === 0) return;
 
                 const n = name.toUpperCase();
@@ -733,6 +743,12 @@
                 if (category === "Habitaciones") result.totalRms += rms;
                 result.raw.push({ name, rev, rms, category });
             });
+            
+            // FALLBACK FOR ROOMS: If totalRms is 0 but we have TOTAL_MASTER rooms, use those
+            if (result.totalRms === 0 && serviceDb["TOTAL_MASTER"] && serviceDb["TOTAL_MASTER"].rooms) {
+                result.totalRms = getVal(serviceDb["TOTAL_MASTER"].rooms);
+                if (result.summary["Habitaciones"]) result.summary["Habitaciones"].rooms = result.totalRms;
+            }
             
             // Add OTB data if available for future months
             if (midx === -1 || midx >= new Date().getMonth()) {
