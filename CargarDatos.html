@@ -1808,19 +1808,21 @@
                 let dailyCols = {}; // { colIndex: dateISO }
                 const SHORT_MONTHS_MAP = { "ENE": 0, "JAN": 0, "FEB": 1, "MAR": 2, "ABR": 3, "APR": 3, "MAY": 4, "JUN": 5, "JUL": 6, "AGO": 7, "AUG": 7, "SEP": 8, "OCT": 9, "NOV": 10, "DIC": 11, "DEC": 11 };
 
-                const allYearsInFile = (fileName.match(/20\d{2}/g) || [new Date().getFullYear()]).map(Number).sort((a, b) => a - b);
-                const startYearFile = allYearsInFile[0];
+                const allYearsInFile = (fileName.match(/20\d{2}/g) || [reportYear]).map(Number).sort((a, b) => a - b);
+                const startYearFile = allYearsInFile[0] || parseInt(reportYear);
 
                 let headerRowIndex = -1;
-                for (let r = 0; r < Math.min(data.length, 50); r++) {
+                for (let r = 0; r < Math.min(data.length, 60); r++) {
                     const row = data[r] || [];
                     let dateCount = 0;
-                    for (let c = 0; c < row.length; c++) {
-                        const cell = row[c];
-                        if (cell instanceof Date) dateCount++;
-                        else if (String(cell).match(/(\d{1,2})[\/-](\d{1,2})/)) dateCount++;
+                    for (let dCell of row) {
+                        if (dCell instanceof Date) dateCount++;
+                        else {
+                            const sVal = String(dCell).trim();
+                            if (sVal && sVal.match(/^(\d{1,2})[\/-](\d{1,2})/) && !sVal.includes(":")) dateCount++;
+                        }
                     }
-                    if (dateCount > 5) { headerRowIndex = r; break; }
+                    if (dateCount > 3) { headerRowIndex = r; break; }
                 }
                 if (headerRowIndex === -1) headerRowIndex = 0;
 
@@ -1917,16 +1919,26 @@
                     const row = data[r];
                     if (!row || row.length < 1) continue;
 
-                    // Detect metric from first two columns
-                    const colA = String(row[0] || "").trim();
-                    const colB = String(row[1] || "").trim();
-                    const rowLabel = normalizeStr(colA + " " + colB);
+                    // Detect metric by scanning the entire row (more permissive than just Col A/B)
+                    let rowLabel = "";
+                    for (let i = 0; i < Math.min(row.length, 10); i++) {
+                        const cellVal = String(row[i] || "").trim();
+                        if (cellVal && isNaN(cellVal)) {
+                            rowLabel += " " + normalizeStr(cellVal);
+                        }
+                    }
                     
-                    const isRMS = rowLabel.includes("hab") || rowLabel.includes("rms") || rowLabel.includes("rn") || rowLabel.includes("ocup") || rowLabel.includes("vendidas");
-                    const isREV = rowLabel.includes("prod") || rowLabel.includes("venta") || rowLabel.includes("valor") || rowLabel.includes("total") || rowLabel.includes("ingreso");
-                    const isEV = rowLabel.includes("evento") || rowLabel.includes("hito") || rowLabel.includes("comentario") || rowLabel.includes("festivo");
+                    const isRMS = rowLabel.includes("HAB") || rowLabel.includes("RMS") || rowLabel.includes("RN") || rowLabel.includes("OCUP") || rowLabel.includes("VENDIDAS") || rowLabel.includes("NOCHES") || rowLabel.includes("UNIDADES");
+                    const isREV = rowLabel.includes("PRO") || rowLabel.includes("VENTA") || rowLabel.includes("VALOR") || rowLabel.includes("TOTAL") || rowLabel.includes("INGRESO") || rowLabel.includes("VALORADA") || rowLabel.includes("COBRO") || rowLabel.includes("REVENUE");
+                    const isEV = rowLabel.includes("EVENTO") || rowLabel.includes("HITO") || rowLabel.includes("COMENTARIO") || rowLabel.includes("FESTIVO") || rowLabel.includes("OBSERVAC");
 
-                    if (!isRMS && !isREV && !isEV) continue;
+                    if (!isRMS && !isREV && !isEV) {
+                        // Debug log for ignored rows that HAVE data
+                        if (row.some((v, idx) => dailyCols[idx] && v !== null && v !== 0 && v !== "")) {
+                            console.log(`⚠️ Fila ${r} ignorada (Sin etiqueta reconocida): "${rowLabel.trim()}"`);
+                        }
+                        continue;
+                    }
 
                     for (let c = 0; c < row.length; c++) {
                         const iso = dailyCols[c];
