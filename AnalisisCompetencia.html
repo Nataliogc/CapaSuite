@@ -1759,72 +1759,73 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 if (liteJson) prevMapLite = JSON.parse(liteJson);
             } catch(e) {}
 
-            // NEW: Robust Occupancy Sync
+            // NEW: Robust & Optimized Occupancy Sync
             try {
                 const pDb = CapaStorage.getItem('hotel_manager_db_v2') || {};
                 const dbKeys = Object.keys(pDb);
                 
-                // Fuzzy match active hotel
+                // 1. Fuzzy match active hotel
                 const activeClean = activeHotel.toLowerCase().replace(/hotel|sercotel|villa|spa/g, '').replace(/\s+/g, ' ').trim();
                 const dbActiveKey = dbKeys.find(k => {
                     const kLow = k.toLowerCase();
                     return kLow.includes(activeClean) || activeClean.includes(kLow);
                 });
 
+                // 2. Pre-calculate Competitor Mappings (Efficiency)
+                const hotelKeyMap = {};
+                const compNames = (data.length > 0 && data[0].hotels) ? Object.keys(data[0].hotels) : [];
+                compNames.forEach(hN => {
+                    if (hN === activeHotel) return;
+                    const tN = hN.toLowerCase().replace(/hotel|sercotel|villa|spa/g, '').replace(/\s+/g, ' ').trim();
+                    const kFound = dbKeys.find(k => k === hN) || dbKeys.find(k => {
+                        const kl = k.toLowerCase();
+                        return kl.includes(tN) || tN.includes(kl);
+                    });
+                    if (kFound) hotelKeyMap[hN] = kFound;
+                });
+
+                // 3. Process All Days
                 data.forEach(d => {
                     if (!d.dateISO) return;
                     const iso = d.dateISO;
+                    const yrStr = iso.split('-')[0];
+                    const yrShort = yrStr.slice(-2);
+                    const yearsToTry = [yrStr, yrShort, "2025", "25", "2026", "26", "2027", "27"];
 
-                    // 1. Sync for Active Hotel (High Priority)
+                    // Sync Active Hotel
                     if (dbActiveKey && pDb[dbActiveKey]) {
-                        const hData = pDb[dbActiveKey];
-                        const yrStr = iso.split('-')[0];
-                        const yrInt = parseInt(yrStr);
-                        const yrShort = yrStr.slice(-2);
-                        const yearsToTry = [yrStr, yrShort, String(yrInt - 1), String(yrInt + 1), "2025", "25", "2026", "26", "2027", "27"];
-                        let otbInfo = null, prodInfo = null;
+                        const hD = pDb[dbActiveKey];
+                        let otb = null, prod = null;
                         for (const y of yearsToTry) {
-                            if (hData[y]) {
-                                if (hData[y].daily_otb?.[iso] !== undefined) { otbInfo = hData[y].daily_otb[iso]; break; }
+                            if (hD[y]) {
+                                if (hD[y].daily_otb?.[iso] !== undefined) { otb = hD[y].daily_otb[iso]; break; }
                             }
                         }
                         for (const y of yearsToTry) {
-                            if (hData[y] && hData[y].daily?.[iso] !== undefined) { prodInfo = hData[y].daily[iso]; break; }
+                            if (hD[y] && hD[y].daily?.[iso] !== undefined) { prod = hD[y].daily[iso]; break; }
                         }
-                        if (otbInfo !== null) {
-                            d.otbRooms = (typeof otbInfo === 'number') ? otbInfo : (otbInfo.rooms || 0);
-                            if (typeof otbInfo === 'object' && otbInfo.revenue > 0 && d.otbRooms > 0) d.otbADR = otbInfo.revenue / d.otbRooms;
-                        }
-                        if (prodInfo !== null) { d.occupancy = (typeof prodInfo === 'number') ? prodInfo : (prodInfo.rooms || 0); }
+                        if (otb !== null) d.otbRooms = (typeof otb === 'number') ? otb : (otb.rooms || 0);
+                        if (prod !== null) d.occupancy = (typeof prod === 'number') ? prod : (prod.rooms || 0);
                     }
 
-                    // 2. Sync for all other hotels in the table
-                    Object.keys(d.hotels).forEach(hName => {
-                        const tName = hName.toLowerCase().replace(/hotel|sercotel|villa|spa/g, '').replace(/\s+/g, ' ').trim();
-                        const dbKey = dbKeys.find(k => k === hName) || dbKeys.find(k => {
-                            const kLow = k.toLowerCase();
-                            return kLow.includes(tName) || tName.includes(kLow);
-                        });
-                        if (dbKey && pDb[dbKey]) {
-                            const hData = pDb[dbKey];
-                            const yrStr = iso.split('-')[0];
-                            const yrInt = parseInt(yrStr);
-                            const yearsToTry = [yrStr, String(yrInt - 1), String(yrInt + 1), "2025", "2026", "2027"];
-                            for (const y of yearsToTry) {
-                                if (hData[y] && hData[y].daily?.[iso] !== undefined) {
-                                    const p = hData[y].daily[iso];
-                                    d.hotels[hName].occupancy = (typeof p === 'number') ? p : (p.rooms || 0);
-                                    break;
-                                }
+                    // Sync Competitors
+                    Object.keys(hotelKeyMap).forEach(hN => {
+                        const dbK = hotelKeyMap[hN];
+                        const hD = pDb[dbK];
+                        for (const y of yearsToTry) {
+                            if (hD[y] && hD[y].daily?.[iso] !== undefined) {
+                                const p = hD[y].daily[iso];
+                                d.hotels[hN].occupancy = (typeof p === 'number') ? p : (p.rooms || 0);
+                                break;
                             }
                         }
                     });
 
-                    // 3. Calculate Pick-up
+                    // Pick-up
                     if (prevMapLite[iso] && prevMapLite[iso]._otb !== undefined) {
-                        const prevOtb = prevMapLite[iso]._otb;
-                        const currOtb = d.otbRooms || 0;
-                        if (currOtb !== prevOtb) d.otbChange = currOtb - prevOtb;
+                        const pO = prevMapLite[iso]._otb;
+                        const cO = d.otbRooms || 0;
+                        if (cO !== pO) d.otbChange = cO - pO;
                     }
                 });
             } catch (e) {
