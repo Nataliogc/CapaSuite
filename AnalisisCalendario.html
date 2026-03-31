@@ -177,60 +177,66 @@
         .days-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
-            gap: 8px;
+            gap: 6px;
         }
 
         .day-cell.empty { background: transparent !important; border: none !important; cursor: default; }
 
-        /* DAY CELL (Image match) */
+        /* DAY CELL (Apple/Google Style) */
         .day-cell {
             aspect-ratio: 1/1;
-            background: #f8fafc;
-            border-radius: 6px;
+            background: #ffffff;
+            border-radius: 8px;
             border: 1px solid #e2e8f0;
-            padding: 4px;
+            padding: 2px 4px; /* More compact */
             display: flex;
-            align-items: center;
-            justify-content: center;
+            flex-direction: column;
+            justify-content: space-between;
             position: relative;
             cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: all 0.2s ease-in-out;
             color: #1e293b;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+            overflow: hidden;
         }
 
         .day-cell:hover {
-            transform: scale(1.1);
+            transform: translateY(-2px);
             z-index: 50;
-            box-shadow: var(--shadow-premium);
+            box-shadow: 0 12px 20px -10px rgba(0, 0, 0, 0.15);
             border-color: var(--primary);
         }
 
-        .day-num { font-size: 0.9rem; font-weight: 800; }
-        
-        /* OTB BADGE (Image match) */
-        .otb-badge {
-            position: absolute;
-            bottom: 4px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            align-items: center;
-            gap: 2px;
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.65rem;
-            white-space: nowrap;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            pointer-events: none;
+        .day-num { 
+            font-size: 0.7rem; 
+            font-weight: 700; 
+            color: #64748b;
+            margin-top: 2px;
+            margin-left: 2px;
         }
-        .otb-icon { font-size: 0.6rem; margin-right: 2px; }
-        .otb-val { color: #6366f1; font-weight: 800; margin-right: 4px; }
         
-        .p-up { background: #dcfce7; color: #10b981; border: 1px solid #10b981; padding: 1px 4px; border-radius: 4px; font-weight: 800; display: flex; align-items: center; gap: 2px; }
-        .p-down { background: #fee2e2; color: #ef4444; border: 1px solid #ef4444; padding: 1px 4px; border-radius: 4px; font-weight: 800; display: flex; align-items: center; gap: 2px; }
-        .p-equal { background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; padding: 1px 4px; border-radius: 4px; font-weight: 800; font-size: 0.65rem; }
+        /* OTB BADGE (Floating Card Style) */
+        .otb-badge {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(4px);
+            border: 1px solid #f1f5f9;
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-size: 0.55rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            pointer-events: none;
+            width: 100%;
+            margin-bottom: 2px;
+        }
+        .otb-val { color: #4f46e5; font-weight: 800; }
+        
+        .p-up { background: #dcfce7; color: #10b981; padding: 1px 4px; border-radius: 3px; font-weight: 800; font-size: 0.5rem; margin-top: 1px; }
+        .p-down { background: #fee2e2; color: #ef4444; padding: 1px 4px; border-radius: 3px; font-weight: 800; font-size: 0.5rem; margin-top: 1px; }
+        .p-equal { background: #f1f5f9; color: #94a3b8; padding: 1px 4px; border-radius: 3px; font-weight: 800; font-size: 0.5rem; margin-top: 1px; }
 
         /* LEGEND */
         .calendar-legend {
