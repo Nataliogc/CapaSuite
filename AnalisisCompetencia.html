@@ -1761,94 +1761,74 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
             // NEW: Robust Occupancy Sync
             try {
-                const pDbRaw = CapaStorage.getItem('hotel_manager_db_v2');
-                if (pDbRaw) {
-                    const pDb = (typeof pDbRaw === 'string') ? JSON.parse(pDbRaw) : pDbRaw;
-                    const dbKeys = Object.keys(pDb);
-                    
-                    // Fuzzy match active hotel once
-                    const activeClean = activeHotel.toLowerCase().replace(/hotel|sercotel|villa|spa/g, '').replace(/\s+/g, ' ').trim();
-                    const dbActiveKey = dbKeys.find(k => k.toLowerCase().includes(activeClean) || activeClean.includes(k.toLowerCase()));
+                const pDb = CapaStorage.getItem('hotel_manager_db_v2') || {};
+                const dbKeys = Object.keys(pDb);
+                
+                // Fuzzy match active hotel
+                const activeClean = activeHotel.toLowerCase().replace(/hotel|sercotel|villa|spa/g, '').replace(/\s+/g, ' ').trim();
+                const dbActiveKey = dbKeys.find(k => {
+                    const kLow = k.toLowerCase();
+                    return kLow.includes(activeClean) || activeClean.includes(kLow);
+                });
 
-                    data.forEach(d => {
-                        if (!d.dateISO) return;
-                        const iso = d.dateISO;
+                data.forEach(d => {
+                    if (!d.dateISO) return;
+                    const iso = d.dateISO;
 
-                        // 1. Sync for Active Hotel (High Priority)
-                        if (dbActiveKey && pDb[dbActiveKey]) {
-                            const hData = pDb[dbActiveKey];
+                    // 1. Sync for Active Hotel (High Priority)
+                    if (dbActiveKey && pDb[dbActiveKey]) {
+                        const hData = pDb[dbActiveKey];
+                        const yrStr = iso.split('-')[0];
+                        const yrInt = parseInt(yrStr);
+                        const yearsToTry = [yrStr, String(yrInt - 1), String(yrInt + 1), "2025", "2026", "2027"];
+                        let otbInfo = null, prodInfo = null;
+                        for (const y of yearsToTry) {
+                            if (hData[y]) {
+                                if (hData[y].daily_otb?.[iso] !== undefined) { otbInfo = hData[y].daily_otb[iso]; break; }
+                            }
+                        }
+                        for (const y of yearsToTry) {
+                            if (hData[y] && hData[y].daily?.[iso] !== undefined) { prodInfo = hData[y].daily[iso]; break; }
+                        }
+                        if (otbInfo !== null) {
+                            d.otbRooms = (typeof otbInfo === 'number') ? otbInfo : (otbInfo.rooms || 0);
+                            if (typeof otbInfo === 'object' && otbInfo.revenue > 0 && d.otbRooms > 0) d.otbADR = otbInfo.revenue / d.otbRooms;
+                        }
+                        if (prodInfo !== null) { d.occupancy = (typeof prodInfo === 'number') ? prodInfo : (prodInfo.rooms || 0); }
+                    }
+
+                    // 2. Sync for all other hotels in the table
+                    Object.keys(d.hotels).forEach(hName => {
+                        const tName = hName.toLowerCase().replace(/hotel|sercotel|villa|spa/g, '').replace(/\s+/g, ' ').trim();
+                        const dbKey = dbKeys.find(k => k === hName) || dbKeys.find(k => {
+                            const kLow = k.toLowerCase();
+                            return kLow.includes(tName) || tName.includes(kLow);
+                        });
+                        if (dbKey && pDb[dbKey]) {
+                            const hData = pDb[dbKey];
                             const yrStr = iso.split('-')[0];
                             const yrInt = parseInt(yrStr);
-
-                            // Búsqueda profunda en años posibles (el año actual o el anterior/siguiente por si hubo desfase)
                             const yearsToTry = [yrStr, String(yrInt - 1), String(yrInt + 1), "2025", "2026", "2027"];
-                            let otbInfo = null;
-                            let prodInfo = null;
-
-                            for (const y of yearsToTry) {
-                                if (hData[y]) {
-                                    if (hData[y].daily_otb?.[iso] !== undefined) {
-                                        otbInfo = hData[y].daily_otb[iso];
-                                        break;
-                                    }
-                                    // Fallback to month array if daily is missing
-                                    if (!otbInfo && hData[y].otb) {
-                                        const mIdx = parseInt(iso.split('-')[1]) - 1;
-                                        const rmsArr = hData[y].otb.rooms;
-                                        if (rmsArr && rmsArr[mIdx] > 0) {
-                                            // Solo si no hay datos diarios, usamos el promedio del mes como aproximación (o lo marcamos)
-                                            // Pero mejor no inventar si no hay daily_otb
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            // Re-search production
                             for (const y of yearsToTry) {
                                 if (hData[y] && hData[y].daily?.[iso] !== undefined) {
-                                    prodInfo = hData[y].daily[iso];
+                                    const p = hData[y].daily[iso];
+                                    d.hotels[hName].occupancy = (typeof p === 'number') ? p : (p.rooms || 0);
                                     break;
                                 }
                             }
-
-                            if (otbInfo !== null) {
-                                d.otbRooms = (typeof otbInfo === 'number') ? otbInfo : (otbInfo.rooms || 0);
-                                if (typeof otbInfo === 'object' && otbInfo.revenue > 0 && d.otbRooms > 0) d.otbADR = otbInfo.revenue / d.otbRooms;
-                            }
-                            if (prodInfo !== null) {
-                                d.occupancy = (typeof prodInfo === 'number') ? prodInfo : (prodInfo.rooms || 0);
-                            }
-                        }
-
-                        // 2. Sync for all other hotels in the table
-                        Object.keys(d.hotels).forEach(hName => {
-                            const tName = hName.toLowerCase().replace(/hotel|sercotel|villa|spa/g, '').replace(/\s+/g, ' ').trim();
-                            const dbKey = dbKeys.find(k => k === hName) || dbKeys.find(k => k.toLowerCase().includes(tName) || tName.includes(k.toLowerCase()));
-
-                            if (dbKey && pDb[dbKey]) {
-                                const hData = pDb[dbKey];
-                                const yr = iso.split('-')[0];
-                                const otbInfo = hData[yr]?.daily_otb?.[iso] || hData["2025"]?.daily_otb?.[iso] || hData["2026"]?.daily_otb?.[iso];
-                                const prodInfo = hData[yr]?.daily?.[iso] || hData["2025"]?.daily?.[iso] || hData["2026"]?.daily?.[iso];
-
-                                if (otbInfo) {
-                                    d.hotels[hName].otbRooms = (typeof otbInfo === 'number') ? otbInfo : (otbInfo.rooms || 0);
-                                }
-                                if (prodInfo) {
-                                    d.hotels[hName].occupancy = (typeof prodInfo === 'number') ? prodInfo : (prodInfo.rooms || 0);
-                                }
-                            }
-                        });
-
-                        // Calculate Pick-up
-                        if (prevMapLite[iso] && prevMapLite[iso]._otb !== undefined) {
-                            const prevOtb = prevMapLite[iso]._otb;
-                            const currOtb = d.otbRooms || 0;
-                            if (currOtb !== prevOtb) d.otbChange = currOtb - prevOtb;
                         }
                     });
-                }
-            } catch (e) { console.error("Sync error:", e); }
+
+                    // 3. Calculate Pick-up
+                    if (prevMapLite[iso] && prevMapLite[iso]._otb !== undefined) {
+                        const prevOtb = prevMapLite[iso]._otb;
+                        const currOtb = d.otbRooms || 0;
+                        if (currOtb !== prevOtb) d.otbChange = currOtb - prevOtb;
+                    }
+                });
+            } catch (e) {
+                console.error("Sync error:", e);
+            }
 
             if (selectedMonth !== 'all') {
                 data = processedData.filter(d => d.month === selectedMonth);
