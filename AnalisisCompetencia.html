@@ -1828,12 +1828,16 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             const otbCount = data.filter(d => d.otbRooms > 0).length;
             const occCount = data.filter(d => d.occupancy > 0).length;
             let statusHtml = "";
+            const hasGoodData = otbCount > (data.length / 2);
 
-            if (otbCount > 0 || occCount > 0) {
+            if (hasGoodData) {
                 statusHtml = `<span style="color:#10b981; font-weight:bold; margin-left:5px;">(OK: ${otbCount} OTB / ${occCount} Hab)</span>`;
             } else {
-                statusHtml = `<button onclick="diagnoseAllData()" style="background:#ef4444; color:white; border:none; padding:4px 10px; border-radius:6px; font-weight:bold; cursor:pointer; margin-left:10px; font-size:0.75rem; box-shadow:0 2px 8px rgba(239,68,68,0.3);">⚠️ SIN DATOS DE PREVISIÓN (Ayuda)</button>`;
+                statusHtml = `<button onclick="diagnoseAllData()" style="background:#ef4444; color:white; border:none; padding:4px 10px; border-radius:6px; font-weight:bold; cursor:pointer; margin-left:10px; font-size:0.75rem; box-shadow:0 2px 8px rgba(239,68,68,0.3);">⚠️ REVISAR OCUPACIÓN (${otbCount}/${data.length})</button>`;
             }
+
+            // Always add a small debug link
+            statusHtml += `<span onclick="diagnoseAllData()" style="font-size:0.6rem; color:#94a3b8; cursor:pointer; margin-left:10px; text-decoration:underline;">[Debug]</span>`;
 
             document.getElementById('record-count').innerHTML = `${data.length} días analizados ${statusHtml}`;
 
