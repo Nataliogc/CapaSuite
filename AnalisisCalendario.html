@@ -4,761 +4,409 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calendario de Eventos | CapaSuite</title>
+    <title>Calendario Operativo | CapaSuite</title>
     <link rel="icon" type="image/png" href="Imagen/Icono_CapaSuite.png">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <!-- Firebase SDKs -->
+    <!-- Libraries -->
+    <script src="js/xlsx.full.min.js"></script>
+    <script src="js/storage.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
-    <script src="js/storage.js"></script>
     <script src="js/firebase-auth.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <style>
         :root {
-            --primary: #4f46e5;
+            --primary: #6366f1;
             --secondary: #10b981;
             --accent: #f59e0b;
-            --text-main: #1e293b;
-            --text-muted: #64748b;
-            --bg-body: #f8fafc;
-            --card-bg: #ffffff;
-            --border: #e2e8f0;
+            --danger: #ef4444;
+            --bg-deep: #0f172a;
+            --bg-surface: #1e293b;
+            --bg-glass: rgba(30, 41, 59, 0.7);
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --border: rgba(255, 255, 255, 0.1);
+            --radius-lg: 20px;
+            --radius-md: 12px;
+            --shadow-premium: 0 10px 30px -5px rgba(0, 0, 0, 0.3);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
+        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-body);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-deep);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.1) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.05) 0px, transparent 50%);
             color: var(--text-main);
             margin: 0;
-            display: flex;
-            flex-direction: column;
+            padding: 0;
             min-height: 100vh;
         }
 
-        /* HEADER & NAV (Shared) */
-        .header {
+        /* NAVIGATION (Shared) */
+        .top-nav {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            padding: 0 40px;
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            padding: 12px 30px;
-            background: white;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 2000;
+            height: 60px;
             border-bottom: 1px solid var(--border);
         }
 
-        .brand {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .brand img.logo-main {
-            height: 40px;
-        }
-
-        .hotel-logos {
-            display: flex;
-            gap: 15px;
-        }
-
-        .hotel-logos img {
-            height: 40px;
-        }
-
-        .top-nav {
-            background: #1e293b;
-            padding: 0 30px;
-            display: flex;
-            align-items: center;
-            height: 45px;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 20px;
-            height: 100%;
-        }
-
+        .nav-links { display: flex; gap: 20px; height: 100%; align-items: center; }
         .top-nav a {
-            color: #94a3b8;
+            color: var(--text-muted);
             text-decoration: none;
             font-size: 11px;
             font-weight: 700;
             text-transform: uppercase;
-            display: flex;
-            align-items: center;
+            letter-spacing: 1px;
+            padding: 0 12px;
             height: 100%;
-            border-bottom: 2px solid transparent;
-        }
-
-        .top-nav a:hover,
-        .top-nav a.active {
-            color: white;
-            border-bottom-color: #818cf8;
-        }
-
-        /* MAIN CONTENT */
-        main {
-            padding: 20px;
-            flex: 1;
-        }
-
-        .control-bar {
             display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
-            background: white;
-            padding: 15px;
-            border-radius: 12px;
+            align-items: center;
+            transition: var(--transition);
+            border-bottom: 3px solid transparent;
+        }
+        .top-nav a:hover { color: white; }
+        .top-nav a.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+        /* HEADER */
+        .page-header {
+            padding: 40px 40px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1700px;
+            margin: 0 auto;
+        }
+
+        .header-title h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            margin: 0;
+            background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* CONTROLS */
+        .controls-bar {
+            display: flex;
+            gap: 12px;
+            background: var(--bg-glass);
+            padding: 10px;
+            border-radius: var(--radius-md);
             border: 1px solid var(--border);
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        .control-group {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        label {
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: var(--text-muted);
+            backdrop-filter: blur(10px);
         }
 
         select {
-            padding: 8px 12px;
+            background: #2d3a4f;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
             border: 1px solid var(--border);
-            border-radius: 6px;
             font-family: inherit;
-            font-size: 0.9rem;
-            min-width: 150px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            outline: none;
+            cursor: pointer;
+            transition: var(--transition);
         }
+        select:hover { border-color: var(--primary); }
 
         /* CALENDAR GRID */
-        .calendar-year {
+        /* CALENDAR LAYOUT */
+        .calendar-container {
+            max-width: 1700px;
+            margin: 0 auto;
+            padding: 20px 40px 60px;
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            gap: 30px;
         }
 
         .month-card {
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 15px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
-            position: relative;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            transition: var(--transition);
         }
 
         .month-title {
+            font-size: 1.25rem;
             font-weight: 800;
-            font-size: 1.1rem;
-            margin-bottom: 15px;
-            color: var(--text-main);
-            text-transform: capitalize;
-            display: flex;
-            justify-content: space-between;
+            color: #1e293b;
+            margin-bottom: 20px;
+            padding-left: 10px;
+            border-left: 4px solid var(--primary);
         }
 
         .days-header {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
-            margin-bottom: 5px;
+            margin-bottom: 15px;
+            text-align: center;
         }
 
         .day-label {
-            text-align: center;
             font-size: 0.7rem;
-            font-weight: 600;
+            font-weight: 800;
             color: var(--text-muted);
+            text-transform: uppercase;
         }
 
         .days-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
-            gap: 2px;
+            gap: 8px;
         }
 
+        .day-cell.empty { background: transparent !important; border: none !important; cursor: default; }
+
+        /* DAY CELL (Image match) */
         .day-cell {
-            aspect-ratio: 1;
-            border-radius: 4px;
+            aspect-ratio: 1/1;
+            background: #f8fafc;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            padding: 4px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.75rem;
-            font-weight: 600;
             position: relative;
             cursor: pointer;
-            transition: transform 0.1s;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             color: #1e293b;
         }
 
         .day-cell:hover {
             transform: scale(1.1);
-            z-index: 10;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-            border: 1px solid var(--primary);
+            z-index: 50;
+            box-shadow: var(--shadow-premium);
+            border-color: var(--primary);
         }
 
-        .day-cell.empty {
-            background: transparent;
-            cursor: default;
-        }
+        .day-num { font-size: 0.9rem; font-weight: 800; }
+        .day-value, .day-footer { display: none; }
 
-        /* EVENT MARKERS via Borders */
-        .event-marker {
-            position: absolute;
-            bottom: 2px;
-            width: 4px;
-            height: 4px;
-            border-radius: 50%;
-        }
-
-        /* HEATMAP LEGEND */
-        .legend {
+        /* LEGEND */
+        .calendar-legend {
             display: flex;
-            gap: 5px;
-            font-size: 0.75rem;
             align-items: center;
-            margin-left: auto;
+            gap: 10px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 700;
         }
+        .legend-boxes { display: flex; gap: 4px; }
+        .legend-box { width: 12px; height: 12px; border-radius: 2px; }
 
-        .legend-box {
-            width: 12px;
-            height: 12px;
-            border-radius: 2px;
-        }
+        /* HEATMAP */
+        .heat-1 { background-color: #e0f2fe !important; }
+        .heat-2 { background-color: #bae6fd !important; }
+        .heat-3 { background-color: #7dd3fc !important; }
+        .heat-4 { background-color: #38bdf8 !important; }
+        .heat-5 { background-color: #0284c7 !important; color: white !important; }
 
-        /* TOOLTIP */
+        .is-past { opacity: 0.3; filter: grayscale(1); }
+        .is-weekend { color: #ef4444; }
+        .is-full { border: 2px solid #ef4444 !important; }
+        .has-event { border: 2px solid #22c55e !important; }
+
+        /* TOOLTIP (Image match) */
         #tooltip {
             position: fixed;
-            background: white;
-            padding: 12px;
-            border-radius: 8px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-            border: 1px solid var(--border);
-            pointer-events: none;
-            z-index: 1000;
-            display: none;
-            width: 220px;
-        }
-
-        #tooltip h4 {
-            margin: 0 0 5px 0;
-            font-size: 0.9rem;
-        }
-
-        #tooltip .info-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.8rem;
-            margin-bottom: 3px;
-        }
-
-        #tooltip .event-badge {
-            display: inline-block;
-            padding: 2px 6px;
-            border-radius: 4px;
-            color: white;
-            font-size: 0.7rem;
-            margin-top: 5px;
-            font-weight: bold;
-        }
-
-        /* EVENT MODAL */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-        }
-
-        .modal-content {
-            background: white;
-            padding: 25px;
+            z-index: 9999;
+            background: #ffffff;
             border-radius: 12px;
-            width: 500px;
-            max-width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            padding: 15px;
+            pointer-events: none;
+            display: none;
+            min-width: 280px;
+            border: 1px solid #e2e8f0;
+            color: #334155;
         }
+        .tt-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px; margin-bottom: 10px; }
+        .tt-date { font-weight: 800; display: flex; align-items: center; gap: 4px; }
+        .tt-mkt { font-size: 0.7rem; color: #94a3b8; font-weight: 600; }
+        .tt-main-hotel { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .tt-hotel-info { font-weight: 800; color: #4f46e5; }
+        .tt-comp-section { font-size: 0.75rem; border-top: 1px solid #f1f5f9; padding-top: 8px; }
+        .tt-comp-row { display: flex; justify-content: space-between; margin-bottom: 3px; }
+        .tt-sold { color: #ef4444; font-weight: 800; }
 
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 10px;
-        }
-
-        .modal-body label {
-            display: block;
-            margin-bottom: 5px;
-            margin-top: 15px;
-        }
-
-        .modal-body input {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            box-sizing: border-box;
-        }
-
-        .event-list-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px;
-            border-bottom: 1px solid #f1f5f9;
-            font-size: 0.85rem;
-        }
-
-        .btn-delete {
-            color: #ef4444;
-            cursor: pointer;
-            font-weight: bold;
-            margin-left: 10px;
+        /* SYNC INDICATOR */
+        .sync-toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: var(--primary);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-weight: 700;
+            box-shadow: 0 10px 20px var(--primary-glow);
+            z-index: 3000;
+            display: none;
         }
     </style>
 </head>
 
 <body>
-
-    <header class="header">
-        <div class="brand">
-            <img src="Imagen/logo, CapaSuite.png" alt="CapaSuite" class="logo-main">
-            <div class="hotel-logos">
-                <img src="Imagen/logo-guadiana.svg" alt="Guadiana" id="logo-guadiana">
-                <img src="Imagen/logo-cumbria.svg" alt="Cumbria" id="logo-cumbria">
-            </div>
-        </div>
-        <div>
-            <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">Usuario: </span>
-            <span id="userEmail" style="font-size: 0.8rem;">Cargando...</span>
-        </div>
-    </header>
-
     <nav class="top-nav">
         <div class="nav-links">
-            <a href="index.html">🏠 Inicio</a>
-            <a href="AnalisisProduccion.html">📈 Producción</a>
-            <a href="AnalisisSegmentos.html">👥 Segmentos</a>
-            <a href="AnalisisCompetencia.html">⚖️ Competencia</a>
-            <a href="AnalisisIA.html">✨ CapaAI</a>
-            <a href="AnalisisCalendario.html" class="active">📅 Calendario</a>
-            <a href="CalculadoraPresupuesto.html">💰 Presupuesto</a>
-            <a href="CargarDatos.html">⚙️ Config</a>
+            <a href="index.html">Inicio</a>
+            <a href="AnalisisProduccion.html">Producción</a>
+            <a href="AnalisisSegmentos.html">Segmentos</a>
+            <a href="AnalisisCompetencia.html">Competencia</a>
+            <a href="AnalisisIA.html" style="color:var(--accent);">CapaAI</a>
+            <a href="AnalisisCalendario.html" class="active">Calendario</a>
+            <a href="Analisis360.html">Vista 360º</a>
+        </div>
+        <div class="user-chip" style="color:var(--text-muted); font-size:0.7rem; font-weight:700;">
+            <span id="userEmailNav">Conectando...</span>
         </div>
     </nav>
 
-    <main>
-        <div class="hero" style="margin-bottom: 20px;">
-            <h1 style="font-size: 1.8rem;">Calendario de Eventos & Revenue</h1>
-            <p style="color: var(--text-muted);">Visualización térmica de demanda y eventos locales.</p>
+    <div id="syncToast" class="sync-toast">✨ Sincronizando...</div>
+
+    <header class="page-header">
+        <div class="header-title">
+            <h1>Calendario Estratégico</h1>
         </div>
-
-        <div class="control-bar">
-            <div class="control-group">
-                <label>Hotel</label>
-                <select id="hotelSelector" onchange="renderCalendar()">
-                    <option value="Guadiana">Guadiana</option>
-                    <option value="Cumbria">Cumbria</option>
-                </select>
-                <img id="dynamicHotelLogo" src="Imagen/logo-guadiana.svg" style="height: 45px; margin-left:10px;"
-                    alt="Hotel Logo">
-            </div>
-            <div class="control-group">
-                <label>Año</label>
-                <select id="yearSelector" onchange="renderCalendar()">
-                    <option value="2025">2025</option>
-                    <option value="2026" selected>2026</option>
-                    <option value="2027">2027</option>
-                </select>
-            </div>
-            <div class="control-group">
-                <label>Métrica Mapa Térmico</label>
-                <select id="metricSelector" onchange="renderCalendar()">
-                    <option value="price">Tarifa (ADR)</option>
-                    <option value="occupancy">Ocupación (%)</option>
-                </select>
-            </div>
-
-            <button onclick="openEventModal()"
-                style="margin-left:auto; margin-right:20px; background:var(--primary); color:white; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-weight:600; font-size:0.85rem;">
-                + Eventos
-            </button>
-
-            <div class="legend">
+        <div class="controls-bar" style="align-items: center;">
+            <div class="calendar-legend" style="margin-right:20px;">
                 <span>Bajo</span>
-                <div class="legend-box" style="background:#e0e7ff"></div>
-                <div class="legend-box" style="background:#a5b4fc"></div>
-                <div class="legend-box" style="background:#6366f1"></div>
-                <div class="legend-box" style="background:#4338ca"></div>
-                <div class="legend-box" style="background:#312e81"></div>
+                <div class="legend-boxes">
+                    <div class="legend-box heat-1"></div>
+                    <div class="legend-box heat-2"></div>
+                    <div class="legend-box heat-3"></div>
+                    <div class="legend-box heat-4"></div>
+                    <div class="legend-box heat-5"></div>
+                </div>
                 <span>Alto</span>
             </div>
+            <button class="btn" style="background:#4f46e5; padding:8px 15px;" onclick="document.getElementById('excelEvents').click()">+ Eventos</button>
+            <input type="file" id="excelEvents" hidden accept=".xlsx, .xls">
+            
+            <div style="width:1px; height:24px; background:var(--border); margin:0 10px;"></div>
+            
+            <select id="hotelSelector" onchange="renderCalendar()">
+                <option value="Guadiana" selected>Hotel Guadiana</option>
+                <option value="Cumbria">Hotel Cumbria</option>
+            </select>
+            <select id="yearSelector" onchange="renderCalendar()">
+                <option value="2025">2025</option>
+                <option value="2026" selected>2026</option>
+            </select>
+            <select id="metricSelector" onchange="renderCalendar()">
+                <option value="occupancy" selected>Ver Ocupación</option>
+                <option value="price">Ver Precios</option>
+            </select>
         </div>
+    </header>
 
-        <div id="calendarGrid" class="calendar-year"></div>
-    </main>
+    <main id="calendarGrid" class="calendar-container"></main>
 
-    <!-- Tooltip -->
+    <section class="event-sidebar">
+        <h3 style="margin-top:0;">Eventos del Periodo</h3>
+        <div id="eventList" style="display:flex; flex-wrap:wrap; gap:10px;"></div>
+    </section>
+
     <div id="tooltip"></div>
 
-    <!-- EVENT MODAL -->
-    <div id="eventModal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 style="margin:0;">Gestionar Eventos</h3>
-                <button onclick="closeEventModal()" style="border:none; bg:transparent; cursor:pointer;">✕</button>
-            </div>
-            <div class="modal-body">
-                <div style="margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:15px; text-align:center;">
-                    <input type="file" id="excelInput" accept=".xlsx, .xls" style="display:none;"
-                        onchange="importEventsFromExcel(this)">
-                    <button onclick="document.getElementById('excelInput').click()"
-                        style="background:#10b981; color:white; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-weight:600; display:flex; align-items:center; justify-content:center; width:100%;">
-                        📂 Importar desde Excel
-                    </button>
-                    <p style="font-size:0.75rem; color:#64748b; margin-top:5px;">Formato: Fecha Inicio | Fecha Fin |
-                        Descripción</p>
-                </div>
-
-                <div style="background:#f8fafc; padding:15px; border-radius:8px; margin-bottom:20px;">
-                    <h4 style="margin:0 0 10px 0;">Nuevo Evento Manual</h4>
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                        <div>
-                            <label>Fecha Inicio</label>
-                            <input type="date" id="newEventStart">
-                        </div>
-                        <div>
-                            <label>Fecha Fin</label>
-                            <input type="date" id="newEventEnd">
-                        </div>
-                    </div>
-                    <label>Descripción</label>
-                    <input type="text" id="newEventDesc" placeholder="Ej: Feria Local">
-
-                    <label>Color (Hex)</label>
-                    <select id="newEventColor"
-                        style="width:100%; padding:8px; border-radius:6px; border:1px solid #e2e8f0;">
-                        <option value="255">Azul</option>
-                        <option value="65280">Verde</option>
-                        <option value="16711680">Rojo</option>
-                        <option value="16776960">Amarillo</option>
-                    </select>
-
-                    <button onclick="saveEvent()"
-                        style="width:100%; margin-top:15px; background:var(--primary); color:white; border:none; padding:10px; border-radius:6px; cursor:pointer;">Guardar
-                        Evento</button>
-                </div>
-
-                <h4 style="margin-bottom:10px;">Eventos Guardados</h4>
-                <div id="existingEventsList" style="max-height:200px; overflow-y:auto;">
-                    <!-- List items here -->
-                </div>
-            </div>
-        </div>
-    </div>
-
     <script>
-        // --- DATA ---
-        // --- DATA ---
-        // Load events from storage or fall back to defaults
-        let rawEvents = [];
-        const savedEvents = CapaStorage.getItem('custom_events');
-
-        if (savedEvents) {
-            try {
-                rawEvents = JSON.parse(savedEvents);
-            } catch (e) { console.error("Error parsing events", e); }
-        } else {
-            // Defaults if nothing saved
-            rawEvents = [
-                { start: "2026-02-14", end: "2026-02-14", desc: "NR / ENAMORADOS", color: 255 },
-                { start: "2026-01-16", end: "2026-01-17", desc: "Salsea 2026", color: 255 },
-                { start: "2026-02-21", end: "2026-02-21", desc: "Fin de Carnaval", color: 65280 },
-                { start: "2026-03-20", end: "2026-03-21", desc: "Campeonatos de España de Duatlón", color: 255 },
-                { start: "2026-06-19", end: "2026-06-19", desc: "(probable) Oposición", color: 255 },
-                { start: "2026-05-01", end: "2026-05-02", desc: "Puente Mayo trabajo", color: 16711680 },
-                { start: "2026-10-17", end: "2026-10-17", desc: "(probable) El Quijote Maratón", color: 16711680 },
-                { start: "2026-10-10", end: "2026-10-10", desc: "(probable) El Quijote Maratón", color: 16711680 },
-                { start: "2026-03-13", end: "2026-03-14", desc: "NR ¿Campeonatos de España de Duatlón", color: 255 },
-                { start: "2026-03-07", end: "2026-03-07", desc: "NR / Concierto Fito & Fitipaldis", color: 255 },
-                { start: "2025-12-31", end: "2025-12-31", desc: "NR", color: 255 },
-                { start: "2025-12-06", end: "2025-12-07", desc: "NR/ Pte Constitución", color: 255 },
-                { start: "2026-01-23", end: "2026-01-24", desc: "Campeonato tiro con arco", color: 16711680 },
-                { start: "2026-08-13", end: "2026-08-15", desc: "Feria y Fiestas Virgen del Prado", color: 16711680 },
-                { start: "2026-04-02", end: "2026-04-04", desc: "Semana Santa 2026", color: 255 },
-                { start: "2026-09-25", end: "2026-09-26", desc: "Fercatur", color: 65280 },
-                { start: "2026-04-13", end: "2026-04-16", desc: "NR/ XVI Congreso Nacional de Regantes", color: 255 },
-                { start: "2026-05-29", end: "2026-05-30", desc: "Crossfit Games 2026", color: 65280 },
-                { start: "2027-05-10", end: "2027-05-12", desc: "Fenavin 2027", color: 255 },
-                { start: "2026-12-05", end: "2026-12-07", desc: "Puente de la Constitución", color: 255 },
-                { start: "2026-05-04", end: "2026-05-06", desc: "Congreso", color: 16711680 },
-                { start: "2026-06-05", end: "2026-06-06", desc: "Baila Conmigo 2026", color: 255 }
-            ];
-        }
-
-        // --- EVENT MANAGEMENT ---
-        function openEventModal() {
-            document.getElementById('eventModal').style.display = 'flex';
-            renderEventList();
-        }
-
-        function closeEventModal() {
-            document.getElementById('eventModal').style.display = 'none';
-            renderCalendar(); // Re-render to show changes
-        }
-
-        function saveEvent() {
-            const start = document.getElementById('newEventStart').value;
-            const end = document.getElementById('newEventEnd').value;
-            const desc = document.getElementById('newEventDesc').value;
-            const color = parseInt(document.getElementById('newEventColor').value);
-
-            if (!start || !end || !desc) {
-                alert("Por favor completa todos los campos");
-                return;
-            }
-
-            rawEvents.push({ start, end, desc, color });
-            CapaStorage.setItem('custom_events', JSON.stringify(rawEvents));
-
-            // Clear form
-            document.getElementById('newEventDesc').value = '';
-
-            renderEventList();
-        }
-
-        function deleteEvent(index) {
-            if (confirm("¿Borrar evento?")) {
-                rawEvents.splice(index, 1);
-                CapaStorage.setItem('custom_events', JSON.stringify(rawEvents));
-                renderEventList();
-            }
-        }
-
-        function renderEventList() {
-            const container = document.getElementById('existingEventsList');
-            container.innerHTML = '';
-
-            // Sort by date reverse
-            const sorted = [...rawEvents].sort((a, b) => new Date(b.start) - new Date(a.start));
-
-            sorted.forEach((ev, idx) => {
-                // Find original index for deletion
-                const originalIndex = rawEvents.indexOf(ev);
-
-                const div = document.createElement('div');
-                div.className = 'event-list-item';
-                div.innerHTML = `
-                    <div>
-                        <span style="font-weight:bold; color:${intToHex(ev.color)}">●</span> 
-                        ${ev.start} - <strong>${ev.desc}</strong>
-                    </div>
-                    <span class="btn-delete" onclick="deleteEvent(${originalIndex})">🗑️</span>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        // --- EXCEL IMPORT ---
-        function importEventsFromExcel(input) {
-            const file = input.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-
-            reader.onload = function (e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-
-                    // Assume first sheet
-                    const firstSheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[firstSheetName];
-
-                    // Convert to JSON (header:1 generates array of arrays, safest to detect structure)
-                    const json = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, dateNF: 'yyyy-mm-dd' });
-
-                    if (!json || json.length < 2) {
-                        alert("El archivo parece vacío o sin datos válidos.");
-                        return;
-                    }
-
-                    // Simple Heuristic: Assume columns A, B, C are Start, End, Desc
-                    // Or look for headers in row 0
-                    let startCol = 0;
-                    let endCol = 1;
-                    let descCol = 2;
-
-                    // Skip header row if it looks like text
-                    let startIndex = 0;
-                    // Check if first cell is dates
-                    if (isNaN(Date.parse(json[0][0])) && String(json[0][0]).length > 4) {
-                        startIndex = 1; // Row 0 is likely header
-                    }
-
-                    let addedCount = 0;
-
-                    for (let i = startIndex; i < json.length; i++) {
-                        const row = json[i];
-                        if (!row || row.length === 0) continue;
-
-                        let sDate = row[startCol];
-                        let eDate = row[endCol];
-                        let desc = row[descCol];
-
-                        // Handle strict 1 column case (Start = End) or missing End
-                        if (!eDate && sDate) eDate = sDate;
-                        // Handle case where Desc is in Col 2 (B)
-                        if (!desc && row.length === 2 && isNaN(Date.parse(row[1]))) desc = row[1];
-                        // Handle case where Desc is in Col 3 (C)
-                        if (!desc && row.length > 2) desc = row[2];
-
-                        // Basic Validation
-                        if (sDate && desc) {
-                            // Ensure ISO format YYYY-MM-DD
-                            // Logic: If it has slashes 2026/01/01 convert to dashes
-                            if (typeof sDate === 'string' && sDate.includes('/')) sDate = sDate.replace(/\//g, '-');
-                            if (typeof eDate === 'string' && eDate.includes('/')) eDate = eDate.replace(/\//g, '-');
-
-                            // Reorder DD-MM-YYYY to YYYY-MM-DD if needed (simple check)
-                            if (typeof sDate === 'string') {
-                                const dateParts = sDate.split('-');
-                                if (dateParts[0].length === 2 && dateParts[2] && dateParts[2].length === 4) {
-                                    sDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
-                                }
-                            }
-                            if (typeof eDate === 'string' && eDate.includes('-')) {
-                                const eParts = eDate.split('-');
-                                if (eParts[0].length === 2 && eParts[2] && eParts[2].length === 4) {
-                                    eDate = `${eParts[2]}-${eParts[1]}-${eParts[0]}`;
-                                }
-                            }
-
-                            // Add
-                            rawEvents.push({
-                                start: sDate,
-                                end: eDate,
-                                desc: desc,
-                                color: 255 // Default blue
-                            });
-                            addedCount++;
-                        }
-                    }
-
-                    if (addedCount > 0) {
-                        CapaStorage.setItem('custom_events', JSON.stringify(rawEvents));
-                        renderEventList();
-                        renderCalendar(); // Visual update
-                        alert(`¡Éxito! Se han importado ${addedCount} eventos.`);
-                    } else {
-                        alert("No se pudieron encontrar eventos válidos. Revisa el formato (Columnas: Inicio, Fin, Descripción).");
-                    }
-
-                } catch (err) {
-                    console.error("Error reading Excel", err);
-                    alert("Error al leer el archivo Excel: " + err.message);
-                }
-
-                // Reset input
-                input.value = '';
-            };
-
-            reader.readAsArrayBuffer(file);
-        }
-
         let revenueData = {};
+        let rawEvents = [];
+        let db = {};
 
         window.onload = async () => {
-            // Load Competitor Data (Prices)
-            try {
-                const rawComp = CapaStorage.getItem('revenue_data_v2');
-                if (rawComp) {
-                    const parsed = JSON.parse(rawComp);
-                    parsed.data.forEach(d => {
-                        revenueData[d.dateISO] = d;
-                    });
-                    console.log(`Loaded ${Object.keys(revenueData).length} days of market data`);
-                }
-            } catch (e) {
-                console.error("Error loading revenue data", e);
-            }
+            loadAllData();
+            
+            document.getElementById('excelEvents').onchange = (e) => handleExcel(e.target);
 
-            // Load Production Data (Occupancy/OTB) - ENRICHMENT
-            try {
-                const rawProd = CapaStorage.getItem('hotel_manager_db_v2');
-                if (rawProd) {
-                    const db = JSON.parse(rawProd);
-
-                    // Iterate all loaded revenue dates to inject OTB
-                    Object.keys(revenueData).forEach(iso => {
-                        const d = revenueData[iso];
-                        const parts = iso.split('-');
-                        const year = parts[0];
-
-                        // We need to check BOTH hotels because the calendar allows switching
-                        ['Guadiana', 'Cumbria'].forEach(hName => {
-                            // Try to find this date in the DB
-                            // The DB structure is db[HotelName][Year].daily_otb[iso]
-                            const hKey = Object.keys(db).find(k => k.toLowerCase().includes(hName.toLowerCase()));
-
-                            if (hKey && db[hKey][year]) {
-                                let otb = 0;
-                                let occ = 0;
-
-                                // Check OTB
-                                if (db[hKey][year].daily_otb && db[hKey][year].daily_otb[iso]) {
-                                    const val = db[hKey][year].daily_otb[iso];
-                                    otb = (typeof val === 'object') ? (val.rooms || 0) : val;
-                                }
-
-                                // Check Daily (Real Past)
-                                if (db[hKey][year].daily && db[hKey][year].daily[iso]) {
-                                    occ = db[hKey][year].daily[iso];
-                                }
-
-                                // Save to our data object specifically for this hotel
-                                if (!d.occupancyData) d.occupancyData = {};
-                                d.occupancyData[hName] = { otb: otb, occ: occ };
-                            }
-                        });
-                    });
-                    console.log("Occupancy data synced.");
-                }
-            } catch (e) {
-                console.error("Error syncing production data", e);
-            }
-
-            renderCalendar();
+            window.addEventListener('capasuite-data-synced', () => {
+                const toast = document.getElementById('syncToast');
+                toast.style.display = 'block';
+                setTimeout(() => { loadAllData(); toast.style.display = 'none'; }, 2000);
+            });
         };
 
-        function intToHex(intColor) {
-            // Standard RGB int to Hex
-            // 255 -> Blue (0x0000FF)
-            // 65280 -> Green (0x00FF00)
-            // 16711680 -> Red (0xFF0000)
-            const hex = intColor.toString(16).padStart(6, '0');
-            return "#" + hex;
+        function loadAllData() {
+            // 1. Competitor Data
+            const rawComp = CapaStorage.getItem('revenue_data_v2');
+            if (rawComp) {
+                const parsed = JSON.parse(rawComp);
+                revenueData = {}; // Reset
+                parsed.data.forEach(d => { revenueData[d.dateISO] = d; });
+            }
+
+            // 2. Production / OTB Data
+            const rawProd = CapaStorage.getItem('hotel_manager_db_v2');
+            if (rawProd) {
+                db = JSON.parse(rawProd);
+                enrichRevenueData();
+            }
+
+            // 3. Events
+            const localEvents = CapaStorage.getItem('custom_events');
+            if (localEvents) rawEvents = JSON.parse(localEvents);
+
+            renderCalendar();
+            renderEventList();
+        }
+
+        function enrichRevenueData() {
+            Object.keys(revenueData).forEach(iso => {
+                const d = revenueData[iso];
+                const parts = iso.split('-');
+                const year = parts[0];
+
+                if (!d.occupancyData) d.occupancyData = {};
+
+                ['Guadiana', 'Cumbria'].forEach(hName => {
+                    const hKey = Object.keys(db).find(k => k.toLowerCase().includes(hName.toLowerCase()));
+                    if (hKey && db[hKey][year]) {
+                        const yearData = db[hKey][year];
+                        let otb = 0, occ = 0, otb_prev = null;
+
+                        if (yearData.daily_otb && yearData.daily_otb[iso]) {
+                            const v = yearData.daily_otb[iso];
+                            otb = (typeof v === 'object') ? (v.rooms || 0) : v;
+                        }
+                        if (yearData.daily && yearData.daily[iso]) {
+                            occ = yearData.daily[iso].rooms || yearData.daily[iso];
+                        }
+                        // SNAPSHOT FOR PICK-UP
+                        if (yearData.otb_prev && yearData.otb_prev.daily_otb && yearData.otb_prev.daily_otb[iso]) {
+                            const vPrev = yearData.otb_prev.daily_otb[iso];
+                            otb_prev = (typeof vPrev === 'object') ? (vPrev.rooms || 0) : vPrev;
+                        }
+
+                        d.occupancyData[hName] = { otb, occ, otb_prev };
+                    }
+                });
+            });
         }
 
         function renderCalendar() {
@@ -767,360 +415,213 @@
 
             const year = parseInt(document.getElementById('yearSelector').value);
             const hotel = document.getElementById('hotelSelector').value;
-            const metric = document.getElementById('metricSelector').value; // 'price' or 'occupancy'
+            const metric = document.getElementById('metricSelector').value;
+            const capacity = (hotel === 'Cumbria' ? 59 : 108);
 
-            // UPDATE LOGO
-            const logo = document.getElementById('dynamicHotelLogo');
-            if (logo) logo.src = (hotel === 'Cumbria') ? 'Imagen/logo-cumbria.svg' : 'Imagen/logo-guadiana.svg';
-
-            const months = [
-                "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-                "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
-            ];
-
-            // 1. Calculate color scale domains
-            // Find Min/Max for the selected year to normalize heatmap
+            // Calculate Scale for Heatmap
             let minVal = 9999, maxVal = 0;
-
             Object.values(revenueData).forEach(d => {
-                const dYear = new Date(d.dateISO).getFullYear();
-                if (dYear === year) {
-                    let val = 0;
+                if (new Date(d.dateISO).getFullYear() === year) {
+                    let v = 0;
                     if (metric === 'price') {
-                        val = (d.hotels[hotel] && d.hotels[hotel].price) ? d.hotels[hotel].price : 0;
+                        v = (d.hotels[hotel] && d.hotels[hotel].price) ? d.hotels[hotel].price : 0;
                     } else {
-                        // Occupancy
-                        const cap = (hotel === 'Cumbria' ? 59 : 108);
-                        const rooms = d.otbRooms || d.occupancy || 0;
-                        val = (rooms / cap) * 100;
+                        const rooms = (d.occupancyData && d.occupancyData[hotel]) ? d.occupancyData[hotel].otb : 0;
+                        v = (rooms / capacity) * 100;
                     }
-                    if (val > 0) {
-                        minVal = Math.min(minVal, val);
-                        maxVal = Math.max(maxVal, val);
-                    }
+                    if (v > 0) { minVal = Math.min(minVal, v); maxVal = Math.max(maxVal, v); }
                 }
             });
-            if (minVal > maxVal) { minVal = 0; maxVal = 100; } // Fallback
+            if (minVal > maxVal) { minVal = 0; maxVal = 100; }
 
-            // Render 12 Months
+            const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
             for (let m = 0; m < 12; m++) {
-                const monthCard = document.createElement('div');
-                monthCard.className = 'month-card';
-
-                const title = document.createElement('div');
-                title.className = 'month-title';
-                title.innerText = months[m];
-                monthCard.appendChild(title);
-
-                const daysHeader = document.createElement('div');
-                daysHeader.className = 'days-header';
-                ['L', 'M', 'X', 'J', 'V', 'S', 'D'].forEach(d => {
-                    const l = document.createElement('div');
-                    l.className = 'day-label';
-                    l.innerText = d;
-                    daysHeader.appendChild(l);
-                });
-                monthCard.appendChild(daysHeader);
-
+                const card = document.createElement('div');
+                card.className = 'month-card';
+                card.innerHTML = `<div class="month-title">${months[m]}</div><div class="days-header">${['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(l => `<div class="day-label">${l}</div>`).join('')}</div>`;
+                
                 const grid = document.createElement('div');
                 grid.className = 'days-grid';
 
-                // Days Logic
                 const firstDay = new Date(year, m, 1);
-                // Adjust for Monday start (JS 0=Sun)
-                let startDay = firstDay.getDay();
-                if (startDay === 0) startDay = 7; // Sunday=7
-
+                let startOffset = firstDay.getDay(); if (startOffset === 0) startOffset = 7;
                 const daysInMonth = new Date(year, m + 1, 0).getDate();
 
-                // Empty cells before start
-                for (let i = 1; i < startDay; i++) {
-                    const empty = document.createElement('div');
-                    empty.className = 'day-cell empty';
-                    grid.appendChild(empty);
-                }
+                for (let i = 1; i < startOffset; i++) { grid.innerHTML += '<div class="day-cell empty"></div>'; }
 
-                // Days
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
+                const today = new Date(); today.setHours(0,0,0,0);
 
                 for (let d = 1; d <= daysInMonth; d++) {
                     const dateObj = new Date(year, m, d);
                     const iso = `${year}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                    const dData = revenueData[iso] || {};
+                    const hData = (dData.occupancyData && dData.occupancyData[hotel]) ? dData.occupancyData[hotel] : { otb: 0, occ: 0, otb_prev: null };
+                    
+                    const roomsSold = (hData.occ > 0) ? hData.occ : hData.otb;
+                    const occPct = (roomsSold / capacity) * 100;
+                    
+                    let valText = "";
+                    let heatmapVal = 0;
+                    if (metric === 'price') {
+                        const p = (dData.hotels && dData.hotels[hotel]) ? (dData.hotels[hotel].price || dData.hotels[hotel]) : 0;
+                        valText = p > 0 ? `${Math.round(p)}€` : "";
+                        heatmapVal = p;
+                    } else {
+                        valText = roomsSold > 0 ? `${Math.round(occPct)}%` : "";
+                        heatmapVal = occPct;
+                    }
 
                     const cell = document.createElement('div');
                     cell.className = 'day-cell';
-                    cell.innerText = d;
-                    cell.dataset.iso = iso;
+                    if (dateObj < today) cell.classList.add('is-past');
+                    if (dateObj.getDay() === 0 || dateObj.getDay() === 6) cell.classList.add('is-weekend');
+                    if (occPct >= 98) cell.classList.add('is-full');
 
-                    // --- DATA RETRIEVAL ---
-                    const dData = revenueData[iso];
-                    let val = 0;
-                    let compAvg = 0;
-                    let roomsSold = 0;
-
-                    if (dData) {
-                        compAvg = dData.compAvg || 0;
-
-                        // Get Enriched Data for specific hotel
-                        const hData = (dData.occupancyData && dData.occupancyData[hotel]) ? dData.occupancyData[hotel] : { otb: 0, occ: 0 };
-
-                        // ALWAYS calculate roomsSold for Tooltip usage
-                        const cap = (hotel === 'Cumbria' ? 59 : 108);
-                        roomsSold = (hData.occ > 0) ? hData.occ : hData.otb;
-                        // Fallback to sheet data if DB enrichment failed (e.g. initial upload only)
-                        if (roomsSold === 0 && dData.otbRooms) roomsSold = dData.otbRooms;
-
-                        if (metric === 'price') {
-                            val = (dData.hotels[hotel] && dData.hotels[hotel].price) ? dData.hotels[hotel].price : 0;
-                            // Fallback if price is 0 but we have valid data in original source
-                            if (val === 0 && dData.hotels[hotel]) val = dData.hotels[hotel];
-                        } else {
-                            // Occupancy Metric for Heatmap
-                            val = (roomsSold / cap) * 100;
-                        }
-                    }
-
-                    // --- VISUAL STYLES ---
-                    const isPast = dateObj < today;
-
-                    // Pre-calculate Occupancy for closed status check
-                    const capCheck = (hotel === 'Cumbria' ? 59 : 108);
-                    const occPctCheck = (roomsSold / capCheck) * 100;
-                    // Check if strictly closed (>=98%) or Price is invalid while in Price Mode (NaN)
-                    // Note: val is 0 if empty, so we check isNaN specifically for parsing errors
-                    const isClosed = occPctCheck >= 98 || (metric === 'price' && isNaN(val) && dData && dData.hotels && dData.hotels[hotel]);
-
-                    // Heatmap Intensity
-                    if (isClosed) {
-                        // CLOSED / FULL STATUS - RED BACKGROUND
-                        cell.style.backgroundColor = '#fecaca'; // Red-200
-                        cell.style.color = '#b91c1c'; // Red-700
-                        cell.style.border = '2px solid #f87171'; // Red-400
-                        cell.style.fontWeight = '800';
-                    }
-                    else if (val > 0) {
+                    // Heatmap logic (Scale 1-5 like in image)
+                    if (heatmapVal > 0) {
                         const range = maxVal - minVal;
-                        // Avoid division by zero
-                        const pct = range > 0 ? (val - minVal) / range : 0.5;
-
-                        // HSL Blue scale - Adjusted to ensure visibility
-                        // Start at 88% (Light Blue) down to 30% (Dark Blue)
-                        const l = 88 - (pct * 58);
-
-                        cell.style.backgroundColor = `hsl(230, 90%, ${l}%)`;
-
-                        // Text contrast
-                        if (l < 60) {
-                            cell.style.color = 'white';
-                        } else {
-                            cell.style.color = '#1e293b';
-                        }
-
-                        // Add a border to make it distinct
-                        cell.style.borderColor = `hsl(230, 90%, ${l - 10}%)`;
-                    } else {
-                        // Empty/Zero values
-                        cell.style.backgroundColor = '#f8fafc'; // Very light gray for empty
-                        cell.style.color = '#cbd5e1';
+                        const score = range > 0 ? (heatmapVal - minVal) / range : 0.5;
+                        if (score >= 0.8) cell.classList.add('heat-5');
+                        else if (score >= 0.6) cell.classList.add('heat-4');
+                        else if (score >= 0.4) cell.classList.add('heat-3');
+                        else if (score >= 0.2) cell.classList.add('heat-2');
+                        else cell.classList.add('heat-1');
                     }
 
-                    // Past Date Styling (Grayed out)
-                    if (isPast) {
-                        cell.style.opacity = '0.6';
-                        cell.style.filter = 'grayscale(100%)';
-                        cell.style.textDecoration = 'line-through';
-                        // Keep background but muted
-                    }
+                    // Event Border (Image match)
+                    const ev = rawEvents.find(e => iso >= e.start && iso <= e.end);
+                    if (ev) cell.classList.add('has-event');
 
-                    // --- EVENTS ---
-                    // Use String comparison to avoid Timezone headaches
-                    // iso format 'YYYY-MM-DD' compares correctly as string
-                    const ev = rawEvents.find(e => {
-                        return iso >= e.start && iso <= e.end;
-                    });
+                    cell.innerHTML = `
+                        <div class="day-num">${d}</div>
+                    `;
 
-                    if (ev) {
-                        cell.style.border = `2px solid ${intToHex(ev.color)}`;
-                        cell.dataset.eventDesc = ev.desc;
-                        cell.dataset.eventColor = intToHex(ev.color);
-                    }
-
-                    // --- INTERACTION ---
-                    // Store strict data in DOM to avoid closure scope issues
-                    cell.dataset.val = val;
-                    cell.dataset.compAvg = compAvg;
-                    cell.dataset.roomsSold = roomsSold;
-
-                    // Pass only event to handler (data is on target)
-                    cell.onmouseenter = showTooltip;
+                    cell.onmouseenter = (e) => showTooltip(e, iso, hData, dData, ev);
                     cell.onmouseleave = hideTooltip;
 
                     grid.appendChild(cell);
                 }
-
-                monthCard.appendChild(grid);
-                container.appendChild(monthCard);
+                card.appendChild(grid);
+                container.appendChild(card);
             }
         }
 
-        const tooltip = document.getElementById('tooltip');
+        function showTooltip(e, iso, hData, dData, ev) {
+            const currentHotel = document.getElementById('hotelSelector').value;
+            const cap = (currentHotel === 'Cumbria' ? 59 : 108);
+            const t = document.getElementById('tooltip');
+            
+            const dateStr = new Date(iso).toLocaleDateString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');
+            const mktPrice = dData.compAvg || '--';
+            const hotelPrice = (dData.hotels && dData.hotels[currentHotel]) ? (dData.hotels[currentHotel].price || dData.hotels[currentHotel]) : 0;
+            const roomsSold = (hData.occ > 0) ? hData.occ : hData.otb;
+            const occPct = Math.round((roomsSold / cap) * 100);
 
-        function showTooltip(e) {
-            const cell = e.target;
-            const iso = cell.dataset.iso;
-            const hotel = document.getElementById('hotelSelector').value;
-
-            // Retrieve data from dataset (all strings, need parsing)
-            const val = parseFloat(cell.dataset.val || 0);
-            const compAvg = parseFloat(cell.dataset.compAvg || 0);
-            const roomsSold = parseFloat(cell.dataset.roomsSold || 0);
-            const eventDesc = cell.dataset.eventDesc;
-            const eventColor = cell.dataset.eventColor;
-
-            // Global data lookup for competitor details
-            const dData = revenueData[iso];
-
-            // --- OUR HOTEL SECTION ---
-            let myHtml = '';
-            if (val > 0 || roomsSold > 0) {
-                // Occ Calculation logic pulled up
-                const cap = (hotel === 'Cumbria' ? 59 : 108);
-                const occValue = (roomsSold / cap) * 100;
-                const metric = document.getElementById('metricSelector').value;
-
-                // Logic for "CERRADO" / Price Display
-                let priceDisp = '';
-
-                // 1. If effectively full (>=98%) or Price is invalid (NaN) implies closed/sold out
-                if (occValue >= 98 || isNaN(val)) {
-                    priceDisp = `<span style="background:#fee2e2; color:#ef4444; padding:2px 6px; border-radius:4px; font-size:0.7rem; font-weight:800; letter-spacing:0.5px;">CERRADO</span>`;
-                } else {
-                    // 2. Normal Price Display
-                    if (metric === 'price') {
-                        priceDisp = (val > 0) ? `<strong>${val.toFixed(0)}€</strong>` : '-';
-                    } else {
-                        // Fetch price from raw data if we are in occupancy mode
-                        const rawP = (dData && dData.hotels[hotel] && dData.hotels[hotel].price) ? dData.hotels[hotel].price : (parseFloat((dData && dData.hotels[hotel]) || 0));
-                        priceDisp = (rawP > 0) ? `${rawP}€` : '-';
-                    }
-                }
-
-                // Occ Display
-                const occDisp = (metric === 'occupancy') ?
-                    `<strong>${occValue.toFixed(0)}%</strong>` :
-                    (roomsSold > 0) ? `${occValue.toFixed(0)}%` : '-';
-
-                myHtml = `
-                    <div class="info-row" style="border-bottom:1px solid #eee; padding-bottom:4px; margin-bottom:4px;">
-                        <span style="color:var(--primary); font-weight:700;">🏨 ${hotel}</span>
-                        <div style="text-align:right">
-                            <div style="font-size:0.85rem">${priceDisp}</div>
-                            <div style="font-size:0.65rem; color:#64748b;">Ocup: ${occDisp}</div>
-                        </div>
+            let html = `
+                <div class="tt-header">
+                    <div class="tt-date">📅 ${dateStr}</div>
+                    <div class="tt-mkt">Mkt: ${mktPrice}€</div>
+                </div>
+                <div class="tt-main-hotel">
+                    <div class="tt-hotel-info">🏢 ${currentHotel}</div>
+                    <div class="tt-price-info">
+                        <span class="tt-price">${hotelPrice > 0 ? hotelPrice + '€' : '--€'}</span>
+                        <span class="tt-occ">Ocup: ${occPct}%</span>
                     </div>
-                `;
-            } else {
-                myHtml = `<div class="info-row" style="color:var(--text-muted)">Sin datos propios</div>`;
-            }
-
-            // --- COMPETITORS LIST ---
-            let compHtml = '';
-            if (dData && dData.hotels) {
-                const comps = [];
-                Object.keys(dData.hotels).forEach(hName => {
-                    // Exclude current selected hotel
-                    if (hName === hotel) return;
-
-                    const hVal = dData.hotels[hName];
-                    let p = 0;
-                    let sold = false;
-
-                    if (typeof hVal === 'object') {
-                        p = hVal.price;
-                        sold = hVal.sold;
-                    } else {
-                        p = hVal;
-                    }
-
-                    if (p > 0 || sold) {
-                        comps.push({ name: hName, price: p, sold: sold });
-                    }
-                });
-
-                // Sort by price
-                comps.sort((a, b) => a.price - b.price);
-
-                if (comps.length > 0) {
-                    compHtml = `<div style="margin-top:6px; padding-top:4px; border-top:1px solid #f1f5f9;">
-                        <div style="font-size:0.65rem; color:#94a3b8; font-weight:700; margin-bottom:2px;">COMPETENCIA</div>`;
-
-                    comps.forEach(c => {
-                        let pText = c.sold ? '<span style="color:#ef4444; font-weight:bold;">SOLD</span>' : `${c.price}€`;
-                        const isOwnGroup = (c.name === 'Guadiana' || c.name === 'Cumbria');
-                        // Highlight sister hotel
-                        const rowStyle = isOwnGroup ? 'font-weight:700; color:#4f46e5;' : 'color:#334155;';
-
-                        compHtml += `
-                            <div style="display:flex; justify-content:space-between; font-size:0.75rem; ${rowStyle}">
-                                <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:140px;">${c.name}</span>
-                                <span>${pText}</span>
-                            </div>
-                        `;
-                    });
-                    compHtml += `</div>`;
-                }
-            }
-
-            let eventHtml = '';
-            if (eventDesc) {
-                const colorHex = eventColor || '#4f46e5';
-                eventHtml = `<div class="event-badge" style="background:${colorHex}; margin-top:8px;">${eventDesc}</div>`;
-            }
-
-            tooltip.innerHTML = `
-                <h4 style="margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
-                    <span>📅 ${iso}</span>
-                    <span style="font-size:0.7rem; font-weight:normal; color:#64748b;">${compAvg > 0 ? 'Mkt: ' + compAvg.toFixed(0) + '€' : ''}</span>
-                </h4>
-                ${myHtml}
-                ${compHtml}
-                ${eventHtml}
+                </div>
+                <div class="tt-comp-section">
+                    <span class="tt-comp-title">Competencia</span>
             `;
 
-            // --- POSITIONING ---
-            tooltip.style.display = 'block'; // Show first to measure
-            const tRect = tooltip.getBoundingClientRect();
-            const elRect = cell.getBoundingClientRect();
-            const margin = 12;
+            if (dData.hotels) {
+                // Sort by price and filter out the main hotel (already shown)
+                const comps = Object.entries(dData.hotels)
+                    .filter(([name]) => name !== currentHotel)
+                    .sort((a,b) => {
+                        const pA = (typeof a[1] === 'object') ? a[1].price : a[1];
+                        const pB = (typeof b[1] === 'object') ? b[1].price : b[1];
+                        return (pA || 0) - (pB || 0);
+                    });
 
-            // Default: Place to the RIGHT of the cell
-            let left = elRect.right + margin;
-            // Center vertically relative to cell
-            let top = elRect.top + (elRect.height / 2) - (tRect.height / 2);
-
-            // Check RIGHT Edge
-            if (left + tRect.width > window.innerWidth - margin) {
-                // Flip to LEFT
-                left = elRect.left - tRect.width - margin;
+                comps.forEach(([name, val]) => {
+                    const price = (typeof val === 'object') ? val.price : val;
+                    const isSoldOut = (typeof val === 'object' && (val.soldOut === true || val.price === 0 || val.price === '0'));
+                    const isCumbria = name.toLowerCase().includes('cumbria');
+                    
+                    html += `
+                        <div class="tt-comp-row" style="${isCumbria ? 'color:#4f46e5;' : ''}">
+                            <span class="tt-comp-name">${name}</span>
+                            <span class="tt-comp-price ${isSoldOut ? 'tt-sold' : ''}">
+                                ${isSoldOut ? 'SOLD' : (price ? price + '€' : '--€')}
+                            </span>
+                        </div>
+                    `;
+                });
+            } else {
+                html += `<div style="padding:10px; text-align:center; color:#94a3b8;">Sin datos de mercado</div>`;
             }
 
-            // Check TOP Edge
-            if (top < margin) top = margin;
-
-            // Check BOTTOM Edge
-            if (top + tRect.height > window.innerHeight - margin) {
-                top = window.innerHeight - tRect.height - margin;
+            if (ev) {
+                html += `<div style="margin-top:10px; padding:8px; background:#f0f7ff; color:#312e81; border-radius:8px; font-size:0.7rem; border:1px solid #e0e7ff;"><b>📅 Evento:</b> ${ev.desc}</div>`;
             }
 
-            tooltip.style.left = left + 'px';
-            tooltip.style.top = top + 'px';
+            html += `</div>`;
+
+            t.innerHTML = html;
+            t.style.display = 'block';
+            
+            // Adjust position
+            let x = e.clientX + 20;
+            let y = e.clientY + 20;
+            if (x + 300 > window.innerWidth) x = e.clientX - 300;
+            if (y + 400 > window.innerHeight) y = e.clientY - 400;
+            
+            t.style.left = x + 'px';
+            t.style.top = y + 'px';
         }
 
-        function hideTooltip() {
-            tooltip.style.display = 'none';
+        function hideTooltip() { document.getElementById('tooltip').style.display = 'none'; }
+
+        function renderEventList() {
+            const list = document.getElementById('eventList');
+            list.innerHTML = rawEvents.map(e => `<div style="background:rgba(255,255,255,0.05); padding:8px 15px; border-radius:50px; font-size:0.7rem; border:1px solid var(--border);"><b>${e.desc}</b> (${e.start})</div>`).join('');
         }
 
+        function handleExcel(input) {
+            const file = input.files[0];
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
+                
+                let added = 0;
+                for (let i = 1; i < json.length; i++) {
+                    const row = json[i];
+                    if (row[0] && row[2]) {
+                        rawEvents.push({ start: formatDate(row[0]), end: formatDate(row[1] || row[0]), desc: row[2] });
+                        added++;
+                    }
+                }
+                if (added > 0) {
+                    CapaStorage.setItem('custom_events', JSON.stringify(rawEvents));
+                    loadAllData();
+                    alert(`Importados ${added} eventos.`);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function formatDate(val) {
+            if (val instanceof Date) return val.toISOString().split('T')[0];
+            if (typeof val === 'number') return new Date((val - 25569) * 86400 * 1000).toISOString().split('T')[0];
+            return val;
+        }
+
+        auth.onAuthStateChanged(user => {
+            if (user) document.getElementById('userEmailNav').innerText = user.email;
+        });
     </script>
 </body>
 

@@ -387,6 +387,7 @@
             <a href="AnalisisIA.html" class="active" style="color:#f59e0b; font-weight:800;">✨ CapaAI</a>
             <a href="AnalisisCalendario.html">📅 Calendario</a>
             <a href="CalculadoraPresupuesto.html">💰 Presupuesto</a>
+            <a href="Analisis360.html">🔭 Vista 360º</a>
             <a href="CargarDatos.html">⚙️ Config</a>
         </div>
         <div class="nav-user">
@@ -546,13 +547,27 @@
                             return my && !my.sold && my.price > 0 && my.price < d.compAvg * 0.85;
                         });
                         if (lowDays.length > 0) {
-                            addInsight('warning', '💰 Oportunidad de Precio', `He detectado <b>${lowDays.length} días</b> donde tu precio está más de un 15% por debajo del mercado. Podrías estar perdiendo revenue.`, 'AnalisisCompetencia.html');
+                            addInsight('warning', '💰 Oportunidad de Precio', `He detectado <b>${lowDays.length} días</b> en los próximos 30 días donde tu precio está más de un 15% por debajo del mercado. Podrías estar perdiendo revenue.`, 'AnalisisCompetencia.html');
                         }
                     }
                 } catch (e) { }
             }
 
-            // 4. DATA INTEGRITY CHECK
+            // 4. ANALYSIS: PICK-UP VELOCITY (Detección de Velocidad)
+            if (yearData.otb && yearData.otb_prev) {
+                const currentOTB = yearData.otb.revenue.reduce((a, b) => a + b, 0);
+                const prevOTB = yearData.otb_prev.revenue.reduce((a, b) => a + b, 0);
+                const pickup = currentOTB - prevOTB;
+
+                if (Math.abs(pickup) > 100) {
+                    const status = pickup > 0 ? 'positive' : 'warning';
+                    const icon = pickup > 0 ? '🚀 Aceleración de Demanda' : '📉 Ajuste de Previsión';
+                    const date = yearData.otb_prev.snapshotDate || "la última carga";
+                    addInsight(status, icon, `Desde el <b>${date}</b>, la cartera ha variado en <b>${new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(pickup)}</b>.`, 'AnalisisProduccion.html');
+                }
+            }
+
+            // 5. DATA INTEGRITY CHECK
             if (!yearData.segment || Object.keys(yearData.segment).length < 3) {
                 addInsight('critical', '🚨 Datos de Segmentos Incompletos', `Parece que falta el desglose por mercados. Te recomiendo subir el informe de segmentos para un análisis más profundo.`, 'AnalisisSegmentos.html');
             }
@@ -722,12 +737,47 @@
                 };
             }
 
-            // Segments Summary (Top 3 by Revenue)
+            // Forecast & Pick-up Summary
+            if (yearData.otb) {
+                context.forecast = {
+                    total_otb_revenue: Math.round(yearData.otb.revenue.reduce((a, b) => a + b, 0)),
+                    total_otb_rooms: yearData.otb.rooms.reduce((a, b) => a + b, 0)
+                };
+                
+                if (yearData.otb_prev) {
+                    const curr = yearData.otb.revenue.reduce((a, b) => a + b, 0);
+                    const prev = yearData.otb_prev.revenue.reduce((a, b) => a + b, 0);
+                    context.pickup_velocity = {
+                        net_change_revenue: Math.round(curr - prev),
+                        last_update: yearData.otb_prev.snapshotDate
+                    };
+                }
+            }
+
+            // Segments Summary (Top 5 by Revenue)
             if (yearData.segment) {
                 const segs = Object.entries(yearData.segment).map(([k, v]) => {
                     return { name: k, total_rev: Math.round(v.revenue.reduce((a, b) => a + b, 0)) };
                 });
-                context.segments_top3 = segs.sort((a, b) => b.total_rev - a.total_rev).slice(0, 3);
+                context.segments_full_mix = segs.sort((a, b) => b.total_rev - a.total_rev).slice(0, 5);
+            }
+
+            // Market Context (CompSet Gap)
+            const compDataRaw = CapaStorage.getItem('revenue_data_v2');
+            if (compDataRaw) {
+                try {
+                    const comp = JSON.parse(compDataRaw);
+                    const myHotelData = comp.data.filter(d => d.hotels[currentHotel]);
+                    if (myHotelData.length > 0) {
+                        const avgPrice = myHotelData.reduce((acc, d) => acc + (d.hotels[currentHotel].price || 0), 0) / myHotelData.length;
+                        const avgMarket = myHotelData.reduce((acc, d) => acc + (d.compAvg || 0), 0) / myHotelData.length;
+                        context.market_position = {
+                            my_avg_price: Math.round(avgPrice),
+                            compset_avg_price: Math.round(avgMarket),
+                            price_gap_percent: Math.round(((avgPrice - avgMarket) / avgMarket) * 100)
+                        };
+                    }
+                } catch(e) {}
             }
 
             return context;

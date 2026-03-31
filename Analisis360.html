@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vista 360º | CapaSuite Dashboard</title>
+    <link rel="icon" type="image/png" href="Imagen/Icono_CapaSuite.png">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Libraries -->
+    <script src="js/chart.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="js/firebase-auth.js"></script>
+
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-glow: rgba(99, 102, 241, 0.5);
+            --secondary: #10b981;
+            --secondary-glow: rgba(16, 185, 129, 0.5);
+            --accent: #f59e0b;
+            --bg-deep: #0f172a;
+            --bg-surface: #1e293b;
+            --bg-glass: rgba(30, 41, 59, 0.7);
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --border: rgba(255, 255, 255, 0.1);
+            --radius: 20px;
+            --shadow-premium: 0 10px 30px -5px rgba(0, 0, 0, 0.3);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', 'Outfit', sans-serif;
+            background-color: var(--bg-deep);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.1) 0px, transparent 50%);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* NAVIGATION */
+        .top-nav {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            padding: 0 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            height: 60px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 20px;
+            height: 100%;
+            align-items: center;
+        }
+
+        .top-nav a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0 12px;
+            height: 100%;
+            transition: var(--transition);
+            border-bottom: 3px solid transparent;
+        }
+
+        .top-nav a:hover { color: white; }
+        .top-nav a.active { 
+            color: var(--primary); 
+            border-bottom-color: var(--primary); 
+            background: linear-gradient(to top, rgba(99, 102, 241, 0.1), transparent);
+        }
+
+        .nav-user { display: flex; align-items: center; gap: 15px; font-size: 0.85rem; }
+        .user-chip {
+            background: var(--bg-surface);
+            padding: 6px 16px;
+            border-radius: 50px;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .user-chip .dot { width: 8px; height: 8px; background: var(--secondary); border-radius: 50%; box-shadow: 0 0 10px var(--secondary-glow); }
+
+        /* HEADER */
+        .header-360 {
+            padding: 40px 40px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            animation: slideDown 0.8s ease-out;
+        }
+
+        .header-title h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin: 0;
+            letter-spacing: -0.04em;
+            background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-title p {
+            margin: 8px 0 0;
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            background: var(--bg-glass);
+            padding: 8px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            backdrop-filter: blur(10px);
+        }
+
+        select {
+            background: #2d3a4f;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 0.9rem;
+            outline: none;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        select:hover { border-color: var(--primary); }
+
+        /* MAIN CONTAINER */
+        .main-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px 40px 60px;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        /* KPI SECTION */
+        .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+        }
+
+        .kpi-card {
+            background: var(--bg-glass);
+            backdrop-filter: blur(20px);
+            padding: 28px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-premium);
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+            animation: fadeIn 1s ease-out both;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(99, 102, 241, 0.3);
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
+        }
+
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, transparent 0%, rgba(99, 102, 241, 0.05) 100%);
+            pointer-events: none;
+        }
+
+        .kpi-card .label { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; display: block; }
+        .kpi-card .value { font-size: 2rem; font-weight: 800; color: white; display: block; margin-bottom: 8px; }
+        .kpi-card .trend { font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+        
+        .status-ok { color: var(--secondary); }
+        .status-warn { color: var(--accent); }
+
+        /* CHARTS SECTION */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1.5fr;
+            gap: 25px;
+        }
+
+        .chart-container {
+            background: var(--bg-glass);
+            padding: 30px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-premium);
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+            animation: fadeIn 1s ease-out 0.2s both;
+        }
+
+        .chart-container h3 {
+            font-size: 1.1rem;
+            margin: 0 0 25px 0;
+            font-weight: 700;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .chart-wrapper {
+            flex: 1;
+            position: relative;
+            min-height: 0;
+            transition: var(--transition);
+        }
+
+        /* BUDGET PROGRESS BAR */
+        .budget-progress-container {
+            margin-top: 15px;
+            background: rgba(255,255,255,0.05);
+            height: 6px;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+        .budget-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), #818cf8);
+            border-radius: 10px;
+            width: 0%;
+            transition: width 1.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 0 10px var(--primary-glow);
+        }
+        .budget-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            margin-top: 6px;
+            text-transform: uppercase;
+        }
+
+        /* PICKUP INDICATORS */
+        .pickup-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 800;
+        }
+        .pickup-up { background: rgba(16, 185, 129, 0.1); color: var(--secondary); }
+        .pickup-down { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+        .pickup-neutral { background: rgba(148, 163, 184, 0.1); color: var(--text-muted); }
+
+        /* TABLES SECTION */
+        .grid-360 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            animation: fadeIn 1s ease-out 0.4s both;
+        }
+
+        .table-card {
+            background: var(--bg-glass);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-premium);
+            overflow: hidden;
+        }
+
+        .table-header {
+            padding: 24px 30px;
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid var(--border);
+            font-weight: 800;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            padding: 16px 30px;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: rgba(0, 0, 0, 0.2);
+            font-weight: 700;
+        }
+
+        td {
+            padding: 16px 30px;
+            font-size: 0.95rem;
+            border-bottom: 1px solid var(--border);
+            color: #cbd5e1;
+            transition: var(--transition);
+        }
+
+        tr:hover td { background: rgba(255, 255, 255, 0.05); color: white; }
+
+        .tag {
+            padding: 6px 14px;
+            border-radius: 50px;
+            font-size: 0.7rem;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+        }
+
+        .tag-prod { background: rgba(99, 102, 241, 0.2); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); }
+        .tag-seg { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+
+        /* LOADING OVERLAY */
+        #loadingOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-deep);
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s ease;
+        }
+
+        .loader-ring {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(99,102,241,0.1);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s infinite linear;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* YIELD INTENSITY INDICATORS */
+        .yield-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+        }
+        .yield-high { background: var(--secondary); box-shadow: 0 0 10px var(--secondary-glow); }
+        .yield-mid { background: var(--accent); box-shadow: 0 0 10px rgba(245, 158, 11, 0.5); }
+        .yield-low { background: #ef4444; box-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
+
+        /* UTILS */
+        .sync-notice {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: var(--primary);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-weight: 700;
+            box-shadow: 0 10px 20px var(--primary-glow);
+            z-index: 1000;
+            display: none;
+            animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-40px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* CUSTOM SCROLLBAR */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-deep); }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        @media (max-width: 1400px) {
+            .charts-grid { grid-template-columns: 1fr 1fr; }
+            .grid-360 { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 900px) {
+            .charts-grid { grid-template-columns: 1fr; }
+            .top-nav { padding: 0 20px; }
+            .header-360 { padding: 30px 20px; flex-direction: column; align-items: flex-start; gap: 20px; }
+            .main-container { padding: 0 20px 40px; }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="loadingOverlay">
+        <div class="loader-ring"></div>
+        <div style="margin-top:20px; font-weight:800; color:var(--text-muted); letter-spacing:2px; font-size:0.7rem;">OPTIMIZANDO VISTA 360º</div>
+    </div>
+
+    <nav class="top-nav">
+        <div class="nav-links">
+            <a href="index.html">Inicio</a>
+            <a href="AnalisisProduccion.html">Producción</a>
+            <a href="AnalisisSegmentos.html">Segmentos</a>
+            <a href="AnalisisCompetencia.html">Competencia</a>
+            <a href="AnalisisIA.html">CapaAI</a>
+            <a href="AnalisisCalendario.html">Calendario</a>
+            <a href="Analisis360.html" class="active">Vista 360º</a>
+        </div>
+        <div class="nav-user">
+            <div class="user-chip">
+                <span class="dot"></span>
+                <span id="userEmailNav">Conectando...</span>
+            </div>
+            <span onclick="auth.signOut()" style="cursor:pointer; font-size:0.7rem; font-weight:800; color:var(--accent); text-transform:uppercase;">Salir</span>
+        </div>
+    </nav>
+
+    <div id="syncNotice" class="sync-notice">✨ Datos actualizados</div>
+
+    <header class="header-360">
+        <div class="header-title">
+            <h1>Panel 360º</h1>
+            <p>Inteligencia de Producción y Mercado</p>
+        </div>
+        <div class="controls">
+            <select id="hotelSelector" onchange="refreshAll()">
+                <option value="Guadiana">Hotel Guadiana</option>
+                <option value="Cumbria">Hotel Cumbria</option>
+            </select>
+            <select id="yearSelector" onchange="refreshAll()"></select>
+            <select id="monthSelector" onchange="refreshAll()">
+                <option value="All">Evolución Anual</option>
+                <option value="0">Enero</option>
+                <option value="1">Febrero</option>
+                <option value="2">Marzo</option>
+                <option value="3">Abril</option>
+                <option value="4">Mayo</option>
+                <option value="5">Junio</option>
+                <option value="6">Julio</option>
+                <option value="7">Agosto</option>
+                <option value="8">Septiembre</option>
+                <option value="9">Octubre</option>
+                <option value="10">Noviembre</option>
+                <option value="11">Diciembre</option>
+            </select>
+        </div>
+    </header>
+
+    <main class="main-container">
+        <!-- KPI ROW -->
+        <div class="kpi-row">
+            <div class="kpi-card" style="animation-delay: 0.1s;">
+                <span class="label">Ingresos Totales</span>
+                <span class="value" id="kpi-total-rev">0 €</span>
+                <div class="trend" id="kpi-rev-vs-prev" style="margin-bottom: 8px;">
+                    <span style="font-size: 0.9rem;">--</span> vs Año Anterior
+                </div>
+                <div class="budget-progress-container">
+                    <div id="budget-bar-rev" class="budget-progress-bar"></div>
+                </div>
+                <div class="budget-label">
+                    <span>Progreso Objetivo</span>
+                    <span id="budget-pct-rev">0%</span>
+                </div>
+            </div>
+            <div class="kpi-card" style="animation-delay: 0.2s;">
+                <span class="label">Ocupación & Pick-up</span>
+                <span class="value" id="kpi-total-occ">0%</span>
+                <div class="trend" id="kpi-pickup-24h" style="margin-bottom: 8px;">
+                    <span class="pickup-badge pickup-neutral">No hay datos de Pick-up</span>
+                </div>
+                <div class="budget-progress-container">
+                    <div id="budget-bar-occ" class="budget-progress-bar" style="background: linear-gradient(90deg, var(--secondary), #34d399);"></div>
+                </div>
+                <div class="budget-label">
+                    <span>vs Capacidad Física</span>
+                    <span id="budget-pct-occ">0%</span>
+                </div>
+            </div>
+            <div class="kpi-card" style="animation-delay: 0.3s;">
+                <span class="label">Precio Medio (ADR)</span>
+                <span class="value" id="kpi-total-adr">0 €</span>
+                <div class="trend" id="kpi-adr-vs-prev" style="color: var(--accent); margin-bottom: 8px;">
+                    <span>⚡</span> Yield Intensity: Media
+                </div>
+                <div class="budget-progress-container">
+                    <div id="budget-bar-adr" class="budget-progress-bar" style="background: linear-gradient(90deg, var(--accent), #fbbf24);"></div>
+                </div>
+                <div class="budget-label">
+                    <span>vs Objetivo de Precio</span>
+                    <span id="budget-pct-adr">0%</span>
+                </div>
+            </div>
+            <div class="kpi-card" style="animation-delay: 0.4s;">
+                <span class="label">RevPAR & Mix</span>
+                <span class="value" id="kpi-total-revpar">0 €</span>
+                <div class="trend" id="kpi-mix-label" style="color: #60a5fa; margin-bottom: 8px;">
+                    <span>●</span> Mix Alojamiento: 0%
+                </div>
+                <div class="budget-progress-container">
+                    <div id="budget-bar-revpar" class="budget-progress-bar" style="background: linear-gradient(90deg, #60a5fa, #93c5fd);"></div>
+                </div>
+                <div class="budget-label">
+                    <span>Eficiencia de Activos</span>
+                    <span id="budget-pct-revpar">N/A</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- CHARTS GRID -->
+        <div class="charts-grid">
+            <div class="chart-container">
+                <h3><span style="color: var(--primary);">◔</span> Mix de Servicios</h3>
+                <div class="chart-wrapper">
+                    <canvas id="serviceChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-container">
+                <h3><span style="color: var(--secondary);">◈</span> Canales de Venta</h3>
+                <div class="chart-wrapper">
+                    <canvas id="segmentChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-container">
+                <h3><span style="color: var(--accent);">📊</span> Intensidad Semanal</h3>
+                <div class="chart-wrapper">
+                    <canvas id="weeklyChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- GRID 360 -->
+        <div class="grid-360">
+            <!-- SERVICES TABLE -->
+            <div class="table-card">
+                <div class="table-header">
+                    <span>Desglose por Categoría</span>
+                    <span class="tag tag-prod">PRODUCCIÓN</span>
+                </div>
+                <div style="max-height: 500px; overflow-y: auto;">
+                    <table id="servicesTable">
+                        <thead>
+                            <tr>
+                                <th>Concepto</th>
+                                <th>Ingresos</th>
+                                <th>Mix %</th>
+                                <th>Cambio</th>
+                            </tr>
+                        </thead>
+                        <tbody id="servicesBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- SEGMENTS TABLE -->
+            <div class="table-card">
+                <div class="table-header">
+                    <span>Rendimiento de Segmentos</span>
+                    <span class="tag tag-seg">ESTRATEGIA</span>
+                </div>
+                <div style="max-height: 500px; overflow-y: auto;">
+                    <table id="segmentsTable">
+                        <thead>
+                            <tr>
+                                <th>Segmento</th>
+                                <th>Revenue</th>
+                                <th>RN</th>
+                                <th>ADR</th>
+                                <th>Mix %</th>
+                            </tr>
+                        </thead>
+                        <tbody id="segmentsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let db = {};
+        let currentHotel = "Guadiana";
+        let currentYear = "2026";
+        let currentMonth = "All";
+        let charts = {};
+        const DB_KEY = "hotel_manager_db_v2";
+
+        // Chart.js Default Config for Dark Design
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
+        Chart.defaults.plugins.tooltip.backgroundColor = '#1e293b';
+        Chart.defaults.plugins.tooltip.padding = 12;
+        Chart.defaults.plugins.tooltip.cornerRadius = 12;
+        Chart.defaults.plugins.tooltip.borderWidth = 1;
+        Chart.defaults.plugins.tooltip.borderColor = 'rgba(255,255,255,0.1)';
+
+        window.onload = function() {
+            setTimeout(() => {
+                document.getElementById('loadingOverlay').style.opacity = '0';
+                setTimeout(() => document.getElementById('loadingOverlay').style.display = 'none', 500);
+            }, 800);
+
+            loadInitialData();
+            
+            window.addEventListener('capasuite-data-synced', () => {
+                const notice = document.getElementById('syncNotice');
+                notice.style.display = 'block';
+                setTimeout(() => {
+                    loadInitialData();
+                    notice.style.display = 'none';
+                }, 2000);
+            });
+        };
+
+        function loadInitialData() {
+            const data = CapaStorage.getItem(DB_KEY);
+            if (data) {
+                try {
+                    db = JSON.parse(data);
+                    initSelectors();
+                    refreshAll();
+                } catch(e) { console.error("Error parsing DB", e); }
+            }
+        }
+
+        function initSelectors() {
+            const ySel = document.getElementById('yearSelector');
+            const years = db[currentHotel] ? Object.keys(db[currentHotel]).sort().reverse() : ["2026", "2025"];
+            ySel.innerHTML = years.map(y => `<option value="${y}" ${y==currentYear?'selected':''}>${y}</option>`).join('');
+            currentYear = ySel.value;
+        }
+
+        function refreshAll() {
+            currentHotel = document.getElementById('hotelSelector').value;
+            currentYear = document.getElementById('yearSelector').value;
+            currentMonth = document.getElementById('monthSelector').value;
+
+            if (!db[currentHotel] || !db[currentHotel][currentYear]) {
+                return;
+            }
+
+            const data = db[currentHotel][currentYear];
+            const midx = currentMonth === "All" ? -1 : parseInt(currentMonth);
+            const agg = aggregateServices(data.service || {}, midx);
+            
+            renderKPIRow(agg, currentHotel);
+            renderCharts(agg, data.segment || {}, data.daily || {}, midx);
+            renderTables(agg, data.segment || {}, midx);
+        }
+
+        const CATEGORIES = {
+            "Habitaciones": ["HABITACIO", "ALOJAMIENTO", "ESTANCIA", "DUI", "DOBLE", "SUPERIOR", "SUITE", "CUADRUPLE", "TRIPLE", "FAMILIAR", "LATE CHECK OUT", "AMPLIACION", "CAMA SUPLETORIA"],
+            "Restauración": ["DESAYUNO", "BUFFET", "RESTAURANTE", "CENA", "ALMUERZO", "CATERING", "CAFETERIA", "CAFETERÍA", "BAR", "MINIBAR"],
+            "Eventos": ["COFFEE BREAK", "SALON", "ALQUILER", "EVENTO", "AUDIOVISUAL"],
+            "Otros": ["LAVANDERIA", "SPA", "MASAJE", "GARAJE", "PARKING", "VARIOS", "RETENCIONES", "OFICINA"]
+        };
+
+        function aggregateServices(serviceDb, midx) {
+            const result = { summary: {}, totalRev: 0, totalRms: 0, raw: [] };
+            const getVal = (arr) => midx === -1 ? arr.reduce((a,b)=>a+b, 0) : arr[midx];
+
+            Object.entries(serviceDb).forEach(([name, obj]) => {
+                if (name === "TOTAL_MASTER" || name.includes("TOTAL")) return;
+                const rev = getVal(obj.revenue);
+                const rms = getVal(obj.rooms);
+                if (rev === 0 && rms === 0) return;
+
+                const n = name.toUpperCase();
+                let category = "Otros";
+                for (const [catName, keys] of Object.entries(CATEGORIES)) {
+                    if (keys.some(k => n.includes(k))) { category = catName; break; }
+                }
+
+                if (!result.summary[category]) result.summary[category] = { revenue: 0, rooms: 0 };
+                result.summary[category].revenue += rev;
+                result.summary[category].rooms += rms;
+                result.totalRev += rev;
+                if (category === "Habitaciones") result.totalRms += rms;
+                result.raw.push({ name, rev, rms, category });
+            });
+            
+            // Add OTB data if available for future months
+            if (midx === -1 || midx >= new Date().getMonth()) {
+                const otb = serviceDb.otb || { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) };
+            }
+            
+            return result;
+        }
+
+        function renderKPIRow(agg, hotel) {
+            const yearData = db[hotel][currentYear] || {};
+            const midx = currentMonth === "All" ? -1 : parseInt(currentMonth);
+            
+            const totalRev = agg.totalRev;
+            const habData = agg.summary["Habitaciones"] || { revenue: 0, rooms: 0 };
+            const habRev = habData.revenue;
+            const totalRms = habData.rooms;
+            const adr = totalRms > 0 ? (habRev / totalRms) : 0;
+            const cap = (hotel === "Cumbria" ? 59 : 108);
+            const days = midx === -1 ? 365 : 30; // Approximation
+            const occ = (totalRms / (cap * days)) * 100;
+            const revpar = habRev / (cap * days);
+
+            document.getElementById('kpi-total-rev').innerText = fmt(totalRev);
+            document.getElementById('kpi-total-adr').innerText = adr.toFixed(1).replace('.', ',') + " €";
+            document.getElementById('kpi-total-revpar').innerText = revpar.toFixed(1).replace('.', ',') + " €";
+            document.getElementById('kpi-total-occ').innerText = occ.toFixed(1) + "%";
+            
+            const roomsPerc = totalRev > 0 ? (habRev / totalRev * 100) : 0;
+            document.getElementById('kpi-mix-label').innerHTML = `<span>●</span> Mix Alojamiento: ${roomsPerc.toFixed(1)}%`;
+
+            // 1. VS LAST YEAR (Real 2025)
+            const prevYear = String(parseInt(currentYear) - 1);
+            if (db[hotel][prevYear] && db[hotel][prevYear].service && db[hotel][prevYear].service["TOTAL_MASTER"]) {
+                const pyMaster = db[hotel][prevYear].service["TOTAL_MASTER"];
+                const pyRev = midx === -1 ? pyMaster.revenue.reduce((a, b) => a + b, 0) : pyMaster.revenue[midx];
+                const grow = pyRev > 0 ? ((totalRev - pyRev) / pyRev * 100) : 0;
+                document.getElementById('kpi-rev-vs-prev').innerHTML = `<span style="color:${grow >= 0 ? 'var(--secondary)' : '#ef4444'}">${grow >= 0 ? '↗' : '↘'} ${Math.abs(grow).toFixed(1)}%</span> vs Año Anterior`;
+            }
+
+            // 2. BUDGET COMPARISON
+            const budgetKey = `custom_budget_${currentYear}`;
+            const budget = yearData[budgetKey];
+            if (budget && budget.rev) {
+                const bRev = midx === -1 ? budget.rev.reduce((a, b) => a + b, 0) : budget.rev[midx];
+                const bAdr = midx === -1 ? (budget.adr.reduce((a, b) => a + b, 0) / 12) : budget.adr[midx];
+                
+                const pctRev = bRev > 0 ? Math.min(100, (totalRev / bRev * 100)) : 0;
+                const pctAdr = bAdr > 0 ? Math.min(100, (adr / bAdr * 100)) : 0;
+                
+            document.getElementById('budget-bar-rev').style.width = pctRev + '%';
+            document.getElementById('budget-pct-rev').innerText = Math.round(totalRev / bRev * 100) + '%';
+            
+            document.getElementById('budget-bar-adr').style.width = pctAdr + '%';
+            document.getElementById('budget-pct-adr').innerText = Math.round(adr / bAdr * 100) + '%';
+            
+            document.getElementById('budget-bar-revpar').style.width = pctRev + '%';
+
+            // ADR Yield Analysis
+            let yieldLevel = "Media";
+            let yieldClass = "yield-mid";
+            if (pctAdr > 105) { yieldLevel = "Alta (Premium)"; yieldClass = "yield-high"; }
+            if (pctAdr < 95) { yieldLevel = "Baja (Agresiva)"; yieldClass = "yield-low"; }
+            document.getElementById('kpi-adr-vs-prev').innerHTML = `<span class="yield-dot ${yieldClass}"></span> Yield Level: ${yieldLevel}`;
+        }
+
+            // 3. PICK-UP MONITOR (Last 24h Snapshot)
+            let totalPickup = 0;
+            if (yearData.otb_prev && yearData.otb_prev.daily_otb) {
+                const currOtb = yearData.daily_otb || {};
+                const prevOtb = yearData.otb_prev.daily_otb;
+                
+                Object.keys(currOtb).forEach(date => {
+                    const m = new Date(date).getMonth();
+                    if (midx === -1 || m === midx) {
+                        const c = (typeof currOtb[date] === 'object') ? currOtb[date].rooms : currOtb[date];
+                        const p = (typeof prevOtb[date] === 'object') ? prevOtb[date].rooms : (prevOtb[date] || 0);
+                        totalPickup += (c - p);
+                    }
+                });
+                
+                const badgeClass = totalPickup > 0 ? 'pickup-up' : (totalPickup < 0 ? 'pickup-down' : 'pickup-neutral');
+                const icon = totalPickup > 0 ? '📈' : (totalPickup < 0 ? '📉' : '●');
+                document.getElementById('kpi-pickup-24h').innerHTML = `<span class="pickup-badge ${badgeClass}">${icon} Pick-up 24h: ${totalPickup > 0 ? '+' : ''}${totalPickup} rms</span>`;
+            }
+
+            // 4. BUDGET OCCUPANCY (Progress Bar)
+            const occTarget = 75; // Logic target
+            const pctOcc = Math.min(100, (occ / occTarget * 100));
+            document.getElementById('budget-bar-occ').style.width = pctOcc + '%';
+            document.getElementById('budget-pct-occ').innerText = Math.round(occ) + '%';
+        }
+
+        function renderCharts(agg, segmentDb, dailyDb, midx) {
+            const colors = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316'];
+            
+            // 1. Service Chart
+            const serviceLabels = Object.keys(agg.summary);
+            const serviceData = Object.values(agg.summary).map(s => s.revenue);
+            updateChart('serviceChart', 'doughnut', serviceLabels, serviceData, colors);
+
+            // 2. Segment Chart
+            const getVal = (arr) => midx === -1 ? arr.reduce((a,b)=>a+b, 0) : arr[midx];
+            const segLabels = [];
+            const segData = [];
+            Object.entries(segmentDb).forEach(([name, obj]) => {
+                const v = getVal(obj.revenue);
+                if (v > 10) { segLabels.push(name); segData.push(v); }
+            });
+            updateChart('segmentChart', 'pie', segLabels, segData, colors);
+
+            // 3. Weekly Intensity
+            const weeklyData = new Array(7).fill(0);
+            const dayCounter = new Array(7).fill(0);
+            if (dailyDb) {
+                Object.entries(dailyDb).forEach(([dateStr, obj]) => {
+                    const d = new Date(dateStr);
+                    if (d.getFullYear().toString() === currentYear) {
+                        const m = d.getMonth();
+                        if (currentMonth === "All" || m === midx) {
+                            let day = d.getDay(); 
+                            day = (day === 0) ? 6 : day - 1;
+                            const rms = (typeof obj === 'object') ? (obj.rooms || 0) : obj;
+                            weeklyData[day] += rms;
+                            dayCounter[day]++;
+                        }
+                    }
+                });
+            }
+            const avgWeekly = weeklyData.map((v, i) => dayCounter[i] > 0 ? (v / dayCounter[i]).toFixed(1) : 0);
+            updateChart('weeklyChart', 'bar', ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"], avgWeekly, '#6366f1');
+        }
+
+        function renderTables(agg, segmentDb, midx) {
+            const getVal = (arr) => midx === -1 ? arr.reduce((a,b)=>a+b, 0) : arr[midx];
+            
+            const sBody = document.getElementById('servicesBody');
+            sBody.innerHTML = '';
+            agg.raw.sort((a,b) => b.rev - a.rev).forEach(item => {
+                const mix = agg.totalRev > 0 ? (item.rev / agg.totalRev * 100).toFixed(1) : 0;
+                sBody.innerHTML += `<tr>
+                    <td><div style="font-weight:700; color:white;">${item.name}</div><div style="font-size:0.65rem; color:var(--text-muted);">${item.category}</div></td>
+                    <td style="font-weight:600;">${fmt(item.rev)}</td>
+                    <td>${mix}%</td>
+                    <td style="color:var(--secondary);">--</td>
+                </tr>`;
+            });
+
+            const segBody = document.getElementById('segmentsBody');
+            segBody.innerHTML = '';
+            Object.entries(segmentDb).sort((a,b)=>getVal(b[1].revenue)-getVal(a[1].revenue)).forEach(([name, obj]) => {
+                const v = getVal(obj.revenue);
+                const r = getVal(obj.rooms);
+                if (v <= 0 && r <= 0) return;
+                const adr = r > 0 ? (v / r).toFixed(1) : 0;
+                const mix = agg.totalRev > 0 ? (v / agg.totalRev * 100).toFixed(1) : 0;
+                segBody.innerHTML += `<tr>
+                    <td style="font-weight:700; color:white;">${name}</td>
+                    <td style="font-weight:600;">${fmt(v)}</td>
+                    <td style="color:var(--text-muted); font-size:0.8rem;">${r}</td>
+                    <td>${adr}€</td>
+                    <td style="color:var(--secondary); font-weight:700;">${mix}%</td>
+                </tr>`;
+            });
+        }
+
+        function updateChart(canvasId, type, labels, data, colors) {
+            if (charts[canvasId]) charts[canvasId].destroy();
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            
+            const chartConfig = {
+                type: type,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors,
+                        borderColor: 'rgba(30, 41, 59, 1)',
+                        borderWidth: type === 'bar' ? 0 : 3,
+                        borderRadius: type === 'bar' ? 8 : 0,
+                        hoverOffset: 15
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 2000, easing: 'easeOutQuart' },
+                    plugins: {
+                        legend: {
+                            display: type !== 'bar',
+                            position: 'bottom',
+                            labels: { boxWidth: 8, padding: 15, font: { size: 10, weight: '600' }, usePointStyle: true }
+                        },
+                        tooltip: { mode: 'index', intersect: false }
+                    },
+                    scales: type === 'bar' ? {
+                        y: { 
+                            beginAtZero: true, 
+                            grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false },
+                            ticks: { font: { size: 10 } }
+                        },
+                        x: { grid: { display: false }, ticks: { font: { size: 10 } } }
+                    } : {}
+                }
+            };
+
+            if (type === 'bar') {
+                const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+                gradient.addColorStop(0, '#6366f1');
+                gradient.addColorStop(1, '#818cf8');
+                chartConfig.data.datasets[0].backgroundColor = gradient;
+            }
+
+            charts[canvasId] = new Chart(ctx, chartConfig);
+        }
+
+        function fmt(n) {
+            return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
+        }
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                const email = user.email === 'admin@capasuite.com' ? 'Administrador' : user.email;
+                document.getElementById('userEmailNav').innerText = email;
+            }
+        });
+    </script>
+</body>
+
+</html>

@@ -576,6 +576,18 @@
         </div>
     </header>
 
+    <script>
+        // BYPASS LOGIN INMEDIATO PARA LOCALHOST
+        (function() {
+            const h = window.location.hostname;
+            const isLocal = h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '';
+            const forceLogin = localStorage.getItem('force_login_once');
+            if (isLocal && !forceLogin) {
+                document.write('<style>#login-container { display: none !important; }</style>');
+            }
+        })();
+    </script>
+
     <div id="login-container" class="login-overlay">
         <div class="login-card">
             <img src="Imagen/logo, CapaSuite.png" alt="CapaSuite" style="height: 50px; margin-bottom: 20px;">
@@ -616,8 +628,14 @@
             const mainContent = document.getElementById('dashboard-main');
             const mainHeader = document.getElementById('mainHeader');
             const mainNav = document.getElementById('mainNav');
+            const userEmailEl = document.getElementById('userEmail');
+
+            const h = window.location.hostname;
+            const isLocal = h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '';
+            const forceLogin = localStorage.getItem('force_login_once');
 
             if (user) {
+                localStorage.removeItem('force_login_once'); // Reset
                 loginSection.style.display = 'none';
                 mainContent.style.display = 'flex';
                 mainHeader.style.display = 'flex';
@@ -625,24 +643,32 @@
 
                 let displayEmail = user.email;
                 if (displayEmail === 'admin@capasuite.com') displayEmail = 'Administrador CapaSuite';
-                document.getElementById('userEmail').innerText = displayEmail;
+                userEmailEl.innerText = displayEmail;
+                userEmailEl.style.color = ''; 
 
-                // 1. Intentar descargar datos de la nube
                 const hasCloudData = await downloadFromCloud();
-
-                // 2. Si la nube está vacía pero tengo datos locales, subir los locales (Migración inicial)
                 if (!hasCloudData) {
                     const localData = CapaStorage.getItem('hotel_manager_db_v2');
                     if (localData && localData !== '{}') {
-                        console.log("📤 Detectados datos locales. Sincronizando con Firebase por primera vez...");
                         await uploadToCloud();
                     }
                 }
             } else {
-                loginSection.style.display = 'flex';
-                mainContent.style.display = 'none';
-                mainHeader.style.display = 'none';
-                mainNav.style.display = 'none';
+                if (isLocal && !forceLogin) {
+                    // MODO LOCAL AUTOMÁTICO
+                    loginSection.style.display = 'none';
+                    mainContent.style.display = 'flex';
+                    mainHeader.style.display = 'flex';
+                    mainNav.style.display = 'flex';
+                    
+                    userEmailEl.innerHTML = '<span style="color:#ef4444; font-weight:800; cursor:pointer;" onclick="localStorage.setItem(\'force_login_once\', \'true\'); location.reload()">🚀 MODO LOCAL (Conectar Nube)</span>';
+                    console.log("🛡️ MODO LOCAL: Acceso directo concedido.");
+                } else {
+                    loginSection.style.display = 'flex';
+                    mainContent.style.display = 'none';
+                    mainHeader.style.display = 'none';
+                    mainNav.style.display = 'none';
+                }
             }
         });
     </script>
@@ -660,6 +686,7 @@
             </a>
             <a href="AnalisisCalendario.html">📅 Calendario</a>
             <a href="CalculadoraPresupuesto.html">💰 Presupuesto</a>
+            <a href="Analisis360.html" style="background:rgba(255,255,255,0.1); border-radius:4px; padding:0 10px;">🔭 Vista 360º</a>
             <a href="CargarDatos.html">⚙️ Config</a>
         </div>
         <div class="nav-user">
@@ -687,6 +714,15 @@
                     <p>Tu analista inteligente 24/7. Auditoría de datos, alertas de precio y chat interactivo.</p>
                     <div class="cta-pill">CONSULTAR AHORA &rarr;</div>
                 </div>
+            </a>
+
+            <!-- 1.5 Vista 360 (NEW) -->
+            <a href="Analisis360.html" class="card" style="border-left: 5px solid var(--secondary);">
+                <span class="badge badge-new" style="background:var(--secondary); color:white;">ROADMAP #1</span>
+                <div class="card-icon" style="background:var(--primary-light); color:var(--primary);">🔭</div>
+                <h3>Vista 360º Unificada</h3>
+                <p>Cruce de datos de Producción y Segmentos. Análisis de rentabilidad por canal.</p>
+                <div class="cta-pill" style="margin-top:10px; font-size:0.65rem;">ENTRAR &rarr;</div>
             </a>
 
             <!-- 2. Producción -->
