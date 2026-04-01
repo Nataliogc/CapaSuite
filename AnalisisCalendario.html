@@ -20,34 +20,38 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="js/firebase-config-env.js"></script>
     <script src="js/firebase-auth.js"></script>
+    <script src="js/theme-manager.js"></script>
 
     <style>
         :root {
             --primary: #6366f1;
+            --primary-glow: rgba(99, 102, 241, 0.5);
             --secondary: #10b981;
             --accent: #f59e0b;
             --danger: #ef4444;
-            --bg-deep: #0f172a;
-            --bg-surface: #1e293b;
-            --bg-glass: rgba(30, 41, 59, 0.7);
-            --text-main: #f1f5f9;
+            --bg-deep: #0b0f1a;
+            --bg-surface: #161b2c;
+            --bg-glass: rgba(22, 27, 44, 0.7);
+            --text-main: #f8fafc;
             --text-muted: #94a3b8;
-            --border: rgba(255, 255, 255, 0.1);
-            --radius-lg: 20px;
+            --border: rgba(255, 255, 255, 0.08);
+            --radius-xl: 24px;
+            --radius-lg: 16px;
             --radius-md: 12px;
-            --shadow-premium: 0 10px 30px -5px rgba(0, 0, 0, 0.3);
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --shadow-premium: 0 20px 50px -12px rgba(0, 0, 0, 0.5);
+            --transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         [data-theme="light"] {
-            --bg-deep: #f8fafc;
+            --bg-deep: #f1f5f9;
             --bg-surface: #ffffff;
-            --bg-glass: rgba(255, 255, 255, 0.8);
-            --text-main: #1e293b;
+            --bg-glass: rgba(255, 255, 255, 0.9);
+            --text-main: #0f172a;
             --text-muted: #64748b;
-            --border: #e2e8f0;
-            --primary: #4f46e5;
-            --shadow-premium: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            --border: rgba(0, 0, 0, 0.08);
+            --primary: #6366f1;
+            --primary-glow: rgba(99, 102, 241, 0.3);
+            --shadow-premium: 0 10px 30px rgba(0, 0, 0, 0.05);
         }
 
         * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
@@ -56,12 +60,24 @@
             font-family: 'Plus Jakarta Sans', sans-serif;
             background-color: var(--bg-deep);
             background-image: 
-                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.1) 0px, transparent 50%),
-                radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.05) 0px, transparent 50%);
+                radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.05) 0%, transparent 60%);
             color: var(--text-main);
             margin: 0;
             padding: 0;
             min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            opacity: 0.02;
+            pointer-events: none;
+            z-index: 100;
         }
 
         /* NAVIGATION (Shared) */
@@ -98,7 +114,7 @@
 
         /* HEADER */
         .page-header {
-            padding: 40px 40px 20px;
+            padding: 60px 40px 30px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -107,10 +123,14 @@
         }
 
         .header-title h1 {
-            font-size: 2.2rem;
+            font-size: 2.8rem;
             font-weight: 800;
             margin: 0;
-            color: var(--text-main);
+            letter-spacing: -1px;
+            background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
         /* CONTROLS */
@@ -118,54 +138,101 @@
             display: flex;
             gap: 12px;
             background: var(--bg-glass);
-            padding: 10px;
-            border-radius: var(--radius-md);
+            padding: 12px;
+            border-radius: var(--radius-lg);
             border: 1px solid var(--border);
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(20px);
+            box-shadow: var(--shadow-premium);
         }
 
-        select {
-            background: #2d3a4f;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 8px;
+        select, .btn {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            padding: 10px 20px;
+            border-radius: 12px;
             border: 1px solid var(--border);
             font-family: inherit;
-            font-weight: 600;
+            font-weight: 700;
             font-size: 0.85rem;
             outline: none;
             cursor: pointer;
             transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
-        select:hover { border-color: var(--primary); }
+        [data-theme="light"] select, [data-theme="light"] .btn { 
+            background: #ffffff; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        select:hover, .btn:hover { 
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+        .btn-primary {
+            background: var(--primary);
+            border: none;
+            color: white !important;
+            box-shadow: 0 10px 20px var(--primary-glow);
+        }
+        .btn-primary:hover {
+            background: #4f46e5;
+            box-shadow: 0 15px 30px var(--primary-glow);
+        }
 
         /* CALENDAR GRID */
         /* CALENDAR LAYOUT */
         .calendar-container {
-            max-width: 1700px;
+            max-width: 1750px;
             margin: 0 auto;
-            padding: 20px 40px 60px;
+            padding: 10px 20px 40px;
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-            gap: 30px;
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+            gap: 20px;
+            align-items: start;
         }
 
         .month-card {
             background: var(--bg-surface);
             border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 15px;
+            border-radius: var(--radius-xl);
+            padding: 18px;
             box-shadow: var(--shadow-premium);
             transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .month-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), transparent);
+            opacity: 0.5;
         }
 
         .month-title {
-            font-size: 1.1rem;
+            font-size: 1.25rem;
+            font-family: 'Outfit', sans-serif;
             font-weight: 800;
-            color: #fff;
+            color: var(--text-main);
             margin-bottom: 12px;
-            padding-left: 8px;
-            border-left: 4px solid var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-transform: capitalize;
+        }
+        .month-title::before {
+            content: '';
+            width: 3px;
+            height: 18px;
+            background: var(--primary);
+            border-radius: 2px;
+            box-shadow: 0 0 10px var(--primary-glow);
         }
 
         .days-header {
@@ -192,64 +259,74 @@
 
         /* DAY CELL (Apple/Google Style) */
         .day-cell {
-            border: 1px solid var(--border);
-            background: rgba(255,255,255,0.03);
-            padding: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.01);
+            padding: 6px 4px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             position: relative;
             cursor: pointer;
-            transition: all 0.2s ease-in-out;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             color: var(--text-main);
-            min-height: 50px;
-            overflow: hidden;
+            min-height: 62px;
+            border-radius: 10px;
+            z-index: 1;
         }
+        [data-theme="light"] .day-cell { border-color: rgba(0,0,0,0.03); background: rgba(0,0,0,0.01); }
 
         .day-cell:hover {
-            transform: scale(1.05);
-            z-index: 50;
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+            transform: scale(1.18) translateY(-10px);
+            z-index: 500;
+            box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.6);
             border-color: var(--primary);
-            background: rgba(255,255,255,0.08);
+            background: rgba(255, 255, 255, 0.15);
         }
+        [data-theme="light"] .day-cell:hover { background: #fff; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
 
         .day-num { 
             font-size: 0.7rem; 
-            font-weight: 700; 
+            font-weight: 800; 
             color: var(--text-muted);
             margin-bottom: 2px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         
         .day-price {
-            font-size: 1rem;
-            font-weight: 800;
+            font-size: 1.05rem;
+            font-weight: 900;
             color: var(--text-main);
             text-align: center;
-            margin: 1px 0;
+            margin: 2px 0;
             white-space: nowrap;
+            font-family: 'Outfit', sans-serif;
+            letter-spacing: -0.5px;
         }
         
         /* OTB BADGE (Floating Card Style) */
         .otb-badge {
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(4px);
-            border: 1px solid rgba(255,255,255,0.05);
-            padding: 2px 4px;
-            border-radius: 4px;
+            gap: 4px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 2px 6px;
+            border-radius: 6px;
             font-size: 0.55rem;
             pointer-events: none;
-            width: 100%;
+            width: fit-content;
+            margin: 2px auto 0;
         }
-        .otb-val { color: #818cf8; font-weight: 800; }
+        [data-theme="light"] .otb-badge { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.05); color: #0f172a; }
+        .otb-val { color: rgba(255, 255, 255, 0.8); font-weight: 700; }
+        [data-theme="light"] .otb-val { color: #0f172a; }
         
-        .p-up { background: rgba(16, 185, 129, 0.2); color: #10b981; padding: 1px 4px; border-radius: 3px; font-weight: 800; font-size: 0.5rem; margin-top: 1px; }
-        .p-down { background: rgba(239, 68, 68, 0.2); color: #ef4444; padding: 1px 4px; border-radius: 3px; font-weight: 800; font-size: 0.5rem; margin-top: 1px; }
-        .p-equal { background: rgba(255, 255, 255, 0.05); color: #94a3b8; padding: 1px 4px; border-radius: 3px; font-weight: 800; font-size: 0.5rem; margin-top: 1px; }
+        .p-up { color: #22c55e; font-weight: 900; font-size: 0.5rem; }
+        .p-down { color: #f43f5e; font-weight: 900; font-size: 0.5rem; }
+        .p-equal { color: var(--text-muted); font-weight: 800; font-size: 0.5rem; }
 
         .day-stats { 
             display: flex; 
@@ -288,41 +365,125 @@
         .legend-boxes { display: flex; gap: 3px; }
         .legend-box { width: 10px; height: 10px; border-radius: 2px; }
 
-        .heat-1 { background-color: #ffffff !important; }
-        .heat-2 { background-color: #f0f9ff !important; }
-        .heat-3 { background-color: #e0f2fe !important; }
-        .heat-4 { background-color: #bae6fd !important; }
-        .heat-5 { background-color: #7dd3fc !important; border: 1px solid #0284c7 !important; }
+        .heat-1 { background-color: rgba(255, 255, 255, 0.03) !important; color: rgba(255,255,255,0.4) !important;}
+        .heat-2 { background-color: rgba(99, 102, 241, 0.15) !important; color: rgba(255,255,255,0.7) !important;}
+        .heat-3 { background-color: rgba(99, 102, 241, 0.35) !important; }
+        .heat-4 { 
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.7), rgba(129, 140, 248, 0.7)) !important; 
+            color: white !important; 
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.2);
+        }
+        .heat-5 { 
+            background: linear-gradient(135deg, #6366f1, #a855f7) !important; 
+            color: white !important; 
+            border: 1px solid rgba(255,255,255,0.4) !important; 
+            box-shadow: 0 0 25px rgba(99, 102, 241, 0.6); 
+            animation: glowPulse 2s infinite;
+        }
 
-        .is-past { opacity: 0.3; filter: grayscale(1); border-style: dashed; }
-        .is-weekend { background: #f9fafb !important; }
-        .is-weekend .day-num { color: #ef4444; }
-        .is-full { border: 1.2px solid #ef4444 !important; }
-        .has-event { border: 1.2px solid #6366f1 !important; }
+        @keyframes glowPulse {
+            0% { box-shadow: 0 0 15px rgba(99, 102, 241, 0.4); }
+            50% { box-shadow: 0 0 35px rgba(168, 85, 247, 0.7); }
+            100% { box-shadow: 0 0 15px rgba(99, 102, 241, 0.4); }
+        }
+
+        .is-past { opacity: 0.15; filter: grayscale(1); cursor: default !important; pointer-events: none; }
+        .is-weekend { background: rgba(255, 255, 255, 0.05) !important; }
+        .is-weekend .day-num { color: #ff6b6b; opacity: 1; text-shadow: 0 0 10px rgba(255, 107, 107, 0.3); }
+        .is-full { 
+            border: 2px solid var(--danger) !important; 
+            box-shadow: inset 0 0 15px rgba(239, 68, 68, 0.3) !important;
+        }
+        .has-event { border: 2px solid var(--accent) !important; }
+        .has-event::before {
+            content: '';
+            position: absolute;
+            top: 6px; right: 6px;
+            width: 6px; height: 6px;
+            background: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--accent);
+        }
+
+        /* INSIGHTS PREMIUM */
+        .insight-card-premium {
+            background: var(--bg-glass);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px 30px;
+            min-width: 240px;
+            backdrop-filter: blur(20px);
+            box-shadow: var(--shadow-premium);
+            transition: var(--transition);
+        }
+        .insight-card-premium:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+        }
+        .insight-label {
+            font-size: 0.7rem;
+            font-weight: 800;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+        .insight-value {
+            font-size: 1.8rem;
+            font-weight: 800;
+            font-family: 'Outfit', sans-serif;
+            color: var(--text-main);
+        }
+        .insight-value.pos { color: var(--secondary); text-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
+        .insight-value.neg { color: var(--danger); text-shadow: 0 0 20px rgba(239, 68, 68, 0.3); }
+        .insight-sub {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
 
         /* TOOLTIP (Improved) */
         #tooltip {
             position: fixed;
             z-index: 9999;
-            background: var(--bg-surface);
-            border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-            padding: 15px;
+            background: var(--bg-glass);
+            border-radius: 16px;
+            box-shadow: var(--shadow-premium);
+            padding: 20px;
             pointer-events: none;
             display: none;
-            min-width: 280px;
+            min-width: 320px;
             border: 1px solid var(--border);
             color: var(--text-main);
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(25px);
+            animation: tooltipAppear 0.2s ease-out;
         }
-        .tt-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 6px; margin-bottom: 10px; }
-        .tt-date { font-weight: 800; display: flex; align-items: center; gap: 4px; color: var(--text-main); }
-        .tt-mkt { font-size: 0.7rem; color: var(--text-muted); font-weight: 600; }
-        .tt-main-hotel { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .tt-hotel-info { font-weight: 800; color: var(--primary); }
-        .tt-comp-section { font-size: 0.75rem; border-top: 1px solid var(--border); padding-top: 8px; }
-        .tt-comp-row { display: flex; justify-content: space-between; margin-bottom: 3px; color: var(--text-muted); }
-        .tt-sold { color: #ef4444; font-weight: 800; }
+        @keyframes tooltipAppear {
+            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .tt-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 15px; }
+        .tt-date { font-weight: 800; font-size: 1rem; color: var(--text-main); }
+        .tt-mkt { font-size: 0.8rem; background: rgba(99, 102, 241, 0.15); padding: 5px 12px; border-radius: 20px; color: var(--primary); font-weight: 800; }
+        
+        .tt-hotel-info { font-size: 1.2rem; font-weight: 800; color: var(--primary); }
+        .tt-price-info { text-align: right; }
+        .tt-comp-section { margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border); }
+        .tt-comp-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
+        .tt-comp-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; }
+        .tt-comp-price { font-weight: 800; color: var(--text-main); }
+        .tt-sold { color: var(--danger) !important; font-weight: 900; }
+        
+        /* ANIMATIONS */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .month-card { animation: fadeInUp 0.6s ease-out both; }
+        .month-card:nth-child(1) { animation-delay: 0.1s; }
+        .month-card:nth-child(2) { animation-delay: 0.15s; }
+        .month-card:nth-child(3) { animation-delay: 0.2s; }
+        .month-card:nth-child(4) { animation-delay: 0.25s; }
+        /* and so on... */
 
         /* SYNC INDICATOR */
         .sync-toast {
@@ -352,7 +513,8 @@
             <a href="AnalisisCalendario.html" class="active">Calendario</a>
             <a href="Analisis360.html">Vista 360º</a>
         </div>
-        <div class="user-chip" style="color:var(--text-muted); font-size:0.7rem; font-weight:700;">
+        <div class="user-chip" style="color:var(--text-muted); font-size:0.7rem; font-weight:700; display:flex; align-items:center; gap:20px;">
+            <div id="themeToggleBtn" onclick="toggleTheme()" style="cursor:pointer; font-size:1.1rem;" title="Cambiar Modo">🌙</div>
             <span id="userEmailNav">Conectando...</span>
         </div>
     </nav>
@@ -375,7 +537,9 @@
                 </div>
                 <span>Alto</span>
             </div>
-            <button class="btn" style="background:#4f46e5; padding:8px 15px;" onclick="document.getElementById('excelEvents').click()">+ Eventos</button>
+            <button class="btn btn-primary" onclick="document.getElementById('excelEvents').click()">
+                <span style="font-size: 1.2rem; line-height: 1;">+</span> Eventos
+            </button>
             <input type="file" id="excelEvents" hidden accept=".xlsx, .xls">
             
             <div style="width:1px; height:24px; background:var(--border); margin:0 10px;"></div>
@@ -401,9 +565,9 @@
 
     <main id="calendarGrid" class="calendar-container"></main>
 
-    <section class="event-sidebar">
-        <h3 style="margin-top:0;">Eventos del Periodo</h3>
-        <div id="eventList" style="display:flex; flex-wrap:wrap; gap:10px;"></div>
+    <section class="event-sidebar" style="max-width: 1700px; margin: 0 auto 60px; padding: 0 40px;">
+        <h3 style="margin-top:0; font-family: 'Outfit', sans-serif; font-weight: 800; letter-spacing: -0.5px;">Eventos del Periodo</h3>
+        <div id="eventList" style="display:flex; flex-wrap:wrap; gap:12px;"></div>
     </section>
 
     <div id="tooltip"></div>
@@ -423,6 +587,15 @@
                 toast.style.display = 'block';
                 setTimeout(() => { loadAllData(); toast.style.display = 'none'; }, 2000);
             });
+
+            window.addEventListener('themeChanged', () => {
+                const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                document.getElementById('themeToggleBtn').innerHTML = isDark ? '🌙' : '☀️';
+            });
+            
+            // Initial icon sync
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            document.getElementById('themeToggleBtn').innerHTML = isDark ? '🌙' : '☀️';
         };
 
         function loadAllData() {
@@ -453,6 +626,7 @@
         function renderInsights() {
             const panel = document.getElementById('calendarInsights');
             panel.innerHTML = '';
+            panel.className = 'insights-panel-container';
             
             const hotel = document.getElementById('hotelSelector').value;
             const yearStr = document.getElementById('yearSelector').value;
@@ -461,46 +635,40 @@
 
             if (!hotelData) return;
 
+            const insightsContainer = document.createElement('div');
+            insightsContainer.style.cssText = 'display:flex; gap:20px; max-width:1700px; margin:0 auto 30px; padding:0 40px;';
+
             // 1. Pick-up Highlight
             let totalPickup = 0;
             if (hotelData.otb && hotelData.otb_prev) {
                 totalPickup = hotelData.otb.revenue.reduce((a, b, i) => a + (b - (hotelData.otb_prev.revenue[i] || 0)), 0);
             }
 
-            if (Math.abs(totalPickup) > 100) {
-                const card = document.createElement('div');
-                card.className = 'insight-card';
-                card.innerHTML = `
-                    <div class="insight-icon" style="color:${totalPickup > 0 ? 'var(--secondary)' : 'var(--danger)'}">
-                        ${totalPickup > 0 ? '🚀' : '📉'}
-                    </div>
-                    <div>
-                        <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">PICK-UP TOTAL</div>
-                        <div style="font-size:1.1rem; font-weight:800; color:${totalPickup > 0 ? 'var(--secondary)' : 'var(--danger)'}">
-                            ${totalPickup > 0 ? '+' : ''}${new Intl.NumberFormat('es-ES').format(Math.round(totalPickup))}€
-                        </div>
-                    </div>
-                `;
-                panel.appendChild(card);
-            }
+            const pickupCard = document.createElement('div');
+            pickupCard.className = 'insight-card-premium';
+            pickupCard.innerHTML = `
+                <div class="insight-label">PICK-UP TOTAL</div>
+                <div class="insight-value ${totalPickup >= 0 ? 'pos' : 'neg'}">
+                    ${totalPickup > 0 ? '+' : ''}${new Intl.NumberFormat('es-ES').format(Math.round(totalPickup))}€
+                </div>
+                <div class="insight-sub">${totalPickup >= 0 ? 'Tendencia positiva' : 'Tendencia negativa'}</div>
+            `;
+            insightsContainer.appendChild(pickupCard);
 
             // 2. Data Freshness
             const updateDate = hotelData.updates?.otb || hotelData.lastUpdate || '---';
             const isToday = updateDate.includes(new Date().toLocaleDateString('es-ES'));
             
             const freshCard = document.createElement('div');
-            freshCard.className = 'insight-card';
+            freshCard.className = 'insight-card-premium';
             freshCard.innerHTML = `
-                <div class="insight-icon" style="color:${isToday ? 'var(--secondary)' : 'var(--accent)'}">
-                    ${isToday ? '✅' : '⚠️'}
-                </div>
-                <div>
-                    <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">ESTADO DE DATOS</div>
-                    <div style="font-size:0.9rem; font-weight:800;">${isToday ? 'Actualizados (Hoy)' : 'Pendiente Actualizar'}</div>
-                    <div style="font-size:0.7rem; opacity:0.7;">Sync: ${updateDate}</div>
-                </div>
+                <div class="insight-label">ESTADO DE DATOS</div>
+                <div class="insight-value">${isToday ? 'Actualizado' : 'Pendiente'}</div>
+                <div class="insight-sub">${updateDate}</div>
             `;
-            panel.appendChild(freshCard);
+            insightsContainer.appendChild(freshCard);
+
+            panel.appendChild(insightsContainer);
         }
 
         function enrichRevenueData() {
@@ -520,11 +688,13 @@
                         const hKey = Object.keys(db).find(k => k.toLowerCase().includes(hName.toLowerCase()));
                         if (hKey && db[hKey][yearStr]) {
                             const yearData = db[hKey][yearStr];
-                            let otb = 0, occ = 0, otb_prev = null;
-
+                            let adr = 0, otb = 0, occ = 0, otb_prev = null;
                             if (yearData.daily_otb && yearData.daily_otb[iso]) {
                                 const v = yearData.daily_otb[iso];
                                 otb = Math.round((typeof v === 'object') ? (v.rooms || 0) : v);
+                                if (typeof v === 'object' && v.rooms > 0) {
+                                    adr = (v.revenue || 0) / v.rooms;
+                                }
                             }
                             if (yearData.daily && yearData.daily[iso]) {
                                 occ = Math.round(yearData.daily[iso].rooms || yearData.daily[iso]);
@@ -535,7 +705,7 @@
                                 otb_prev = Math.round((typeof vPrev === 'object') ? (vPrev.rooms || 0) : vPrev);
                             }
 
-                            revenueData[iso].occupancyData[hName] = { otb, occ, otb_prev };
+                            revenueData[iso].occupancyData[hName] = { otb, occ, otb_prev, adr };
                         }
                     });
                 }
@@ -638,13 +808,13 @@
                         let diffHtml = "";
                         if (prev !== null) {
                             const numericDiff = otb - prev;
-                            if (numericDiff > 0) diffHtml = `<span class="p-up">▲ ${numericDiff}</span>`;
-                            else if (numericDiff < 0) diffHtml = `<span class="p-down">▼ ${Math.abs(numericDiff)}</span>`;
-                            else diffHtml = `<span class="p-equal">= 0</span>`;
+                            if (numericDiff > 0) diffHtml = `<span class="p-up">▲${numericDiff}</span>`;
+                            else if (numericDiff < 0) diffHtml = `<span class="p-down">▼${Math.abs(numericDiff)}</span>`;
+                            // We hide the =0 for cleaner visual
                         }
                         badgeHtml = `
                             <div class="otb-badge">
-                                <span class="otb-val">${otb} OTB</span>
+                                <span class="otb-val">${otb} hab</span>
                                 ${diffHtml}
                             </div>
                         `;
@@ -653,7 +823,7 @@
                     const priceText = heatmapVal > 0 ? (metric === 'price' ? `${Math.round(heatmapVal)}€` : `${Math.round(occPct)}%`) : "";
                     
                     cell.innerHTML = `
-                        <div class="day-num">${d}</div>
+                        <div class="day-num">${d} ${occPct >= 99 ? '🔥' : ''}</div>
                         <div class="day-price">${priceText}</div>
                         ${badgeHtml}
                     `;
@@ -674,7 +844,7 @@
             const t = document.getElementById('tooltip');
             
             const dateStr = new Date(iso).toLocaleDateString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');
-            const mktPrice = dData.compAvg || '--';
+            const hotelADR = hData.adr || 0;
             const hotelPrice = (dData.hotels && dData.hotels[currentHotel]) ? (dData.hotels[currentHotel].price || dData.hotels[currentHotel]) : 0;
             const roomsSold = (hData.occ > 0) ? hData.occ : (hData.otb || 0);
             const occPct = Math.round((roomsSold / cap) * 100);
@@ -682,7 +852,7 @@
             let html = `
                 <div class="tt-header">
                     <div class="tt-date">📅 ${dateStr}</div>
-                    <div class="tt-mkt">Mkt: ${mktPrice}€</div>
+                    <div class="tt-mkt">PMP: ${Math.round(hotelADR)}€</div>
                 </div>
                 <div class="tt-main-hotel">
                     <div class="tt-hotel-info">🏢 ${currentHotel}</div>
@@ -749,7 +919,12 @@
 
         function renderEventList() {
             const list = document.getElementById('eventList');
-            list.innerHTML = rawEvents.map(e => `<div style="background:rgba(255,255,255,0.05); padding:8px 15px; border-radius:50px; font-size:0.7rem; border:1px solid var(--border);"><b>${e.desc}</b> (${e.start})</div>`).join('');
+            list.innerHTML = rawEvents.map(e => `
+                <div style="background:rgba(255,158,11,0.1); color:var(--accent); padding:10px 20px; border-radius:15px; font-size:0.8rem; font-weight:700; border:1px solid rgba(245,158,11,0.2); display:flex; flex-direction:column; gap:2px; min-width:180px;">
+                    <span style="font-size:0.6rem; opacity:0.7; text-transform:uppercase; letter-spacing:1px;">${e.start}</span>
+                    <span>${e.desc}</span>
+                </div>
+            `).join('');
         }
 
         function handleExcel(input) {

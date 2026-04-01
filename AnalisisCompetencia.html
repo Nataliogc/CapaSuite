@@ -698,9 +698,6 @@
             <a href="CargarDatos.html">⚙️ Config</a>
         </div>
         <div class="nav-user">
-            <button class="theme-toggle" onclick="window.toggleTheme()" title="Cambiar tema">
-                <span id="theme-icon">🌙</span>
-            </button>
             <span class="dot"></span>
             <span class="user-email" id="userEmailNav">Cargando...</span>
             <span class="logout-btn" style="color:#ef4444; border-bottom:1px solid #ef4444; cursor:pointer;" onclick="auth.signOut()">Cerrar Sesión</span>
@@ -1427,18 +1424,38 @@
                 const yr = iso ? iso.split('-')[0] : "2026";
 
                 // Fallback Occupancy Sync
-                if (occ === 0 && iso && iso !== "INV-DATE") {
+                let hasOtbData = false;
+                let hasProdData = false;
+                let prevRooms = 0;
+
+                if (iso && iso !== "INV-DATE") {
                     try {
                         const pDbRaw = CapaStorage.getItem('hotel_manager_db_v2');
                         if (pDbRaw) {
                             const pDb = (typeof pDbRaw === 'string') ? JSON.parse(pDbRaw) : pDbRaw;
-                            if (pDb[activeHotel] && pDb[activeHotel][yr]) {
-                                const dbYear = pDb[activeHotel][yr];
+                            const dbKeys = Object.keys(pDb);
+                            const cleanActive = activeHotel.toLowerCase().replace(/hotel|sercotel|villa|spa|resort/g, '').trim();
+                            const dbActiveKey = dbKeys.find(k => k.toLowerCase().includes(cleanActive) || cleanActive.includes(k.toLowerCase()));
+
+                            if (dbActiveKey && pDb[dbActiveKey] && pDb[dbActiveKey][yr]) {
+                                const dbYear = pDb[dbActiveKey][yr];
                                 if (dbYear.daily_otb && dbYear.daily_otb[iso]) {
-                                    let dVal = dbYear.daily_otb[iso];
-                                    occ = (typeof dVal === 'object') ? (dVal.rooms || 0) : dVal;
-                                } else if (dbYear.daily && dbYear.daily[iso]) {
-                                    occ = dbYear.daily[iso];
+                                    hasOtbData = true;
+                                    if (occ === 0) {
+                                        let dVal = dbYear.daily_otb[iso];
+                                        occ = (typeof dVal === 'object') ? (dVal.rooms || 0) : dVal;
+                                    }
+                                }
+                                if (dbYear.daily && dbYear.daily[iso] !== undefined) {
+                                    hasProdData = true;
+                                    if (occ === 0) occ = dbYear.daily[iso];
+                                }
+                                
+                                // Fetch Previous Rooms for Instant Pick-up
+                                // Comparing current daily_otb vs saved daily_otb in otb_prev
+                                if (dbYear.otb_prev && dbYear.otb_prev.daily_otb && dbYear.otb_prev.daily_otb[iso]) {
+                                    const oldData = dbYear.otb_prev.daily_otb[iso];
+                                    prevRooms = (typeof oldData === 'object') ? (oldData.rooms || 0) : oldData;
                                 }
                             }
                         }
@@ -1455,7 +1472,10 @@
                     compAvg: 0,
                     dateISO: iso,
                     occupancy: occ,
-                    otbRooms: occ, // Ensure OTB data is available for pick-up logic
+                    otbRooms: occ, 
+                    prevRooms: prevRooms, // Store comparison base
+                    hasOtbData: hasOtbData,
+                    hasProdData: hasProdData,
                     dateMeta: {
                         dNum,
                         dShort: dateInfo.dShort,
@@ -1586,14 +1606,12 @@
                     dayObj.compAvg = compPrices.reduce((a, b) => a + b, 0) / compPrices.length;
                 }
 
-                // OTB PICK-UP DETECTION (Rooms change)
-                if (prevMap[dayObj.dateISO]) {
-                    const prevHotelData = prevMap[dayObj.dateISO][activeHotel];
-                    const prevRooms = (prevHotelData && prevHotelData.otbRooms !== undefined) ? prevHotelData.otbRooms : 0;
-                    const currRooms = dayObj.otbRooms || 0;
-                    if (currRooms !== prevRooms && prevHotelData) {
-                        dayObj.otbChange = currRooms - prevRooms;
-                    }
+                // OTB PICK-UP DETECTION (Instant Pick-up vs last Forecast File)
+                const currRooms = dayObj.otbRooms || 0;
+                const oldRooms = dayObj.prevRooms || 0;
+                
+                if (currRooms !== oldRooms) {
+                    dayObj.otbChange = currRooms - oldRooms;
                 }
 
                 processedData.push(dayObj);
@@ -1716,7 +1734,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             let metricsHtml = '';
             if (otb > 0 || d.otbChange) {
                 const changePill = d.otbChange ? `
-                    <span style="font-size:0.6rem; font-weight:800; color:${d.otbChange > 0 ? '#10b981' : '#ef4444'}; background:${d.otbChange > 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)'}; border:1px solid ${d.otbChange > 0 ? '#10b981' : '#f87171'}; padding:0px 3px; border-radius:3px; line-height:1;">
+                    <span title="Variación de habitaciones (Pick-up) respecto a la última carga" style="font-size:0.6rem; font-weight:800; color:${d.otbChange > 0 ? '#10b981' : '#ef4444'}; background:${d.otbChange > 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)'}; border:1px solid ${d.otbChange > 0 ? '#10b981' : '#f87171'}; padding:0px 3px; border-radius:3px; line-height:1; cursor:help;">
                         ${d.otbChange > 0 ? '+' : ''}${d.otbChange}
                     </span>
                 ` : '';
@@ -1724,7 +1742,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 metricsHtml = `
                     <div style="display:flex; align-items:center; gap:4px; margin-top:3px;">
                         <div style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); padding: 1px 4px; border-radius: 4px; display: flex; align-items: center; gap: 3px;">
-                            <span style="font-size:0.5rem; font-weight:800; color:#8b5cf6; opacity:0.8;">OTB</span>
+                            <span style="font-size:0.55rem; font-weight:800; color:#8b5cf6; opacity:0.8;">Hab.</span>
                             <span style="font-size: 0.7rem; color: #8b5cf6; font-weight: 800;">${otb}</span>
                         </div>
                         ${changePill}
@@ -1858,13 +1876,13 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             }
 
             // Diagnostic Counter
-            const otbCount = data.filter(d => d.otbRooms > 0).length;
-            const occCount = data.filter(d => d.occupancy > 0).length;
+            const otbCount = data.filter(d => d.hasOtbData).length;
+            const occCount = data.filter(d => d.hasProdData).length;
             let statusHtml = "";
             const hasGoodData = otbCount > (data.length / 2);
 
             if (hasGoodData) {
-                statusHtml = `<span style="color:#10b981; font-weight:bold; margin-left:5px;">(OK: ${otbCount} OTB / ${occCount} Hab)</span>`;
+                statusHtml = `<span style="color:#10b981; font-weight:bold; margin-left:5px;">(OK: ${otbCount} Previsión / ${occCount} Prod.)</span>`;
             } else {
                 statusHtml = `<button onclick="diagnoseAllData()" style="background:#ef4444; color:white; border:none; padding:4px 10px; border-radius:6px; font-weight:bold; cursor:pointer; margin-left:10px; font-size:0.75rem; box-shadow:0 2px 8px rgba(239,68,68,0.3);">⚠️ REVISAR OCUPACIÓN (${otbCount}/${data.length})</button>`;
             }
@@ -2210,7 +2228,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         
                         // NEW: Show OTB/Occ also for Sibling
                         if (hData.otbRooms > 0) {
-                            sContent += `<div style="font-size:0.6rem; color:#8b5cf6; font-weight:800; margin-top:1px;">OTB: ${hData.otbRooms}</div>`;
+                            sContent += `<div style="font-size:0.6rem; color:#8b5cf6; font-weight:800; margin-top:1px;">Hab: ${hData.otbRooms}</div>`;
                         } else if (hData.occupancy > 0) {
                             sContent += `<div style="font-size:0.6rem; color:#4f46e5; font-weight:700; margin-top:1px;">Hab: ${hData.occupancy}</div>`;
                         }
@@ -2240,7 +2258,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
                         // NEW: Show OTB/Occ for all managed hotels in competition list
                         if (hData.otbRooms > 0) {
-                            priceContent += `<div style="font-size:0.6rem; color:#8b5cf6; font-weight:800; margin-top:1px;">OTB: ${hData.otbRooms}</div>`;
+                            priceContent += `<div style="font-size:0.6rem; color:#8b5cf6; font-weight:800; margin-top:1px;">Hab: ${hData.otbRooms}</div>`;
                         } else if (hData.occupancy > 0) {
                             priceContent += `<div style="font-size:0.6rem; color:#4f46e5; font-weight:700; margin-top:1px;">Hab: ${hData.occupancy}</div>`;
                         }
@@ -2641,7 +2659,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     const yr = sampleDay.split('-')[0];
                     const otb = pDb[dbActiveKey][yr]?.daily_otb?.[sampleDay];
                     const prod = pDb[dbActiveKey][yr]?.daily?.[sampleDay];
-                    report += `- Datos hallados en ese día: ${otb ? 'SI (OTB)' : 'NO (OTB)'}, ${prod ? 'SI (Hab)' : 'NO (Hab)'}\n`;
+                    report += `- Datos hallados en ese día: ${otb ? 'SI (Previsión)' : 'NO (Previsión)'}, ${prod ? 'SI (Producción)' : 'NO (Producción)'}\n`;
                 }
             } else {
                 report += `\n⚠️ NO SE HA ENCONTRADO EL HOTEL "${activeHotel}" EN LA BASE DE DATOS.\nPrueba a cargar de nuevo los Excel de Previsiones o Producción.`;
@@ -2649,7 +2667,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             
             console.log(report);
             if (dbActiveKey) console.log("Contenido DB para activeHotel:", pDb[dbActiveKey]);
-            alert(report + "\n\nRevisa la CONSOLA (F12) para más detalles técnicos.");
+            alert(report + "\n\n(Previsión = Datos futuros / Producción = Datos reales pasados)\n\nRevisa la CONSOLA (F12) para más detalles técnicos.");
         }
     </script>
 </body>

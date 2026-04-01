@@ -2042,7 +2042,7 @@
                         if (!iso) continue;
 
                         const val = row[c];
-                        if (val === null || val === undefined || val === "" || val === 0) continue;
+                        if (val === null || val === undefined || val === "") continue;
 
                     const [yRaw, mStr, dStr] = iso.split('-');
                     const y = (yRaw.length === 2) ? "20" + yRaw : yRaw;
@@ -2056,28 +2056,95 @@
                             if (desc && desc !== "0" && desc !== "-" && desc.length > 1) {
                                 const exists = customEvents.some(e => e.start === iso && e.desc === desc);
                                 if (!exists) {
-                                    customEvents.push({ start: iso, end: iso, desc: desc });
+                                     customEvents.push({ start: iso, end: iso, desc: desc });
                                 }
                             }
                         } else {
                             const num = parseVal(val);
-                            if (num === 0) continue;
+                            // We allow 0 if it was explicitly present as a number 0 in the cell, 
+                            // though parseVal might return 0 for non-numeric strings too.
+                            // But usually we want to register the date in daily_otb even if 0.
 
-                            if (!targetYear.daily_otb[iso]) targetYear.daily_otb[iso] = { rooms: 0, revenue: 0 };
+                            if (!targetYear.daily_otb[iso]) {
+                                targetYear.daily_otb[iso] = { rooms: 0, revenue: 0, breakdown: {} };
+                            }
+                            if (!targetYear.daily_otb[iso].breakdown) targetYear.daily_otb[iso].breakdown = {};
                             
                             if (isRMS) {
-                                const roundedRooms = Math.round(num); // Force integer rooms
+                                const roundedRooms = Math.round(num);
                                 targetYear.daily_otb[iso].rooms += roundedRooms;
-                                if (targetYear.otb && targetYear.otb.rooms) targetYear.otb.rooms[m] += roundedRooms;
+                                if (!targetYear.otb.rooms) targetYear.otb.rooms = new Array(12).fill(0);
+                                targetYear.otb.rooms[m] += roundedRooms;
                                 foundRMS += roundedRooms;
                             } else if (isREV) {
-                                targetYear.daily_otb[iso].revenue += num;
-                                if (targetYear.otb && targetYear.otb.revenue) targetYear.otb.revenue[m] += num;
+                                // DETECT CATEGORY
+                                const gid = getGroupID(rowLabel);
+                                const breakdownMap = {
+                                    "HABITACION": "habitacion",
+                                    "DESAYUNOS": "desayunos",
+                                    "RESTAURANTE": "restaurante",
+                                    "SPA": "spa",
+                                    "VARIOS": "varios",
+                                    "EVENTOS": "eventos",
+                                    "CAFETERIA": "cafeteria",
+                                    "MINIBAR": "minibar",
+                                    "OFICINAS": "oficinas"
+                                };
+                                const bKey = breakdownMap[gid];
+
+                                if (bKey) {
+                                    // Store in Breakdown (Monthly)
+                                    if (!targetYear.otb.breakdown) targetYear.otb.breakdown = {};
+                                    if (!targetYear.otb.breakdown[bKey]) targetYear.otb.breakdown[bKey] = new Array(12).fill(0);
+                                    targetYear.otb.breakdown[bKey][m] += num;
+
+                                    // Store in Breakdown (Daily)
+                                    targetYear.daily_otb[iso].breakdown[bKey] = (targetYear.daily_otb[iso].breakdown[bKey] || 0) + num;
+                                    
+                                    // Track Category Sum to use as Revenue if Master is missing
+                                    if (targetYear.daily_otb[iso]._catRev === undefined) targetYear.daily_otb[iso]._catRev = 0;
+                                    targetYear.daily_otb[iso]._catRev += num;
+                                } else {
+                                    // Assume it's a Total/Master row if not a specific category
+                                    if (targetYear.daily_otb[iso]._masterRev === undefined) targetYear.daily_otb[iso]._masterRev = 0;
+                                    targetYear.daily_otb[iso]._masterRev += num;
+                                }
                                 foundREV += num;
                             }
                         }
                     }
                 }
+
+                // POST-PROCESSING: Resolve Revenue (Categories vs Master)
+                yearsToClear.forEach(yStr => {
+                    const yData = db[hotel][yStr];
+                    if (yData && yData.daily_otb) {
+                        // Reset monthly revenue before summing from days
+                        if (yData.otb) yData.otb.revenue.fill(0);
+
+                        Object.keys(yData.daily_otb).forEach(iso => {
+                            const day = yData.daily_otb[iso];
+                            const m = parseInt(iso.split('-')[1]) - 1;
+                            
+                            // Preference: Master Row > Sum of Categories
+                            // Note: We use a small threshold to avoid issues with zero-values or empty cells
+                            if (day._masterRev > 0.01) {
+                                day.revenue = day._masterRev;
+                            } else if (day._catRev > 0.01) {
+                                day.revenue = day._catRev;
+                            } else {
+                                day.revenue = 0;
+                            }
+
+                            // Update monthly total from final daily revenue
+                            if (yData.otb) yData.otb.revenue[m] += day.revenue;
+
+                            // Clean up temporary tracking fields
+                            delete day._catRev;
+                            delete day._masterRev;
+                        });
+                    }
+                });
                 
                 if (customEvents.length > 0) {
                     CapaStorage.setItem('custom_events', JSON.stringify(customEvents));
