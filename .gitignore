@@ -12,3 +12,4 @@ debug_pdf_text.txt
 .gemini/
 .agent/
 .antigravityignore
+js/firebase-config-env.js

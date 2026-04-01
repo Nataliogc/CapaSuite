@@ -18,6 +18,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="js/firebase-config-env.js"></script>
     <script src="js/firebase-auth.js"></script>
 
     <style>
@@ -63,11 +64,11 @@
             position: sticky;
             top: 0;
             z-index: 2000;
-            height: 60px;
+            height: 45px;
             border-bottom: 1px solid var(--border);
         }
 
-        .nav-links { display: flex; gap: 20px; height: 100%; align-items: center; }
+        .nav-links { display: flex; gap: 25px; height: 100%; align-items: center; }
         .top-nav a {
             color: var(--text-muted);
             text-decoration: none;
@@ -75,15 +76,14 @@
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 1px;
-            padding: 0 12px;
             height: 100%;
             display: flex;
             align-items: center;
             transition: var(--transition);
-            border-bottom: 3px solid transparent;
+            border-bottom: 2px solid transparent;
         }
         .top-nav a:hover { color: white; }
-        .top-nav a.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .top-nav a.active { color: #818cf8; border-bottom: 2px solid #818cf8; }
 
         /* HEADER */
         .page-header {
@@ -143,18 +143,18 @@
         }
 
         .month-card {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
             border-radius: var(--radius-lg);
             padding: 15px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            box-shadow: var(--shadow-premium);
             transition: var(--transition);
         }
 
         .month-title {
             font-size: 1.1rem;
             font-weight: 800;
-            color: #1e293b;
+            color: #fff;
             margin-bottom: 12px;
             padding-left: 8px;
             border-left: 4px solid var(--primary);
@@ -177,7 +177,6 @@
         .days-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
-<<<<<<< HEAD
             gap: 6px;
         }
 
@@ -185,37 +184,33 @@
 
         /* DAY CELL (Apple/Google Style) */
         .day-cell {
-<<<<<<< HEAD
-            aspect-ratio: 1/1;
-            background: #ffffff;
-            border-radius: 8px;
-=======
-            border: 1px solid #e2e8f0;
-            padding: 2px 4px; /* More compact */
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.03);
+            padding: 4px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             position: relative;
             cursor: pointer;
             transition: all 0.2s ease-in-out;
-            color: #1e293b;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+            color: var(--text-main);
+            min-height: 50px;
             overflow: hidden;
         }
 
         .day-cell:hover {
-            transform: translateY(-2px);
+            transform: scale(1.05);
             z-index: 50;
-            box-shadow: 0 12px 20px -10px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
             border-color: var(--primary);
+            background: rgba(255,255,255,0.08);
         }
 
         .day-num { 
             font-size: 0.7rem; 
             font-weight: 700; 
-            color: #64748b;
-            margin-top: 2px;
-            margin-left: 2px;
+            color: var(--text-muted);
+            margin-bottom: 2px;
         }
         
         /* OTB BADGE (Floating Card Style) */
@@ -224,22 +219,20 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(4px);
-            border: 1px solid #f1f5f9;
+            border: 1px solid rgba(255,255,255,0.05);
             padding: 2px 4px;
             border-radius: 4px;
             font-size: 0.55rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
             pointer-events: none;
             width: 100%;
-            margin-bottom: 2px;
         }
-        .otb-val { color: #4f46e5; font-weight: 800; }
+        .otb-val { color: #818cf8; font-weight: 800; }
         
-        .p-up { background: #dcfce7; color: #10b981; padding: 1px 4px; border-radius: 3px; font-weight: 800; font-size: 0.5rem; margin-top: 1px; }
-        .p-down { background: #fee2e2; color: #ef4444; padding: 1px 4px; border-radius: 3px; font-weight: 800; font-size: 0.5rem; margin-top: 1px; }
-        .p-equal { background: #f1f5f9; color: #94a3b8; padding: 1px 4px; border-radius: 3px; font-weight: 800; font-size: 0.5rem; margin-top: 1px; }
+        .p-up { background: rgba(16, 185, 129, 0.2); color: #10b981; padding: 1px 4px; border-radius: 3px; font-weight: 800; font-size: 0.5rem; margin-top: 1px; }
+        .p-down { background: rgba(239, 68, 68, 0.2); color: #ef4444; padding: 1px 4px; border-radius: 3px; font-weight: 800; font-size: 0.5rem; margin-top: 1px; }
+        .p-equal { background: rgba(255, 255, 255, 0.05); color: #94a3b8; padding: 1px 4px; border-radius: 3px; font-weight: 800; font-size: 0.5rem; margin-top: 1px; }
 
         .day-stats { 
             display: flex; 
@@ -384,6 +377,10 @@
         </div>
     </header>
 
+    <div class="insights-panel" id="calendarInsights">
+        <!-- JS Injected -->
+    </div>
+
     <main id="calendarGrid" class="calendar-container"></main>
 
     <section class="event-sidebar">
@@ -432,6 +429,60 @@
 
             renderCalendar();
             renderEventList();
+            renderInsights();
+        }
+
+        function renderInsights() {
+            const panel = document.getElementById('calendarInsights');
+            panel.innerHTML = '';
+            
+            const hotel = document.getElementById('hotelSelector').value;
+            const yearStr = document.getElementById('yearSelector').value;
+            const year = parseInt(yearStr);
+            const hotelData = db[hotel] ? db[hotel][yearStr] : null;
+
+            if (!hotelData) return;
+
+            // 1. Pick-up Highlight
+            let totalPickup = 0;
+            if (hotelData.otb && hotelData.otb_prev) {
+                totalPickup = hotelData.otb.revenue.reduce((a, b, i) => a + (b - (hotelData.otb_prev.revenue[i] || 0)), 0);
+            }
+
+            if (Math.abs(totalPickup) > 100) {
+                const card = document.createElement('div');
+                card.className = 'insight-card';
+                card.innerHTML = `
+                    <div class="insight-icon" style="color:${totalPickup > 0 ? 'var(--secondary)' : 'var(--danger)'}">
+                        ${totalPickup > 0 ? '🚀' : '📉'}
+                    </div>
+                    <div>
+                        <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">PICK-UP TOTAL</div>
+                        <div style="font-size:1.1rem; font-weight:800; color:${totalPickup > 0 ? 'var(--secondary)' : 'var(--danger)'}">
+                            ${totalPickup > 0 ? '+' : ''}${new Intl.NumberFormat('es-ES').format(Math.round(totalPickup))}€
+                        </div>
+                    </div>
+                `;
+                panel.appendChild(card);
+            }
+
+            // 2. Data Freshness
+            const updateDate = hotelData.updates?.otb || hotelData.lastUpdate || '---';
+            const isToday = updateDate.includes(new Date().toLocaleDateString('es-ES'));
+            
+            const freshCard = document.createElement('div');
+            freshCard.className = 'insight-card';
+            freshCard.innerHTML = `
+                <div class="insight-icon" style="color:${isToday ? 'var(--secondary)' : 'var(--accent)'}">
+                    ${isToday ? '✅' : '⚠️'}
+                </div>
+                <div>
+                    <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">ESTADO DE DATOS</div>
+                    <div style="font-size:0.9rem; font-weight:800;">${isToday ? 'Actualizados (Hoy)' : 'Pendiente Actualizar'}</div>
+                    <div style="font-size:0.7rem; opacity:0.7;">Sync: ${updateDate}</div>
+                </div>
+            `;
+            panel.appendChild(freshCard);
         }
 
         function enrichRevenueData() {

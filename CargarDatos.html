@@ -12,21 +12,37 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="js/firebase-config-env.js"></script>
     <script src="js/firebase-auth.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #4f46e5;
-            --primary-light: #818cf8;
+            --primary: #6366f1;
+            --primary-glow: rgba(99, 102, 241, 0.4);
             --secondary: #10b981;
-            --bg: #f1f5f9;
-            --card-bg: #ffffff;
-            --text-main: #0f172a;
+            --accent: #f59e0b;
+            --danger: #ef4444;
+            --bg-deep: #0f172a;
+            --bg-surface: #1e293b;
+            --bg-glass: rgba(30, 41, 59, 0.7);
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --border: rgba(255, 255, 255, 0.1);
+            --radius-lg: 24px;
+            --shadow-premium: 0 10px 30px -5px rgba(0, 0, 0, 0.3);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        [data-theme="light"] {
+            --bg-deep: #f8fafc;
+            --bg-surface: #ffffff;
+            --bg-glass: rgba(255, 255, 255, 0.8);
+            --text-main: #1e293b;
             --text-muted: #64748b;
             --border: #e2e8f0;
-            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
-            --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
-            --radius: 16px;
+            --primary: #4f46e5;
+            --primary-glow: rgba(79, 70, 229, 0.2);
+            --shadow-premium: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
         }
 
         /* MODAL STYLES */
@@ -93,21 +109,74 @@
             }
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        /* TOP NAVIGATION */
+        .top-nav {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            padding: 0 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 99999;
+            height: 45px;
+            border-bottom: 1px solid var(--border);
+            width: 100%;
         }
+
+        [data-theme="light"] .top-nav {
+            background: rgba(255, 255, 255, 0.8);
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .nav-links { display: flex; gap: 25px; height: 100%; align-items: center; }
+        .top-nav a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            transition: var(--transition);
+            border-bottom: 2px solid transparent;
+        }
+        .top-nav a:hover { color: var(--text-main); }
+        .top-nav a.active { color: var(--primary); border-bottom: 2px solid var(--primary); }
+
+        .nav-user {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            color: var(--text-main);
+            font-size: 0.75rem;
+        }
+
+        .theme-toggle {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+        .theme-toggle:hover { transform: scale(1.1); }
 
         body {
             font-family: 'Outfit', sans-serif;
-            background-color: var(--bg);
+            background-color: var(--bg-deep);
             color: var(--text-main);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 20px;
+            padding: 0; /* Changed from 20px */
         }
 
         .container {
@@ -490,11 +559,15 @@
             <a href="CargarDatos.html" class="active">⚙️ Config</a>
         </div>
         <div class="nav-user">
+            <button class="theme-toggle" onclick="window.toggleTheme()" title="Cambiar tema">
+                <span id="theme-icon">🌙</span>
+            </button>
             <span class="dot"></span>
             <span class="user-email" id="userEmailNav">Cargando...</span>
-            <span class="logout-btn" onclick="auth.signOut()">Cerrar Sesión</span>
+            <span class="logout-btn" style="color:#ef4444; border-bottom:1px solid #ef4444; cursor:pointer;" onclick="auth.signOut()">Cerrar Sesión</span>
         </div>
     </nav>
+    <script src="js/theme-manager.js"></script>
 
 
     <div class="loader" id="loader">
@@ -1819,7 +1892,8 @@
                         if (dCell instanceof Date) dateCount++;
                         else {
                             const sVal = String(dCell).trim();
-                            if (sVal && sVal.match(/^(\d{1,2})[\/-](\d{1,2})/) && !sVal.includes(":")) dateCount++;
+                            if (sVal && sVal.match(/^(\d{1,4})[ \/-](\d{1,2})([ \/-](\d{1,4}))?/) && !sVal.includes(":")) dateCount++;
+                            else if (typeof dCell === 'number' && dCell > 42000 && dCell < 60000) dateCount++;
                         }
                     }
                     if (dateCount > 3) { headerRowIndex = r; break; }
@@ -1837,20 +1911,29 @@
                     let dObj = null;
                     if (cellRaw instanceof Date) {
                         dObj = cellRaw;
+                    } else if (typeof cellRaw === 'number' && cellRaw > 42000 && cellRaw < 60000) {
+                        dObj = new Date((cellRaw - 25569) * 86400 * 1000);
                     } else {
                         const cellStr = String(cellRaw).trim();
-                        const dayMatch = cellStr.match(/(\d{1,2})[\/-](\d{1,2})([\/-](\d{2,4}))?/);
+                        const dayMatch = cellStr.match(/(\d{1,4})[ \/-](\d{1,2})([ \/-](\d{1,4}))?/);
                         if (dayMatch) {
-                            const d = parseInt(dayMatch[1]);
-                            const m = parseInt(dayMatch[2]) - 1;
-                            let y = currentYearTracker;
-                            if (dayMatch[4]) {
-                                const yStr = dayMatch[4];
-                                y = (yStr.length === 2) ? parseInt("20" + yStr) : parseInt(yStr);
-                            } else {
-                                if (lastMonthIndex === 11 && m === 0) {
-                                    currentYearTracker++;
-                                    y = currentYearTracker;
+                            let d, m, y;
+                            if (dayMatch[1].length === 4) { // Format: YYYY-MM-DD
+                                y = parseInt(dayMatch[1]);
+                                m = parseInt(dayMatch[2]) - 1;
+                                d = parseInt(dayMatch[4] || "1");
+                            } else { // Format: DD-MM-YYYY or DD-MM
+                                d = parseInt(dayMatch[1]);
+                                m = parseInt(dayMatch[2]) - 1;
+                                y = currentYearTracker;
+                                if (dayMatch[4]) {
+                                    const yStr = dayMatch[4];
+                                    y = (yStr.length === 2) ? parseInt("20" + yStr) : parseInt(yStr);
+                                } else {
+                                    if (lastMonthIndex === 11 && m === 0) {
+                                        currentYearTracker++;
+                                        y = currentYearTracker;
+                                    }
                                 }
                             }
                             dObj = new Date(y, m, d);
@@ -1932,8 +2015,10 @@
                         }
                     }
                     
-                    const isRMS = rowLabel.includes("HAB") || rowLabel.includes("RMS") || rowLabel.includes("RN") || rowLabel.includes("OCUP") || rowLabel.includes("VENDIDAS") || rowLabel.includes("NOCHES") || rowLabel.includes("UNIDADES");
-                    const isREV = rowLabel.includes("PRO") || rowLabel.includes("VENTA") || rowLabel.includes("VALOR") || rowLabel.includes("TOTAL") || rowLabel.includes("INGRESO") || rowLabel.includes("VALORADA") || rowLabel.includes("COBRO") || rowLabel.includes("REVENUE");
+                    // Improved detection logic with more keywords including OTB
+                    const isRMS = rowLabel.includes("HAB") || rowLabel.includes("RMS") || rowLabel.includes("RN") || rowLabel.includes("OCUP") || rowLabel.includes("VENDIDAS") || rowLabel.includes("NOCHES") || rowLabel.includes("UNIDADES") || rowLabel.includes("ROOMS") || rowLabel.includes("ROOM") || rowLabel.includes("ESTANCIA") || rowLabel.includes("OTB") || rowLabel.includes("STAY");
+                    const isREV = rowLabel.includes("PRO") || rowLabel.includes("VENTA") || rowLabel.includes("VALOR") || rowLabel.includes("TOTAL") || rowLabel.includes("INGRESO") || rowLabel.includes("VALORADA") || rowLabel.includes("COBRO") || rowLabel.includes("REVENUE") || rowLabel.includes("FORECAST") || rowLabel.includes("VALORADO") || rowLabel.includes("PREVISION") || rowLabel.includes("OTB") || rowLabel.includes("INGRES") || rowLabel.includes("PROD") || 
+                                rowLabel.includes("PAX") || rowLabel.includes("DESAYUNO") || rowLabel.includes("ALMUERZO") || rowLabel.includes("CENA") || rowLabel.includes("SPA") || rowLabel.includes("VARIOS") || rowLabel.includes("BAR") || rowLabel.includes("CAFETERIA");
                     const isEV = rowLabel.includes("EVENTO") || rowLabel.includes("HITO") || rowLabel.includes("COMENTARIO") || rowLabel.includes("FESTIVO") || rowLabel.includes("OBSERVAC");
 
                     if (!isRMS && !isREV && !isEV) {

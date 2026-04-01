@@ -13,97 +13,69 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="js/firebase-config-env.js"></script>
     <script src="js/firebase-auth.js"></script>
 
     <style>
         :root {
-            --primary: #4f46e5;
-            --primary-light: #eef2ff;
+            --primary: #6366f1;
+            --primary-glow: rgba(99, 102, 241, 0.4);
             --ai-glow: #8b5cf6;
-            --bg-body: #f8fafc;
-            --bg-surface: #ffffff;
-            --text-main: #1e293b;
-            --text-muted: #64748b;
-            --border: #e2e8f0;
-            --radius: 16px;
+            --ai-glow-soft: rgba(139, 92, 246, 0.3);
+            --bg-deep: #0f172a;
+            --bg-surface: #1e293b;
+            --bg-glass: rgba(30, 41, 59, 0.7);
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --border: rgba(255, 255, 255, 0.1);
+            --radius-lg: 24px;
+            --shadow-premium: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
+            --transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         body {
             font-family: 'Outfit', sans-serif;
-            background: var(--bg-body);
+            background-color: var(--bg-deep);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(139, 92, 246, 0.1) 0px, transparent 50%);
             color: var(--text-main);
             margin: 0;
             padding: 0;
-            overflow-x: hidden;
+            min-height: 100vh;
         }
 
         /* TOP NAVIGATION */
         .top-nav {
-            background: #1e293b;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
             padding: 0 40px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             position: sticky;
             top: 0;
-            z-index: 1000;
+            z-index: 99999;
             height: 45px;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            border-bottom: 1px solid var(--border);
         }
 
-        .nav-links {
-            display: flex;
-            gap: 25px;
-            height: 100%;
-            align-items: center;
-        }
-
+        .nav-links { display: flex; gap: 25px; height: 100%; align-items: center; }
         .top-nav a {
-            color: #94a3b8;
+            color: var(--text-muted);
             text-decoration: none;
             font-size: 11px;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.8px;
+            letter-spacing: 1px;
+            height: 100%;
             display: flex;
             align-items: center;
-            gap: 6px;
-            transition: all 0.2s;
-            height: 100%;
+            transition: var(--transition);
             border-bottom: 2px solid transparent;
         }
-
-        .top-nav a:hover {
-            color: #ffffff;
-        }
-
-        .top-nav a.active {
-            color: #818cf8;
-            border-bottom: 2px solid #818cf8;
-        }
-
-        .nav-user {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            color: white;
-            font-size: 0.75rem;
-        }
-
-        .dot {
-            width: 8px;
-            height: 8px;
-            background: #10b981;
-            border-radius: 50%;
-        }
-
-        .logout-btn {
-            color: #ef4444;
-            cursor: pointer;
-            text-decoration: underline;
-            font-size: 0.7rem;
-            font-weight: 700;
-        }
+        .top-nav a:hover { color: white; }
+        .top-nav a.active { color: #818cf8; border-bottom: 2px solid #818cf8; }
 
         /* MAIN LAYOUT */
         .container {
@@ -115,25 +87,28 @@
         .ai-hero {
             display: flex;
             align-items: center;
-            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            background: var(--bg-glass);
             padding: 40px;
-            border-radius: var(--radius);
+            border-radius: var(--radius-lg);
             color: white;
             margin-bottom: 30px;
             position: relative;
             overflow: hidden;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            box-shadow: var(--shadow-premium);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
         }
 
         .ai-hero::after {
             content: '';
             position: absolute;
-            top: -50%;
-            right: -10%;
-            width: 500px;
-            height: 500px;
-            background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, transparent 70%);
+            top: -20%;
+            right: -5%;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.2) 0%, transparent 70%);
             z-index: 0;
+            pointer-events: none;
         }
 
         .ai-avatar {
@@ -191,11 +166,18 @@
         }
 
         .card {
-            background: var(--bg-surface);
-            border-radius: var(--radius);
-            padding: 25px;
+            background: var(--bg-glass);
+            border-radius: var(--radius-lg);
+            padding: 30px;
             border: 1px solid var(--border);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            backdrop-filter: blur(20px);
+            box-shadow: var(--shadow-premium);
+            transition: var(--transition);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(99, 102, 241, 0.3);
         }
 
         .card-title {

@@ -2,8 +2,11 @@
 // CapaSuite Firebase Auth & Sync
 // Este archivo maneja la conexión con la nube para sincronizar datos entre dispositivos
 
-const firebaseConfig = {
-    apiKey: "AIzaSyCBa1EEt-9wK7zHoz6c_ZSrB9ZsbX0qCtM",
+
+// Configuración de Firebase - Ahora se carga desde un archivo externo ignorado por git: firebase-config-env.js
+// Usamos una variable local con nombre distinto o simplemente accedemos a la global
+const _firebaseConfig = window.capasuite_firebase_config || {
+    apiKey: "TU_API_KEY_AQUI", // REEMPLAZAR EN js/firebase-config-env.js
     authDomain: "capasuite.firebaseapp.com",
     databaseURL: "https://capasuite-default-rtdb.europe-west1.firebasedatabase.app/",
     projectId: "capasuite",
@@ -14,7 +17,7 @@ const firebaseConfig = {
 
 // Inicializar Firebase
 if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
+    firebase.initializeApp(_firebaseConfig);
 }
 
 const cloudDb = firebase.database();
