@@ -1807,7 +1807,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 const compNames = (data.length > 0 && data[0].hotels) ? Object.keys(data[0].hotels) : [];
                 compNames.forEach(hN => {
                     if (hN === activeHotel) return;
-                    const tN = hN.toLowerCase().replace(/hotel|sercotel|villa|spa/g, '').replace(/\s+/g, ' ').trim();
+                const tN = hN.toLowerCase().replace(/hotel|sercotel|villa|spa/g, '').replace(/\s+/g, ' ').trim();
                     const kFound = dbKeys.find(k => k === hN) || dbKeys.find(k => {
                         const kl = k.toLowerCase();
                         return kl.includes(tN) || tN.includes(kl);
@@ -1824,6 +1824,12 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     const yearsToTry = [yrStr, yrShort, "2025", "25", "2026", "26", "2027", "27"];
 
                     // Sync Active Hotel
+                    const dbActiveKey = dbKeys.find(k => {
+                        const kLow = k.toLowerCase().replace(/hotel|sercotel|villa|spa/g, '').trim();
+                        const aLow = activeHotel.toLowerCase().replace(/hotel|sercotel|villa|spa/g, '').trim();
+                        return kLow.includes(aLow) || aLow.includes(kLow);
+                    });
+
                     if (dbActiveKey && pDb[dbActiveKey]) {
                         const hD = pDb[dbActiveKey];
                         let otb = null, prod = null;
@@ -1835,16 +1841,16 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         for (const y of yearsToTry) {
                             if (hD[y] && hD[y].daily?.[iso] !== undefined) { prod = hD[y].daily[iso]; break; }
                         }
+                        
+                        // Si encontramos OTB en DB, sobreescribimos
                         if (otb !== null) {
                             d.otbRooms = (typeof otb === 'number') ? otb : (otb.rooms || 0);
-                        } else {
-                            d.otbRooms = 0;
                         }
-                        if (prod !== null) d.occupancy = (typeof prod === 'number') ? prod : (prod.rooms || 0);
 
-                        // Historial de cambios (Pick-up) - Robust Year Search
+                        // Historial de cambios (Pick-up)
                         let prevRooms = null;
-                        d.otbChange = 0; // RESET before recalculating from DB
+                        d.otbChange = 0; // Reset por defecto
+                        
                         for (const y of yearsToTry) {
                             if (hD[y]?.otb_prev?.daily_otb?.[iso] !== undefined) {
                                 const prevVal = hD[y].otb_prev.daily_otb[iso];
@@ -1852,55 +1858,89 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                                 break;
                             }
                         }
+                        
                         if (prevRooms !== null) {
                             d.otbChange = d.otbRooms - prevRooms;
+                        }
+                        
+                        // Debug log para el primer día del mes para ver si estamos emparejando bien
+                        if (iso.endsWith("-01")) {
+                            console.log(`[Sync] ${iso} | Hotel: ${dbActiveKey} | OTB: ${d.otbRooms} | Prev: ${prevRooms} | Diff: ${d.otbChange}`);
                         }
                     }
 
                     // Sync Competitors
-                    Object.keys(hotelKeyMap).forEach(hN => {
+                    Object.keys(hotelKeyMap || {}).forEach(hN => {
                         const dbK = hotelKeyMap[hN];
-                        const hD = pDb[dbK];
-                        for (const y of yearsToTry) {
-                            if (hD[y] && hD[y].daily?.[iso] !== undefined) {
-                                const p = hD[y].daily[iso];
-                                d.hotels[hN].occupancy = (typeof p === 'number') ? p : (p.rooms || 0);
-                                break;
+                        if (dbK && pDb[dbK]) {
+                            const hD = pDb[dbK];
+                            for (const y of yearsToTry) {
+                                if (hD[y] && hD[y].daily?.[iso] !== undefined) {
+                                    const p = hD[y].daily[iso];
+                                    d.hotels[hN].occupancy = (typeof p === 'number') ? p : (p.rooms || 0);
+                                    break;
+                                }
                             }
                         }
                     });
-
-                    // Pick-up
-                    if (prevMapLite[iso] && prevMapLite[iso]._otb !== undefined) {
-                        const pO = prevMapLite[iso]._otb;
-                        const cO = d.otbRooms || 0;
-                        if (cO !== pO) d.otbChange = cO - pO;
-                    }
                 });
+
+                // RE-CALC KPIs
+                recalcMarketAverages(data);
+                renderKPIs(data);
+                renderChart(data);
+                renderTable(data);
+                
+                // DIAGNOSTIC BAR
+                const otbCount = data.filter(d => d.hasOtbData).length;
+                let statusHtml = `<span>${data.length} días analizados</span>`;
+                statusHtml += `<span onclick="diagnoseAllData()" style="font-size:0.6rem; color:#94a3b8; cursor:pointer; margin-left:10px; text-decoration:underline;">[Debug]</span>`;
+                document.getElementById('record-count').innerHTML = statusHtml;
+
             } catch (e) {
-                console.error("Sync error:", e);
+                console.error("renderAll Error:", e);
+                renderTable(processedData);
             }
+        }
 
-            if (selectedMonth !== 'all') {
-                data = processedData.filter(d => d.month === selectedMonth);
+        function diagnoseAllData() {
+            const dbRaw = CapaStorage.getItem('hotel_manager_db_v2');
+            const pDb = dbRaw ? JSON.parse(dbRaw) : {};
+            const active = document.getElementById('hotelSelector').value;
+            
+            console.log("--- DIAGNÓSTICO DE DATOS ---");
+            console.log("Hotel Seleccionado (UI):", active);
+            console.log("Hoteles en DB:", Object.keys(pDb));
+            
+            const match = Object.keys(pDb).find(k => {
+                const kLow = k.toLowerCase().replace(/hotel|sercotel|villa|spa/g, '').trim();
+                const aLow = active.toLowerCase().replace(/hotel|sercotel|villa|spa/g, '').trim();
+                return kLow.includes(aLow) || aLow.includes(kLow);
+            });
+            console.log("Match encontrado en DB:", match || "NINGUNO");
+            
+            if (processedData && processedData.length > 0) {
+                const sample = processedData[0];
+                console.log("Ejemplo de fecha parseada:", sample.dateISO);
+                if (match) {
+                    const yr = sample.dateISO.split('-')[0];
+                    console.log(`Buscando datos históricos para ${sample.dateISO} en año ${yr}...`);
+                    const yrData = pDb[match][yr] || pDb[match][yr.slice(-2)];
+                    if (yrData) {
+                        console.log("Datos de año encontrados:", Object.keys(yrData));
+                        if (yrData.otb_prev) {
+                            const val = yrData.otb_prev.daily_otb?.[sample.dateISO];
+                            console.log(`Valor en otb_prev para ${sample.dateISO}:`, val !== undefined ? val : "NO EXISTE");
+                        } else {
+                            console.log("NO hay otb_prev en este año.");
+                        }
+                    } else {
+                        console.log("NO hay datos para este año en el hotel.");
+                    }
+                }
             }
-
-            // Diagnostic Counter
-            const otbCount = data.filter(d => d.hasOtbData).length;
-            const occCount = data.filter(d => d.hasProdData).length;
-            let statusHtml = "";
-            const hasGoodData = otbCount > (data.length / 2);
-
-            if (hasGoodData) {
-                statusHtml = `<span style="color:#10b981; font-weight:bold; margin-left:5px;">(OK: ${otbCount} Previsión / ${occCount} Prod.)</span>`;
-            } else {
-                statusHtml = `<button onclick="diagnoseAllData()" style="background:#ef4444; color:white; border:none; padding:4px 10px; border-radius:6px; font-weight:bold; cursor:pointer; margin-left:10px; font-size:0.75rem; box-shadow:0 2px 8px rgba(239,68,68,0.3);">⚠️ REVISAR OCUPACIÓN (${otbCount}/${data.length})</button>`;
-            }
-
-            // Always add a small debug link
-            statusHtml += `<span onclick="diagnoseAllData()" style="font-size:0.6rem; color:#94a3b8; cursor:pointer; margin-left:10px; text-decoration:underline;">[Debug]</span>`;
-
-            document.getElementById('record-count').innerHTML = `${data.length} días analizados ${statusHtml}`;
+            alert("Diagnóstico enviado a la consola (F12). Revisa los logs.");
+        }
 
             // Recalculate dynamic market average based on active configuration
             recalcMarketAverages(data);
