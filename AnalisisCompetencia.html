@@ -1844,6 +1844,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
                         // Historial de cambios (Pick-up) - Robust Year Search
                         let prevRooms = null;
+                        d.otbChange = 0; // RESET before recalculating from DB
                         for (const y of yearsToTry) {
                             if (hD[y]?.otb_prev?.daily_otb?.[iso] !== undefined) {
                                 const prevVal = hD[y].otb_prev.daily_otb[iso];
@@ -1851,7 +1852,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                                 break;
                             }
                         }
-                        if (prevRooms !== null && d.otbRooms !== prevRooms) {
+                        if (prevRooms !== null) {
                             d.otbChange = d.otbRooms - prevRooms;
                         }
                     }
