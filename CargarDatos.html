@@ -1866,7 +1866,15 @@
                 dbYear.lastUpdate = new Date().toLocaleDateString('es-ES');
             } else if (type === 'Otb' || type === 'Prevision') {
                 // Parser for "Listado Previsiones Valoradas"
-                let detectedYear = reportYear;
+                // 1. Detect Year and Dates from headers
+                let monthCols = {};
+                let dailyCols = {}; // { colIndex: dateISO }
+                const SHORT_MONTHS_MAP = { "ENE": 0, "JAN": 0, "FEB": 1, "MAR": 2, "ABR": 3, "APR": 3, "MAY": 4, "JUN": 5, "JUL": 6, "AGO": 7, "AUG": 7, "SEP": 8, "OCT": 9, "NOV": 10, "DIC": 11, "DEC": 11 };
+
+                const allYearsInFile = (fileName.match(/20\d{2}/g) || [reportYear]).map(String).sort();
+                let detectedYear = allYearsInFile[allYearsInFile.length - 1] || String(reportYear);
+                const startYearFile = parseInt(allYearsInFile[0] || reportYear);
+                
                 if (!db[hotel][detectedYear]) db[hotel][detectedYear] = { service: {}, segment: {}, otb: { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) }, lastUpdate: "" };
                 const dbYear = db[hotel][detectedYear];
                 if (!dbYear.otb) dbYear.otb = { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) };
@@ -1875,14 +1883,6 @@
                 dbYear.otb.revenue.fill(0);
                 dbYear.otb.rooms.fill(0);
                 dbYear.otb.breakdown = {}; // Clear previous breakdown
-
-                // 1. Detect Year and Dates from headers
-                let monthCols = {};
-                let dailyCols = {}; // { colIndex: dateISO }
-                const SHORT_MONTHS_MAP = { "ENE": 0, "JAN": 0, "FEB": 1, "MAR": 2, "ABR": 3, "APR": 3, "MAY": 4, "JUN": 5, "JUL": 6, "AGO": 7, "AUG": 7, "SEP": 8, "OCT": 9, "NOV": 10, "DIC": 11, "DEC": 11 };
-
-                const allYearsInFile = (fileName.match(/20\d{2}/g) || [reportYear]).map(Number).sort((a, b) => a - b);
-                const startYearFile = allYearsInFile[0] || parseInt(reportYear);
 
                 let headerRowIndex = -1;
                 for (let r = 0; r < Math.min(data.length, 60); r++) {
@@ -2015,10 +2015,18 @@
                         }
                     }
                     
-                    // Improved detection logic with more keywords including OTB
-                    const isRMS = rowLabel.includes("HAB") || rowLabel.includes("RMS") || rowLabel.includes("RN") || rowLabel.includes("OCUP") || rowLabel.includes("VENDIDAS") || rowLabel.includes("NOCHES") || rowLabel.includes("UNIDADES") || rowLabel.includes("ROOMS") || rowLabel.includes("ROOM") || rowLabel.includes("ESTANCIA") || rowLabel.includes("OTB") || rowLabel.includes("STAY");
-                    const isREV = rowLabel.includes("PRO") || rowLabel.includes("VENTA") || rowLabel.includes("VALOR") || rowLabel.includes("TOTAL") || rowLabel.includes("INGRESO") || rowLabel.includes("VALORADA") || rowLabel.includes("COBRO") || rowLabel.includes("REVENUE") || rowLabel.includes("FORECAST") || rowLabel.includes("VALORADO") || rowLabel.includes("PREVISION") || rowLabel.includes("OTB") || rowLabel.includes("INGRES") || rowLabel.includes("PROD") || 
-                                rowLabel.includes("PAX") || rowLabel.includes("DESAYUNO") || rowLabel.includes("ALMUERZO") || rowLabel.includes("CENA") || rowLabel.includes("SPA") || rowLabel.includes("VARIOS") || rowLabel.includes("BAR") || rowLabel.includes("CAFETERIA");
+                    // Improved detection logic: Prioritize REVENUE keywords to avoid counting "Room Revenue" as "Rooms"
+                    const isREV = rowLabel.includes("PRO") || rowLabel.includes("VENTA") || rowLabel.includes("VALOR") || rowLabel.includes("TOTAL") || 
+                                rowLabel.includes("INGRESO") || rowLabel.includes("HABITACION") || rowLabel.includes("VALORADA") || rowLabel.includes("COBRO") || 
+                                rowLabel.includes("REVENUE") || rowLabel.includes("FORECAST") || rowLabel.includes("VALORADO") || rowLabel.includes("PREVISION") || 
+                                rowLabel.includes("OTB") || rowLabel.includes("INGRES") || rowLabel.includes("PROD") || 
+                                rowLabel.includes("PAX") || rowLabel.includes("DESAYUNO") || rowLabel.includes("ALMUERZO") || rowLabel.includes("CENA") || 
+                                rowLabel.includes("SPA") || rowLabel.includes("VARIOS") || rowLabel.includes("BAR") || rowLabel.includes("CAFETERIA");
+                    
+                    const isRMS = !isREV && (rowLabel.includes("HAB") || rowLabel.includes("RMS") || rowLabel.includes("RN") || rowLabel.includes("OCUP") || 
+                                rowLabel.includes("VENDIDAS") || rowLabel.includes("NOCHES") || rowLabel.includes("UNIDADES") || rowLabel.includes("ROOMS") || 
+                                rowLabel.includes("ROOM") || rowLabel.includes("ESTANCIA") || rowLabel.includes("OTB") || rowLabel.includes("STAY"));
+                    
                     const isEV = rowLabel.includes("EVENTO") || rowLabel.includes("HITO") || rowLabel.includes("COMENTARIO") || rowLabel.includes("FESTIVO") || rowLabel.includes("OBSERVAC");
 
                     if (!isRMS && !isREV && !isEV) {
@@ -2058,9 +2066,10 @@
                             if (!targetYear.daily_otb[iso]) targetYear.daily_otb[iso] = { rooms: 0, revenue: 0 };
                             
                             if (isRMS) {
-                                targetYear.daily_otb[iso].rooms += num;
-                                if (targetYear.otb && targetYear.otb.rooms) targetYear.otb.rooms[m] += num;
-                                foundRMS += num;
+                                const roundedRooms = Math.round(num); // Force integer rooms
+                                targetYear.daily_otb[iso].rooms += roundedRooms;
+                                if (targetYear.otb && targetYear.otb.rooms) targetYear.otb.rooms[m] += roundedRooms;
+                                foundRMS += roundedRooms;
                             } else if (isREV) {
                                 targetYear.daily_otb[iso].revenue += num;
                                 if (targetYear.otb && targetYear.otb.revenue) targetYear.otb.revenue[m] += num;
@@ -2105,14 +2114,18 @@
                 // SAVE FIRST, THEN FEEDBACK
                 saveData();
 
+                // RESOLVE SUMMARY YEAR: Use the actually detected year for the final summary message
+                const summaryYear = String(detectedYear);
+                const targetDbYear = db[hotel][summaryYear] || dbYear;
+
                 // Show feedback to user
-                const totalRMS = dbYear.otb.rooms.reduce((a, b) => a + b, 0);
-                const totalREV = dbYear.otb.revenue.reduce((a, b) => a + b, 0);
+                const totalRMS = targetDbYear.otb.rooms.reduce((a, b) => a + b, 0);
+                const totalREV = targetDbYear.otb.revenue.reduce((a, b) => a + b, 0);
                 // Only count days that actually have some data
-                const daysCount = Object.keys(dbYear.daily_otb || {}).filter(k => (dbYear.daily_otb[k].rooms > 0 || dbYear.daily_otb[k].revenue > 0)).length;
+                const daysCount = Object.keys(targetDbYear.daily_otb || {}).filter(k => (targetDbYear.daily_otb[k].rooms > 0 || targetDbYear.daily_otb[k].revenue > 0)).length;
                 const fmtEuro = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' });
 
-                let msg = `✅ Datos procesados para ${detectedYear || 'año desconocido'}:<br>`;
+                let msg = `✅ Datos procesados para ${summaryYear}:<br>`;
                 msg += `- Días detectados: <b>${daysCount}</b><br>`;
                 msg += `- Total Habitaciones: <b>${totalRMS}</b><br>`;
                 msg += `- Total Revenue: <b>${fmtEuro.format(totalREV)}</b><br>`;

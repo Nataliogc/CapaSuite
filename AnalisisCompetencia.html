@@ -38,6 +38,18 @@
             --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
+        [data-theme="light"] {
+            --bg-deep: #f8fafc;
+            --bg-surface: #ffffff;
+            --bg-glass: rgba(255, 255, 255, 0.8);
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --primary: #4f46e5;
+            --primary-glow: rgba(79, 70, 229, 0.2);
+            --shadow-premium: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
             background-color: var(--bg-deep);
@@ -99,7 +111,8 @@
             outline: none;
         }
 
-        /* TOP NAVIGATION */        .top-nav {
+        /* TOP NAVIGATION */
+        .top-nav {
             background: rgba(15, 23, 42, 0.8);
             backdrop-filter: blur(12px);
             padding: 0 40px;
@@ -111,6 +124,12 @@
             z-index: 99999;
             height: 45px;
             border-bottom: 1px solid var(--border);
+            width: 100%;
+        }
+
+        [data-theme="light"] .top-nav {
+            background: rgba(255, 255, 255, 0.8);
+            border-bottom: 1px solid #e2e8f0;
         }
 
         .nav-links { display: flex; gap: 25px; height: 100%; align-items: center; }
@@ -127,17 +146,29 @@
             transition: var(--transition);
             border-bottom: 2px solid transparent;
         }
-        .top-nav a:hover { color: white; }
-        .top-nav a.active { color: #818cf8; border-bottom: 2px solid #818cf8; }
-
+        .top-nav a:hover { color: var(--text-main); }
+        .top-nav a.active { color: var(--primary); border-bottom: 2px solid var(--primary); }
 
         .nav-user {
             display: flex;
             align-items: center;
             gap: 15px;
-            color: white;
+            color: var(--text-main);
             font-size: 0.75rem;
         }
+
+        .theme-toggle {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+        .theme-toggle:hover { transform: scale(1.1); }
 
         .nav-user .user-email {
             font-weight: 500;
@@ -405,9 +436,9 @@
         }
 
         thead th {
-            background: #f1f5f9;
-            color: var(--text-light);
-            font-weight: 600;
+            background: var(--bg-surface);
+            color: var(--text-muted);
+            font-weight: 700;
             font-size: 0.65rem;
             /* Smaller font */
             text-transform: uppercase;
@@ -446,7 +477,7 @@
             left: 0;
             z-index: 102;
             /* Higher than normal headers */
-            background: #f1f5f9;
+            background: var(--bg-surface);
             border-right: 1px solid var(--border);
             width: 95px;
             min-width: 95px;
@@ -481,11 +512,11 @@
         }
 
         tbody tr:hover td {
-            background-color: #f8fafc;
+            background-color: var(--bg-deep);
         }
 
         tbody tr:hover td:first-child {
-            background-color: #f8fafc;
+            background-color: var(--bg-deep);
         }
 
         /* BADGES & PILLS */
@@ -667,11 +698,15 @@
             <a href="CargarDatos.html">⚙️ Config</a>
         </div>
         <div class="nav-user">
+            <button class="theme-toggle" onclick="window.toggleTheme()" title="Cambiar tema">
+                <span id="theme-icon">🌙</span>
+            </button>
             <span class="dot"></span>
             <span class="user-email" id="userEmailNav">Cargando...</span>
-            <span class="logout-btn" onclick="auth.signOut()">Cerrar Sesión</span>
+            <span class="logout-btn" style="color:#ef4444; border-bottom:1px solid #ef4444; cursor:pointer;" onclick="auth.signOut()">Cerrar Sesión</span>
         </div>
     </nav>
+    <script src="js/theme-manager.js"></script>
 
     <div class="container" style="padding: 30px;">
 
@@ -1388,25 +1423,23 @@
                 }
 
                 const dateInfo = parseDate(currentMonth, dNum, dName);
+                const iso = dateInfo.iso;
+                const yr = iso ? iso.split('-')[0] : "2026";
 
                 // Fallback Occupancy Sync
-                if (occ === 0 && dateInfo.iso && dateInfo.iso !== "INV-DATE") {
+                if (occ === 0 && iso && iso !== "INV-DATE") {
                     try {
                         const pDbRaw = CapaStorage.getItem('hotel_manager_db_v2');
                         if (pDbRaw) {
                             const pDb = (typeof pDbRaw === 'string') ? JSON.parse(pDbRaw) : pDbRaw;
-                            // Search Logic Simplified
-                            // 1. Try EXACT Active Hotel + Year/Key
-                            if (pDb[activeHotel] && pDb[activeHotel][yr] && pDb[activeHotel][yr].daily_otb && pDb[activeHotel][yr].daily_otb[iso]) {
-                                let dVal = pDb[activeHotel][yr].daily_otb[iso];
-                                occ = (typeof dVal === 'object') ? (dVal.rooms || 0) : dVal;
-                            }
-                            // 2. Legacy Fallback (Actual Production from 'daily' if OTB is empty)
-                            else if (pDb[activeHotel] && pDb[activeHotel][yr] && pDb[activeHotel][yr].daily && pDb[activeHotel][yr].daily[iso]) {
-                                occ = pDb[activeHotel][yr].daily[iso];
-                            }
-                            if (occ > 0) {
-                                dateInfo.html = parseDate(currentMonth, dNum, dName, occ).html;
+                            if (pDb[activeHotel] && pDb[activeHotel][yr]) {
+                                const dbYear = pDb[activeHotel][yr];
+                                if (dbYear.daily_otb && dbYear.daily_otb[iso]) {
+                                    let dVal = dbYear.daily_otb[iso];
+                                    occ = (typeof dVal === 'object') ? (dVal.rooms || 0) : dVal;
+                                } else if (dbYear.daily && dbYear.daily[iso]) {
+                                    occ = dbYear.daily[iso];
+                                }
                             }
                         }
                     } catch (e) { }
@@ -1420,8 +1453,9 @@
                     month: dateInfo.month,
                     hotels: {},
                     compAvg: 0,
-                    dateISO: dateInfo.iso,
+                    dateISO: iso,
                     occupancy: occ,
+                    otbRooms: occ, // Ensure OTB data is available for pick-up logic
                     dateMeta: {
                         dNum,
                         dShort: dateInfo.dShort,
@@ -1553,11 +1587,12 @@
                 }
 
                 // OTB PICK-UP DETECTION (Rooms change)
-                if (prevMap[dayObj.dateISO] && prevMap[dayObj.dateISO]._otb !== undefined) {
-                    const prevOtb = prevMap[dayObj.dateISO]._otb;
-                    const currOtb = dayObj.otbRooms || 0;
-                    if (currOtb !== prevOtb) {
-                        dayObj.otbChange = currOtb - prevOtb;
+                if (prevMap[dayObj.dateISO]) {
+                    const prevHotelData = prevMap[dayObj.dateISO][activeHotel];
+                    const prevRooms = (prevHotelData && prevHotelData.otbRooms !== undefined) ? prevHotelData.otbRooms : 0;
+                    const currRooms = dayObj.otbRooms || 0;
+                    if (currRooms !== prevRooms && prevHotelData) {
+                        dayObj.otbChange = currRooms - prevRooms;
                     }
                 }
 
@@ -1681,30 +1716,31 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             let metricsHtml = '';
             if (otb > 0 || d.otbChange) {
                 const changePill = d.otbChange ? `
-                    <span style="font-size:0.6rem; font-weight:800; color:${d.otbChange > 0 ? '#10b981' : '#ef4444'}; background:${d.otbChange > 0 ? '#ecfdf5' : '#fef2f2'}; border:1px solid ${d.otbChange > 0 ? '#10b981' : '#f87171'}; padding:0px 3px; border-radius:3px; line-height:1;">
+                    <span style="font-size:0.6rem; font-weight:800; color:${d.otbChange > 0 ? '#10b981' : '#ef4444'}; background:${d.otbChange > 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)'}; border:1px solid ${d.otbChange > 0 ? '#10b981' : '#f87171'}; padding:0px 3px; border-radius:3px; line-height:1;">
                         ${d.otbChange > 0 ? '+' : ''}${d.otbChange}
                     </span>
                 ` : '';
                 
                 metricsHtml = `
                     <div style="display:flex; align-items:center; gap:4px; margin-top:3px;">
-                        <span style="font-size: 0.65rem; color: #8b5cf6; font-weight: 800; display:flex; align-items:center; gap:2px;">
-                            <span style="font-size:0.55rem; opacity:0.7;">OTB</span>${otb}
-                        </span>
+                        <div style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); padding: 1px 4px; border-radius: 4px; display: flex; align-items: center; gap: 3px;">
+                            <span style="font-size:0.5rem; font-weight:800; color:#8b5cf6; opacity:0.8;">OTB</span>
+                            <span style="font-size: 0.7rem; color: #8b5cf6; font-weight: 800;">${otb}</span>
+                        </div>
                         ${changePill}
                     </div>
                 `;
             }
 
-            const occValFix = (occ > 0 && Number(occ) !== Number(otb)) ? `<div style="font-size: 0.65rem; color: #4f46e5; font-weight: 700; margin-top: 2px;">Hab: ${occ}</div>` : '';
+            const occValFix = (occ > 0 && Number(occ) !== Number(otb)) ? `<div style="font-size: 0.65rem; color: var(--primary); font-weight: 700; margin-top: 2px;">Hab: ${occ}</div>` : '';
 
             const html = `
                 <div style="text-align:left; padding-left:4px;">
                     <div style="display:flex; align-items:center; gap:8px; margin-bottom:1px;">
-                        <span style="font-size:1.3rem; font-weight:800; color:#1e293b; line-height:1;">${dayNum}</span>
+                        <span style="font-size:1.3rem; font-weight:800; color:var(--text-main); line-height:1;">${dayNum}</span>
                         <div style="display:flex; flex-direction:column; line-height:1.1;">
-                            <span style="font-size:0.75rem; font-weight:600; color:#334155;">${dayName}</span>
-                            <span style="font-size:0.6rem; color:#64748b;">${monthName}</span>
+                            <span style="font-size:0.75rem; font-weight:600; color:var(--text-main);">${dayName}</span>
+                            <span style="font-size:0.6rem; color:var(--text-muted);">${monthName}</span>
                         </div>
                     </div>
                     ${occValFix}
@@ -1737,7 +1773,9 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
             // NEW: Robust & Optimized Occupancy Sync
             try {
-                const pDb = CapaStorage.getItem('hotel_manager_db_v2') || {};
+                const dbRaw = CapaStorage.getItem('hotel_manager_db_v2');
+                if (!dbRaw) return;
+                const pDb = (typeof dbRaw === 'string') ? JSON.parse(dbRaw) : dbRaw;
                 const dbKeys = Object.keys(pDb);
                 
                 // 1. Fuzzy match active hotel
@@ -1782,6 +1820,13 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         }
                         if (otb !== null) d.otbRooms = (typeof otb === 'number') ? otb : (otb.rooms || 0);
                         if (prod !== null) d.occupancy = (typeof prod === 'number') ? prod : (prod.rooms || 0);
+
+                        // Historial de cambios (Pick-up)
+                        if (hD[yrStr]?.otb_prev?.daily_otb?.[iso] !== undefined) {
+                            const prevVal = hD[yrStr].otb_prev.daily_otb[iso];
+                            const prevRooms = (typeof prevVal === 'object') ? (prevVal.rooms || 0) : prevVal;
+                            if (d.otbRooms !== prevRooms) d.otbChange = d.otbRooms - prevRooms;
+                        }
                     }
 
                     // Sync Competitors
@@ -2583,7 +2628,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             report += `- Hotel Activo (UI): ${activeHotel}\n`;
             report += `- Limpieza para búsqueda: "${activeClean}"\n`;
             report += `- Clave encontrada en DB: ${dbActiveKey || 'NINGUNA'}\n`;
-            report += `- Total Hoteles en DB: ${dbKeys.length}\n`;
+            report += `- Total Hoteles en DB: ${dbKeys.length} (${dbKeys.join(', ')})\n`;
             
             if (dbActiveKey && pDb[dbActiveKey]) {
                 const years = Object.keys(pDb[dbActiveKey]).filter(y => y.match(/^\d{4}$/));

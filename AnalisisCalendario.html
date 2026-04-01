@@ -39,6 +39,17 @@
             --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
+        [data-theme="light"] {
+            --bg-deep: #f8fafc;
+            --bg-surface: #ffffff;
+            --bg-glass: rgba(255, 255, 255, 0.8);
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --primary: #4f46e5;
+            --shadow-premium: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
         * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
 
         body {
@@ -99,10 +110,7 @@
             font-size: 2.2rem;
             font-weight: 800;
             margin: 0;
-            background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
+            color: var(--text-main);
         }
 
         /* CONTROLS */
@@ -213,6 +221,15 @@
             margin-bottom: 2px;
         }
         
+        .day-price {
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--text-main);
+            text-align: center;
+            margin: 1px 0;
+            white-space: nowrap;
+        }
+        
         /* OTB BADGE (Floating Card Style) */
         .otb-badge {
             display: flex;
@@ -287,23 +304,24 @@
         #tooltip {
             position: fixed;
             z-index: 9999;
-            background: #ffffff;
+            background: var(--bg-surface);
             border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
             padding: 15px;
             pointer-events: none;
             display: none;
             min-width: 280px;
-            border: 1px solid #e2e8f0;
-            color: #334155;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            backdrop-filter: blur(10px);
         }
-        .tt-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px; margin-bottom: 10px; }
-        .tt-date { font-weight: 800; display: flex; align-items: center; gap: 4px; }
-        .tt-mkt { font-size: 0.7rem; color: #94a3b8; font-weight: 600; }
+        .tt-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 6px; margin-bottom: 10px; }
+        .tt-date { font-weight: 800; display: flex; align-items: center; gap: 4px; color: var(--text-main); }
+        .tt-mkt { font-size: 0.7rem; color: var(--text-muted); font-weight: 600; }
         .tt-main-hotel { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .tt-hotel-info { font-weight: 800; color: #4f46e5; }
-        .tt-comp-section { font-size: 0.75rem; border-top: 1px solid #f1f5f9; padding-top: 8px; }
-        .tt-comp-row { display: flex; justify-content: space-between; margin-bottom: 3px; }
+        .tt-hotel-info { font-weight: 800; color: var(--primary); }
+        .tt-comp-section { font-size: 0.75rem; border-top: 1px solid var(--border); padding-top: 8px; }
+        .tt-comp-row { display: flex; justify-content: space-between; margin-bottom: 3px; color: var(--text-muted); }
         .tt-sold { color: #ef4444; font-weight: 800; }
 
         /* SYNC INDICATOR */
@@ -506,15 +524,15 @@
 
                             if (yearData.daily_otb && yearData.daily_otb[iso]) {
                                 const v = yearData.daily_otb[iso];
-                                otb = (typeof v === 'object') ? (v.rooms || 0) : v;
+                                otb = Math.round((typeof v === 'object') ? (v.rooms || 0) : v);
                             }
                             if (yearData.daily && yearData.daily[iso]) {
-                                occ = yearData.daily[iso].rooms || yearData.daily[iso];
+                                occ = Math.round(yearData.daily[iso].rooms || yearData.daily[iso]);
                             }
                             // SNAPSHOT FOR PICK-UP
                             if (yearData.otb_prev && yearData.otb_prev.daily_otb && yearData.otb_prev.daily_otb[iso]) {
                                 const vPrev = yearData.otb_prev.daily_otb[iso];
-                                otb_prev = (typeof vPrev === 'object') ? (vPrev.rooms || 0) : vPrev;
+                                otb_prev = Math.round((typeof vPrev === 'object') ? (vPrev.rooms || 0) : vPrev);
                             }
 
                             revenueData[iso].occupancyData[hName] = { otb, occ, otb_prev };
@@ -632,8 +650,11 @@
                         `;
                     }
 
+                    const priceText = heatmapVal > 0 ? (metric === 'price' ? `${Math.round(heatmapVal)}€` : `${Math.round(occPct)}%`) : "";
+                    
                     cell.innerHTML = `
                         <div class="day-num">${d}</div>
+                        <div class="day-price">${priceText}</div>
                         ${badgeHtml}
                     `;
 
@@ -655,7 +676,7 @@
             const dateStr = new Date(iso).toLocaleDateString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');
             const mktPrice = dData.compAvg || '--';
             const hotelPrice = (dData.hotels && dData.hotels[currentHotel]) ? (dData.hotels[currentHotel].price || dData.hotels[currentHotel]) : 0;
-            const roomsSold = (hData.occ > 0) ? hData.occ : hData.otb;
+            const roomsSold = (hData.occ > 0) ? hData.occ : (hData.otb || 0);
             const occPct = Math.round((roomsSold / cap) * 100);
 
             let html = `
@@ -666,12 +687,15 @@
                 <div class="tt-main-hotel">
                     <div class="tt-hotel-info">🏢 ${currentHotel}</div>
                     <div class="tt-price-info">
-                        <span class="tt-price">${hotelPrice > 0 ? hotelPrice + '€' : '--€'}</span>
-                        <span class="tt-occ">Ocup: ${occPct}%</span>
+                        <span class="tt-price" style="font-weight:800; font-size:1.1rem; color:var(--text-main);">${hotelPrice > 0 ? hotelPrice + '€' : '--€'}</span>
+                        <div style="font-size:0.7rem; color:var(--text-muted); text-align:right;">
+                            Ocup: <b style="color:var(--text-main); font-size:0.8rem;">${occPct}%</b><br/>
+                            <span style="font-size:0.6rem;">(${roomsSold} / ${cap} Hab)</span>
+                        </div>
                     </div>
                 </div>
                 <div class="tt-comp-section">
-                    <span class="tt-comp-title">Competencia</span>
+                    <span class="tt-comp-title" style="display:block; margin-bottom:5px; font-weight:700; color:var(--text-muted);">MERCADO</span>
             `;
 
             if (dData.hotels) {

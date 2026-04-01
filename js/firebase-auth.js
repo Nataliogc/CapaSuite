@@ -1,7 +1,5 @@
-
 // CapaSuite Firebase Auth & Sync
 // Este archivo maneja la conexión con la nube para sincronizar datos entre dispositivos
-
 
 // Configuración de Firebase - Fallback para la versión en GitHub Pages
 // NOTA: Es MUY importante restringir esta clave por HTTP Referrer en la consola de Google Cloud (GCP)
@@ -20,8 +18,12 @@ if (!firebase.apps.length) {
     firebase.initializeApp(_firebaseConfig);
 }
 
-const cloudDb = firebase.database();
-const cloudAuth = firebase.auth();
+// Exportar globalmente para que todas las páginas lo vean como 'auth' y 'db'
+window.db = firebase.database();
+window.auth = firebase.auth();
+
+const cloudDb = window.db;
+const cloudAuth = window.auth;
 
 const SYNC_DB_KEY = "hotel_manager_db_v2";
 const SYNC_CONFIG_KEY = "upload_config_db_v2";
