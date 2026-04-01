@@ -1835,7 +1835,11 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         for (const y of yearsToTry) {
                             if (hD[y] && hD[y].daily?.[iso] !== undefined) { prod = hD[y].daily[iso]; break; }
                         }
-                        if (otb !== null) d.otbRooms = (typeof otb === 'number') ? otb : (otb.rooms || 0);
+                        if (otb !== null) {
+                            d.otbRooms = (typeof otb === 'number') ? otb : (otb.rooms || 0);
+                        } else {
+                            d.otbRooms = 0;
+                        }
                         if (prod !== null) d.occupancy = (typeof prod === 'number') ? prod : (prod.rooms || 0);
 
                         // Historial de cambios (Pick-up) - Robust Year Search
