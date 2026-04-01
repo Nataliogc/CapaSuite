@@ -1903,52 +1903,10 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             }
         }
 
-        function diagnoseAllData() {
-            const dbRaw = CapaStorage.getItem('hotel_manager_db_v2');
-            const pDb = dbRaw ? JSON.parse(dbRaw) : {};
-            const active = document.getElementById('hotelSelector').value;
-            
-            console.log("--- DIAGNÓSTICO DE DATOS ---");
-            console.log("Hotel Seleccionado (UI):", active);
-            console.log("Hoteles en DB:", Object.keys(pDb));
-            
-            const match = Object.keys(pDb).find(k => {
-                const kLow = k.toLowerCase().replace(/hotel|sercotel|villa|spa/g, '').trim();
-                const aLow = active.toLowerCase().replace(/hotel|sercotel|villa|spa/g, '').trim();
-                return kLow.includes(aLow) || aLow.includes(kLow);
-            });
-            console.log("Match encontrado en DB:", match || "NINGUNO");
-            
-            if (processedData && processedData.length > 0) {
-                const sample = processedData[0];
-                console.log("Ejemplo de fecha parseada:", sample.dateISO);
-                if (match) {
-                    const yr = sample.dateISO.split('-')[0];
-                    console.log(`Buscando datos históricos para ${sample.dateISO} en año ${yr}...`);
-                    const yrData = pDb[match][yr] || pDb[match][yr.slice(-2)];
-                    if (yrData) {
-                        console.log("Datos de año encontrados:", Object.keys(yrData));
-                        if (yrData.otb_prev) {
-                            const val = yrData.otb_prev.daily_otb?.[sample.dateISO];
-                            console.log(`Valor en otb_prev para ${sample.dateISO}:`, val !== undefined ? val : "NO EXISTE");
-                        } else {
-                            console.log("NO hay otb_prev en este año.");
-                        }
-                    } else {
-                        console.log("NO hay datos para este año en el hotel.");
-                    }
-                }
-            }
-            alert("Diagnóstico enviado a la consola (F12). Revisa los logs.");
-        }
 
-            // Recalculate dynamic market average based on active configuration
-            recalcMarketAverages(data);
 
-            renderKPIs(data);
-            renderChart(data);
-            renderTable(data);
-        }
+
+
 
         function renderKPIs(data) {
             const container = document.getElementById('insights-container');
