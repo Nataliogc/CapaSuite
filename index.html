@@ -17,7 +17,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="js/firebase-config-env.js"></script>
     <script src="js/firebase-auth.js"></script>
 
     <style>
@@ -603,15 +602,19 @@
         <div class="login-card">
             <img src="Imagen/logo, CapaSuite.png" alt="CapaSuite" style="height: 50px; margin-bottom: 20px;">
             <h2>Acceso a CapaSuite</h2>
-            <div class="login-field">
-                <label>Usuario o Email</label>
-                <input type="text" id="email" value="comunicaciones@hotelguadiana.es" placeholder="Admin o usuario@empresa.com">
-            </div>
-            <div class="login-field">
-                <label>Clave de Acceso</label>
-                <input type="password" id="password" value="capasuite2026" placeholder="••••••••">
-            </div>
-            <button class="login-btn" onclick="handleLogin()">Entrar al Portal</button>
+            <form onsubmit="event.preventDefault(); handleLogin();">
+                <div class="login-field">
+                    <label for="email">Usuario o Email</label>
+                    <input type="text" id="email" value="comunicaciones@hotelguadiana.es"
+                        placeholder="Admin o usuario@empresa.com" autocomplete="username">
+                </div>
+                <div class="login-field">
+                    <label for="password">Clave de Acceso</label>
+                    <input type="password" id="password" value="capasuite2026" placeholder="••••••••"
+                        autocomplete="current-password">
+                </div>
+                <button type="submit" class="login-btn">Entrar al Portal</button>
+            </form>
             <p id="login-error" style="color: #ef4444; font-size: 0.8rem; margin-top: 15px; display: none;"></p>
         </div>
     </div>
