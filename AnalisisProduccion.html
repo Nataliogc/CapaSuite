@@ -249,6 +249,32 @@
         .nav-user { display: flex; align-items: center; gap: 15px; color: white; font-size: 0.75rem; }
         .nav-user .dot { width: 8px; height: 8px; background: #10b981; border-radius: 50%; }
 
+        .nav-hotel-select {
+            background: rgba(255, 255, 255, 0.05);
+            color: #f1f5f9;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            font-weight: 800;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Outfit', sans-serif;
+            margin-right: 10px;
+        }
+        .nav-hotel-select:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: #818cf8;
+            transform: translateY(-1px);
+        }
+        [data-theme="light"] .nav-hotel-select {
+            background: #ffffff;
+            color: #1e293b;
+            border-color: rgba(0,0,0,0.1);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+
         /* HEATMAP */
         .heatmap-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-top: 15px; }
         .heatmap-cell {
@@ -309,16 +335,18 @@
             <a href="AnalisisProduccion.html" class="active">📈 Producción</a>
             <a href="AnalisisSegmentos.html">👥 Segmentos</a>
             <a href="AnalisisCompetencia.html">⚖️ Competencia</a>
-            <a href="AnalisisIA.html" style="color:#f59e0b; font-weight:800;">✨ CapaAI</a>
             <a href="AnalisisCalendario.html">📅 Calendario</a>
             <a href="CalculadoraPresupuesto.html">💰 Presupuesto</a>
             <a href="Analisis360.html">🔭 Vista 360º</a>
-            <a href="CargarDatos.html">⚙️ Config</a>
         </div>
         <div class="nav-user">
+            <select id="hotelSelector" onchange="switchHotel(this.value)" class="nav-hotel-select">
+                <option value="Guadiana">Hotel Guadiana</option>
+                <option value="Cumbria">Hotel Cumbria</option>
+            </select>
             <span class="dot"></span>
             <span class="user-email" id="userEmailNav">Cargando...</span>
-            <span class="logout-btn" onclick="auth.signOut()">Cerrar Sesión</span>
+            <span class="logout-btn" onclick="auth.signOut()" style="cursor:pointer; opacity:0.8;">Cerrar Sesión</span>
         </div>
     </nav>
     <div class="container" style="padding: 15px;">
@@ -341,11 +369,6 @@
                     style="padding:10px; border-radius:8px; border:1px solid #e2e8f0;"></select>
                 <select id="monthSelector" onchange="updateView()"
                     style="padding:10px; border-radius:8px; border:1px solid #e2e8f0;"></select>
-                <select id="hotelSelector" onchange="switchHotel(this.value)"
-                    style="padding:10px; border-radius:8px; border:1px solid #e2e8f0; font-weight:600;">
-                    <option value="Guadiana">Hotel Guadiana</option>
-                    <option value="Cumbria">Hotel Cumbria</option>
-                </select>
             </div>
         </header>
 

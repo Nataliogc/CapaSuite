@@ -114,6 +114,31 @@
         }
         .user-chip .dot { width: 8px; height: 8px; background: var(--secondary); border-radius: 50%; box-shadow: 0 0 10px var(--secondary-glow); }
 
+        .nav-hotel-select {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            font-weight: 800;
+            outline: none;
+            cursor: pointer;
+            transition: var(--transition);
+            margin-right: 10px;
+            font-family: 'Outfit', sans-serif;
+        }
+        .nav-hotel-select:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--primary);
+            transform: translateY(-1px);
+        }
+        [data-theme="light"] .nav-hotel-select {
+            background: #ffffff;
+            color: #1e293b;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+
         /* HEADER */
         .header-360 {
             padding: 40px 40px 20px;
@@ -459,11 +484,14 @@
             <a href="AnalisisProduccion.html">Producción</a>
             <a href="AnalisisSegmentos.html">Segmentos</a>
             <a href="AnalisisCompetencia.html">Competencia</a>
-            <a href="AnalisisIA.html">CapaAI</a>
             <a href="AnalisisCalendario.html">Calendario</a>
             <a href="Analisis360.html" class="active">Vista 360º</a>
         </div>
         <div class="nav-user">
+            <select id="hotelSelector" class="nav-hotel-select" onchange="refreshAll()">
+                <option value="Guadiana">Hotel Guadiana</option>
+                <option value="Cumbria">Hotel Cumbria</option>
+            </select>
             <div class="user-chip">
                 <span class="dot"></span>
                 <span id="userEmailNav">Conectando...</span>
@@ -480,10 +508,6 @@
             <p>Inteligencia de Producción y Mercado</p>
         </div>
         <div class="controls">
-            <select id="hotelSelector" onchange="refreshAll()">
-                <option value="Guadiana">Hotel Guadiana</option>
-                <option value="Cumbria">Hotel Cumbria</option>
-            </select>
             <select id="yearSelector" onchange="refreshAll()"></select>
             <select id="monthSelector" onchange="refreshAll()">
                 <option value="All">Evolución Anual</option>

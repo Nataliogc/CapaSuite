@@ -112,6 +112,32 @@
         .top-nav a:hover { color: white; }
         .top-nav a.active { color: #818cf8; border-bottom: 2px solid #818cf8; }
 
+        .nav-hotel-select {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 8px 16px;
+            font-size: 0.8rem;
+            font-weight: 800;
+            outline: none;
+            cursor: pointer;
+            transition: var(--transition);
+            margin-right: 15px;
+            font-family: 'Outfit', sans-serif;
+            letter-spacing: -0.2px;
+        }
+        .nav-hotel-select:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: var(--primary);
+            transform: translateY(-1px);
+        }
+        [data-theme="light"] .nav-hotel-select {
+            background: #ffffff;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            color: #1e293b;
+        }
+
         /* HEADER */
         .page-header {
             padding: 60px 40px 30px;
@@ -509,11 +535,14 @@
             <a href="AnalisisProduccion.html">Producción</a>
             <a href="AnalisisSegmentos.html">Segmentos</a>
             <a href="AnalisisCompetencia.html">Competencia</a>
-            <a href="AnalisisIA.html" style="color:var(--accent);">CapaAI</a>
             <a href="AnalisisCalendario.html" class="active">Calendario</a>
             <a href="Analisis360.html">Vista 360º</a>
         </div>
         <div class="user-chip" style="color:var(--text-muted); font-size:0.7rem; font-weight:700; display:flex; align-items:center; gap:20px;">
+            <select id="hotelSelector" onchange="renderCalendar()" class="nav-hotel-select">
+                <option value="Guadiana" selected>Hotel Guadiana</option>
+                <option value="Cumbria">Hotel Cumbria</option>
+            </select>
             <div id="themeToggleBtn" onclick="toggleTheme()" style="cursor:pointer; font-size:1.1rem;" title="Cambiar Modo">🌙</div>
             <span id="userEmailNav">Conectando...</span>
         </div>
@@ -544,10 +573,6 @@
             
             <div style="width:1px; height:24px; background:var(--border); margin:0 10px;"></div>
             
-            <select id="hotelSelector" onchange="renderCalendar()">
-                <option value="Guadiana" selected>Hotel Guadiana</option>
-                <option value="Cumbria">Hotel Cumbria</option>
-            </select>
             <select id="yearSelector" onchange="renderCalendar()">
                 <option value="2025">2025</option>
                 <option value="2026" selected>2026</option>
