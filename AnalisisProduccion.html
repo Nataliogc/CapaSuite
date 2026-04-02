@@ -1296,7 +1296,7 @@
                 // For 'Room Production', we compare Room Real + Room OTB vs Budget
                 const roomTY = (groupedTY.HABITACION && groupedTY.HABITACION.revenue) ? (midx === -1 ? groupedTY.HABITACION.revenue.reduce((a, b) => (a || 0) + (b || 0), 0) : (groupedTY.HABITACION.revenue[midx] || 0)) : 0;
                 const roomOtb = midx === -1 ? otbData.revenue.reduce((a, b) => a + b, 0) : (otbData.revenue[midx] || 0);
-                updateProgress('hab', roomTY + roomOtb, bRev * 0.75); // Heuristic
+                updateProgress('hab', roomTY + roomOtb, bRev); 
                 
                 updateProgress('adr', adrTY, bAdr);
             } else {

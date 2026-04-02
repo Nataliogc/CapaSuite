@@ -574,7 +574,7 @@
 
         <div class="kpi-grid">
             <div class="card kpi-card">
-                <h3 id="label-total-rev">Total Revenue 2026</h3>
+                <h3 id="label-total-rev">Producción Habitaciones 2026</h3>
                 <div class="kpi-content">
                     <div class="kpi-value" id="kpi-revenue">0 €</div>
                     <div class="kpi-trend" id="kpi-rev-trend">+0.0% vs 2025</div>
@@ -941,7 +941,7 @@
                     rev[i] = best.revenue ? (best.revenue[i] || 0) : 0;
                     rn[i] = best.rooms ? (best.rooms[i] || 0) : (best.rms ? (best.rms[i] || 0) : 0);
                 }
-            } else if (serviceObj["TOTAL_MASTER"] && !Object.keys(serviceObj).some(k => normalizeStr(k).includes("HABITAC"))) {
+            } else if (serviceObj["TOTAL_MASTER"] && !Object.values(serviceObj).some(s => getGroupID(s.name) === "HABITACION" && normalizeStr(s.name) !== "TOTAL_MASTER")) {
                 // Extreme fallback only if no other service segments are present
                 const m = serviceObj["TOTAL_MASTER"];
                 for (let i = 0; i < 12; i++) {
@@ -1031,13 +1031,13 @@
             if (editorTitle) editorTitle.innerText = `Elaboración del Presupuesto de ${currentYear}`;
 
             const labelTotalRev = document.getElementById('label-total-rev');
-            if (labelTotalRev) labelTotalRev.innerText = `Total Revenue ${currentYear}`;
+            if (labelTotalRev) labelTotalRev.innerText = `Rev. Habitaciones ${currentYear}`;
 
             const headerCurrYearSold = document.getElementById('header-curr-year-sold');
             if (headerCurrYearSold) headerCurrYearSold.innerText = `Vendido ${currentYear.slice(-2)}`;
 
             const headerCurrYearTarget = document.getElementById('header-curr-year-target');
-            if (headerCurrYearTarget) headerCurrYearTarget.innerText = `Revenue (Target)`;
+            if (headerCurrYearTarget) headerCurrYearTarget.innerText = `Rev. Hab. (Target)`;
 
             const headerPrevYear = document.getElementById('header-prev-year');
             if (headerPrevYear) headerPrevYear.innerText = `Real ${prevYear}`;
@@ -1062,8 +1062,9 @@
                 let otbRoomRev = new Array(12).fill(0);
                 let otbRoomRN = new Array(12).fill(0);
                 if (cyData.otb) {
-                    otbRoomRev = cyData.otb.revenue || new Array(12).fill(0);
-                    otbRoomRN = cyData.otb.rooms || new Array(12).fill(0);
+                    // Use breakdown if available to be Room-Only, fallback to total OTB (which is usually room-only anyway)
+                    otbRoomRev = cyData.otb.breakdown?.habitacion || cyData.otb.revenue || new Array(12).fill(0);
+                    otbRoomRN = cyData.otb.breakdown?.habitacion_rn || cyData.otb.rooms || new Array(12).fill(0);
                 }
 
                 const now = new Date();
