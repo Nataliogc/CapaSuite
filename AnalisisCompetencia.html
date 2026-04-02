@@ -705,22 +705,25 @@
 <body style="padding: 0;">
     <nav class="top-nav">
         <div class="nav-links">
-            <a href="index.html">🏠 Inicio</a>
-            <a href="AnalisisProduccion.html">📈 Producción</a>
-            <a href="AnalisisSegmentos.html">👥 Segmentos</a>
-            <a href="AnalisisCompetencia.html" class="active">⚖️ Competencia</a>
-            <a href="AnalisisCalendario.html">📅 Calendario</a>
-            <a href="CalculadoraPresupuesto.html">💰 Presupuesto</a>
-            <a href="Analisis360.html">🔭 Vista 360º</a>
+            <a href="index.html">Inicio</a>
+            <a href="AnalisisProduccion.html">Producción</a>
+            <a href="AnalisisSegmentos.html">Segmentos</a>
+            <a href="AnalisisCompetencia.html" class="active">Competencia</a>
+            <a href="AnalisisCalendario.html">Calendario</a>
+            <a href="CalculadoraPresupuesto.html">Presupuesto</a>
+            <a href="Analisis360.html">Vista 360º</a>
         </div>
         <div class="nav-user">
-            <select id="hotelSelector" class="nav-hotel-select" onchange="updateHotelLogo(); renderAll()">
-                <option value="Cumbria">Hotel Cumbria</option>
-                <option value="Guadiana">Hotel Guadiana</option>
-            </select>
-            <span class="dot"></span>
-            <span class="user-email" id="userEmailNav">Cargando...</span>
-            <span class="logout-btn" style="color:#ef4444; border-bottom:1px solid #ef4444; cursor:pointer;" onclick="auth.signOut()">Cerrar Sesión</span>
+            <div class="user-chip">
+                <select id="hotelSelector" class="nav-hotel-select" onchange="updateHotelLogo(); renderAll()">
+                    <option value="Cumbria">Hotel Cumbria</option>
+                    <option value="Guadiana">Hotel Guadiana</option>
+                </select>
+                <div id="themeToggleBtn" onclick="toggleTheme()" style="cursor:pointer; font-size:1.1rem; margin-left:10px;" title="Cambiar Modo">🌙</div>
+                <span class="dot"></span>
+                <span id="userEmailNav">Conectando...</span>
+                <span onclick="auth.signOut()" class="logout-btn">Salir</span>
+            </div>
         </div>
     </nav>
     <script src="js/theme-manager.js"></script>
@@ -1862,9 +1865,18 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         // Si encontramos OTB en DB, sobreescribimos
                         if (otb !== null) {
                             d.otbRooms = (typeof otb === 'number') ? otb : (otb.rooms || 0);
+                            // Sincronizamos también occupancy si el hotel es el activo para evitar datos residuales del Excel
+                            d.occupancy = d.otbRooms; 
                         }
 
-                        // Historial de cambios (Pick-up)
+                        // Sincronizamos con Producción (Real) si existe
+                        if (prod !== null) {
+                            d.occupancy = (typeof prod === 'number') ? prod : (prod.rooms || 0);
+                            // Si no teníamos OTB pero sí Producción, igualamos para coherencia en el día actual/pasado
+                            if (otb === null) d.otbRooms = d.occupancy;
+                        }
+
+                        // --- Historial de cambios (Pick-up) ---
                         let prevRooms = null;
                         d.otbChange = 0; // Reset por defecto
                         
@@ -1882,7 +1894,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         
                         // Debug log para el primer día del mes para ver si estamos emparejando bien
                         if (iso.endsWith("-01")) {
-                            console.log(`[Sync] ${iso} | Hotel: ${dbActiveKey} | OTB: ${d.otbRooms} | Prev: ${prevRooms} | Diff: ${d.otbChange}`);
+                            console.log(`[Sync] ${iso} | Hotel: ${dbActiveKey} | OTB: ${d.otbRooms} | Occ: ${d.occupancy} | Diff: ${d.otbChange}`);
                         }
                     }
 

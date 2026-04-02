@@ -691,21 +691,25 @@
 
     <nav class="top-nav" id="mainNav" style="display: none;">
         <div class="nav-links">
-            <a href="index.html" class="active">🏠 Inicio</a>
-            <a href="AnalisisProduccion.html">📈 Producción</a>
-            <a href="AnalisisSegmentos.html">👥 Segmentos</a>
-            <a href="AnalisisCompetencia.html">⚖️ Competencia</a>
-            <a href="AnalisisCalendario.html">📅 Calendario</a>
-            <a href="CalculadoraPresupuesto.html">💰 Presupuesto</a>
-            <a href="Analisis360.html" style="background:rgba(255,255,255,0.1); border-radius:4px; padding:0 10px;">🔭 Vista 360º</a>
+            <a href="index.html" class="active">Inicio</a>
+            <a href="AnalisisProduccion.html">Producción</a>
+            <a href="AnalisisSegmentos.html">Segmentos</a>
+            <a href="AnalisisCompetencia.html">Competencia</a>
+            <a href="AnalisisCalendario.html">Calendario</a>
+            <a href="CalculadoraPresupuesto.html">Presupuesto</a>
+            <a href="Analisis360.html">Vista 360º</a>
         </div>
         <div class="nav-user">
-            <button class="theme-toggle" onclick="window.toggleTheme()" title="Cambiar tema">
-                <span id="theme-icon">🌙</span>
-            </button>
-            <span class="dot"></span>
-            <span class="user-email" id="userEmail">Cargando...</span>
-            <span class="logout-btn" style="color:#ef4444; border-bottom:1px solid #ef4444; cursor:pointer;" onclick="auth.signOut()">Cerrar Sesión</span>
+            <div class="user-chip">
+                <select id="hotelSelector" class="nav-hotel-select">
+                    <option value="Guadiana">Hotel Guadiana</option>
+                    <option value="Cumbria">Hotel Cumbria</option>
+                </select>
+                <div id="themeToggleBtn" onclick="toggleTheme()" style="cursor:pointer; font-size:1.1rem; margin-left:10px;" title="Cambiar Modo">🌙</div>
+                <span class="dot"></span>
+                <span id="userEmailNav">Conectando...</span>
+                <span onclick="auth.signOut()" class="logout-btn">Salir</span>
+            </div>
         </div>
     </nav>
     <script src="js/theme-manager.js"></script>

@@ -82,7 +82,7 @@
 
         /* NAVIGATION (Shared) */
         .top-nav {
-            background: rgba(15, 23, 42, 0.8);
+            background: rgba(15, 23, 42, 0.9);
             backdrop-filter: blur(12px);
             padding: 0 40px;
             display: flex;
@@ -90,53 +90,68 @@
             justify-content: space-between;
             position: sticky;
             top: 0;
-            z-index: 2000;
-            height: 45px;
-            border-bottom: 1px solid var(--border);
+            z-index: 10000;
+            height: 60px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            width: 100%;
         }
-
-        .nav-links { display: flex; gap: 25px; height: 100%; align-items: center; }
-        .top-nav a {
-            color: var(--text-muted);
+        [data-theme="light"] .top-nav {
+            background: rgba(255, 255, 255, 0.95);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        .nav-links { display: flex; gap: 15px; }
+        .nav-links a {
+            color: #94a3b8;
             text-decoration: none;
-            font-size: 11px;
+            font-size: 0.75rem;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            transition: var(--transition);
-            border-bottom: 2px solid transparent;
+            letter-spacing: 0.5px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
         }
-        .top-nav a:hover { color: white; }
-        .top-nav a.active { color: #818cf8; border-bottom: 2px solid #818cf8; }
+        .nav-links a:hover { color: white; background: rgba(255, 255, 255, 0.05); }
+        .nav-links a.active { color: #818cf8; background: rgba(129, 140, 248, 0.1); }
+        [data-theme="light"] .nav-links a:hover { color: #1e293b; background: rgba(0, 0, 0, 0.05); }
 
-        .nav-hotel-select {
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--text-main);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 8px 16px;
-            font-size: 0.8rem;
-            font-weight: 800;
-            outline: none;
-            cursor: pointer;
-            transition: var(--transition);
-            margin-right: 15px;
-            font-family: 'Outfit', sans-serif;
-            letter-spacing: -0.2px;
+        .nav-user { display: flex; align-items: center; gap: 15px; }
+        .user-chip { 
+            display: flex; 
+            align-items: center; 
+            gap: 15px; 
+            background: rgba(255, 255, 255, 0.05); 
+            padding: 5px 15px; 
+            border-radius: 50px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
-        .nav-hotel-select:hover {
-            background: rgba(255, 255, 255, 0.15);
-            border-color: var(--primary);
-            transform: translateY(-1px);
-        }
-        [data-theme="light"] .nav-hotel-select {
-            background: #ffffff;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        [data-theme="light"] .user-chip {
+            background: #f8fafc;
+            border-color: rgba(0, 0, 0, 0.05);
             color: #1e293b;
         }
+        .nav-hotel-select {
+            background: transparent;
+            color: inherit;
+            border: none;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            outline: none;
+            font-family: 'Outfit', sans-serif;
+        }
+        .logout-btn {
+            color: #ef4444;
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            cursor: pointer;
+            margin-left: 10px;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+        .logout-btn:hover { opacity: 1; }
+        .dot { width: 8px; height: 8px; background: #10b981; border-radius: 50%; }
 
         /* HEADER */
         .page-header {
@@ -536,15 +551,20 @@
             <a href="AnalisisSegmentos.html">Segmentos</a>
             <a href="AnalisisCompetencia.html">Competencia</a>
             <a href="AnalisisCalendario.html" class="active">Calendario</a>
+            <a href="CalculadoraPresupuesto.html">Presupuesto</a>
             <a href="Analisis360.html">Vista 360º</a>
         </div>
-        <div class="user-chip" style="color:var(--text-muted); font-size:0.7rem; font-weight:700; display:flex; align-items:center; gap:20px;">
-            <select id="hotelSelector" onchange="renderCalendar()" class="nav-hotel-select">
-                <option value="Guadiana" selected>Hotel Guadiana</option>
-                <option value="Cumbria">Hotel Cumbria</option>
-            </select>
-            <div id="themeToggleBtn" onclick="toggleTheme()" style="cursor:pointer; font-size:1.1rem;" title="Cambiar Modo">🌙</div>
-            <span id="userEmailNav">Conectando...</span>
+        <div class="nav-user">
+            <div class="user-chip">
+                <select id="hotelSelector" class="nav-hotel-select" onchange="renderCalendar()">
+                    <option value="Guadiana">Hotel Guadiana</option>
+                    <option value="Cumbria">Hotel Cumbria</option>
+                </select>
+                <div id="themeToggleBtn" onclick="toggleTheme()" style="cursor:pointer; font-size:1.1rem; margin-left:10px;" title="Cambiar Modo">🌙</div>
+                <span class="dot"></span>
+                <span id="userEmailNav">Conectando...</span>
+                <span onclick="auth.signOut()" class="logout-btn">Salir</span>
+            </div>
         </div>
     </nav>
 
