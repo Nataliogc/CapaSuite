@@ -844,16 +844,17 @@
         let pieInstance = null;
 
         const PRODUCTION_GROUPS = {
-            "HABITACION": { name: "1. Habitación", keys: ["HABITACIÓN", "HABITACION", "ALOJAMIENTO", "ESTANCIA", "DUI", "DOBLE", "SUPERIOR", "SUITE", "CUADRUPLE", "TRIPLE", "FAMILIAR", "LATE CHECK OUT", "AMPLIACION", "CAMA SUPLETORIA", "REGARGO GDS", "HAB", "PAX", "ALOJ", "HABITACIÓ"] },
+            "HABITACION": { name: "1. Habitación", keys: ["HABITACIÓN", "HABITACION", "ALOJAMIENTO", "ESTANCIA", "DUI", "DOBLE", "SUPERIOR", "SUITE", "CUADRUPLE", "TRIPLE", "FAMILIAR", "LATE CHECK OUT", "AMPLIACION", "CAMA SUPLETORIA", "REGARGO GDS", "HABITACIÓ"] },
             "DESAYUNOS": { name: "2. Desayunos", keys: ["DESAYUNO BUFFET", "DESAYUNO GRUPO", "DESAYUNO", "BUFFET"] },
             "RESTAURANTE": { name: "3. Restaurante", keys: ["RESTAURANTE", "CENA", "ALMUERZO", "CENA GRUPO", "ALMUERZO GRUPO", "CATERING", "RESTAURANTE CATERING"] },
             "OFICINAS": { name: "9. Alquileres", keys: ["ALQUILER RETENCIONES", "OFICINA", "RETENCIONES", "FIANZA", "DOMICILIACION EMPRESAS", "LIMPIEZA"] },
             "EVENTOS": { name: "4. Eventos", keys: ["COFFEE BREAK", "SALONES/ALQUILER", "AUDIOVISUALES", "SALON", "ALQUILER", "EVENTO"] },
-            "CAFETERIA": { name: "5. Cafetería", keys: ["CAFETERÍA/HAB", "CAFETERIA", "BAR"] },
+            "CAFETERIA": { name: "5. Cafetería", keys: ["CAFETERIA", "BAR"] },
             "MINIBAR": { name: "6. Minibar", keys: ["MINIBAR"] },
             "SPA": { name: "7. Spa", keys: ["SPA", "BALNEARIO", "MASAJE", "TRATAMIENTO"] },
             "VARIOS": { name: "10. Varios", keys: ["LAVANDERÍA", "ARTESANÍA", "FAX", "TELÉFONO", "VARIOS", "LAVANDERIA", "ARTESANIA", "TELEFONO", "SUPLEMENTO", "MASCOTA", "CUNA", "UPGRADE", "MENSAJERIA", "GARAJE", "PARKING", "ALQUILER PLAZAS GARAJE"] }
         };
+
 
         const normalizeStr = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[.\/-]/g, "").toUpperCase().trim();
 
@@ -906,12 +907,22 @@
             });
 
 
-            // Logic:
-            // 1. CHANGED: Prefer summing components (granular truth) over using a "Total" row (which might include extras)
-            // 2. If no components found, then fallback to subtotal rows.
-            // 3. Last resort: TOTAL_MASTER if absolutely nothing else.
+            // Logic (Synced with AnalisisProduccion.html): 
+            // If a category has a Subtotal row, use ONLY that row to avoid double-counting detailed segments.
+            // If NO subtotal row is found, sum all individual service rows.
 
-            if (roomServices.length > 0) {
+            if (subtotalRows.length > 0) {
+                // If multiple subtotal rows found, take the one with the highest total (likely the real subtotal)
+                const best = subtotalRows.reduce((a, b) => {
+                    const sumA = a.revenue ? a.revenue.reduce((x, y) => x + y, 0) : 0;
+                    const sumB = b.revenue ? b.revenue.reduce((x, y) => x + y, 0) : 0;
+                    return sumB > sumA ? b : a;
+                });
+                for (let i = 0; i < 12; i++) {
+                    rev[i] = best.revenue ? (best.revenue[i] || 0) : 0;
+                    rn[i] = best.rooms ? (best.rooms[i] || 0) : (best.rms ? (best.rms[i] || 0) : 0);
+                }
+            } else if (roomServices.length > 0) {
                 roomServices.forEach(s => {
                     for (let i = 0; i < 12; i++) {
                         rev[i] += s.revenue ? (s.revenue[i] || 0) : 0;
@@ -925,27 +936,14 @@
 
                 if (totalRn === 0 && totalRev > 0 && serviceObj["TOTAL_MASTER"]) {
                     const m = serviceObj["TOTAL_MASTER"];
-                    // Check if master has rooms
                     const masterRooms = m.rooms ? m.rooms.reduce((a, b) => a + b, 0) : (m.rms ? m.rms.reduce((a, b) => a + b, 0) : 0);
                     if (masterRooms > 0) {
-                        console.warn("⚠️ Detectado Revenue sin Habitaciones en desglose. Usando RN de TOTAL_MASTER.");
                         for (let i = 0; i < 12; i++) {
                             rn[i] = m.rooms ? (m.rooms[i] || 0) : (m.rms ? (m.rms[i] || 0) : 0);
                         }
                     }
                 }
-            } else if (subtotalRows.length > 0) {
-                const best = subtotalRows.reduce((a, b) => {
-                    const sumA = a.revenue ? a.revenue.reduce((x, y) => x + y, 0) : 0;
-                    const sumB = b.revenue ? b.revenue.reduce((x, y) => x + y, 0) : 0;
-                    return sumB > sumA ? b : a;
-                });
-                for (let i = 0; i < 12; i++) {
-                    rev[i] = best.revenue ? (best.revenue[i] || 0) : 0;
-                    rn[i] = best.rooms ? (best.rooms[i] || 0) : (best.rms ? (best.rms[i] || 0) : 0);
-                }
-            } else if (serviceObj["TOTAL_MASTER"] && !Object.values(serviceObj).some(s => getGroupID(s.name) === "HABITACION" && normalizeStr(s.name) !== "TOTAL_MASTER")) {
-                // Extreme fallback only if no other service segments are present
+            } else if (serviceObj["TOTAL_MASTER"]) {
                 const m = serviceObj["TOTAL_MASTER"];
                 for (let i = 0; i < 12; i++) {
                     rev[i] = m.revenue ? (m.revenue[i] || 0) : 0;
@@ -954,6 +952,7 @@
             }
             return { rev, rn };
         }
+
 
         function init() {
             switchHotel();
