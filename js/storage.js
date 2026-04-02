@@ -60,16 +60,43 @@
 
         getItem: function (key) {
             // Intentar localStorage
+            let val = null;
             if (storageAvailable) {
-                const val = localStorage.getItem(key);
-                if (val) return val;
+                val = localStorage.getItem(key);
             }
-            // Intentar window.name (fallback para navegación de archivos locales)
-            const winVal = getFromWindowName(key);
-            if (winVal) return winVal;
+            
+            // Fallbacks
+            if (!val) val = getFromWindowName(key);
+            if (!val) val = memoryStorage[key];
 
-            // Intentar memoria
-            return memoryStorage[key] || null;
+            // --- CAPASUITE SEGMENT PURGE FIX (One-time check per session) ---
+            if (key === "hotel_manager_db_v2" && val && !window.__capasuite_purged_v2__) {
+                try {
+                    const db = JSON.parse(val);
+                    const known = ["CORPORATIVO LINEAL", "DIRECTO OFFLINE", "DIRONLINE", "GRTANTEO", "GRUPOS", "OTA/AAVV", "OTROS", "PARTICULARES", "TTOO DINAMICA"];
+                    let changed = false;
+                    Object.keys(db).forEach(h => {
+                        if (typeof db[h] !== 'object') return;
+                        Object.keys(db[h]).forEach(y => {
+                            if (db[h][y] && db[h][y].segment) {
+                                Object.keys(db[h][y].segment).forEach(s => {
+                                    if (!known.includes(s.toUpperCase().trim())) {
+                                        delete db[h][y].segment[s];
+                                        changed = true;
+                                    }
+                                });
+                            }
+                        });
+                    });
+                    if (changed) {
+                        val = JSON.stringify(db);
+                        this.setItem(key, val);
+                    }
+                    window.__capasuite_purged_v2__ = true;
+                } catch(e) { console.warn("Purge Fail", e); }
+            }
+
+            return val;
         },
 
         setItem: function (key, value) {

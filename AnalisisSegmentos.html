@@ -597,6 +597,26 @@
                 try {
                     db = JSON.parse(s);
                     if (typeof db !== 'object' || db === null) db = {};
+                    
+                    // --- AUTO-CLEANUP DE SEGMENTOS JUNK (CapaSuite Fix) ---
+                    const knownSegments = ["CORPORATIVO LINEAL", "DIRECTO OFFLINE", "DIRONLINE", "GRTANTEO", "GRUPOS", "OTA/AAVV", "OTROS", "PARTICULARES", "TTOO DINAMICA"];
+                    let changed = false;
+                    Object.keys(db).forEach(hotel => {
+                        Object.keys(db[hotel]).forEach(year => {
+                            if(db[hotel][year].segment) {
+                                Object.keys(db[hotel][year].segment).forEach(seg => {
+                                    if(!knownSegments.includes(seg.toUpperCase().trim())) {
+                                        delete db[hotel][year].segment[seg];
+                                        changed = true;
+                                    }
+                                });
+                            }
+                        });
+                    });
+                    if (changed) {
+                        CapaStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+                        console.log("🛠️ CapaSuite: Junk segments purged from database.");
+                    }
                 } catch (e) {
                     console.error("Error parsing DB", e);
                     db = {};
@@ -766,6 +786,16 @@
                     else if (isPro) segObj.revenue[midx] += val;
                 }
             }
+            // --- LIMPIEZA FINAL: ELIMINAR SEGMENTOS JUNK ---
+            Object.keys(dbYear.segment).forEach(segName => {
+                const norm = segName.toUpperCase().trim();
+                // Si el nombre del segmento NO está en la lista de conocidos, lo borramos de la DB para este año
+                const isValid = ["CORPORATIVO LINEAL", "DIRECTO OFFLINE", "DIRONLINE", "GRTANTEO", "GRUPOS", "OTA/AAVV", "OTROS", "PARTICULARES", "TTOO DINAMICA"].includes(norm);
+                if (!isValid) {
+                    delete dbYear.segment[segName];
+                }
+            });
+
             dbYear.lastUpdate = new Date().toLocaleDateString('es-ES');
         }
 
