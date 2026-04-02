@@ -587,17 +587,29 @@
         </div>
         <div class="nav-user">
             <div class="user-chip">
-                <select id="hotelSelectorNav" class="nav-hotel-select" onchange="document.getElementById('hotelSelector').value = this.value; updateHistory()">
+                <select id="hotelSelectorNav" class="nav-hotel-select" onchange="switchHotel(this.value)">
                     <option value="Guadiana">Hotel Guadiana</option>
                     <option value="Cumbria">Hotel Cumbria</option>
                 </select>
-                <div id="themeToggleBtn" onclick="toggleTheme()" style="cursor:pointer; font-size:1.1rem; margin-left:10px;" title="Cambiar Modo">🌙</div>
+                <div id="themeToggleBtn" onclick="toggleTheme()" style="cursor:pointer; font-size:1.1rem;" title="Cambiar Modo">🌙</div>
                 <span class="dot"></span>
                 <span id="userEmailNav">Conectando...</span>
                 <span onclick="auth.signOut()" class="logout-btn">Salir</span>
             </div>
         </div>
     </nav>
+    <script>
+        function switchHotel(h) {
+            // LocalStorage persistence for the whole suite
+            localStorage.setItem('active_hotel_suite', h);
+            // In CargarDatos, we update the local hotel selector
+            const mainSelector = document.getElementById('hotelSelector');
+            if (mainSelector) {
+                mainSelector.value = h;
+                updateHistory();
+            }
+        }
+    </script>
     <script src="js/theme-manager.js"></script>
 
 

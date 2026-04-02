@@ -717,17 +717,30 @@
         </div>
         <div class="nav-user">
             <div class="user-chip">
-                <select id="hotelSelector" class="nav-hotel-select">
+                <select id="hotelSelector" class="nav-hotel-select" onchange="switchHotel(this.value)">
                     <option value="Guadiana">Hotel Guadiana</option>
                     <option value="Cumbria">Hotel Cumbria</option>
                 </select>
-                <div id="themeToggleBtn" onclick="toggleTheme()" style="cursor:pointer; font-size:1.1rem; margin-left:10px;" title="Cambiar Modo">🌙</div>
+                <div id="themeToggleBtn" onclick="toggleTheme()" style="cursor:pointer; font-size:1.1rem;" title="Cambiar Modo">🌙</div>
                 <span class="dot"></span>
                 <span id="userEmailNav">Conectando...</span>
                 <span onclick="auth.signOut()" class="logout-btn">Salir</span>
             </div>
         </div>
     </nav>
+    <script>
+        function switchHotel(h) {
+            // LocalStorage persistence for the whole suite
+            localStorage.setItem('active_hotel_suite', h);
+            console.log("Suite active hotel changed to:", h);
+            // On index, we don't have charts to reload, but we can notify
+            const toast = document.createElement('div');
+            toast.style.cssText = "position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#10b981; color:white; padding:10px 20px; border-radius:50px; font-weight:700; z-index:9999;";
+            toast.innerText = "Hotel seleccionado: " + h;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
+        }
+    </script>
     <script src="js/theme-manager.js"></script>
 
     <main id="dashboard-main" style="display: none;">

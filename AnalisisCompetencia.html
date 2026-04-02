@@ -726,9 +726,9 @@
         </div>
         <div class="nav-user">
             <div class="user-chip">
-                <select id="hotelSelector" class="nav-hotel-select" onchange="updateHotelLogo(); renderAll()">
-                    <option value="Cumbria">Hotel Cumbria</option>
+                <select id="hotelSelector" class="nav-hotel-select" onchange="switchHotel(this.value)">
                     <option value="Guadiana">Hotel Guadiana</option>
+                    <option value="Cumbria">Hotel Cumbria</option>
                 </select>
                 <div id="themeToggleBtn" onclick="toggleTheme()" style="cursor:pointer; font-size:1.1rem;" title="Cambiar Modo">🌙</div>
                 <span class="dot"></span>
@@ -879,13 +879,20 @@
             console.warn("Failed to load ignored competitors from local storage", e);
         }
 
-        // --- UPDATE HOTEL LOGO ---
+        // --- UPDATE HOTEL LOGO (DEPRECATED: Use switchHotel) ---
         function updateHotelLogo() {
             const hotel = document.getElementById('hotelSelector').value;
             const logoImg = document.getElementById('hotelLogo');
             if (hotel === 'Guadiana') logoImg.src = 'Imagen/logo-guadiana.svg';
             else logoImg.src = 'Imagen/logo-cumbria.svg';
             activeHotel = hotel;
+        }
+
+        // Global function for top-nav unification
+        function switchHotel(h) {
+            document.getElementById('hotelSelector').value = h;
+            updateHotelLogo();
+            renderAll();
         }
 
         // --- UI TOGGLES ---
@@ -1360,45 +1367,33 @@
                 }
             }
 
-            // Find occupancy row
+            // Find occupancy row & determine its owner
             let occupancyRow = -1;
-            // Priority 1: Exact matches or strong indicators near Valid Data
-            // We'll scan specifically for "Habitaciones" or "Ocupación" excluding "Competencia"/metrics
-            // Priority 1: Scan first 3 columns for "Habitaciones" or "Ocupación" or "Vendidas"
-            for (let r = 0; r < rawData.length; r++) {
-                // Join first 3 cols to catch indented labels
-                const rowStr = (String(rawData[r][0] || "") + " " + String(rawData[r][1] || "") + " " + String(rawData[r][2] || "")).toLowerCase();
+            let occupancyOwner = null;
 
+            for (let r = 0; r < rawData.length; r++) {
+                const rowStr = (String(rawData[r][0] || "") + " " + String(rawData[r][1] || "") + " " + String(rawData[r][2] || "")).toLowerCase();
                 if (rowStr.includes("competencia") || rowStr.includes("mercado") || rowStr.includes("rank") || rowStr.includes("share")) continue;
 
                 if (rowStr.includes("ocupaci") || rowStr.includes("occupancy") ||
                     (rowStr.includes("habitaciones") && !rowStr.includes("ingresos") && !rowStr.includes("precio")) ||
                     rowStr.includes("vendidas") || rowStr.includes("unidades") || rowStr.includes("estancias")) {
 
-                    // Double check it has numbers
                     let hasNums = 0;
                     for (let k = startCol; k < Math.min(startCol + 10, rawData[r].length); k++) {
                         if (!isNaN(parseFloat(rawData[r][k]))) hasNums++;
                     }
                     if (hasNums > 3) {
                         occupancyRow = r;
+                        // Determine owner by proximity
+                        const distG = Math.abs(r - guadianaRow);
+                        const distC = (cumbriaRow !== -1) ? Math.abs(r - cumbriaRow) : 9999;
+                        occupancyOwner = (distG < distC) ? "Guadiana" : "Cumbria";
                         break;
                     }
                 }
             }
-            // Priority 2: Relaxed search if nothing found
-            if (occupancyRow === -1) {
-                for (let r = 0; r < rawData.length; r++) {
-                    const first = String(rawData[r][0] || "").toLowerCase();
-                    if (first.includes("ocupaci") || first.includes("occupancy") ||
-                        (first.includes("habitaciones") && !first.includes("total")) ||
-                        first.includes("vendidas")) {
-                        occupancyRow = r;
-                        break;
-                    }
-                }
-            }
-            logD(`Occupancy Row detected at index: ${occupancyRow}`);
+            logD(`Occupancy Row detected at index: ${occupancyRow} (Owner: ${occupancyOwner})`);
 
             // Build Data
             processedData = [];
@@ -1502,6 +1497,7 @@
                     compAvg: 0,
                     dateISO: iso,
                     occupancy: occ,
+                    occOwner: occupancyOwner, 
                     otbRooms: occ, 
                     prevRooms: prevRooms, // Store comparison base
                     hasOtbData: hasOtbData,
@@ -1853,6 +1849,13 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     const yrStr = iso.split('-')[0];
                     const yrShort = yrStr.slice(-2);
                     const yearsToTry = [yrStr, yrShort, "2025", "25", "2026", "26", "2027", "27"];
+
+                    // First: Reset visibility based on source ownership
+                    // If we are looking at Guadiana but the Excel data was for Cumbria, hide the Excel occupancy
+                    if (d.occOwner && d.occOwner !== activeHotel) {
+                        d.occupancy = 0;
+                        d.otbRooms = 0;
+                    }
 
                     // Sync Active Hotel
                     const dbActiveKey = dbKeys.find(k => {
