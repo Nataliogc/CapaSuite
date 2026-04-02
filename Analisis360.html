@@ -657,14 +657,14 @@
             <!-- SEGMENTS TABLE -->
             <div class="table-card">
                 <div class="table-header">
-                    <span>Rendimiento de Segmentos</span>
+                    <span>Performance por Canales de Venta</span>
                     <span class="tag tag-seg">ESTRATEGIA</span>
                 </div>
                 <div style="max-height: 500px; overflow-y: auto;">
                     <table id="segmentsTable">
                         <thead>
                             <tr>
-                                <th>Segmento</th>
+                                <th>Canal de Venta</th>
                                 <th>Revenue</th>
                                 <th>RN</th>
                                 <th>ADR</th>
@@ -896,15 +896,31 @@
             const serviceData = Object.values(agg.summary).map(s => s.revenue);
             updateChart('serviceChart', 'doughnut', serviceLabels, serviceData, colors);
 
-            // 2. Segment Chart
-            const getVal = (arr) => midx === -1 ? arr.reduce((a,b)=>a+b, 0) : arr[midx];
-            const segLabels = [];
-            const segData = [];
-            Object.entries(segmentDb).forEach(([name, obj]) => {
-                const v = getVal(obj.revenue);
-                if (v > 10) { segLabels.push(name); segData.push(v); }
+            // 2. Channel Chart (Grouped Segments)
+            const getVal = (arr) => midx === -1 ? arr.reduce((a, b) => a + b, 0) : arr[midx];
+            const channelGroups = {
+                "Directo": ["DIRONLINE", "DIRECTO OFFLINE"],
+                "OTA / AAVV": ["OTA/AAVV", "TTOO DINAMICA"],
+                "Grupos": ["GRUPOS", "GRTANTEO"],
+                "Corporativo": ["CORPORATIVO LINEAL"],
+                "Otros": ["OTROS", "PARTICULARES"]
+            };
+
+            const chanLabels = [];
+            const chanData = [];
+            
+            Object.entries(channelGroups).forEach(([chanName, segNames]) => {
+                let chanTotal = 0;
+                segNames.forEach(sName => {
+                    const obj = segmentDb[sName];
+                    if (obj) chanTotal += getVal(obj.revenue);
+                });
+                if (chanTotal > 10) {
+                    chanLabels.push(chanName);
+                    chanData.push(chanTotal);
+                }
             });
-            updateChart('segmentChart', 'pie', segLabels, segData, colors);
+            updateChart('segmentChart', 'pie', chanLabels, chanData, colors);
 
             // 3. Weekly Intensity
             const weeklyData = new Array(7).fill(0);
@@ -929,14 +945,14 @@
         }
 
         function renderTables(agg, segmentDb, midx) {
-            const getVal = (arr) => midx === -1 ? arr.reduce((a,b)=>a+b, 0) : arr[midx];
-            
+            const getVal = (arr) => midx === -1 ? arr.reduce((a, b) => a + b, 0) : arr[midx];
+
             const sBody = document.getElementById('servicesBody');
             sBody.innerHTML = '';
-            agg.raw.sort((a,b) => b.rev - a.rev).forEach(item => {
+            agg.raw.sort((a, b) => b.rev - a.rev).forEach(item => {
                 const mix = agg.totalRev > 0 ? (item.rev / agg.totalRev * 100).toFixed(1) : 0;
                 sBody.innerHTML += `<tr>
-                    <td><div style="font-weight:700; color:white;">${item.name}</div><div style="font-size:0.65rem; color:var(--text-muted);">${item.category}</div></td>
+                    <td><div style="font-weight:700; color:var(--text-main);">${item.name}</div><div style="font-size:0.65rem; color:var(--text-muted);">${item.category}</div></td>
                     <td style="font-weight:600;">${fmt(item.rev)}</td>
                     <td>${mix}%</td>
                     <td style="color:var(--secondary);">--</td>
@@ -945,16 +961,38 @@
 
             const segBody = document.getElementById('segmentsBody');
             segBody.innerHTML = '';
-            Object.entries(segmentDb).sort((a,b)=>getVal(b[1].revenue)-getVal(a[1].revenue)).forEach(([name, obj]) => {
-                const v = getVal(obj.revenue);
-                const r = getVal(obj.rooms);
-                if (v <= 0 && r <= 0) return;
-                const adr = r > 0 ? (v / r).toFixed(1) : 0;
-                const mix = agg.totalRev > 0 ? (v / agg.totalRev * 100).toFixed(1) : 0;
+
+            const channelGroups = {
+                "Directo": ["DIRONLINE", "DIRECTO OFFLINE"],
+                "OTA / AAVV": ["OTA/AAVV", "TTOO DINAMICA"],
+                "Grupos": ["GRUPOS", "GRTANTEO"],
+                "Corporativo": ["CORPORATIVO LINEAL"],
+                "Otros Canales": ["OTROS", "PARTICULARES"]
+            };
+
+            const channelData = [];
+            Object.entries(channelGroups).forEach(([chanName, segNames]) => {
+                let v = 0;
+                let r = 0;
+                segNames.forEach(sName => {
+                    const obj = segmentDb[sName];
+                    if (obj) {
+                        v += getVal(obj.revenue);
+                        r += getVal(obj.rooms);
+                    }
+                });
+                if (v > 0 || r > 0) {
+                    channelData.push({ name: chanName, rev: v, rms: r });
+                }
+            });
+
+            channelData.sort((a, b) => b.rev - a.rev).forEach(item => {
+                const adr = item.rms > 0 ? (item.rev / item.rms).toFixed(1) : 0;
+                const mix = agg.totalRev > 0 ? (item.rev / agg.totalRev * 100).toFixed(1) : 0;
                 segBody.innerHTML += `<tr>
-                    <td style="font-weight:700; color:white;">${name}</td>
-                    <td style="font-weight:600;">${fmt(v)}</td>
-                    <td style="color:var(--text-muted); font-size:0.8rem;">${r}</td>
+                    <td style="font-weight:700; color:white;">${item.name}</td>
+                    <td style="font-weight:600;">${fmt(item.rev)}</td>
+                    <td style="color:var(--text-muted); font-size:0.8rem;">${item.rms}</td>
                     <td>${adr}€</td>
                     <td style="color:var(--secondary); font-weight:700;">${mix}%</td>
                 </tr>`;

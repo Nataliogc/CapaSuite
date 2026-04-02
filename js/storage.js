@@ -70,17 +70,21 @@
             if (!val) val = memoryStorage[key];
 
             // --- CAPASUITE SEGMENT PURGE FIX (One-time check per session) ---
-            if (key === "hotel_manager_db_v2" && val && !window.__capasuite_purged_v2__) {
+            if (key === "hotel_manager_db_v2" && val && !window.__capasuite_purged_v3__) {
                 try {
                     const db = JSON.parse(val);
                     const known = ["CORPORATIVO LINEAL", "DIRECTO OFFLINE", "DIRONLINE", "GRTANTEO", "GRUPOS", "OTA/AAVV", "OTROS", "PARTICULARES", "TTOO DINAMICA"];
+                    
+                    const normalize = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+                    const knownNorm = known.map(k => normalize(k));
+
                     let changed = false;
                     Object.keys(db).forEach(h => {
                         if (typeof db[h] !== 'object') return;
                         Object.keys(db[h]).forEach(y => {
                             if (db[h][y] && db[h][y].segment) {
                                 Object.keys(db[h][y].segment).forEach(s => {
-                                    if (!known.includes(s.toUpperCase().trim())) {
+                                    if (!knownNorm.includes(normalize(s))) {
                                         delete db[h][y].segment[s];
                                         changed = true;
                                     }
@@ -91,8 +95,9 @@
                     if (changed) {
                         val = JSON.stringify(db);
                         this.setItem(key, val);
+                        console.log("🛠️ CapaSuite: Global Database Purge logic executed (normalized).");
                     }
-                    window.__capasuite_purged_v2__ = true;
+                    window.__capasuite_purged_v3__ = true;
                 } catch(e) { console.warn("Purge Fail", e); }
             }
 

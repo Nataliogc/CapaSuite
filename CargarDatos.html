@@ -1984,17 +1984,18 @@
                     const isOtherCharge = nColB.includes("DESAYUNO") || nColB.includes("ALMUERZO") || nColB.includes("CENA") || nColB.includes("SPA") || nColB.includes("VARIOS") || nColB.includes("GARAJE") || nColB.includes("PAX");
                     const isMetric = isHab || isPro || isOtherCharge;
 
-                    // Blacklist for Segment Names (Names that should NEVER be a segment)
-                    const isBlacklisted = nColA === "SEG" || nColA === "SEGMENTO" || nColA === "SEGMENTACION" || nColA === "TOTAL" || nColA === "CONCEPTO" || nColA === "CARGO" || isMetric;
+                    // --- GESTIÓN DE SEGMENTOS (ULTRA-ESTRICTO) ---
+                    const knownSegments = ["CORPORATIVO LINEAL", "DIRECTO OFFLINE", "DIRONLINE", "GRTANTEO", "GRUPOS", "OTA/AAVV", "OTROS", "PARTICULARES", "TTOO DINAMICA"];
+                    const rawClean = rawA.toUpperCase().trim();
+                    const sFound = knownSegments.find(ks => rawClean === ks || normalizeStr(ks) === normalizeStr(rawClean));
 
-                    // --- DETECCIÓN DE SEGMENTO ---
-                    if (rawA !== "" && !isBlacklisted) {
-                        currentSeg = rawA;
-                    } else if (rawA === "" && rawB !== "" && !isMetric && !isBlacklisted) {
-                        currentSeg = rawB;
+                    if (sFound) {
+                        currentSeg = sFound;
+                    } else if (rawA !== "" && !isMetric) {
+                        currentSeg = null; // Reseteamos si es basura
                     }
 
-                    if (!currentSeg || nColA === "TOTAL" || isBlacklisted) continue;
+                    if (!currentSeg || nColA.includes("TOTAL") || nColA.includes("RESUMEN") || nColA.includes("SEGMENTAC")) continue;
 
                     if (isHab || isPro) {
                         if (!dbYear.segment[currentSeg]) {
@@ -2548,8 +2549,17 @@
             const matches = [...name.matchAll(dateRegex)];
 
             if (matches.length > 0) {
-                // If it's a range "DEL ... AL ...", we usually want the START date (the first one)
-                // In "del 26-01-2026 al 31-12-2026", picks 26-01-2026
+                // Check if it's a RANGE (multiple dates)
+                if (matches.length >= 2) {
+                    const start = matches[0];
+                    const end = matches[matches.length - 1]; // Use first and last
+                    const sY = start[3].length === 2 ? "20" + start[3] : start[3];
+                    const eY = end[3].length === 2 ? "20" + end[3] : end[3];
+                    const fullRange = `${String(start[1]).padStart(2, '0')}-${String(start[2]).padStart(2, '0')}-${sY} al ${String(end[1]).padStart(2, '0')}-${String(end[2]).padStart(2, '0')}-${eY}`;
+                    return { day: parseInt(start[1]), month: parseInt(start[2]) - 1, year: sY, full: fullRange };
+                }
+
+                // Single date legacy logic
                 const targetMatch = matches[0];
                 const d = parseInt(targetMatch[1]);
                 const m = parseInt(targetMatch[2]) - 1;

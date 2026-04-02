@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Análisis de Segmentos | CapaSuite</title>
+    <title>Análisis de Segmentación | CapaSuite</title>
     <link rel="icon" type="image/png" href="Imagen/Icono_CapaSuite.png">
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -436,7 +436,7 @@
                 <a href="index.html" title="Inicio"><img src="Imagen/logo, CapaSuite.png" alt="CapaSuite"
                         style="height: 50px;"></a>
                 <div class="title">
-                    <h1>Producción por Segmentos</h1>
+                    <h1>Análisis de Segmentación</h1>
                     <p>Análisis de canales y tipos de cliente</p>
                 </div>
             </div>
@@ -520,7 +520,7 @@
 
             <div class="card" style="padding: 0;">
                 <div style="padding: 20px; border-bottom: 1px solid var(--border);">
-                    <h3 id="table-title">Detalle por Segmento</h3>
+                    <h3 id="table-title">Detalle por Segmentación</h3>
                 </div>
                 <div class="table-container">
                     <table id="dataTable">
@@ -655,20 +655,65 @@
             if (!db[currentHotel]) db[currentHotel] = {};
 
             for (let f of files) {
+                // --- DETECCIÓN SMART POR FILENAME ---
+                const smart = extractInfoFromFileName(f.name);
+                if (smart.hotel) {
+                    currentHotel = smart.hotel;
+                    document.getElementById('hotelSelector').value = currentHotel;
+                    document.getElementById('hotelLogo').src = (currentHotel === 'Guadiana') ? 'Imagen/logo-guadiana.svg' : 'Imagen/logo-cumbria.svg';
+                }
+                
                 const buf = await f.arrayBuffer();
                 const wb = XLSX.read(buf, { type: 'array' });
                 const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
 
                 // Use the complex processing logic from the original file
                 processData(data, f.name);
+                
+                // Si el filename detectó un año y ya se procesó, nos movemos a ese año
+                if (smart.year) {
+                    currentYear = smart.year;
+                }
             }
             saveData(); refreshAvailableYears(); initControls();
             document.getElementById('loader').style.display = 'none';
             document.getElementById('dashboard').style.display = 'flex';
         }
 
+        function extractInfoFromFileName(name) {
+            const res = { hotel: null, year: null, period: "" };
+            const n = name.toUpperCase();
+            if (n.includes("GUADIANA")) res.hotel = "Guadiana";
+            else if (n.includes("CUMBRIA")) res.hotel = "Cumbria";
+
+            const dateRegex = /(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})/g;
+            const matches = [...name.matchAll(dateRegex)];
+            
+            if (matches.length >= 2) {
+                const s = matches[0];
+                const e = matches[matches.length-1];
+                const sY = s[3].length === 2 ? "20"+s[3] : s[3];
+                const eY = e[3].length === 2 ? "20"+e[3] : e[3];
+                res.period = `${String(s[1]).padStart(2,'0')}-${String(s[2]).padStart(2,'0')}-${sY} al ${String(e[1]).padStart(2,'0')}-${String(e[2]).padStart(2,'0')}-${eY}`;
+                res.year = sY;
+            } else if (matches.length === 1) {
+                const s = matches[0];
+                res.year = s[3].length === 2 ? "20"+s[3] : s[3];
+                res.period = `${String(s[1]).padStart(2,'0')}-${String(s[2]).padStart(2,'0')}-${res.year}`;
+            }
+
+            if (!res.year) {
+                const yrMatch = n.match(/(202\d|203\d)/);
+                if (yrMatch) res.year = yrMatch[0];
+            }
+            return res;
+        }
+
         function processData(data, fileName) {
             let detectedYear = "2026";
+            // Hint from filename
+            const smart = extractInfoFromFileName(fileName);
+            if (smart.year) detectedYear = smart.year;
             let headerRowIndex = -1;
             let colMap = [];
 
@@ -1012,9 +1057,7 @@
 
             if (midx === -1) {
                 thead.innerHTML = '<tr><th style="background:#f1f5f9; z-index:110;">Segmento</th>' + SHORT_MONTHS.map((m, i) => {
-                    const d = monthDays[i];
-                    const dTag = d > 0 ? `<span style="font-size:0.6rem; color:var(--success); font-weight:800; margin-right:3px;">${d}</span>` : '';
-                    return `<th style="text-align:center;">${dTag}${m}</th>`;
+                    return `<th style="text-align:center;">${m}</th>`;
                 }).join('') + '<th>Total</th><th>% Mix</th></tr>';
 
                 activeConcepts.sort((a, b) => b.revenue.reduce((x, y) => x + y, 0) - a.revenue.reduce((x, y) => x + y, 0)).forEach(c => {
@@ -1031,7 +1074,7 @@
                     body += `<tr><td style="font-weight:600; background:white; position:sticky; left:0; z-index:20;">${c.name}</td>${cells}<td style="font-weight:700;">${fmtVal(valTotal)}</td><td>${(rowRev / totalRev * 100).toFixed(1)}%</td></tr>`;
                 });
             } else {
-                thead.innerHTML = `<tr><th style="background:#f1f5f9; z-index:110;">Segmento (${Math.floor(elapsedDays)} DÍAS)</th><th>Valor Detalle</th><th>% Mix Total</th></tr>`;
+                thead.innerHTML = `<tr><th style="background:#f1f5f9; z-index:110;">Segmento</th><th>Valor Detalle</th><th>% Mix Total</th></tr>`;
                 activeConcepts.sort((a, b) => b.revenue[midx] - a.revenue[midx]).forEach(c => {
                     if (c.name === "TOTAL") return;
                     const rev = c.revenue[midx];
@@ -1065,17 +1108,7 @@
                     labels: SHORT_MONTHS,
                     datasets: [
                         { label: currentYear, data: mainData, borderColor: '#4f46e5', fill: true, backgroundColor: 'rgba(79,70,229,0.1)', tension: 0.4, zIndex: 10 },
-                        { label: (currentYear - 1), data: prevData, borderColor: '#94a3b8', borderDash: [5, 5], fill: false, tension: 0.4, zIndex: 5 },
-                        (data.otb && currentMetric === 'revenue') ? {
-                            label: `Forecast OTB ${currentYear}`,
-                            data: data.otb.revenue,
-                            borderColor: '#8b5cf6',
-                            borderWidth: 2,
-                            fill: false,
-                            tension: 0.4,
-                            pointRadius: 4,
-                            zIndex: 1
-                        } : null
+                        { label: (currentYear - 1), data: prevData, borderColor: '#94a3b8', borderDash: [5, 5], fill: false, tension: 0.4, zIndex: 5 }
                     ].filter(d => d)
                 },
                 options: {
