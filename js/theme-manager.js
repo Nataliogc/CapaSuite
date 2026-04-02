@@ -24,8 +24,13 @@
         window.dispatchEvent(new CustomEvent('themeChanged', { detail: newTheme }));
     };
 
-    // 3. Insertar el botón en la navegación cuando el DOM esté listo
+    // 3. Insertar el botón en la navegación cuando el DOM esté listo (solo si no existe ya)
     document.addEventListener('DOMContentLoaded', () => {
+        if (document.getElementById('themeToggleBtn')) {
+            updateThemeIcon(savedTheme);
+            return;
+        }
+
         const navUser = document.querySelector('.nav-user');
         if (navUser) {
             const themeBtn = document.createElement('div');

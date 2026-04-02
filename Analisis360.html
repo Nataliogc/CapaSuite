@@ -20,6 +20,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="js/firebase-config-env.js"></script>
     <script src="js/firebase-auth.js"></script>
+    <script src="js/theme-manager.js"></script>
 
     <style>
         :root {
@@ -37,6 +38,18 @@
             --radius: 20px;
             --shadow-premium: 0 10px 30px -5px rgba(0, 0, 0, 0.3);
             --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        [data-theme="light"] {
+            --bg-deep: #f8fafc;
+            --bg-surface: #ffffff;
+            --bg-glass: rgba(255, 255, 255, 0.8);
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --primary: #4f46e5;
+            --primary-glow: rgba(79, 70, 229, 0.2);
+            --shadow-premium: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
         }
 
         * {
@@ -101,6 +114,13 @@
             border-bottom-color: var(--primary); 
             background: linear-gradient(to top, rgba(99, 102, 241, 0.1), transparent);
         }
+
+        [data-theme="light"] .top-nav {
+            background: rgba(255, 255, 255, 0.9);
+            border-bottom: 1px solid #e2e8f0;
+        }
+        [data-theme="light"] .nav-user { color: #1e293b; }
+        [data-theme="light"] #themeToggleBtn { color: #1e293b; }
 
         .nav-user { display: flex; align-items: center; gap: 15px; font-size: 0.85rem; }
         .user-chip {
