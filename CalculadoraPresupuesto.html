@@ -198,13 +198,12 @@
             white-space: nowrap;
         }
 
-        .trend-up {
-            color: var(--secondary);
-        }
-
         .trend-down {
             color: var(--danger);
         }
+
+        .text-success { color: var(--secondary) !important; }
+        .text-danger { color: var(--danger) !important; }
 
         .tabs {
             display: flex;
@@ -737,7 +736,7 @@
                         <tr>
                             <th class="text-left" style="width: 150px;">MES</th>
                             <th>OBJETIVO (TARGET)</th>
-                            <th>VENDIDO / OTB (REAL)</th>
+                            <th>VENDIDO / habs (REAL)</th>
                             <th style="min-width:140px;">HAB (Habitaciones)</th>
                             <th>DESVIACIÓN</th>
                             <th>SUPERÁVIT (€)</th>
@@ -1618,7 +1617,7 @@
                 <td style="font-weight: 600; color: #0f172a;">${formatMoney(sold)}</td>
                 <td>
                     <div class="otb-badge-mini" title="Rooms On-The-Books">
-                        <span style="font-size:0.6rem; opacity:0.7;">OTB</span>
+                        <span style="font-size:0.6rem; opacity:0.7;">habs</span>
                         <span>${rnSold}</span>
                     </div>
                     ${pickupHTML}
