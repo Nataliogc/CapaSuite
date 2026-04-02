@@ -1481,8 +1481,11 @@
                     let period = manualDate || (dateInfo ? dateInfo.full : "Periodo desconocido");
                     let year = "2026";
 
-                    if (manualDate && manualDate.split('-').length === 3) {
-                        year = manualDate.split('-')[2];
+                    // Handle ranges in manualDate (e.g. "01-01-2026 al 01-02-2027")
+                    if (manualDate) {
+                        const allY = manualDate.match(/20\d{2}/g);
+                        if (allY && allY.length > 0) year = allY[0];
+                        else if (manualDate.split('-').length === 3) year = manualDate.split('-')[2];
                     } else if (dateInfo) {
                         year = dateInfo.year;
                     }
@@ -1498,25 +1501,25 @@
                     else if (type === 'Seg') config[hotel].lastSegDate = period;
                     else if (type === 'Otb') config[hotel].lastOtbDate = period;
 
-                    // SYNC lastUpdate to main DB
-                    if (!db[hotel]) db[hotel] = {};
-                    if (!db[hotel][year]) db[hotel][year] = { service: {}, segment: {}, otb: { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) } };
-
-                    let lastDateLabel = period;
-                    // If the user provided a manual date, it ALREADY IS 'period' and should be used as is.
-                    // We only want to reconstruct from dateInfo if NO manual date was provided.
-                    if (!manualDate && dateInfo && dateInfo.day) {
-                        const dayStr = String(dateInfo.day).padStart(2, '0');
-                        const monthStr = String(dateInfo.month + 1).padStart(2, '0');
-                        lastDateLabel = `${dayStr}-${monthStr}-${year}`;
-                    }
-
-                    db[hotel][year].lastUpdate = lastDateLabel;
-
-                    if (!db[hotel][year].updates) db[hotel][year].updates = { prod: "N/A", seg: "N/A", otb: "N/A" };
-                    if (type === 'Prod') db[hotel][year].updates.prod = period;
-                    else if (type === 'Seg') db[hotel][year].updates.seg = period;
-                    else if (type === 'Otb') db[hotel][year].updates.otb = period;
+                    const yearsAffected = (type === 'Otb') ? (file.name.match(/20\d{2}/g) || [year]) : [year];
+                    
+                    yearsAffected.forEach(y => {
+                        const yStr = String(y);
+                        if (!db[hotel][yStr]) db[hotel][yStr] = { service: {}, segment: {}, otb: { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) } };
+                        
+                        let lastDateLabel = period;
+                        if (!manualDate && dateInfo && dateInfo.day) {
+                            const dayStr = String(dateInfo.day).padStart(2, '0');
+                            const monthStr = String(dateInfo.month + 1).padStart(2, '0');
+                            lastDateLabel = `${dayStr}-${monthStr}-${yStr}`;
+                        }
+                        
+                        db[hotel][yStr].lastUpdate = lastDateLabel;
+                        if (!db[hotel][yStr].updates) db[hotel][yStr].updates = { prod: "N/A", seg: "N/A", otb: "N/A" };
+                        if (type === 'Prod') db[hotel][yStr].updates.prod = period;
+                        else if (type === 'Seg') db[hotel][yStr].updates.seg = period;
+                        else if (type === 'Otb') db[hotel][yStr].updates.otb = period;
+                    });
 
                     config[hotel].logs.push({
                         timestamp: new Date().toLocaleString('es-ES'),
@@ -1613,7 +1616,7 @@
             const getGroupID = (n) => {
                 const norm = normalizeStr(n);
                 // Omisiones de totales maestros
-                if (norm === "PRODUCCION TOTAL" || norm === "TOTAL PRODUCCION" || norm === "TOTAL MASTER" || norm === "TOTAL") return "OMIT";
+                if (norm === "PRODUCCION TOTAL" || norm === "TOTAL PRODUCCION" || norm === "TOTAL MASTER" || norm === "TOTAL" || norm === "PROD" || norm === "PRODUCCION") return "OMIT";
 
                 // Si la fila es una métrica pura (HAB, PAX, PRO), la marcamos para el procesador
                 if (norm === "HAB" || norm === "RMS" || norm === "RN" || norm === "RMS" || norm === "RN") return "METRIC_RMS";
@@ -2166,17 +2169,32 @@
                         }
                     }
                     
-                    // Improved detection logic: Prioritize REVENUE keywords to avoid counting "Room Revenue" as "Rooms"
-                    const isREV = rowLabel.includes("PRO") || rowLabel.includes("VENTA") || rowLabel.includes("VALOR") || rowLabel.includes("TOTAL") || 
-                                rowLabel.includes("INGRESO") || rowLabel.includes("HABITACION") || rowLabel.includes("VALORADA") || rowLabel.includes("COBRO") || 
-                                rowLabel.includes("REVENUE") || rowLabel.includes("FORECAST") || rowLabel.includes("VALORADO") || rowLabel.includes("PREVISION") || 
-                                rowLabel.includes("OTB") || rowLabel.includes("INGRES") || rowLabel.includes("PROD") || 
-                                rowLabel.includes("PAX") || rowLabel.includes("DESAYUNO") || rowLabel.includes("ALMUERZO") || rowLabel.includes("CENA") || 
-                                rowLabel.includes("SPA") || rowLabel.includes("VARIOS") || rowLabel.includes("BAR") || rowLabel.includes("CAFETERIA");
+                    // Enhanced Metric Classifier: Highly specific to separate Room Units from Currency
+                    const isTotalRow = rowLabel.includes("PROD") || rowLabel.includes("TOTAL") || rowLabel.includes("GENERAL");
                     
-                    const isRMS = !isREV && (rowLabel.includes("HAB") || rowLabel.includes("RMS") || rowLabel.includes("RN") || rowLabel.includes("OCUP") || 
-                                rowLabel.includes("VENDIDAS") || rowLabel.includes("NOCHES") || rowLabel.includes("UNIDADES") || rowLabel.includes("ROOMS") || 
-                                rowLabel.includes("ROOM") || rowLabel.includes("ESTANCIA") || rowLabel.includes("OTB") || rowLabel.includes("STAY"));
+                    // isREV = Anything involving money or total production
+                    // Special case: "HABITACION" (longer) is revenue, "HAB" (short) is rooms
+                    const isREV = isTotalRow ||
+                                rowLabel.includes("VENTA") || rowLabel.includes("VALOR") || 
+                                rowLabel.includes("INGRESO") || rowLabel.includes("COBRO") || 
+                                rowLabel.includes("REVENUE") || rowLabel.includes("FORECAST") || 
+                                rowLabel.includes("VALORADO") || rowLabel.includes("INGRES") || 
+                                (rowLabel.includes("HABITACION") && rowLabel.length > 5) || 
+                                rowLabel.includes("DESAYUNO") || rowLabel.includes("ALMUERZO") || 
+                                rowLabel.includes("CENA") || rowLabel.includes("SPA") || 
+                                rowLabel.includes("VARIOS") || rowLabel.includes("BAR") || 
+                                rowLabel.includes("CAFETERIA") || rowLabel.includes("€") || 
+                                rowLabel.includes("ADR") || rowLabel.includes("PRECIO");
+                    
+                    // isRMS = Only room units
+                    // Stricter check for HAB: usually short labels "Hab." or "Hab" or "Habitaciones"
+                    // If it caught HABITACION above as isREV, it won't hit this.
+                    const isRMS = !isREV && (rowLabel.includes("HAB") || rowLabel.includes("RMS") || 
+                                rowLabel.includes("RN") || rowLabel.includes("OCUP") || 
+                                rowLabel.includes("VENDIDAS") || rowLabel.includes("NOCHES") || 
+                                rowLabel.includes("UNIDADES") || rowLabel.includes("ROOMS") || 
+                                rowLabel.includes("ROOM") || rowLabel.includes("ESTANCIA") || 
+                                rowLabel.includes("STAY") || rowLabel.includes("OTB"));
                     
                     const isEV = rowLabel.includes("EVENTO") || rowLabel.includes("HITO") || rowLabel.includes("COMENTARIO") || rowLabel.includes("FESTIVO") || rowLabel.includes("OBSERVAC");
 
@@ -2225,38 +2243,35 @@
                                 const roundedRooms = Math.round(num);
                                 targetYear.daily_otb[iso].rooms += roundedRooms;
                                 if (!targetYear.otb.rooms) targetYear.otb.rooms = new Array(12).fill(0);
+                                if (!targetYear.otb.revenue) targetYear.otb.revenue = new Array(12).fill(0);
                                 targetYear.otb.rooms[m] += roundedRooms;
                                 foundRMS += roundedRooms;
                             } else if (isREV) {
-                                // DETECT CATEGORY
                                 const gid = getGroupID(rowLabel);
                                 const breakdownMap = {
-                                    "HABITACION": "habitacion",
-                                    "DESAYUNOS": "desayunos",
-                                    "RESTAURANTE": "restaurante",
-                                    "SPA": "spa",
-                                    "VARIOS": "varios",
-                                    "EVENTOS": "eventos",
-                                    "CAFETERIA": "cafeteria",
-                                    "MINIBAR": "minibar",
-                                    "OFICINAS": "oficinas"
+                                    "HABITACION": "habitacion", "DESAYUNOS": "desayunos", "RESTAURANTE": "restaurante",
+                                    "SPA": "spa", "VARIOS": "varios", "EVENTOS": "eventos", "CAFETERIA": "cafeteria",
+                                    "MINIBAR": "minibar", "OFICINAS": "oficinas", "AJUSTE": "ajuste"
                                 };
                                 const bKey = breakdownMap[gid];
 
+                                // AVOID DOUBLE COUNTING: Skip master production rows for daily revenue sum if we have components
+                                // but we always track breakdown for categories.
                                 if (bKey) {
-                                    // Store in Breakdown (Monthly)
                                     if (!targetYear.otb.breakdown) targetYear.otb.breakdown = {};
                                     if (!targetYear.otb.breakdown[bKey]) targetYear.otb.breakdown[bKey] = new Array(12).fill(0);
                                     targetYear.otb.breakdown[bKey][m] += num;
-
-                                    // Store in Breakdown (Daily)
                                     targetYear.daily_otb[iso].breakdown[bKey] = (targetYear.daily_otb[iso].breakdown[bKey] || 0) + num;
                                     
-                                    // Track Category Sum to use as Revenue if Master is missing
+                                    // Tracking category sum
                                     if (targetYear.daily_otb[iso]._catRev === undefined) targetYear.daily_otb[iso]._catRev = 0;
                                     targetYear.daily_otb[iso]._catRev += num;
-                                } else {
-                                    // Assume it's a Total/Master row if not a specific category
+                                } else if (!isTotalRow) {
+                                    // It's revenue but not a total and not in a specific group
+                                    if (targetYear.daily_otb[iso]._catRev === undefined) targetYear.daily_otb[iso]._catRev = 0;
+                                    targetYear.daily_otb[iso]._catRev += num;
+                                } else if (isTotalRow) {
+                                    // Only store it as master
                                     if (targetYear.daily_otb[iso]._masterRev === undefined) targetYear.daily_otb[iso]._masterRev = 0;
                                     targetYear.daily_otb[iso]._masterRev += num;
                                 }
@@ -2319,9 +2334,9 @@
                             if (dbYear.otb.rooms) dbYear.otb.rooms[m] = 0;
                             if (dbYear.otb.breakdown) Object.values(dbYear.otb.breakdown).forEach(arr => arr[m] = 0);
                         }
-                        if (dbYear.daily_otb) {
-                            const prefix = `${reportYear}-${String(m + 1).padStart(2, '0')}`;
-                            Object.keys(dbYear.daily_otb).forEach(k => { if (k.startsWith(prefix)) delete dbYear.daily_otb[k]; });
+                        if (db[hotel][y] && db[hotel][y].daily_otb) {
+                            const prefix = `${y}-${String(m + 1).padStart(2, '0')}`;
+                            Object.keys(db[hotel][y].daily_otb).forEach(k => { if (k.startsWith(prefix)) delete db[hotel][y].daily_otb[k]; });
                         }
                         touchedMonths.add(m);
                     }
@@ -2332,24 +2347,37 @@
                 // SAVE FIRST, THEN FEEDBACK
                 saveData();
 
-                // RESOLVE SUMMARY YEAR: Use the actually detected year for the final summary message
-                const summaryYear = String(detectedYear);
-                const targetDbYear = db[hotel][summaryYear] || dbYear;
+                // RESOLVE SUMMARY ACROSS ALL YEARS RELATING TO THIS FILE
+                let totalDaysGlobal = 0;
+                let totalRoomsGlobal = 0;
+                let totalRevGlobal = 0;
+                let categoriesFound = new Set();
+                let yearsLabels = [];
+
+                yearsToClear.forEach(y => {
+                    const yData = db[hotel][y];
+                    if (yData && yData.daily_otb) {
+                        const days = Object.keys(yData.daily_otb).filter(k => (yData.daily_otb[k].rooms > 0 || yData.daily_otb[k].revenue > 0));
+                        if (days.length > 0) {
+                            totalDaysGlobal += days.length;
+                            totalRoomsGlobal += yData.otb.rooms.reduce((a, b) => a + b, 0);
+                            totalRevGlobal += yData.otb.revenue.reduce((a, b) => a + b, 0);
+                            if (yData.otb.breakdown) Object.keys(yData.otb.breakdown).forEach(c => categoriesFound.add(c));
+                            yearsLabels.push(y);
+                        }
+                    }
+                });
 
                 // Show feedback to user
-                const totalRMS = targetDbYear.otb.rooms.reduce((a, b) => a + b, 0);
-                const totalREV = targetDbYear.otb.revenue.reduce((a, b) => a + b, 0);
-                // Only count days that actually have some data
-                const daysCount = Object.keys(targetDbYear.daily_otb || {}).filter(k => (targetDbYear.daily_otb[k].rooms > 0 || targetDbYear.daily_otb[k].revenue > 0)).length;
                 const fmtEuro = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' });
 
-                let msg = `✅ Datos procesados para ${summaryYear}:<br>`;
-                msg += `- Días detectados: <b>${daysCount}</b><br>`;
-                msg += `- Total Habitaciones: <b>${totalRMS}</b><br>`;
-                msg += `- Total Revenue: <b>${fmtEuro.format(totalREV)}</b><br>`;
+                let msg = `✅ Datos procesados para ${yearsLabels.join(' / ')}:<br>`;
+                msg += `- Días detectados: <b>${totalDaysGlobal}</b><br>`;
+                msg += `- Total Habitaciones: <b>${Math.round(totalRoomsGlobal)}</b><br>`;
+                msg += `- Total Revenue: <b>${fmtEuro.format(totalRevGlobal)}</b><br>`;
 
-                if (dbYear.otb.breakdown && Object.keys(dbYear.otb.breakdown).length > 0) {
-                    msg += `- Categorías desglosadas: ${Object.keys(dbYear.otb.breakdown).join(', ')}`;
+                if (categoriesFound.size > 0) {
+                    msg += `- Categorías desglosadas: ${Array.from(categoriesFound).join(', ')}`;
                 }
 
                 // Create or update status box
@@ -2506,8 +2534,8 @@
                     const otbRms = db[hotel][y].otb.rooms.reduce((a, b) => a + b, 0);
                     if (otbRev > 0 || otbRms > 0) {
                         tbody.innerHTML += `
-                            <tr style="font-size: 0.75rem; color: #8b5cf6;">
-                                <td>└─ Previsión OTB 2026</td>
+                            <tr style="font-size: 0.75rem; color: #8b5cf6; background: rgba(139, 92, 246, 0.03);">
+                                <td>└─ Previsión OTB ${y}</td>
                                 <td>${new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(otbRev)}</td>
                                 <td>${new Intl.NumberFormat('es-ES').format(otbRms)} RN</td>
                                 <td>-</td>
