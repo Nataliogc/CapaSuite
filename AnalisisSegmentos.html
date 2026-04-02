@@ -758,18 +758,23 @@
                 // Si no es Hab ni Pro, y hay texto en A o B, podría ser un nuevo segmento
                 const isMetric = isHab || isPro || nColB === "PAX" || nColB === "PROD" || nColB.includes("ALMUERZO") || nColB.includes("CENA") || nColB.includes("SPA") || nColB.includes("VARIOS");
 
-                // --- GESTIÓN DE SEGMENTOS (ESTRICTO) ---
+                // --- GESTIÓN DE SEGMENTOS (ULTRA-ESTRICTO) ---
                 const knownSegments = ["CORPORATIVO LINEAL", "DIRECTO OFFLINE", "DIRONLINE", "GRTANTEO", "GRUPOS", "OTA/AAVV", "OTROS", "PARTICULARES", "TTOO DINAMICA"];
                 
-                // Buscamos si la columna A o B contiene exactamente uno de los nombres del segmento
-                const sFound = knownSegments.find(ks => rawColA.toUpperCase() === ks || rawColB.toUpperCase() === ks);
+                const rawClean = rawColA.toUpperCase().trim();
+                const sFound = knownSegments.find(ks => rawClean === ks || normalizeStr(rawClean) === normalizeStr(ks));
+                
                 if (sFound) {
                     currentSeg = sFound;
+                } else if (rawColA !== "" && !isMetric) {
+                    // Si hay contenido en A que no es un segmento conocido ni una métrica (ej. "Total" o "Segmentación")
+                    // Reseteamos el segmento actual para no sumar basura a los previos
+                    currentSeg = null;
                 }
 
-                // SI NO TENEMOS SEGMENTO VÁLIDO O ES UNA FILA DE TOTAL, SALTAMOS
-                if (!currentSeg || nColA === "TOTAL" || nColB === "TOTAL" || nColA === "SEGMENTACION" || nColA === "SEGMENTO") continue;
-                if (!isHab && !isPro) continue; // Solo procesamos las filas solicitadas
+                // SEGMENTO DESCONOCIDO O ROW INVÁLIDA -> SALTAR
+                if (!currentSeg || nColA.includes("TOTAL") || nColA.includes("SEGMENTAC") || nColA.includes("RESUMEN")) continue;
+                if (!isHab && !isPro) continue; 
 
 
                 if (!dbYear.segment[currentSeg]) {
