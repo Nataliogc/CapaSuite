@@ -2259,8 +2259,16 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     if (d.otbADR && d.otbADR > 0) html += `<td class="price-val" style="color:#4f46e5;">${d.otbADR.toFixed(0)}€</td>`;
                     else html += `<td><span style="color:#cbd5e1">-</span></td>`;
                 } else {
-                    html += `<td class="price-val" style="font-size:1.1rem;">${myP.toFixed(0)}€</td>`;
+                    let content = `${myP.toFixed(0)}€`;
+                    if (my.change) {
+                        const dir = my.change.dir;
+                        const color = dir === 'up' ? 'var(--success)' : 'var(--danger)';
+                        const arrow = dir === 'up' ? '▲' : '▼';
+                        content += `<span style="display:inline-block; font-size:0.65rem; color:${color}; background:#fff; border:1px solid ${color}; padding:0px 2px; border-radius:3px; margin-left:3px; line-height:1.2; vertical-align:middle; font-weight:700;">${arrow}${my.change.prev}</span>`;
+                    }
+                    html += `<td class="price-val" style="font-size:1.1rem;">${content}</td>`;
                 }
+
 
                 html += `<td style="color:var(--primary); font-weight:600;">${d.compAvg.toFixed(0)}€</td>`;
                 html += `<td>${gapHtml}</td>`;

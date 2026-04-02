@@ -860,16 +860,16 @@
         function getGroupID(name) {
             const norm = normalizeStr(name);
             // Strictly OMIT master totals and their variations to avoid falling back to total prod
-            // Use exact matches or specific phrases to avoid omitting "TOTAL HABITACION"
             const exactOmits = ["TOTAL", "TOTAL MASTER", "PROD TOTAL", "TOTAL PROD", "TOTAL HOTEL", "PRODUCTO TOTAL"];
             const phraseOmits = ["PRODUCCION TOTAL", "TOTAL PRODUCCION", "PRODUCCIO TOTAL", "TOTAL PRODUCCIO", "TOTAL PRODUCCION MASTER"];
 
             if (exactOmits.includes(norm)) return "OMIT";
             if (phraseOmits.some(o => norm.includes(o))) return "OMIT";
 
-            // Special metric mapping
-            if (norm === "HAB" || norm === "RMS" || norm === "RN") return "HABITACION";
-            if (norm === "PAX" || norm === "PERS" || norm === "PERSONAS") return "VARIOS";
+            // Metric checks - strictly for internal categorization, not for summing as revenue
+            if (norm === "HAB" || norm === "RMS" || norm === "RN") return "METRIC_RMS";
+            if (norm === "PAX" || norm === "PERS" || norm === "PERSONAS") return "METRIC_PAX";
+            if (norm === "PRO" || norm === "REV" || norm === "PROD" || norm === "VTA") return "METRIC_REV";
 
             const eventKeywords = ["COFFEE", "SALA", "SALON", "EVENTO", "ALQUILER", "AUDIOVISUAL", "OFICINA"];
             for (const [id, g] of Object.entries(PRODUCTION_GROUPS)) {
@@ -889,18 +889,13 @@
             const subtotalRows = [];
 
             Object.values(serviceObj).forEach(s => {
-                const name = normalizeStr(s.name);
                 const gid = getGroupID(s.name);
-
-                // Secondary filter: If it's a known OMIT row or name contains TOTAL PROD/etc, definitely skip it
-                if (gid === "OMIT") return;
-                const lowName = name.toLowerCase();
-                if (lowName.includes("total prod") || lowName.includes("prod total") || lowName.includes("produccion total") || lowName.includes("total hotel") || lowName === "total" || lowName.includes("produccion hotel")) return;
-
+                if (gid === "OMIT" || gid.startsWith("METRIC_")) return;
+                
+                const name = normalizeStr(s.name);
                 if (gid === "HABITACION") {
                     if (name.includes("TOTAL") || name.includes("SUBTOTAL")) {
                         // Priority for "TOTAL ALOJAMIENTO" or similar. 
-                        // EXCLUDE general "TOTAL PRODUCCION" even if it matches HABITACION keys by mistake
                         if ((name.includes("ALOJAMIENTO") || name.includes("HABITACION") || name.includes("ESTANCIA")) && !name.includes("PRODUCCION TOTAL")) {
                             subtotalRows.push(s);
                         }
@@ -909,6 +904,7 @@
                     }
                 }
             });
+
 
             // Logic:
             // 1. CHANGED: Prefer summing components (granular truth) over using a "Total" row (which might include extras)

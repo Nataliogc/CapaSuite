@@ -730,10 +730,10 @@
 
                 // --- DETECCIÓN DE MÉTRICA ---
                 // Solo "Hab." (con punto) o "Hab" (exacto) para Room Nights
-                const isHab = nColB === "HAB" || nColB === "RMS" || nColB === "RN" || nColB === "HAB.";
+                const isHab = nColB === "HAB" || nColB === "RMS" || nColB === "RN" || nColB === "HAB." || nColB === "OCUPACION" || nColB === "OCUP";
                 
-                // Solo "Habitación" y "Desayuno" para Producción
-                const isPro = nColB.includes("HABITACION") || nColB.includes("DESAYUNO") || nColB === "ALOJAMIENTO";
+                // Solo "Habitación" y "Desayuno" para Producción, incluyendo Dia/Noche
+                const isPro = nColB.includes("HABITACION") || nColB.includes("DESAYUNO") || nColB === "ALOJAMIENTO" || nColB === "DIA" || nColB === "NOCHE" || nColB === "INDIVIDUAL" || nColB === "DOBLE";
 
                 // Si no es Hab ni Pro, y hay texto en A o B, podría ser un nuevo segmento
                 const isMetric = isHab || isPro || nColB === "PAX" || nColB === "PROD" || nColB.includes("ALMUERZO") || nColB.includes("CENA") || nColB.includes("SPA") || nColB.includes("VARIOS");
@@ -744,13 +744,14 @@
                     if (nColA !== "SEG" && nColA !== "SEGMENTO" && nColA !== "TOTAL") {
                         currentSeg = rawColA;
                     }
-                } else if (rawColA === "" && rawColB !== "" && !isMetric) {
+                } else if (rawColA === "" && rawColB !== "" && !isMetric && nColB !== "SEGMENTO" && nColB !== "SEG") {
                     // Si A está vacío pero B tiene algo que no es métrica, podría ser el segmento (formato alternativo)
                     currentSeg = rawColB;
                 }
 
                 if (!currentSeg || nColA === "TOTAL") continue;
                 if (!isHab && !isPro) continue; // Solo procesamos las filas solicitadas
+
 
                 if (!dbYear.segment[currentSeg]) {
                     dbYear.segment[currentSeg] = { name: currentSeg, revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) };

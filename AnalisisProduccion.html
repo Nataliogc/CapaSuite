@@ -2039,17 +2039,33 @@
             const weekStats = [
                 { name: "Lunes", rev: 0, rn: 0, count: 0 },
                 { name: "Martes", rev: 0, rn: 0, count: 0 },
+                { name: "Miércoles", rev: 0, rev: 0, rn: 0, count: 0 }, // Miércoles fix (redundant rev 0 ok)
                 { name: "Miércoles", rev: 0, rn: 0, count: 0 },
                 { name: "Jueves", rev: 0, rn: 0, count: 0 },
                 { name: "Viernes", rev: 0, rn: 0, count: 0 },
                 { name: "Sábado", rev: 0, rn: 0, count: 0 },
                 { name: "Domingo", rev: 0, rn: 0, count: 0 }
             ];
+            // Fix Wednesday duplicate and logic
+            const weekNames = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+            const weekData = weekNames.map(n => ({ name: n, rev: 0, rn: 0, count: 0 }));
 
             const midx = document.getElementById('monthSelector').value === "All" ? -1 : parseInt(document.getElementById('monthSelector').value);
 
             Object.entries(data.daily).forEach(([dateStr, dayData]) => {
-                const date = new Date(dateStr);
+                // Robust date parsing for DD-MM-YYYY and YYYY-MM-DD
+                let parts = dateStr.split(/[\/-]/);
+                let date;
+                if (parts.length === 3) {
+                    if (parts[0].length === 4) date = new Date(dateStr);
+                    else {
+                        const y = parts[2].length === 2 ? "20" + parts[2] : parts[2];
+                        date = new Date(`${y}-${parts[1]}-${parts[0]}`);
+                    }
+                } else {
+                    date = new Date(dateStr);
+                }
+
                 if (isNaN(date.getTime())) return;
                 
                 // Filter by month if selected
@@ -2061,14 +2077,14 @@
                 const rev = (typeof dayData === 'object') ? (dayData.revenue || 0) : 0;
                 const rn = (typeof dayData === 'object') ? (dayData.rooms || 0) : (dayData || 0);
 
-                weekStats[dayIdx].rev += rev;
-                weekStats[dayIdx].rn += rn;
-                weekStats[dayIdx].count++;
+                weekData[dayIdx].rev += rev;
+                weekData[dayIdx].rn += rn;
+                weekData[dayIdx].count++;
             });
 
             // Calculate Max for color scaling
             let maxVal = 0;
-            weekStats.forEach(s => {
+            weekData.forEach(s => {
                 let val = 0;
                 if (metric === 'rev') val = s.rev / (s.count || 1);
                 else if (metric === 'rn') val = s.rn / (s.count || 1);
@@ -2078,9 +2094,9 @@
             });
 
             const container = document.getElementById('weekday-heatmap');
-            container.innerHTML = weekStats.map(s => {
+            container.innerHTML = weekData.map(s => {
                 const score = maxVal > 0 ? (s.avg / maxVal) : 0;
-                const opacity = 0.1 + (score * 0.4);
+                const opacity = 0.15 + (score * 0.55);
                 let color = "rgba(79, 70, 229, " + opacity + ")";
                 if (metric === 'rn') color = "rgba(16, 185, 129, " + opacity + ")";
                 if (metric === 'adr') color = "rgba(245, 158, 11, " + opacity + ")";
@@ -2091,7 +2107,7 @@
                 else displayVal = s.avg.toFixed(1) + " €";
 
                 return `
-                    <div class="heatmap-cell" style="background: ${color}; border-color: ${score > 0.8 ? 'rgba(255,255,255,0.2)' : 'transparent'}">
+                    <div class="heatmap-cell" style="background: ${color}; border: 1px solid ${score > 0.8 ? 'rgba(255,255,255,0.3)' : 'transparent'};">
                         <div class="day-name">${s.name}</div>
                         <div class="day-value">${displayVal}</div>
                         <div class="day-sub">${metric === 'rev' ? 'Media diaria' : (metric === 'rn' ? 'Hab. media' : 'Precio medio')}</div>
@@ -2099,6 +2115,7 @@
                 `;
             }).join('');
         }
+
     </script>
 </body>
 
