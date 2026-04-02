@@ -765,7 +765,36 @@
                                 otb_prev = Math.round((typeof vPrev === 'object') ? (vPrev.rooms || 0) : vPrev);
                             }
 
-                            revenueData[iso].occupancyData[hName] = { otb, occ, otb_prev, adr };
+                            // PRIORITIZE: If we already have data in revenueData (from Expedia upload), we merge it.
+                            // The Expedia upload puts otbRooms/otbADR at the root of revenueData[iso]
+                            const root = revenueData[iso];
+                            const nested = root.occupancyData[hName] || {};
+                            
+                            // If this hotel is the one from the Expedia upload, use those values as fallback
+                            let fallbackOtb = 0;
+                            let fallbackAdr = 0;
+                            
+                            // Check if the root data belongs to this hotel (simple check via activeHotel or similar)
+                            // In this suite, usually we only have OTB for the active hotel in revenue_data_v2
+                            if (root.otbRooms > 0) {
+                                // Dynamic check: if we are processing the active hotel, use root rooms
+                                const isActive = hKey && hKey.toLowerCase().includes(root.activeHotel?.toLowerCase() || "");
+                                if (isActive) {
+                                    fallbackOtb = root.otbRooms;
+                                    fallbackAdr = root.otbADR || 0;
+                                }
+                            }
+
+                            const finalOtb = (otb > 0) ? otb : (nested.otb || fallbackOtb);
+                            const finalOcc = (occ > 0) ? occ : (nested.occ || finalOtb); // Use OTB as OCC fallback if 0
+                            const finalAdr = (adr > 0) ? adr : (nested.adr || fallbackAdr);
+
+                            revenueData[iso].occupancyData[hName] = { 
+                                otb: finalOtb, 
+                                occ: finalOcc, 
+                                otb_prev: otb_prev || nested.otb_prev, 
+                                adr: finalAdr 
+                            };
                         }
                     });
                 }

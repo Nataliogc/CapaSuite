@@ -1876,18 +1876,29 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                             if (hD[y] && hD[y].daily?.[iso] !== undefined) { prod = hD[y].daily[iso]; break; }
                         }
                         
-                        // Si encontramos OTB en DB, sobreescribimos
+                        // Si encontramos OTB en DB, sincronizamos (Solo si no hay datos ya cargados desde el Excel fresco)
                         if (otb !== null) {
-                            d.otbRooms = (typeof otb === 'number') ? otb : (otb.rooms || 0);
-                            // Sincronizamos también occupancy si el hotel es el activo para evitar datos residuales del Excel
-                            d.occupancy = d.otbRooms; 
+                            const otbVal = (typeof otb === 'number') ? otb : (otb.rooms || 0);
+                            
+                            // PRIORIDAD: Si ya tenemos datos (occ > 0), mantenemos el del Excel a menos que el de la DB sea diferente y queramos forzarlo.
+                            // Pero como el usuario reporta que "vuelve atrás", significa que prefiere lo que acaba de ver.
+                            if (!d.otbRooms || d.otbRooms === 0) {
+                                d.otbRooms = otbVal;
+                            }
+                            if (!d.occupancy || d.occupancy === 0) {
+                                d.occupancy = d.otbRooms;
+                            }
                         }
 
-                        // Sincronizamos con Producción (Real) si existe
+                        // Sincronizamos con Producción (Real) si existe - La producción REAL (pasada) suele mandar sobre la previsión
                         if (prod !== null) {
-                            d.occupancy = (typeof prod === 'number') ? prod : (prod.rooms || 0);
-                            // Si no teníamos OTB pero sí Producción, igualamos para coherencia en el día actual/pasado
-                            if (otb === null) d.otbRooms = d.occupancy;
+                            const prodVal = (typeof prod === 'number') ? prod : (prod.rooms || 0);
+                            // Solo sobreescribimos si realmente hay producción o si d.occupancy está vacío
+                            if (prodVal > 0 || !d.occupancy) {
+                                d.occupancy = prodVal;
+                                // Si no teníamos OTB pero sí Producción, igualamos para coherencia en el día actual/pasado
+                                if (!d.otbRooms || d.otbRooms === 0) d.otbRooms = d.occupancy;
+                            }
                         }
 
                         // --- Historial de cambios (Pick-up) ---
@@ -1923,7 +1934,10 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                             for (const y of yearsToTry) {
                                 if (hD[y] && hD[y].daily?.[iso] !== undefined) {
                                     const p = hD[y].daily[iso];
-                                    d.hotels[hN].occupancy = (typeof p === 'number') ? p : (p.rooms || 0);
+                                    const val = (typeof p === 'number') ? p : (p.rooms || 0);
+                                    if (val > 0 || !d.hotels[hN].occupancy) {
+                                        d.hotels[hN].occupancy = val;
+                                    }
                                     break;
                                 }
                             }
@@ -1931,7 +1945,10 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                             for (const y of yearsToTry) {
                                 if (hD[y] && hD[y].daily_otb?.[iso] !== undefined) {
                                     const otb = hD[y].daily_otb[iso];
-                                    d.hotels[hN].otbRooms = (typeof otb === 'number') ? otb : (otb.rooms || 0);
+                                    const val = (typeof otb === 'number') ? otb : (otb.rooms || 0);
+                                    if (val > 0 || !d.hotels[hN].otbRooms) {
+                                        d.hotels[hN].otbRooms = val;
+                                    }
                                     break;
                                 }
                             }
