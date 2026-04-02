@@ -1898,15 +1898,26 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         }
                     }
 
-                    // Sync Competitors
+                    // Sync Competitors (Managed & Others)
                     Object.keys(hotelKeyMap || {}).forEach(hN => {
                         const dbK = hotelKeyMap[hN];
                         if (dbK && pDb[dbK]) {
                             const hD = pDb[dbK];
+                            const iso = d.dateISO;
+                            
+                            // 1. Production (Occ)
                             for (const y of yearsToTry) {
                                 if (hD[y] && hD[y].daily?.[iso] !== undefined) {
                                     const p = hD[y].daily[iso];
                                     d.hotels[hN].occupancy = (typeof p === 'number') ? p : (p.rooms || 0);
+                                    break;
+                                }
+                            }
+                            // 2. Forecast (OTB) - For managed sibling or others with OTB data
+                            for (const y of yearsToTry) {
+                                if (hD[y] && hD[y].daily_otb?.[iso] !== undefined) {
+                                    const otb = hD[y].daily_otb[iso];
+                                    d.hotels[hN].otbRooms = (typeof otb === 'number') ? otb : (otb.rooms || 0);
                                     break;
                                 }
                             }
