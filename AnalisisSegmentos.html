@@ -739,17 +739,21 @@
                 const isMetric = isHab || isPro || nColB === "PAX" || nColB === "PROD" || nColB.includes("ALMUERZO") || nColB.includes("CENA") || nColB.includes("SPA") || nColB.includes("VARIOS");
 
                 // --- GESTIÓN DE SEGMENTOS ---
-                if (rawColA !== "" && !isMetric) {
+                const knownSegments = ["CORPORATIVO LINEAL", "DIRECTO OFFLINE", "DIRONLINE", "GRTANTEO", "GRUPOS", "OTA/AAVV", "OTROS", "PARTICULARES", "TTOO DINAMICA"];
+                const isKnown = knownSegments.includes(rawColA.toUpperCase()) || knownSegments.includes(rawColB.toUpperCase());
+
+                if (rawColA !== "" && nColA !== "SEG" && nColA !== "SEGMENTO" && nColA !== "TOTAL" && !isMetric) {
                     // Si hay texto en A y no es una fila de métrica, es el nombre del segmento
-                    if (nColA !== "SEG" && nColA !== "SEGMENTO" && nColA !== "TOTAL") {
-                        currentSeg = rawColA;
-                    }
-                } else if (rawColA === "" && rawColB !== "" && !isMetric && nColB !== "SEGMENTO" && nColB !== "SEG") {
-                    // Si A está vacío pero B tiene algo que no es métrica, podría ser el segmento (formato alternativo)
+                    currentSeg = rawColA;
+                } else if (rawColA !== "" && isKnown) {
+                    // Si es un segmento conocido en la columna A, lo asignamos incluso si hay métrica en B
+                    currentSeg = rawColA;
+                } else if (rawColA === "" && rawColB !== "" && !isMetric && nColB !== "SEGMENTO" && nColB !== "SEG" && isKnown) {
+                    // Si A está vacío pero B tiene un segmento conocido que no es métrica
                     currentSeg = rawColB;
                 }
 
-                if (!currentSeg || nColA === "TOTAL") continue;
+                if (!currentSeg || nColA === "TOTAL" || nColB === "TOTAL") continue;
                 if (!isHab && !isPro) continue; // Solo procesamos las filas solicitadas
 
 
