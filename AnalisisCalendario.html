@@ -99,31 +99,60 @@
             background: rgba(255, 255, 255, 0.95);
             border-bottom: 1px solid rgba(0, 0, 0, 0.1);
         }
-        .nav-links { display: flex; gap: 15px; }
+        /* TOP NAVIGATION */
+        .top-nav {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            padding: 0 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 99999;
+            height: 65px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            width: 100%;
+        }
+
+        [data-theme="light"] .top-nav {
+            background: rgba(255, 255, 255, 0.9);
+            border-bottom-color: rgba(0, 0, 0, 0.05);
+        }
+
+        .nav-links { display: flex; gap: 20px; height: 100%; align-items: center; }
         .nav-links a {
             color: #94a3b8;
             text-decoration: none;
-            font-size: 0.75rem;
+            font-size: 11px;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            padding: 8px 12px;
-            border-radius: 8px;
+            letter-spacing: 1px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
             transition: all 0.3s ease;
+            border-bottom: 2px solid transparent;
         }
         .nav-links a:hover { color: white; background: rgba(255, 255, 255, 0.05); }
-        .nav-links a.active { color: #818cf8; background: rgba(129, 140, 248, 0.1); }
+        .nav-links a.active { color: #818cf8; border-bottom-color: #818cf8; background: rgba(129, 140, 248, 0.1); }
         [data-theme="light"] .nav-links a:hover { color: #1e293b; background: rgba(0, 0, 0, 0.05); }
 
         .nav-user { display: flex; align-items: center; gap: 15px; }
         .user-chip { 
             display: flex; 
             align-items: center; 
-            gap: 15px; 
+            gap: 12px; 
             background: rgba(255, 255, 255, 0.05); 
             padding: 5px 15px; 
             border-radius: 50px;
             border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        [data-theme="light"] .user-chip {
+            background: #f8fafc;
+            border-color: rgba(0, 0, 0, 0.05);
+            color: #1e293b;
         }
         [data-theme="light"] .user-chip {
             background: #f8fafc;

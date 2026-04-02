@@ -51,6 +51,76 @@
             --shadow-premium: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
         }
 
+        /* TOP NAVIGATION */
+        .top-nav {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            padding: 0 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 99999;
+            height: 65px;
+            border-bottom: 1px solid var(--border);
+            width: 100%;
+        }
+
+        [data-theme="light"] .top-nav {
+            background: rgba(255, 255, 255, 0.9);
+            border-bottom-color: rgba(0, 0, 0, 0.05);
+        }
+
+        .nav-links { display: flex; gap: 20px; height: 100%; align-items: center; }
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            transition: var(--transition);
+            border-bottom: 2px solid transparent;
+            padding: 0 10px;
+        }
+        .nav-links a:hover { color: var(--text-main); }
+        .nav-links a.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+        .nav-user { display: flex; align-items: center; gap: 15px; }
+        .user-chip { 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            background: rgba(255, 255, 255, 0.05); 
+            padding: 5px 15px; 
+            border-radius: 50px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        [data-theme="light"] .user-chip {
+            background: #f8fafc;
+            border-color: rgba(0, 0, 0, 0.05);
+            color: #1e293b;
+        }
+
+        .nav-hotel-select {
+            background: transparent;
+            color: inherit;
+            border: none;
+            font-size: 0.8rem;
+            font-weight: 800;
+            outline: none;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: inherit;
+        }
+
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
             background-color: var(--bg-deep);
@@ -312,140 +382,7 @@
 
             100% {
                 transform: rotate(360deg);
-            }
         }
-
-        /* TOP NAVIGATION */
-        .top-nav {
-            background: rgba(15, 23, 42, 0.8);
-            backdrop-filter: blur(12px);
-            padding: 0 40px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            position: sticky;
-            top: 0;
-            z-index: 99999;
-            height: 45px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .nav-links { display: flex; gap: 25px; height: 100%; align-items: center; }
-        .top-nav a {
-            color: var(--text-muted);
-            text-decoration: none;
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            transition: var(--transition);
-            border-bottom: 2px solid transparent;
-        }
-        .top-nav a:hover { color: white; }
-        .top-nav a.active { color: #818cf8; border-bottom: 2px solid #818cf8; }
-
-        .top-nav a:hover {
-            color: #ffffff;
-        }
-
-        .top-nav a.active {
-            color: #818cf8;
-            border-bottom: 2px solid #818cf8;
-        }
-
-        .nav-user {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            color: white;
-            font-size: 0.75rem;
-        }
-
-        .nav-user .user-email {
-            font-weight: 500;
-            opacity: 0.9;
-        }
-
-        .nav-user .logout-btn {
-            color: #ef4444;
-            cursor: pointer;
-            text-decoration: underline;
-            font-size: 0.7rem;
-            font-weight: 700;
-        }
-
-        .nav-user .dot { width: 8px; height: 8px; background: #10b981; border-radius: 50%; }
-
-        .nav-hotel-select {
-            background: rgba(255, 255, 255, 0.05);
-            color: #f1f5f9;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 6px 12px;
-            font-size: 0.8rem;
-            font-weight: 800;
-            outline: none;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-family: 'Inter', sans-serif;
-            margin-right: 10px;
-        }
-        .nav-hotel-select:hover {
-            background: rgba(255, 255, 255, 0.15);
-            border-color: #818cf8;
-            transform: translateY(-1px);
-        }
-        [data-theme="light"] .nav-hotel-select {
-            background: #ffffff;
-            color: #1e293b;
-            border-color: rgba(0,0,0,0.1);
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-        }
-
-        /* SEGMENTED TOGGLES */
-        .metric-toggles {
-            display: flex;
-            background: rgba(255, 255, 255, 0.2);
-            padding: 4px;
-            border-radius: 8px;
-            gap: 4px;
-        }
-
-        .toggle-btn {
-            background: transparent;
-            border: none;
-            color: rgba(255, 255, 255, 0.8);
-            font-size: 0.85rem;
-            font-weight: 600;
-            padding: 6px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .toggle-btn:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-        }
-
-        .toggle-btn.active {
-            background: white;
-            color: var(--primary);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .metric-icon {
-            display: none;
-        }
-
-        /* theme toggle hide/show */
-        [data-theme="light"] #themeToggleBtn { color: #1e293b; }
     </style>
     <script src="js/theme-manager.js"></script>
 </head>
@@ -467,7 +404,7 @@
                     <option value="Guadiana">Hotel Guadiana</option>
                     <option value="Cumbria">Hotel Cumbria</option>
                 </select>
-                <div id="themeToggleBtn" onclick="toggleTheme()" style="cursor:pointer; font-size:1.1rem; margin-left:10px;" title="Cambiar Modo">🌙</div>
+                <div id="themeToggleBtn" onclick="toggleTheme()" style="cursor:pointer; font-size:1.1rem;" title="Cambiar Modo">🌙</div>
                 <span class="dot"></span>
                 <span id="userEmailNav">Conectando...</span>
                 <span onclick="auth.signOut()" class="logout-btn">Salir</span>
