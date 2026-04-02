@@ -738,22 +738,17 @@
                 // Si no es Hab ni Pro, y hay texto en A o B, podría ser un nuevo segmento
                 const isMetric = isHab || isPro || nColB === "PAX" || nColB === "PROD" || nColB.includes("ALMUERZO") || nColB.includes("CENA") || nColB.includes("SPA") || nColB.includes("VARIOS");
 
-                // --- GESTIÓN DE SEGMENTOS ---
+                // --- GESTIÓN DE SEGMENTOS (ESTRICTO) ---
                 const knownSegments = ["CORPORATIVO LINEAL", "DIRECTO OFFLINE", "DIRONLINE", "GRTANTEO", "GRUPOS", "OTA/AAVV", "OTROS", "PARTICULARES", "TTOO DINAMICA"];
-                const isKnown = knownSegments.includes(rawColA.toUpperCase()) || knownSegments.includes(rawColB.toUpperCase());
-
-                if (rawColA !== "" && nColA !== "SEG" && nColA !== "SEGMENTO" && nColA !== "TOTAL" && !isMetric) {
-                    // Si hay texto en A y no es una fila de métrica, es el nombre del segmento
-                    currentSeg = rawColA;
-                } else if (rawColA !== "" && isKnown) {
-                    // Si es un segmento conocido en la columna A, lo asignamos incluso si hay métrica en B
-                    currentSeg = rawColA;
-                } else if (rawColA === "" && rawColB !== "" && !isMetric && nColB !== "SEGMENTO" && nColB !== "SEG" && isKnown) {
-                    // Si A está vacío pero B tiene un segmento conocido que no es métrica
-                    currentSeg = rawColB;
+                
+                // Buscamos si la columna A o B contiene exactamente uno de los nombres del segmento
+                const sFound = knownSegments.find(ks => rawColA.toUpperCase() === ks || rawColB.toUpperCase() === ks);
+                if (sFound) {
+                    currentSeg = sFound;
                 }
 
-                if (!currentSeg || nColA === "TOTAL" || nColB === "TOTAL") continue;
+                // SI NO TENEMOS SEGMENTO VÁLIDO O ES UNA FILA DE TOTAL, SALTAMOS
+                if (!currentSeg || nColA === "TOTAL" || nColB === "TOTAL" || nColA === "SEGMENTACION" || nColA === "SEGMENTO") continue;
                 if (!isHab && !isPro) continue; // Solo procesamos las filas solicitadas
 
 
