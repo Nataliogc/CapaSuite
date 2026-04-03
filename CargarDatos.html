@@ -2361,22 +2361,6 @@
                     CapaStorage.setItem('custom_events', JSON.stringify(customEvents));
                 }
 
-
-                // Clear touched months (Year-aware)
-                const touchedMonthsSet = new Set();
-                Object.values(dailyCols).forEach(iso => {
-                    const [y, mStr, d] = iso.split('-');
-                    touchedMonthsSet.add(`${y}-${parseInt(mStr)-1}`);
-                });
-
-                touchedMonthsSet.forEach(key => {
-                    const [y, mStr] = key.split('-');
-                    const mIdx = parseInt(mStr);
-                    if (db[hotel] && db[hotel][y] && db[hotel][y].daily_otb) {
-                        const prefix = `${y}-${String(mIdx + 1).padStart(2, '0')}`;
-                    }
-                });
-
                 // Final Sync of summary updates for all affected years
                 yearsToClear.forEach(yKey => {
                     const y = String(yKey);
@@ -2389,26 +2373,6 @@
                         }
                     }
                 });
-                
-                // REPLACEMENT for the problematic loop:
-                // We'll use more conservative clearing or just fix the 'y'
-                const otbMonthYears = new Set();
-                Object.values(dailyCols).forEach(iso => {
-                    const [y, mStr, d] = iso.split('-');
-                    otbMonthYears.add(`${y}-${parseInt(mStr)-1}`);
-                });
-
-                otbMonthYears.forEach(myKey => {
-                    const [y, m] = myKey.split('-');
-                    const mIdx = parseInt(m);
-                    if (db[hotel][y] && db[hotel][y].daily_otb) {
-                        // Fix the 'y is not defined' by using the 'y' from myKey
-                        const prefix = `${y}-${String(mIdx + 1).padStart(2, '0')}`;
-                        // Optional: clear existing daily data NOT in the current file for this month
-                        // For now, just ensuring 'y' exists prevents the crash.
-                    }
-                });
-
 
 
                 // SAVE FIRST, THEN FEEDBACK
