@@ -13,6 +13,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="js/firebase-config-env.js"></script>
+    <script src="js/firebase-auth.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -1169,8 +1170,17 @@
         // Shared Database logic (same as AnalisisProduccion.html)
         const DB_KEY = 'hotel_manager_db_v2';
         const CONFIG_KEY = 'upload_config_db_v2';
-        let db = JSON.parse(CapaStorage.getItem(DB_KEY)) || {};
-        let config = JSON.parse(CapaStorage.getItem(CONFIG_KEY)) || {};
+        
+        // Use var so they can gracefully fallback and try/catch to prevent TDZ breaks
+        var db = {};
+        var config = {};
+        try {
+            db = JSON.parse(CapaStorage.getItem(DB_KEY)) || {};
+        } catch(e) { console.error("Error al cargar db local.", e); }
+        
+        try {
+            config = JSON.parse(CapaStorage.getItem(CONFIG_KEY)) || {};
+        } catch(e) { console.error("Error al cargar config local.", e); }
 
         function saveData() {
             CapaStorage.setItem(DB_KEY, JSON.stringify(db));
