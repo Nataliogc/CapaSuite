@@ -11,6 +11,12 @@
 
     let storageAvailable = false;
     let memoryStorage = {};
+    const VERSION = "v3";
+
+    // Función de error central de la Fase 2 (Detecta errores silenciosos)
+    window.logError = function (msg, data) {
+        console.error(`[CapaSuite ERROR - ${new Date().toISOString()}]`, msg, data || '');
+    };
 
     // 1. Probar localStorage
     try {
@@ -59,10 +65,10 @@
         isAvailable: storageAvailable,
 
         getItem: function (key) {
-            // Intentar localStorage
+            // Intentar localStorage con y sin versión por retrocompatibilidad
             let val = null;
             if (storageAvailable) {
-                val = localStorage.getItem(key);
+                val = localStorage.getItem(`${VERSION}_${key}`) || localStorage.getItem(key);
             }
             
             // Fallbacks
@@ -105,9 +111,13 @@
         },
 
         setItem: function (key, value) {
-            // Guardar en todas partes para máxima resiliencia
+            // Guardar en todas partes para máxima resiliencia usando prefix de versión
             if (storageAvailable) {
-                try { localStorage.setItem(key, value); } catch (e) { }
+                try { 
+                    localStorage.setItem(`${VERSION}_${key}`, value); 
+                } catch (e) { 
+                    logError("Fallo guardando en localStorage (Posible límite de cuota excedido)", { key });
+                }
             }
             saveToWindowName(key, value);
             memoryStorage[key] = value;
@@ -115,7 +125,8 @@
 
         removeItem: function (key) {
             if (storageAvailable) {
-                localStorage.removeItem(key);
+                localStorage.removeItem(`${VERSION}_${key}`);
+                localStorage.removeItem(key); // Limpiar versión antigua también
             }
             removeFromWindowName(key);
             delete memoryStorage[key];

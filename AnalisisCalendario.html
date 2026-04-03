@@ -437,6 +437,20 @@
             animation: glowPulse 2s infinite;
         }
 
+        /* LIGHT MODE FIXES FOR HEATMAP */
+        [data-theme="light"] .heat-1 { background-color: rgba(0, 0, 0, 0.03) !important; color: rgba(0, 0, 0, 0.45) !important; text-shadow: none !important; }
+        [data-theme="light"] .heat-1 .day-price, [data-theme="light"] .heat-1 .day-num { color: rgba(0, 0, 0, 0.5) !important; }
+        
+        [data-theme="light"] .heat-2 { background-color: rgba(99, 102, 241, 0.1) !important; color: rgba(0, 0, 0, 0.65) !important; }
+        [data-theme="light"] .heat-2 .day-price, [data-theme="light"] .heat-2 .day-num { color: #1e293b !important; }
+        
+        [data-theme="light"] .heat-3 { background-color: rgba(99, 102, 241, 0.3) !important; color: #1e293b !important; }
+        [data-theme="light"] .heat-3 .day-price, [data-theme="light"] .heat-3 .day-num { color: #0f172a !important; }
+
+        [data-theme="light"] .heat-4 .day-price, [data-theme="light"] .heat-4 .day-num,
+        [data-theme="light"] .heat-5 .day-price, [data-theme="light"] .heat-5 .day-num { color: white !important; }
+
+
         @keyframes glowPulse {
             0% { box-shadow: 0 0 15px rgba(99, 102, 241, 0.4); }
             50% { box-shadow: 0 0 35px rgba(168, 85, 247, 0.7); }
@@ -609,8 +623,11 @@
             <div style="width:1px; height:24px; background:var(--border); margin:0 10px;"></div>
             
             <select id="yearSelector" onchange="renderCalendar()">
+                <!-- Rellenado dinámicamente -->
                 <option value="2025">2025</option>
                 <option value="2026" selected>2026</option>
+                <option value="2027">2027</option>
+                <option value="2028">2028</option>
             </select>
             <select id="metricSelector" onchange="renderCalendar()">
                 <option value="occupancy" selected>Ver Ocupación</option>
@@ -678,9 +695,31 @@
             const localEvents = CapaStorage.getItem('custom_events');
             if (localEvents) rawEvents = JSON.parse(localEvents);
 
+            populateYearSelector(); // Detect and inject the available years from DataBase
             renderCalendar();
             renderEventList();
             renderInsights();
+        }
+
+        function populateYearSelector() {
+            const selector = document.getElementById('yearSelector');
+            const yearsSet = new Set(['2025', '2026', '2027']); // Fallback estandar
+            
+            // Detect from Database
+            Object.values(db).forEach(hotelData => {
+                if(hotelData && typeof hotelData === 'object') {
+                    Object.keys(hotelData).forEach(k => {
+                        if (k.length === 4 && !isNaN(k)) yearsSet.add(k);
+                    });
+                }
+            });
+            
+            const currentSelected = selector.value || new Date().getFullYear().toString();
+            const sortedYears = Array.from(yearsSet).sort();
+            
+            selector.innerHTML = sortedYears.map(y => {
+                return `<option value="${y}" ${y === currentSelected ? 'selected' : ''}>${y}</option>`;
+            }).join('');
         }
 
         function renderInsights() {
@@ -831,7 +870,14 @@
 
             const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth(); // 0-indexed
+
             for (let m = 0; m < 12; m++) {
+                // Ocultar meses pasados (solo del año actual o anterior)
+                if (year <= currentYear && m < currentMonth) continue;
+
                 const card = document.createElement('div');
                 card.className = 'month-card';
                 card.innerHTML = `<div class="month-title">${months[m]}</div><div class="days-header">${['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(l => `<div class="day-label">${l}</div>`).join('')}</div>`;

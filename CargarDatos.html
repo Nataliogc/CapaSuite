@@ -1487,63 +1487,25 @@
                     }
                     if (String(year).length === 2) year = "20" + year;
 
-                    // Call the processor (simplified version of the one in AnalisisProduccion.html)
-                    console.log("🛠️ Invocando processDataForDB...");
-                    try {
-                        processDataForDB(jsonData, file.name, hotel, type, manualDate);
-                    } catch (pErr) {
-                        console.error("❌ Fallo crítico en processDataForDB:", pErr);
-                        throw new Error(`Error en el motor de procesamiento: ${pErr.message}`);
+                    // 4. Validación básica del Excel (Fase 1)
+                    if (!jsonData || jsonData.length === 0 || !jsonData[0]) {
+                        throw new Error("Formato incorrecto: El Excel está vacío o es ilegible.");
                     }
 
-                    // Update config/logs
-                    if (!config[hotel]) config[hotel] = { logs: [] };
-
-                    if (type === 'Prod') config[hotel].lastProdDate = period;
-                    else if (type === 'Hist') config[hotel].lastHistDate = period;
-                    else if (type === 'Seg') config[hotel].lastSegDate = period;
-                    else if (type === 'Otb') config[hotel].lastOtbDate = period;
-
-                    if (!db[hotel]) db[hotel] = {};
-                    const yearsAffected = (type === 'Otb') ? (file.name.match(/20\d{2}/g) || [year]) : [year];
+                    // Call the processor (simplified version of the one in AnalisisProduccion.html)
+                    console.log("🛠️ Invocando processDataForDB...");
                     
-                    yearsAffected.forEach(y => {
-                        const yStr = String(y);
-                        if (!db[hotel][yStr]) {
-                            db[hotel][yStr] = { 
-                                service: {}, 
-                                segment: {}, 
-                                otb: { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) },
-                                lastUpdate: ""
-                            };
-                        }
-                        
-                        let lastDateLabel = period;
-                        if (!manualDate && dateInfo && dateInfo.day) {
-                            const dayStr = String(dateInfo.day).padStart(2, '0');
-                            const monthStr = String(dateInfo.month + 1).padStart(2, '0');
-                            lastDateLabel = `${dayStr}-${monthStr}-${yStr}`;
-                        }
-                        
-                        db[hotel][yStr].lastUpdate = lastDateLabel;
-                        if (!db[hotel][yStr].updates) db[hotel][yStr].updates = { prod: "N/A", seg: "N/A", otb: "N/A" };
-                        if (type === 'Prod') db[hotel][yStr].updates.prod = period;
-                        else if (type === 'Seg') db[hotel][yStr].updates.seg = period;
-                        else if (type === 'Otb') db[hotel][yStr].updates.otb = period;
-                    });
-
-                    config[hotel].logs.push({
-                        timestamp: new Date().toLocaleString('es-ES'),
-                        type: type === 'Prod' ? 'Producción' : (type === 'Hist' ? 'Histórico' : (type === 'Seg' ? 'Segmentos' : 'Previsiones')),
-                        period: period
-                    });
-
-                    saveData();
+                    // 5. Evita congelar la UI usando setTimeout para permitir renderizado del loader (Fase 1)
                     setTimeout(() => {
-                        document.getElementById('loader').style.display = 'none';
-                        showToast(`✅ Archivo de ${type === 'Hist' ? 'Histórico' : (type === 'Prod' ? 'Producción' : (type === 'Seg' ? 'Segmentos' : 'Previsión'))} cargado correctamente`, 'success');
-                        updateHistory();
-                    }, 500);
+                        try {
+                            processDataForDB(jsonData, file.name, hotel, type, manualDate);
+                            finalizeUpload(type, hotel, period, year, file, manualDate, dateInfo);
+                        } catch (pErr) {
+                            console.error("❌ Fallo crítico en processDataForDB:", pErr);
+                            showToast(`Error en el motor de procesamiento: ${pErr.message}`, "error");
+                            document.getElementById('loader').style.display = 'none';
+                        }
+                    }, 50);
 
                 } catch (err) {
                     console.error("❌ Error profundo en processFileFinal:", err);
@@ -1553,6 +1515,62 @@
                 }
             };
             reader.readAsArrayBuffer(file);
+        }
+
+        // Helper para finalizar la carga
+        function finalizeUpload(type, hotel, period, year, file, manualDate, dateInfo) {
+            // Update config/logs
+            if (!config[hotel]) config[hotel] = { logs: [] };
+
+            if (type === 'Prod') config[hotel].lastProdDate = period;
+            else if (type === 'Hist') config[hotel].lastHistDate = period;
+            else if (type === 'Seg') config[hotel].lastSegDate = period;
+            else if (type === 'Otb') config[hotel].lastOtbDate = period;
+
+            if (!db[hotel]) db[hotel] = {};
+            const yearsAffected = (type === 'Otb') ? (file.name.match(/20\d{2}/g) || [year]) : [year];
+            
+            yearsAffected.forEach(y => {
+                const yStr = String(y);
+                if (!db[hotel][yStr]) {
+                    db[hotel][yStr] = { 
+                        service: {}, 
+                        segment: {}, 
+                        otb: { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) },
+                        lastUpdate: ""
+                    };
+                }
+                
+                let lastDateLabel = period;
+                if (!manualDate && dateInfo && dateInfo.day) {
+                    const dayStr = String(dateInfo.day).padStart(2, '0');
+                    const monthStr = String(dateInfo.month + 1).padStart(2, '0');
+                    lastDateLabel = `${dayStr}-${monthStr}-${yStr}`;
+                }
+                
+                db[hotel][yStr].lastUpdate = lastDateLabel;
+                if (!db[hotel][yStr].updates) db[hotel][yStr].updates = { prod: "N/A", seg: "N/A", otb: "N/A" };
+                if (type === 'Prod') db[hotel][yStr].updates.prod = period;
+                else if (type === 'Seg') db[hotel][yStr].updates.seg = period;
+                else if (type === 'Otb') db[hotel][yStr].updates.otb = period;
+            });
+
+            config[hotel].logs.push({
+                timestamp: new Date().toLocaleString('es-ES'),
+                type: type === 'Prod' ? 'Producción' : (type === 'Hist' ? 'Histórico' : (type === 'Seg' ? 'Segmentos' : 'Previsiones')),
+                period: period
+            });
+
+            // 6. Limitar histórico para evitar Storage Quota Exceeded (Fase 2)
+            const MAX_LOGS = 50;
+            if (config[hotel].logs.length > MAX_LOGS) {
+                config[hotel].logs = config[hotel].logs.slice(-MAX_LOGS);
+            }
+
+            saveData();
+            document.getElementById('loader').style.display = 'none';
+            showToast(`✅ Archivo de ${type === 'Hist' ? 'Histórico' : (type === 'Prod' ? 'Producción' : (type === 'Seg' ? 'Segmentos' : 'Previsión'))} cargado correctamente`, 'success');
+            updateHistory();
         }
 
         function showToast(message, type = 'info') {
