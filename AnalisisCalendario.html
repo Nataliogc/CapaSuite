@@ -785,8 +785,11 @@
                                 }
                             }
 
-                            const finalOtb = (otb > 0) ? otb : (nested.otb || fallbackOtb);
-                            const finalOcc = (occ > 0) ? occ : (nested.occ || finalOtb); // Use OTB as OCC fallback if 0
+                            const finalOtb = (otb >= 0) ? otb : (nested.otb || fallbackOtb);
+                            // CHANGE: Prioritize OTB for the "Hab." display if we are looking at forecast/current data
+                            // If it's a past date with real production, we still want to see that, 
+                            // but for operational planning, OTB from the latest file is usually the most relevant "real" data.
+                            const finalOcc = (otb > 0) ? otb : ((occ > 0) ? occ : (nested.occ || finalOtb));
                             const finalAdr = (adr > 0) ? adr : (nested.adr || fallbackAdr);
 
                             revenueData[iso].occupancyData[hName] = { 
@@ -850,7 +853,7 @@
                     const dData = revenueData[iso] || {};
                     const hData = (dData.occupancyData && dData.occupancyData[hotel]) ? dData.occupancyData[hotel] : { otb: 0, occ: 0, otb_prev: null };
                     
-                    const roomsSold = (hData.occ > 0) ? hData.occ : hData.otb;
+                    const roomsSold = (hData.otb > 0) ? hData.otb : (hData.occ || 0);
                     const occPct = (roomsSold / capacity) * 100;
                     
                     let heatmapVal = metric === 'price' ? 

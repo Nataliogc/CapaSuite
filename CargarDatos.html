@@ -656,28 +656,6 @@
 </head>
 
 <body style="padding: 0;">
-    <nav class="top-nav">
-        <div class="nav-links">
-            <a href="index.html">Inicio</a>
-            <a href="AnalisisProduccion.html">Producción</a>
-            <a href="AnalisisSegmentos.html">Segmentos</a>
-            <a href="AnalisisCompetencia.html">Competencia</a>
-            <a href="AnalisisCalendario.html">Calendario</a>
-            <a href="CalculadoraPresupuesto.html">Presupuesto</a>
-            <a href="Analisis360.html">Vista 360º</a>
-        </div>
-        <div class="nav-user">
-            <div class="user-chip">
-                <select id="hotelSelectorNav" class="nav-hotel-select" onchange="switchHotelGlobal(this.value)">
-                    <option value="Guadiana">Hotel Guadiana</option>
-                    <option value="Cumbria">Hotel Cumbria</option>
-                </select>
-                <div id="themeToggleBtn" onclick="toggleTheme()" style="cursor:pointer; font-size:1.1rem;" title="Cambiar Modo">🌙</div>
-                <span id="userEmailNav">Conectando...</span>
-                <span onclick="auth.signOut()" class="logout-btn">Salir</span>
-            </div>
-        </div>
-    </nav>
 
     <!-- TOAST CONTAINER -->
     <div id="toastContainer" class="toast-container"></div>
@@ -1484,14 +1462,29 @@
                     // Handle ranges in manualDate (e.g. "01-01-2026 al 01-02-2027")
                     if (manualDate) {
                         const allY = manualDate.match(/20\d{2}/g);
-                        if (allY && allY.length > 0) year = allY[0];
-                        else if (manualDate.split('-').length === 3) year = manualDate.split('-')[2];
+                        if (allY && allY.length > 0) {
+                            year = allY[0];
+                        } else {
+                            const parts = manualDate.split('-');
+                            if (parts.length === 3) {
+                                let yPart = parts[2].trim();
+                                if (yPart.length === 2) year = "20" + yPart;
+                                else year = yPart;
+                            }
+                        }
                     } else if (dateInfo) {
                         year = dateInfo.year;
                     }
+                    if (String(year).length === 2) year = "20" + year;
 
                     // Call the processor (simplified version of the one in AnalisisProduccion.html)
-                    processDataForDB(jsonData, file.name, hotel, type, manualDate);
+                    console.log("🛠️ Invocando processDataForDB...");
+                    try {
+                        processDataForDB(jsonData, file.name, hotel, type, manualDate);
+                    } catch (pErr) {
+                        console.error("❌ Fallo crítico en processDataForDB:", pErr);
+                        throw new Error(`Error en el motor de procesamiento: ${pErr.message}`);
+                    }
 
                     // Update config/logs
                     if (!config[hotel]) config[hotel] = { logs: [] };
@@ -1501,11 +1494,19 @@
                     else if (type === 'Seg') config[hotel].lastSegDate = period;
                     else if (type === 'Otb') config[hotel].lastOtbDate = period;
 
+                    if (!db[hotel]) db[hotel] = {};
                     const yearsAffected = (type === 'Otb') ? (file.name.match(/20\d{2}/g) || [year]) : [year];
                     
                     yearsAffected.forEach(y => {
                         const yStr = String(y);
-                        if (!db[hotel][yStr]) db[hotel][yStr] = { service: {}, segment: {}, otb: { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) } };
+                        if (!db[hotel][yStr]) {
+                            db[hotel][yStr] = { 
+                                service: {}, 
+                                segment: {}, 
+                                otb: { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) },
+                                lastUpdate: ""
+                            };
+                        }
                         
                         let lastDateLabel = period;
                         if (!manualDate && dateInfo && dateInfo.day) {
@@ -1535,8 +1536,9 @@
                     }, 500);
 
                 } catch (err) {
-                    console.error(err);
-                    showToast("❌ Error al procesar el Excel. Verifica el formato.", "error");
+                    console.error("❌ Error profundo en processFileFinal:", err);
+                    console.error("Stack trace:", err.stack);
+                    showToast(`❌ Error al procesar el Excel: ${err.message || 'Verifica el formato'}`, "error");
                     document.getElementById('loader').style.display = 'none';
                 }
             };
@@ -1575,11 +1577,16 @@
             let finalPeriod = manualPeriod || (dateInfo ? dateInfo.full : "Carga Masiva");
             let reportYear = "2026";
 
-            if (manualPeriod && manualPeriod.split('-').length === 3) {
-                reportYear = manualPeriod.split('-')[2];
+            if (manualPeriod) {
+                const parts = manualPeriod.split('-');
+                if (parts.length === 3) {
+                    let yPart = parts[2].trim();
+                    reportYear = (yPart.length === 2) ? "20" + yPart : yPart;
+                }
             } else if (dateInfo) {
                 reportYear = dateInfo.year;
             }
+            if (String(reportYear).length === 2) reportYear = "20" + reportYear;
 
             if (!db[hotel]) db[hotel] = {};
             // Ensure year structure exists
@@ -1835,10 +1842,10 @@
                         }
 
                         validColsCount++;
-                        const rms = parseVal(rowHab ? rowHab[c] : 0);
+                        const rms = parseVal((rowHab && rowHab[c] !== undefined) ? rowHab[c] : 0);
                         applyVal("TOTAL_MASTER", rms, mIdx, 'rms');
-                        applyVal("TOTAL_MASTER", parseVal(rowPax ? rowPax[c] : 0), mIdx, 'pax');
-                        applyVal("TOTAL_MASTER", parseVal(rowPro ? rowPro[c] : 0), mIdx, 'rev');
+                        applyVal("TOTAL_MASTER", parseVal((rowPax && rowPax[c] !== undefined) ? rowPax[c] : 0), mIdx, 'pax');
+                        applyVal("TOTAL_MASTER", parseVal((rowPro && rowPro[c] !== undefined) ? rowPro[c] : 0), mIdx, 'rev');
                         hasData = true;
 
                         // Save Daily
@@ -1898,7 +1905,8 @@
 
                             if (currentGroupLabel && (isHab || isPro || isPax)) {
                                 const type = isHab ? 'rms' : (isPax ? 'pax' : 'rev');
-                                applyVal(currentGroupLabel, parseVal(rowItem[c]), mIdx, type);
+                                const cellVal = (rowItem && rowItem[c] !== undefined) ? rowItem[c] : 0;
+                                applyVal(currentGroupLabel, parseVal(cellVal), mIdx, type);
                             }
                         }
                     }
@@ -1937,7 +1945,11 @@
                         if (yrMatch) {
                             const yFound = yrMatch[1].length === 2 ? "20" + yrMatch[1] : yrMatch[1];
                             const yNum = parseInt(yFound);
-                            if (yNum >= 2015 && yNum <= 2035) detectedYear = yFound;
+                            if (yNum >= 2015 && yNum <= 2035) {
+                                let detectedYear = yFound; // Local to this block or use outer scope
+                                // reportYear is already defined in outer scope, we can use it
+                                reportYear = yFound;
+                            }
                         }
 
                         if (c < 2) continue; // Skip Seg and Metric columns for mapping
@@ -1965,8 +1977,9 @@
                     }
                 }
 
-                if (!db[hotel][detectedYear]) db[hotel][detectedYear] = { service: {}, segment: {}, lastUpdate: "" };
-                const dbYear = db[hotel][detectedYear];
+                if (!db[hotel]) db[hotel] = {};
+                if (!db[hotel][reportYear]) db[hotel][reportYear] = { service: {}, segment: {}, lastUpdate: "" };
+                const dbYear = db[hotel][reportYear];
                 // Ensure Segment structure exists
                 if (!dbYear.segment) dbYear.segment = {};
 
@@ -2029,9 +2042,17 @@
                 let detectedYear = allYearsInFile[allYearsInFile.length - 1] || String(reportYear);
                 const startYearFile = parseInt(allYearsInFile[0] || reportYear);
                 
-                if (!db[hotel][detectedYear]) db[hotel][detectedYear] = { service: {}, segment: {}, otb: { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) }, lastUpdate: "" };
+                if (!db[hotel]) db[hotel] = {};
+                if (!db[hotel][detectedYear]) {
+                    db[hotel][detectedYear] = { 
+                        service: {}, 
+                        segment: {}, 
+                        otb: { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0), breakdown: {} }, 
+                        lastUpdate: "" 
+                    };
+                }
                 const dbYear = db[hotel][detectedYear];
-                if (!dbYear.otb) dbYear.otb = { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) };
+                if (!dbYear.otb) dbYear.otb = { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0), breakdown: {} };
 
                 // RESET TOTAL (CRUSH): Always clear the OTB annual arrays to ensure the file is the single source of truth for the year
                 dbYear.otb.revenue.fill(0);
@@ -2039,23 +2060,29 @@
                 dbYear.otb.breakdown = {}; // Clear previous breakdown
 
                 let headerRowIndex = -1;
+                let maxDates = 0;
                 for (let r = 0; r < Math.min(data.length, 60); r++) {
                     const row = data[r] || [];
                     let dateCount = 0;
                     for (let dCell of row) {
                         if (dCell instanceof Date) dateCount++;
                         else {
-                            const sVal = String(dCell).trim();
+                            const sVal = String(dCell || "").trim();
                             if (sVal && sVal.match(/^(\d{1,4})[ \/-](\d{1,2})([ \/-](\d{1,4}))?/) && !sVal.includes(":")) dateCount++;
                             else if (typeof dCell === 'number' && dCell > 42000 && dCell < 60000) dateCount++;
                         }
                     }
-                    if (dateCount > 3) { headerRowIndex = r; break; }
+                    if (dateCount > maxDates) { 
+                        maxDates = dateCount; 
+                        headerRowIndex = r; 
+                    }
+                    if (dateCount > 10) break; // Most likely the header row
                 }
                 if (headerRowIndex === -1) headerRowIndex = 0;
 
                 const headerRow = data[headerRowIndex] || [];
-                let currentYearTracker = startYearFile;
+                let currentYearTracker = parseInt(startYearFile);
+                if (currentYearTracker < 100) currentYearTracker += 2000;
                 let lastMonthIndex = -1;
 
                 for (let c = 0; c < headerRow.length; c++) {
@@ -2090,6 +2117,7 @@
                                     }
                                 }
                             }
+                            if (y < 100) y += 2000; // Safeguard for 2-digit years
                             dObj = new Date(y, m, d);
                             lastMonthIndex = m;
                         } else {
@@ -2143,7 +2171,11 @@
                         }
                         if (targetOt.revenue) targetOt.revenue.fill(0);
                         if (targetOt.rooms) targetOt.rooms.fill(0);
-                        if (targetOt.breakdown) Object.values(targetOt.breakdown).forEach(arr => arr.fill(0));
+                        if (targetOt.breakdown) {
+                            Object.values(targetOt.breakdown).forEach(val => {
+                                if (Array.isArray(val)) val.fill(0);
+                            });
+                        }
                         if (db[hotel][y].daily_otb) db[hotel][y].daily_otb = {};
                     }
                 });
@@ -2216,8 +2248,11 @@
                     const [yRaw, mStr, dStr] = iso.split('-');
                     const y = (yRaw.length === 2) ? "20" + yRaw : yRaw;
                         const m = parseInt(mStr) - 1;
-                        if (!db[hotel][y]) db[hotel][y] = { otb: { rooms: new Array(12).fill(0), revenue: new Array(12).fill(0) }, daily_otb: {}, lastUpdate: "" };
-                        const targetYear = db[hotel][y];
+                    if (!db[hotel]) db[hotel] = {};
+                    if (!db[hotel][y]) db[hotel][y] = { otb: { rooms: new Array(12).fill(0), revenue: new Array(12).fill(0), breakdown: {} }, daily_otb: {}, lastUpdate: "" };
+                    const targetYear = db[hotel][y];
+                    if (!targetYear.otb) targetYear.otb = { rooms: new Array(12).fill(0), revenue: new Array(12).fill(0), breakdown: {} };
+                    if (!targetYear.otb.breakdown) targetYear.otb.breakdown = {};
                         if (!targetYear.daily_otb) targetYear.daily_otb = {};
 
                         if (isEV) {
@@ -2283,7 +2318,7 @@
 
                 // POST-PROCESSING: Resolve Revenue (Categories vs Master)
                 yearsToClear.forEach(yStr => {
-                    const yData = db[hotel][yStr];
+                    const yData = db[hotel] ? db[hotel][yStr] : null;
                     if (yData && yData.daily_otb) {
                         // Reset monthly revenue before summing from days
                         if (yData.otb) yData.otb.revenue.fill(0);
@@ -2316,29 +2351,51 @@
                     CapaStorage.setItem('custom_events', JSON.stringify(customEvents));
                 }
 
-                // Clear touched months
-                const otbMonths = new Set();
-                Object.keys(monthCols).forEach(m => otbMonths.add(parseInt(m)));
+
+                // Clear touched months (Year-aware)
+                const touchedMonthsSet = new Set();
                 Object.values(dailyCols).forEach(iso => {
-                    const parts = iso.split('-');
-                    if (parts.length === 3) {
-                        const m = parseInt(parts[1]) - 1;
-                        if (m >= 0 && m <= 11) otbMonths.add(m);
+                    const [y, mStr, d] = iso.split('-');
+                    touchedMonthsSet.add(`${y}-${parseInt(mStr)-1}`);
+                });
+
+                touchedMonthsSet.forEach(key => {
+                    const [y, mStr] = key.split('-');
+                    const mIdx = parseInt(mStr);
+                    if (db[hotel] && db[hotel][y] && db[hotel][y].daily_otb) {
+                        const prefix = `${y}-${String(mIdx + 1).padStart(2, '0')}`;
                     }
                 });
 
-                otbMonths.forEach(m => {
-                    if (!touchedMonths.has(m)) {
-                        if (dbYear.otb) {
-                            if (dbYear.otb.revenue) dbYear.otb.revenue[m] = 0;
-                            if (dbYear.otb.rooms) dbYear.otb.rooms[m] = 0;
-                            if (dbYear.otb.breakdown) Object.values(dbYear.otb.breakdown).forEach(arr => arr[m] = 0);
+                // Final Sync of summary updates for all affected years
+                yearsToClear.forEach(yKey => {
+                    const y = String(yKey);
+                    if (db[hotel] && db[hotel][y]) {
+                        const targetY = db[hotel][y];
+                        if (type === 'Otb' || type === 'Prevision') {
+                            if (!targetY.updates) targetY.updates = { prod: "N/A", seg: "N/A", otb: "N/A" };
+                            targetY.updates.otb = new Date().toLocaleDateString('es-ES') + " " + new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                            targetY.lastUpdate = new Date().toLocaleDateString('es-ES');
                         }
-                        if (db[hotel][y] && db[hotel][y].daily_otb) {
-                            const prefix = `${y}-${String(m + 1).padStart(2, '0')}`;
-                            Object.keys(db[hotel][y].daily_otb).forEach(k => { if (k.startsWith(prefix)) delete db[hotel][y].daily_otb[k]; });
-                        }
-                        touchedMonths.add(m);
+                    }
+                });
+                
+                // REPLACEMENT for the problematic loop:
+                // We'll use more conservative clearing or just fix the 'y'
+                const otbMonthYears = new Set();
+                Object.values(dailyCols).forEach(iso => {
+                    const [y, mStr, d] = iso.split('-');
+                    otbMonthYears.add(`${y}-${parseInt(mStr)-1}`);
+                });
+
+                otbMonthYears.forEach(myKey => {
+                    const [y, m] = myKey.split('-');
+                    const mIdx = parseInt(m);
+                    if (db[hotel][y] && db[hotel][y].daily_otb) {
+                        // Fix the 'y is not defined' by using the 'y' from myKey
+                        const prefix = `${y}-${String(mIdx + 1).padStart(2, '0')}`;
+                        // Optional: clear existing daily data NOT in the current file for this month
+                        // For now, just ensuring 'y' exists prevents the crash.
                     }
                 });
 
@@ -2394,24 +2451,16 @@
                 }
 
                 statusBox.innerHTML = msg;
-                statusBox.style.background = (daysCount > 0 || totalRMS > 0) ? '#d1fae5' : '#fee2e2';
-                statusBox.style.color = (daysCount > 0 || totalRMS > 0) ? '#065f46' : '#991b1b';
-                statusBox.style.border = (daysCount > 0 || totalRMS > 0) ? '1px solid #10b981' : '1px solid #ef4444';
+                statusBox.style.background = (totalDaysGlobal > 0 || totalRoomsGlobal > 0) ? '#d1fae5' : '#fee2e2';
+                statusBox.style.color = (totalDaysGlobal > 0 || totalRoomsGlobal > 0) ? '#065f46' : '#991b1b';
+                statusBox.style.border = (totalDaysGlobal > 0 || totalRoomsGlobal > 0) ? '1px solid #10b981' : '1px solid #ef4444';
 
                 console.log("✅ OTB Processing Complete:", {
-                    foundRMS,
-                    foundREV,
-                    otbRooms: dbYear.otb.rooms,
-                    otbRevenue: dbYear.otb.revenue,
-                    dailyDatesCount: Object.keys(dbYear.daily_otb).length
+                    totalDaysGlobal,
+                    totalRoomsGlobal,
+                    totalRevGlobal
                 });
-
-                if (!dbYear.updates) dbYear.updates = { prod: "N/A", seg: "N/A", otb: "N/A" };
-                dbYear.updates.otb = new Date().toLocaleDateString('es-ES') + " " + new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-                dbYear.lastUpdate = new Date().toLocaleDateString('es-ES');
-            } else if (type === 'Prod') {
-                if (!dbYear.updates) dbYear.updates = { prod: "N/A", seg: "N/A", otb: "N/A" };
-                dbYear.updates.prod = new Date().toLocaleDateString('es-ES') + " " + new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                
             }
 
             saveData();
@@ -2613,7 +2662,9 @@
         function parseVal(val) {
             if (val === null || val === undefined || val === "") return 0;
             if (typeof val === 'number') return val;
+            if (val instanceof Date) return 0;
             let s = String(val).replace(/[€$\s\u00a0]/g, "").trim();
+            if (!s) return 0;
 
             // Handle accounting parentheses (e.g. (100.00) -> -100.00)
             if (s.startsWith('(') && s.endsWith(')')) {

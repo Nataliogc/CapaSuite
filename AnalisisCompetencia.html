@@ -1466,14 +1466,15 @@
                                 const dbYear = pDb[dbActiveKey][yr];
                                 if (dbYear.daily_otb && dbYear.daily_otb[iso]) {
                                     hasOtbData = true;
-                                    if (occ === 0) {
-                                        let dVal = dbYear.daily_otb[iso];
-                                        occ = (typeof dVal === 'object') ? (dVal.rooms || 0) : dVal;
-                                    }
+                                    let dVal = dbYear.daily_otb[iso];
+                                    let otbVal = (typeof dVal === 'object') ? (dVal.rooms || 0) : dVal;
+                                    // CHANGE: Always prioritize internal OTB over market occupancy for our hotel
+                                    if (otbVal > 0) occ = otbVal;
                                 }
-                                if (dbYear.daily && dbYear.daily[iso] !== undefined) {
+                                if (dbYear.daily && dbYear.daily[iso] !== undefined && occ === 0) {
                                     hasProdData = true;
-                                    if (occ === 0) occ = dbYear.daily[iso];
+                                    let pVal = dbYear.daily[iso];
+                                    occ = (typeof pVal === 'object') ? (pVal.rooms || 0) : pVal;
                                 }
                                 
                                 // Fetch Previous Rooms for Instant Pick-up
@@ -1720,6 +1721,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             if (mShort) mShort = mShort.charAt(0).toUpperCase() + mShort.slice(1).toLowerCase();
 
             let year = yearFromData || 2026;
+            if (year < 100) year += 2000; // Safeguard for 2-digit years
             const monthWithYear = `${mShort} ${year}`;
 
             let d = String(dayNameRaw || "").toLowerCase().trim().replace(".", "");
