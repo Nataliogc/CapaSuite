@@ -2058,7 +2058,8 @@
                         }
                     }
                 }
-                dbYear.lastUpdate = new Date().toLocaleDateString('es-ES');
+                // Save with time
+                dbYear.lastUpdate = new Date().toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
             } else if (type === 'Otb' || type === 'Prevision') {
                 // Parser for "Listado Previsiones Valoradas"
                 // 1. Detect Year and Dates from headers
@@ -2387,7 +2388,8 @@
                         if (type === 'Otb' || type === 'Prevision') {
                             if (!targetY.updates) targetY.updates = { prod: "N/A", seg: "N/A", otb: "N/A" };
                             targetY.updates.otb = new Date().toLocaleDateString('es-ES') + " " + new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-                            targetY.lastUpdate = new Date().toLocaleDateString('es-ES');
+                            // Save with time
+                            targetY.lastUpdate = new Date().toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
                         }
                     }
                 });

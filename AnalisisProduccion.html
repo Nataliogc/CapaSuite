@@ -715,8 +715,9 @@
             if (data.lastUpdate && currentYear !== "2025") {
                 badge.innerText = `📅 Actualizado: ${data.lastUpdate}`;
                 badge.style.display = 'inline-block';
-                // Try parse date
-                const parts = data.lastUpdate.split(/[/-]/);
+                // Try parse date (ignoring time if present)
+                const datePart = data.lastUpdate.split(' ')[0];
+                const parts = datePart.split(/[/-]/);
                 if (parts.length >= 3) {
                     lastUpdateDate = new Date(parts[2].length === 2 ? "20" + parts[2] : parts[2], parseInt(parts[1]) - 1, parts[0]);
                 }

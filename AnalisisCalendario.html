@@ -755,15 +755,26 @@
             insightsContainer.appendChild(pickupCard);
 
             // 2. Data Freshness
-            const updateDate = hotelData.updates?.otb || hotelData.lastUpdate || '---';
-            const isToday = updateDate.includes(new Date().toLocaleDateString('es-ES'));
+            let updateDateStr = hotelData.updates?.otb || hotelData.lastUpdate || '---';
+            
+            // Format if it's an ISO string to include time
+            if (updateDateStr !== '---' && updateDateStr.includes('T')) {
+                try {
+                    const dateObj = new Date(updateDateStr);
+                    const d = dateObj.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                    const t = dateObj.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                    updateDateStr = `${d} ${t}`;
+                } catch (e) {
+                    console.warn("Error formatting date", e);
+                }
+            }
             
             const freshCard = document.createElement('div');
             freshCard.className = 'insight-card-premium';
             freshCard.innerHTML = `
                 <div class="insight-label">ESTADO DE DATOS</div>
                 <div class="insight-value">Actualizado</div>
-                <div class="insight-sub">Sincronización: ${updateDate}</div>
+                <div class="insight-sub">Sincronización: ${updateDateStr}</div>
             `;
             insightsContainer.appendChild(freshCard);
 

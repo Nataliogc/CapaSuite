@@ -757,7 +757,7 @@
                 <img id="hotelLogo" src="Imagen/logo-cumbria.svg" alt="Hotel" style="height: 40px; width: auto;">
                 <div class="app-title">
                     <h1>Centro de Inteligencia de Precios</h1>
-                    <p>Análisis de competitividad y tendencias de mercado</p>
+                    <p id="headerSubtitle">Análisis de competitividad y tendencias de mercado</p>
                 </div>
             </div>
             <div class="controls" id="dashboard-controls" style="display:none;">
@@ -1094,6 +1094,15 @@
                     const parsed = JSON.parse(saved);
                     if (parsed.lastUpdate) {
                         const lastDate = new Date(parsed.lastUpdate);
+                        
+                        // NEW: Update Header Subtitle with explicit Date & Time
+                        const subtitle = document.getElementById('headerSubtitle');
+                        if (subtitle) {
+                            const d = lastDate.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                            const t = lastDate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                            subtitle.innerHTML = `Análisis de competitividad y tendencias | <span style="font-weight:700; color:var(--primary);">Sincronización: ${d} ${t}</span>`;
+                        }
+
                         const today = new Date();
                         // Reset hours to compare just dates
                         today.setHours(0, 0, 0, 0);
