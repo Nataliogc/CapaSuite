@@ -1832,7 +1832,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
             let data = [...processedData];
             if (selectedMonth !== 'all') {
-                data = data.filter(d => d.monthYear === selectedMonth);
+                data = data.filter(d => d.month === selectedMonth);
             }
 
             // Load Previous Snapshot for Pick-up comparison (if not already done in analyze)
