@@ -1548,7 +1548,9 @@
                     lastDateLabel = `${dayStr}-${monthStr}-${yStr}`;
                 }
                 
-                db[hotel][yStr].lastUpdate = lastDateLabel;
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                db[hotel][yStr].lastUpdate = lastDateLabel + " " + timeStr;
                 if (!db[hotel][yStr].updates) db[hotel][yStr].updates = { prod: "N/A", seg: "N/A", otb: "N/A" };
                 if (type === 'Prod') db[hotel][yStr].updates.prod = period;
                 else if (type === 'Seg') db[hotel][yStr].updates.seg = period;

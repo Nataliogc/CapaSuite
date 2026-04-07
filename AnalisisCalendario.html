@@ -755,7 +755,14 @@
             insightsContainer.appendChild(pickupCard);
 
             // 2. Data Freshness
-            let updateDateStr = hotelData.updates?.otb || hotelData.lastUpdate || '---';
+            let updateDateStr = '---';
+            const otbSync = hotelData.updates?.otb;
+            const lastSync = hotelData.lastUpdate;
+            
+            // Select the most detailed timestamp
+            if (otbSync && (otbSync.includes(' ') || otbSync.includes('T'))) updateDateStr = otbSync;
+            else if (lastSync && (lastSync.includes(' ') || lastSync.includes('T'))) updateDateStr = lastSync;
+            else updateDateStr = otbSync || lastSync || '---';
             
             // Format if it's an ISO string to include time
             if (updateDateStr !== '---' && updateDateStr.includes('T')) {
