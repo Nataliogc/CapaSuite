@@ -2242,12 +2242,8 @@
                                 rowLabel.includes("INGRESO") || rowLabel.includes("COBRO") || 
                                 rowLabel.includes("REVENUE") || rowLabel.includes("FORECAST") || 
                                 rowLabel.includes("VALORADO") || rowLabel.includes("INGRES") || 
-                                (rowLabel.includes("HABITACION") && rowLabel.length > 5) || 
-                                rowLabel.includes("DESAYUNO") || rowLabel.includes("ALMUERZO") || 
-                                rowLabel.includes("CENA") || rowLabel.includes("SPA") || 
-                                rowLabel.includes("VARIOS") || rowLabel.includes("BAR") || 
-                                rowLabel.includes("CAFETERIA") || rowLabel.includes("€") || 
-                                rowLabel.includes("ADR") || rowLabel.includes("PRECIO");
+                                rowLabel.includes("ADR") || rowLabel.includes("PRECIO") ||
+                                (rowLabel.includes("HABITACION") && !rowLabel.includes("HABITACIONES")); 
                     
                     // isRMS = Only room units
                     // Stricter check for HAB: usually short labels "Hab." or "Hab" or "Habitaciones"
@@ -2307,7 +2303,26 @@
                             
                             if (isRMS) {
                                 const roundedRooms = Math.round(num);
-                                targetYear.daily_otb[iso].rooms += roundedRooms;
+                                // NEW: Stricter Daily OTB - Only overwrite or use max to avoid double-counting revenue rows as rooms
+                                // If a file has both "Hab." and "Habitación" (revenue), and both were caught, we'd double count.
+                                // By taking the max (or just overwriting if it's the first one), we are safer.
+                                // However, usually "Hab." is the small one (1) and "Habitación" is the big one (92).
+                                // Actually, if we correctly identified "Habitación" as isREV, it wouldn't be here.
+                                // But as an extra safeguard:
+                                if (roundedRooms > 0) {
+                                    if (!targetYear.daily_otb[iso]._roomsFound) {
+                                        targetYear.daily_otb[iso].rooms = roundedRooms;
+                                        targetYear.daily_otb[iso]._roomsFound = true;
+                                    } else {
+                                        // If we already found rooms, only add if it's a small number (segment breakdown)
+                                        // or if it's suspiciously small compared to previous.
+                                        // For now, let's just avoid adding large numbers to small numbers.
+                                        if (roundedRooms < targetYear.daily_otb[iso].rooms * 2 || targetYear.daily_otb[iso].rooms === 0) {
+                                            targetYear.daily_otb[iso].rooms += roundedRooms;
+                                        }
+                                    }
+                                }
+
                                 if (!targetYear.otb.rooms) targetYear.otb.rooms = new Array(12).fill(0);
                                 if (!targetYear.otb.revenue) targetYear.otb.revenue = new Array(12).fill(0);
                                 targetYear.otb.rooms[m] += roundedRooms;
