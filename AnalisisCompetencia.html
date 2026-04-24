@@ -1497,7 +1497,7 @@
                                 // Comparing current daily_otb vs saved daily_otb in otb_prev
                                 if (dbYear.otb_prev && dbYear.otb_prev.daily_otb && dbYear.otb_prev.daily_otb[iso]) {
                                     const oldData = dbYear.otb_prev.daily_otb[iso];
-                                    prevRooms = (typeof oldData === 'object') ? (oldData.rooms || 0) : oldData;
+                                    prevRooms = Math.round((typeof oldData === 'object') ? (oldData.rooms || 0) : oldData);
                                 }
                             }
                         }
@@ -1650,8 +1650,8 @@
                 }
 
                 // OTB PICK-UP DETECTION (Instant Pick-up vs last Forecast File)
-                const currRooms = dayObj.otbRooms || 0;
-                const oldRooms = dayObj.prevRooms || 0;
+                const currRooms = Math.round(dayObj.otbRooms || 0);
+                const oldRooms = Math.round(dayObj.prevRooms || 0);
                 
                 if (currRooms !== oldRooms) {
                     dayObj.otbChange = currRooms - oldRooms;
@@ -1940,7 +1940,9 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         }
                         
                         if (prevRooms !== null && d.hotels[activeHotel].otbRooms !== undefined) {
-                            d.hotels[activeHotel].otbChange = d.hotels[activeHotel].otbRooms - prevRooms;
+                            const currentR = Math.round(d.hotels[activeHotel].otbRooms);
+                            const previousR = Math.round(prevRooms);
+                            d.hotels[activeHotel].otbChange = currentR - previousR;
                         }
                         
                         // Debug log para el primer día del mes para ver si estamos emparejando bien

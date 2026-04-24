@@ -367,18 +367,18 @@
             align-items: center;
             justify-content: center;
             gap: 4px;
-            background: rgba(0, 0, 0, 0.4);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.3);
             padding: 2px 6px;
             border-radius: 6px;
-            font-size: 0.55rem;
             pointer-events: none;
             width: fit-content;
             margin: 2px auto 0;
         }
-        [data-theme="light"] .otb-badge { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.05); color: #0f172a; }
-        .otb-val { color: rgba(255, 255, 255, 0.8); font-weight: 700; }
-        [data-theme="light"] .otb-val { color: #0f172a; }
+        [data-theme="light"] .otb-badge { background: rgba(139, 92, 246, 0.15); border-color: rgba(139, 92, 246, 0.2); }
+        
+        .otb-label { font-size: 0.55rem; font-weight: 800; color: #8b5cf6; opacity: 0.8; }
+        .otb-val { color: #8b5cf6; font-weight: 800; font-size: 0.7rem; }
         
         .p-up { color: #22c55e; font-weight: 900; font-size: 0.5rem; }
         .p-down { color: #f43f5e; font-weight: 900; font-size: 0.5rem; }
@@ -850,9 +850,9 @@
                             const finalAdr = (adr > 0) ? adr : (nested.adr || fallbackAdr);
 
                             revenueData[iso].occupancyData[hName] = { 
-                                otb: finalOtb, 
-                                occ: finalOcc, 
-                                otb_prev: otb_prev || nested.otb_prev, 
+                                otb: Math.round(finalOtb), 
+                                occ: Math.round(finalOcc), 
+                                otb_prev: otb_prev !== null ? Math.round(otb_prev) : (nested.otb_prev !== undefined ? Math.round(nested.otb_prev) : null), 
                                 adr: finalAdr 
                             };
                         }
@@ -954,23 +954,32 @@
                     const ev = rawEvents.find(e => iso >= e.start && iso <= e.end);
                     if (ev) cell.classList.add('has-event');
 
-                    // OTB and Pickup logic
+                    const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+                    const monthsNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+                    const dayName = days[dateObj.getDay()];
+                    const monthName = monthsNames[dateObj.getMonth()];
+
                     const otb = hData.otb || 0;
                     const prev = hData.otb_prev;
-                    const diff = (prev !== null) ? (otb - prev) : null;
                     
                     let badgeHtml = "";
                     if (otb > 0) {
                         let diffHtml = "";
-                        if (prev !== null) {
-                            const numericDiff = otb - prev;
-                            if (numericDiff > 0) diffHtml = `<span class="p-up">▲${numericDiff}</span>`;
-                            else if (numericDiff < 0) diffHtml = `<span class="p-down">▼${Math.abs(numericDiff)}</span>`;
-                            // We hide the =0 for cleaner visual
+                        if (prev !== null && prev !== undefined) {
+                            const numericDiff = Math.round(otb - prev);
+                            if (numericDiff !== 0) {
+                                const cls = numericDiff > 0 ? '#10b981' : '#ef4444';
+                                const bg = numericDiff > 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)';
+                                const brd = numericDiff > 0 ? 'rgba(16,185,129,0.4)' : 'rgba(239,68,68,0.4)';
+                                diffHtml = `<span style="font-size:0.6rem; font-weight:800; color:${cls}; background:${bg}; border:1px solid ${brd}; padding:0px 3px; border-radius:3px; line-height:1;">${numericDiff > 0 ? '+' : ''}${numericDiff}</span>`;
+                            }
                         }
                         badgeHtml = `
-                            <div class="otb-badge">
-                                <span class="otb-val">${otb} hab</span>
+                            <div style="display:flex; align-items:center; gap:4px; justify-content:center; margin-top:2px;">
+                                <div class="otb-badge" style="margin:0;">
+                                    <span class="otb-label">Hab.</span>
+                                    <span class="otb-val">${otb}</span>
+                                </div>
                                 ${diffHtml}
                             </div>
                         `;
@@ -979,8 +988,16 @@
                     const priceText = heatmapVal > 0 ? (metric === 'price' ? `${Math.round(heatmapVal)}€` : `${Math.round(occPct)}%`) : "";
                     
                     cell.innerHTML = `
-                        <div class="day-num">${d} ${occPct >= 99 ? '🔥' : ''}</div>
-                        <div class="day-price">${priceText}</div>
+                        <div style="text-align:left; padding-left:2px;">
+                            <div style="display:flex; align-items:center; gap:5px; margin-bottom:1px;">
+                                <span style="font-size:1.1rem; font-weight:800; color:var(--text-main); line-height:1;">${d}</span>
+                                <div style="display:flex; flex-direction:column; line-height:1.1;">
+                                    <span style="font-size:0.65rem; font-weight:700; color:var(--text-main);">${dayName}</span>
+                                    <span style="font-size:0.55rem; color:var(--text-muted);">${monthName}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="day-price" style="font-size: 0.9rem; margin: 2px 0;">${priceText}</div>
                         ${badgeHtml}
                     `;
 
