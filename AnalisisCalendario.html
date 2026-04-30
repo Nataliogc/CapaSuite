@@ -242,10 +242,10 @@
         .calendar-container {
             max-width: 100%;
             margin: 0 auto;
-            padding: 10px 40px 40px;
+            padding: 10px 20px 40px;
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
-            gap: 24px;
+            grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+            gap: 20px;
             align-items: start;
         }
 
@@ -253,11 +253,12 @@
             background: var(--bg-surface);
             border: 1px solid var(--border);
             border-radius: var(--radius-xl);
-            padding: 18px;
+            padding: 14px;
             box-shadow: var(--shadow-premium);
             transition: var(--transition);
             position: relative;
             overflow: hidden;
+            width: 100%;
         }
 
         .month-card::before {
@@ -294,6 +295,7 @@
         .days-header {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
             margin-bottom: 8px;
             text-align: center;
         }
@@ -308,171 +310,126 @@
         .days-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
-            gap: 6px;
+            gap: 4px;
         }
 
         .day-cell.empty { background: transparent !important; border: none !important; cursor: default; }
 
         /* DAY CELL (Apple/Google Style) */
         .day-cell {
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            background: rgba(255, 255, 255, 0.01);
-            padding: 4px;
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.02);
+            padding: 6px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             position: relative;
             cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             color: var(--text-main);
-            min-height: 62px;
-            border-radius: 10px;
+            min-height: 80px;
+            border-radius: var(--radius-md);
             z-index: 1;
+            overflow: hidden;
         }
-        [data-theme="light"] .day-cell { border-color: rgba(0,0,0,0.03); background: rgba(0,0,0,0.01); }
+        [data-theme="light"] .day-cell { 
+            border-color: rgba(0,0,0,0.05); 
+            background: rgba(0,0,0,0.02); 
+        }
 
         .day-cell:hover {
-            transform: scale(1.18) translateY(-10px);
-            z-index: 500;
-            box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.6);
+            transform: translateY(-4px);
+            z-index: 10;
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
             border-color: var(--primary);
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.08);
         }
-        [data-theme="light"] .day-cell:hover { background: #fff; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        [data-theme="light"] .day-cell:hover { 
+            background: #ffffff; 
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05); 
+        }
 
-        .day-num { 
-            font-size: 0.7rem; 
-            font-weight: 800; 
-            color: var(--text-muted);
-            margin-bottom: 2px;
+        .day-num-container {
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
+            margin-bottom: 4px;
+        }
+
+        .day-num { 
+            font-size: 0.9rem; 
+            font-weight: 800; 
+            color: var(--text-main);
+        }
+        
+        .day-name-short {
+            font-size: 0.55rem;
+            font-weight: 800;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            opacity: 0.6;
         }
         
         .day-price {
-            font-size: 1.05rem;
+            font-size: 0.9rem;
             font-weight: 900;
             color: var(--text-main);
             text-align: center;
             margin: 2px 0;
-            white-space: nowrap;
             font-family: 'Outfit', sans-serif;
-            letter-spacing: -0.5px;
         }
         
-        /* OTB BADGE (Floating Card Style) */
+        /* OTB BADGE */
         .otb-badge {
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 4px;
-            background: rgba(139, 92, 246, 0.1);
+            background: rgba(139, 92, 246, 0.15);
             border: 1px solid rgba(139, 92, 246, 0.3);
             padding: 2px 6px;
             border-radius: 6px;
-            pointer-events: none;
             width: fit-content;
             margin: 2px auto 0;
         }
-        [data-theme="light"] .otb-badge { background: rgba(139, 92, 246, 0.15); border-color: rgba(139, 92, 246, 0.2); }
         
-        .otb-label { font-size: 0.55rem; font-weight: 800; color: #8b5cf6; opacity: 0.8; }
-        .otb-val { color: #8b5cf6; font-weight: 800; font-size: 0.7rem; }
-        
-        .p-up { color: #22c55e; font-weight: 900; font-size: 0.5rem; }
-        .p-down { color: #f43f5e; font-weight: 900; font-size: 0.5rem; }
-        .p-equal { color: var(--text-muted); font-weight: 800; font-size: 0.5rem; }
+        .otb-label { font-size: 0.55rem; font-weight: 800; color: #a78bfa; }
+        .otb-val { color: #a78bfa; font-weight: 900; font-size: 0.75rem; }
 
-        .day-stats { 
-            display: flex; 
-            align-items: center; 
-            justify-content: space-between; 
-            gap: 1px; 
-            margin-top: auto; 
-            padding-top: 3px; 
-            border-top: 1px solid #f1f5f9;
-            width: 100%;
-        }
-        
-        .day-otb { 
-            font-size: 0.55rem; 
-            font-weight: 700; 
-            color: #6366f1; 
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .pickup-badge {
-            font-size: 0.5rem;
-            font-weight: 800;
-            padding: 1px 2px;
-            border-radius: 2px;
-            display: inline-flex;
-            align-items: center;
-            flex-shrink: 0;
-        }
-        .pickup-pos { background: #dcfce7; color: #166534; }
-        .pickup-neg { background: #fee2e2; color: #991b1b; }
-        .pickup-neutral { background: #f1f5f9; color: #475569; }
-
-        .calendar-legend { display: flex; align-items: center; gap: 8px; font-size: 0.7rem; color: var(--text-muted); font-weight: 700; }
-        .legend-boxes { display: flex; gap: 3px; }
-        .legend-box { width: 10px; height: 10px; border-radius: 2px; }
-
-        .heat-1 { background-color: rgba(255, 255, 255, 0.03) !important; color: rgba(255,255,255,0.4) !important;}
-        .heat-2 { background-color: rgba(99, 102, 241, 0.15) !important; color: rgba(255,255,255,0.7) !important;}
+        .heat-1 { background-color: rgba(255, 255, 255, 0.05) !important; }
+        .heat-2 { background-color: rgba(99, 102, 241, 0.15) !important; }
         .heat-3 { background-color: rgba(99, 102, 241, 0.35) !important; }
         .heat-4 { 
             background: linear-gradient(135deg, rgba(99, 102, 241, 0.7), rgba(129, 140, 248, 0.7)) !important; 
-            color: white !important; 
-            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.2);
+            color: white !important;
         }
         .heat-5 { 
             background: linear-gradient(135deg, #6366f1, #a855f7) !important; 
             color: white !important; 
-            border: 1px solid rgba(255,255,255,0.4) !important; 
-            box-shadow: 0 0 25px rgba(99, 102, 241, 0.6); 
-            animation: glowPulse 2s infinite;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.4); 
         }
 
-        /* LIGHT MODE FIXES FOR HEATMAP */
-        [data-theme="light"] .heat-1 { background-color: rgba(0, 0, 0, 0.03) !important; color: rgba(0, 0, 0, 0.45) !important; text-shadow: none !important; }
-        [data-theme="light"] .heat-1 .day-price, [data-theme="light"] .heat-1 .day-num { color: rgba(0, 0, 0, 0.5) !important; }
+        [data-theme="light"] .heat-1 { background-color: #f8fafc !important; }
+        [data-theme="light"] .heat-2 { background-color: #e0e7ff !important; }
+        [data-theme="light"] .heat-3 { background-color: #c7d2fe !important; }
+        [data-theme="light"] .heat-4 { background: #818cf8 !important; color: white !important; }
+        [data-theme="light"] .heat-5 { background: #6366f1 !important; color: white !important; }
+
+        .is-past { opacity: 0.2; filter: grayscale(0.8); pointer-events: none; }
+        .is-weekend { background: rgba(255, 255, 255, 0.04) !important; border-color: rgba(255, 255, 255, 0.1) !important; }
+        .is-weekend .day-num { color: #f87171; }
         
-        [data-theme="light"] .heat-2 { background-color: rgba(99, 102, 241, 0.1) !important; color: rgba(0, 0, 0, 0.65) !important; }
-        [data-theme="light"] .heat-2 .day-price, [data-theme="light"] .heat-2 .day-num { color: #1e293b !important; }
-        
-        [data-theme="light"] .heat-3 { background-color: rgba(99, 102, 241, 0.3) !important; color: #1e293b !important; }
-        [data-theme="light"] .heat-3 .day-price, [data-theme="light"] .heat-3 .day-num { color: #0f172a !important; }
-
-        [data-theme="light"] .heat-4 .day-price, [data-theme="light"] .heat-4 .day-num,
-        [data-theme="light"] .heat-5 .day-price, [data-theme="light"] .heat-5 .day-num { color: white !important; }
-
-
-        @keyframes glowPulse {
-            0% { box-shadow: 0 0 15px rgba(99, 102, 241, 0.4); }
-            50% { box-shadow: 0 0 35px rgba(168, 85, 247, 0.7); }
-            100% { box-shadow: 0 0 15px rgba(99, 102, 241, 0.4); }
-        }
-
-        .is-past { opacity: 0.15; filter: grayscale(1); cursor: default !important; pointer-events: none; }
-        .is-weekend { background: rgba(255, 255, 255, 0.05) !important; }
-        .is-weekend .day-num { color: #ff6b6b; opacity: 1; text-shadow: 0 0 10px rgba(255, 107, 107, 0.3); }
         .is-full { 
             border: 2px solid var(--danger) !important; 
-            box-shadow: inset 0 0 15px rgba(239, 68, 68, 0.3) !important;
         }
         .has-event { border: 2px solid var(--accent) !important; }
-        .has-event::before {
+        .has-event::after {
             content: '';
             position: absolute;
             top: 6px; right: 6px;
             width: 6px; height: 6px;
             background: var(--accent);
             border-radius: 50%;
-            box-shadow: 0 0 10px var(--accent);
         }
 
         /* INSIGHTS PREMIUM */
@@ -988,11 +945,11 @@
                     const priceText = heatmapVal > 0 ? (metric === 'price' ? `${Math.round(heatmapVal)}€` : `${Math.round(occPct)}%`) : "";
                     
                     cell.innerHTML = `
-                        <div style="display:flex; justify-content:space-between; align-items:flex-start; padding:2px 4px;">
-                            <span style="font-size:0.9rem; font-weight:800; color:var(--text-main); opacity:0.9;">${d}</span>
-                            <span style="font-size:0.5rem; font-weight:800; color:var(--text-muted); opacity:0.6; text-transform:uppercase;">${dayName.substring(0,3)}</span>
+                        <div class="day-num-container">
+                            <span class="day-num">${d}</span>
+                            <span class="day-name-short">${dayName.substring(0,3)}</span>
                         </div>
-                        <div class="day-price" style="font-size: 0.85rem; margin: 1px 0;">${priceText}</div>
+                        <div class="day-price">${priceText}</div>
                         ${badgeHtml}
                     `;
 
