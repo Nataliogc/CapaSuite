@@ -545,7 +545,26 @@
             for (let c = startCol; c < maxCols; c++) {
                 // Month Update
                 if (monthRow !== -1 && rawData[monthRow] && rawData[monthRow][c]) {
-                    currentMonth = String(rawData[monthRow][c]).trim();
+                    const textVal = String(rawData[monthRow][c]).trim();
+                    if (textVal !== "") {
+                        if (currentMonth !== "") {
+                            let oldIdx = -1, newIdx = -1;
+                            const mList = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+                            for(let i=0; i<12; i++) {
+                                if (currentMonth.toLowerCase().includes(mList[i].toLowerCase())) oldIdx = i;
+                                if (textVal.toLowerCase().includes(mList[i].toLowerCase())) newIdx = i;
+                            }
+                            if (newIdx !== -1 && oldIdx !== -1) {
+                                if (newIdx >= oldIdx || (oldIdx === 11 && newIdx === 0)) {
+                                    currentMonth = textVal;
+                                }
+                            } else {
+                                currentMonth = textVal;
+                            }
+                        } else {
+                            currentMonth = textVal;
+                        }
+                    }
                 } else if (currentMonth === "") {
                     // Fallback Search
                     for (let r = 0; r < 20; r++) {
