@@ -431,7 +431,7 @@
             const scanFrom = Math.max(0, dateNumRow - 15);
             for (let r = scanFrom; r < dateNumRow; r++) {
                 const str = JSON.stringify(rawData[r] || []).toLowerCase();
-                if (str.includes("january") || str.includes("february") || str.includes("enero") || str.includes("marzo") || str.includes("abril") || str.includes("mayo") || str.includes("junio") || str.includes("julio") || str.includes("agosto") || str.includes("septiembre") || str.includes("octubre") || str.includes("noviembre") || str.includes("diciembre")) {
+                if (str.includes("jan") || str.includes("feb") || str.includes("mar") || str.includes("apr") || str.includes("may") || str.includes("jun") || str.includes("jul") || str.includes("aug") || str.includes("sep") || str.includes("oct") || str.includes("nov") || str.includes("dec") || str.includes("enero") || str.includes("abril") || str.includes("agosto") || str.includes("diciembre")) {
                     monthRow = r; break;
                 }
             }
@@ -549,13 +549,16 @@
                     if (textVal !== "") {
                         if (currentMonth !== "") {
                             let oldIdx = -1, newIdx = -1;
-                            const mList = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+                            const mList = [["enero", "jan"], ["febrero", "feb"], ["marzo", "mar"], ["abril", "apr", "abr"], ["mayo", "may"], ["junio", "jun"], ["julio", "jul"], ["agosto", "aug", "ago"], ["septiembre", "sep"], ["octubre", "oct"], ["noviembre", "nov"], ["diciembre", "dec"]];
                             for(let i=0; i<12; i++) {
-                                if (currentMonth.toLowerCase().includes(mList[i].toLowerCase())) oldIdx = i;
-                                if (textVal.toLowerCase().includes(mList[i].toLowerCase())) newIdx = i;
+                                if (mList[i].some(m => currentMonth.toLowerCase().includes(m))) oldIdx = i;
+                                if (mList[i].some(m => textVal.toLowerCase().includes(m))) newIdx = i;
                             }
                             if (newIdx !== -1 && oldIdx !== -1) {
-                                if (newIdx >= oldIdx || (oldIdx === 11 && newIdx === 0)) {
+                                if (newIdx > oldIdx || (oldIdx === 11 && newIdx === 0)) {
+                                    currentMonth = textVal;
+                                    prevDNum = -1; // Reset to prevent double rollover!
+                                } else if (newIdx === oldIdx) {
                                     currentMonth = textVal;
                                 }
                             } else {
@@ -569,7 +572,8 @@
                     // Fallback Search
                     for (let r = 0; r < 20; r++) {
                         const cell = String(rawData[r] ? rawData[r][c] : "").toLowerCase();
-                        for (const mKey in MONTH_MAP) {
+                        const LOCAL_MONTH_MAP = {"january":"Enero","enero":"Enero","jan":"Enero","ene":"Enero","february":"Febrero","febrero":"Febrero","feb":"Febrero","march":"Marzo","marzo":"Marzo","mar":"Marzo","april":"Abril","abril":"Abril","apr":"Abril","abr":"Abril","may":"Mayo","mayo":"Mayo","june":"Junio","junio":"Junio","jun":"Junio","july":"Julio","julio":"Julio","jul":"Julio","august":"Agosto","agosto":"Agosto","aug":"Agosto","ago":"Agosto","september":"Septiembre","septiembre":"Septiembre","sep":"Septiembre","october":"Octubre","octubre":"Octubre","oct":"Octubre","november":"Noviembre","noviembre":"Noviembre","nov":"Noviembre","december":"Diciembre","diciembre":"Diciembre","dec":"Diciembre"};
+                        for (const mKey in LOCAL_MONTH_MAP) {
                             if (cell.includes(mKey)) { currentMonth = cell; break; }
                         }
                         if (currentMonth) break;
@@ -590,11 +594,12 @@
 
                 const currentDNum = parseInt(dNum);
                 if (currentMonth && prevDNum > 0 && currentDNum < prevDNum && prevDNum >= 28) {
-                    const monthsList = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+                    const mList = [["enero", "jan"], ["febrero", "feb"], ["marzo", "mar"], ["abril", "apr", "abr"], ["mayo", "may"], ["junio", "jun"], ["julio", "jul"], ["agosto", "aug", "ago"], ["septiembre", "sep"], ["octubre", "oct"], ["noviembre", "nov"], ["diciembre", "dec"]];
+                    const outNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
                     let mLower = currentMonth.toLowerCase();
                     let mIdx = -1;
-                    for (let i = 0; i < monthsList.length; i++) {
-                        if (mLower.includes(monthsList[i].toLowerCase())) {
+                    for (let i = 0; i < 12; i++) {
+                        if (mList[i].some(m => mLower.includes(m))) {
                             mIdx = i;
                             break;
                         }
@@ -604,7 +609,7 @@
                         const yearMatch = currentMonth.match(/(\d{4})/);
                         let nextYear = yearMatch ? parseInt(yearMatch[1]) : 2026;
                         if (mIdx === 11) nextYear++;
-                        currentMonth = `${monthsList[nextIdx]} ${nextYear}`;
+                        currentMonth = `${outNames[nextIdx]} ${nextYear}`;
                     }
                 }
                 prevDNum = currentDNum;

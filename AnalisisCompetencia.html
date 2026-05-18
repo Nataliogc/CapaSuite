@@ -1431,7 +1431,10 @@
                                 if (mList[i].some(m => textVal.toLowerCase().includes(m))) newIdx = i;
                             }
                             if (newIdx !== -1 && oldIdx !== -1) {
-                                if (newIdx >= oldIdx || (oldIdx === 11 && newIdx === 0)) {
+                                if (newIdx > oldIdx || (oldIdx === 11 && newIdx === 0)) {
+                                    currentMonth = textVal;
+                                    prevDNum = -1; // Reset to prevent double rollover!
+                                } else if (newIdx === oldIdx) {
                                     currentMonth = textVal;
                                 }
                             } else {
