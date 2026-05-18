@@ -1415,6 +1415,7 @@
             processedData = [];
             distinctMonths = [];
             let currentMonth = "";
+            let prevDNum = -1;
             const maxCols = gRowData ? gRowData.length : 0;
 
             for (let c = startCol; c < maxCols; c++) {
@@ -1443,6 +1444,27 @@
                 }
 
                 if (!dNum) continue;
+
+                const currentDNum = parseInt(dNum);
+                if (currentMonth && prevDNum > 0 && currentDNum < prevDNum && prevDNum >= 28) {
+                    const monthsList = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+                    let mLower = currentMonth.toLowerCase();
+                    let mIdx = -1;
+                    for (let i = 0; i < monthsList.length; i++) {
+                        if (mLower.includes(monthsList[i].toLowerCase())) {
+                            mIdx = i;
+                            break;
+                        }
+                    }
+                    if (mIdx !== -1) {
+                        const nextIdx = (mIdx + 1) % 12;
+                        const yearMatch = currentMonth.match(/(\d{4})/);
+                        let nextYear = yearMatch ? parseInt(yearMatch[1]) : 2026;
+                        if (mIdx === 11) nextYear++;
+                        currentMonth = `${monthsList[nextIdx]} ${nextYear}`;
+                    }
+                }
+                prevDNum = currentDNum;
 
                 // Day Name is often in the same cell now "lun. 26"
                 let dName = "";
