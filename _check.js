@@ -488,7 +488,9 @@
                 if (nLow.includes("tarifas medias") || nLow.includes("interés") || nLow.includes("interes") ||
                     nLow.includes("año anterior") || nLow.includes("rank") || nLow.includes("clasificación") ||
                     nLow.includes("promedio") || nLow.includes("media") || nLow.includes("total") ||
-                    nLow.includes("min") || nLow.includes("max") || nLow.includes("var") || nLow.includes("cv ")) {
+                    nLow.includes("min") || nLow.includes("max") || nLow.includes("var") || nLow.includes("cv ") ||
+                    nLow.includes("spain") || nLow.includes("rest of") || nLow.includes("montes") || nLow.includes("castilla") || nLow.includes("la mancha") ||
+                    nLow.includes("competitive") || nLow.includes("average")) {
                     consecutiveInvalid++; continue;
                 }
 
@@ -886,11 +888,17 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
         }
 
         function parseVal(val) {
+            if (val === undefined || val === null) return { price: 0, sold: false, status: 'noData' };
             const S = String(val).trim().toUpperCase();
-            // S = Completo (Sold out)
-            if (S === 'S') return { price: 0, sold: true, status: 'sold' };
+            
+            // S = Completo (Sold out / Cerrado / Estancia mínima)
+            if (S === 'S' || S === 'SOLD OUT' || S === 'SOLD_OUT' || S === 'COMPLETO' || S === 'COMPLETADO' || S === 'CERRADO' || S === 'C' || S.startsWith('MIN') || S.includes('NIGHT')) {
+                return { price: 0, sold: true, status: 'sold' };
+            }
+            
             // M = Estancia mínima requerida
             if (S === 'M') return { price: 0, sold: false, status: 'minStay' };
+            
             // - = Sin datos disponibles
             if (S === '-' || S === '') return { price: 0, sold: false, status: 'noData' };
 
