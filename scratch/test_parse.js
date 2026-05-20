@@ -6,7 +6,7 @@ const xlsxPath = path.resolve('C:/Users/comun/Documents/GitHub/CapaSuite/js/xlsx
 const XLSX = require(xlsxPath);
 
 // Load the workbook
-const excelFilePath = "C:\\Users\\comun\\OneDrive\\1.Conm Oficina\\Ficheros\\expedia_revenue_management_1109797_2026_05_20.xlsx";
+const excelFilePath = "C:\\Users\\comun\\OneDrive\\1.Conm Oficina\\Ficheros\\expedia_revenue_management_1109797_2026_05_20 (2).xlsx";
 const fileBuffer = fs.readFileSync(excelFilePath);
 const wb = XLSX.read(fileBuffer, { type: 'buffer' });
 const sheet = wb.Sheets[wb.SheetNames[0]];
@@ -15,33 +15,56 @@ let rawData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
 function parseVal(val) {
     if (val === undefined || val === null) return { price: 0, sold: false, status: 'noData' };
-    const S = String(val).trim().toUpperCase();
+    const S = String(val).trim();
+    const SU = S.toUpperCase();
     
-    // S = Completo (Sold out / Cerrado / Estancia mínima)
-    if (S === 'S' || S === 'SOLD OUT' || S === 'SOLD_OUT' || S === 'COMPLETO' || S === 'COMPLETADO' || S === 'CERRADO' || S === 'C' || S.startsWith('MIN') || S.includes('NIGHT')) {
+    // Estancia mínima check
+    if (SU === 'M' || SU.includes('MIN') || SU.includes('NIGHT') || SU.includes('ESTANCIA M')) {
+        const match = S.match(/(\d+)/);
+        const nightsNum = match ? parseInt(match[1]) : null;
+        return {
+            price: 0,
+            sold: false,
+            status: 'minStay',
+            minStayDays: nightsNum,
+            raw: S
+        };
+    }
+
+    // S = Completo (Sold out / Cerrado / C / Completo)
+    if (SU === 'S' || SU === 'SOLD OUT' || SU === 'SOLD_OUT' || SU === 'COMPLETO' || SU === 'COMPLETADO' || SU === 'CERRADO' || SU === 'C') {
         return { price: 0, sold: true, status: 'sold' };
     }
     
-    // M = Estancia mínima requerida
-    if (S === 'M') return { price: 0, sold: false, status: 'minStay' };
-    
     // - = Sin datos disponibles
-    if (S === '-' || S === '') return { price: 0, sold: false, status: 'noData' };
+    if (SU === '-' || SU === '') return { price: 0, sold: false, status: 'noData' };
 
     const p = parseFloat(val);
     return { price: isNaN(p) ? 0 : p, sold: false, status: 'available' };
 }
+
+// Unit Tests for parseVal
+console.log("TEST - Min. 2 nights:", parseVal("Min. 2 nights"));
+console.log("TEST - Min. 3 nights:", parseVal("Min. 3 nights"));
+console.log("TEST - Minimum stay:", parseVal("Minimum stay"));
+console.log("TEST - Min stay:", parseVal("Min stay"));
+console.log("TEST - M:", parseVal("M"));
+console.log("TEST - Estancia mínima:", parseVal("Estancia mínima"));
+console.log("TEST - Sold out:", parseVal("Sold out"));
+console.log("TEST - 120:", parseVal("120"));
+console.log("--------------------------------------------------");
 
 // Find rows
 let cumbriaRow = -1;
 let guadianaRow = -1;
 for (let i = 0; i < Math.min(100, rawData.length); i++) {
     const row = rawData[i];
-    if (!row || !row[0]) continue;
-    const cell0 = String(row[0]).toLowerCase();
+    const name = row && row[0] ? String(row[0]) : "";
+    console.log(`Row ${i}: "${name}" (cols: ${row ? row.length : 0})`);
+    const cell0 = name.toLowerCase();
     if (cell0.includes("cumbria")) {
         cumbriaRow = i;
-    } else if (cell0.includes("guadiana") || cell0.includes("your property")) {
+    } else if ((cell0.includes("guadiana") || cell0.includes("your property")) && !cell0.includes("montes")) {
         guadianaRow = i;
     }
 }
@@ -89,43 +112,67 @@ console.log("startCol:", startCol);
 let competitorsList = [];
 const scanStart = (cumbriaRow !== -1 ? cumbriaRow : guadianaRow) + 1;
 const totalCols = rawData[guadianaRow] ? rawData[guadianaRow].length : 0;
-let consecutiveInvalid = 0;
+console.log("scanStart:", scanStart, "totalCols:", totalCols);
 
 for (let r = scanStart; r < rawData.length; r++) {
-    if (consecutiveInvalid > 20) break;
-
     const row = rawData[r];
-    if (!row || !row[0]) {
-        consecutiveInvalid++;
+    if (!row) {
+        console.log(`Row ${r} is null/undefined`);
         continue;
     }
-
-    const name = String(row[0]).trim();
+    const name = row[0] ? String(row[0]).trim() : "";
+    if (!name) {
+        console.log(`Row ${r} has empty name`);
+        continue;
+    }
     const nLow = name.toLowerCase();
+    
+    // Check Data Density
+    let validPoints = 0;
+    let samplePoints = [];
+    for (let checkC = startCol; checkC < Math.min(startCol + 30, totalCols); checkC++) {
+        const cell = row[checkC];
+        if (cell !== undefined && cell !== null && cell !== '') {
+            const cellStr = String(cell).trim().toUpperCase();
+            if (!isNaN(parseFloat(cell)) || 
+                cellStr === 'S' || 
+                cellStr === 'M' || 
+                cellStr === 'SOLD OUT' || 
+                cellStr === 'COMPLETO' || 
+                cellStr === 'CERRADO' || 
+                cellStr === 'MINIMUM STAY' || 
+                cellStr === 'MIN STAY' || 
+                cellStr === 'ESTANCIA MÍNIMA' || 
+                cellStr === 'ESTANCIA MINIMA') {
+                validPoints++;
+                samplePoints.push(cell);
+            }
+        }
+    }
+    console.log(`Row ${r}: "${name}" | nLow: "${nLow}" | validPoints: ${validPoints} (sample: ${samplePoints.slice(0, 5).join(',')})`);
 
-    // Blacklist
-    if (name.length < 3) { consecutiveInvalid++; continue; }
-    if (nLow.includes("tarifas medias") || nLow.includes("interés") || nLow.includes("interes") ||
+    if (name === "Hotel Santa Cecilia") {
+        console.log("Hotel Santa Cecilia cells (first 50):", row.slice(0, 50));
+    }
+
+    // Blacklist check
+    let blacklisted = false;
+    if (name.length < 3) {
+        console.log(`  -> Skipped: length < 3`);
+        blacklisted = true;
+    } else if (nLow.includes("tarifas medias") || nLow.includes("interés") || nLow.includes("interes") ||
         nLow.includes("año anterior") || nLow.includes("rank") || nLow.includes("clasificación") ||
         nLow.includes("promedio") || nLow.includes("media") || nLow.includes("total") ||
         nLow.includes("min") || nLow.includes("max") || nLow.includes("var") || nLow.includes("cv ") ||
         nLow.includes("spain") || nLow.includes("rest of") || nLow.includes("montes") || nLow.includes("castilla") || nLow.includes("la mancha") ||
-        nLow.includes("competitive") || nLow.includes("average")) {
-        consecutiveInvalid++; continue;
+        nLow.includes("competitive") || nLow.includes("average") ||
+        nLow.includes("search demand") || nLow.includes("previous year")) {
+        console.log(`  -> Skipped: blacklisted`);
+        blacklisted = true;
     }
-
-    // Check Data Density
-    let validPoints = 0;
-    for (let checkC = startCol; checkC < Math.min(startCol + 30, totalCols); checkC++) {
-        const cell = row[checkC];
-        if (!isNaN(parseFloat(cell)) || String(cell).toUpperCase() === 'S') validPoints++;
-    }
-
-    if (validPoints >= 5) {
+    
+    if (!blacklisted && validPoints >= 5) {
         competitorsList.push({ name: name, rowIdx: r });
-        consecutiveInvalid = 0;
-    } else {
-        consecutiveInvalid++;
     }
 }
 

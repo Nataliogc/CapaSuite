@@ -490,7 +490,8 @@
                     nLow.includes("promedio") || nLow.includes("media") || nLow.includes("total") ||
                     nLow.includes("min") || nLow.includes("max") || nLow.includes("var") || nLow.includes("cv ") ||
                     nLow.includes("spain") || nLow.includes("rest of") || nLow.includes("montes") || nLow.includes("castilla") || nLow.includes("la mancha") ||
-                    nLow.includes("competitive") || nLow.includes("average")) {
+                    nLow.includes("competitive") || nLow.includes("average") ||
+                    nLow.includes("search demand") || nLow.includes("previous year")) {
                     consecutiveInvalid++; continue;
                 }
 
@@ -498,7 +499,21 @@
                 let validPoints = 0;
                 for (let checkC = startCol; checkC < Math.min(startCol + 30, totalCols); checkC++) {
                     const cell = row[checkC];
-                    if (!isNaN(parseFloat(cell)) || String(cell).toUpperCase() === 'S') validPoints++;
+                    if (cell !== undefined && cell !== null && cell !== '') {
+                        const cellStr = String(cell).trim().toUpperCase();
+                        if (!isNaN(parseFloat(cell)) || 
+                            cellStr === 'S' || 
+                            cellStr === 'M' || 
+                            cellStr === 'SOLD OUT' || 
+                            cellStr === 'COMPLETO' || 
+                            cellStr === 'CERRADO' || 
+                            cellStr === 'MINIMUM STAY' || 
+                            cellStr === 'MIN STAY' || 
+                            cellStr === 'ESTANCIA MÍNIMA' || 
+                            cellStr === 'ESTANCIA MINIMA') {
+                            validPoints++;
+                        }
+                    }
                 }
 
                 if (validPoints >= 5) {
@@ -886,18 +901,29 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
         function parseVal(val) {
             if (val === undefined || val === null) return { price: 0, sold: false, status: 'noData' };
-            const S = String(val).trim().toUpperCase();
+            const S = String(val).trim();
+            const SU = S.toUpperCase();
             
-            // S = Completo (Sold out / Cerrado / Estancia mínima)
-            if (S === 'S' || S === 'SOLD OUT' || S === 'SOLD_OUT' || S === 'COMPLETO' || S === 'COMPLETADO' || S === 'CERRADO' || S === 'C' || S.startsWith('MIN') || S.includes('NIGHT')) {
+            // Estancia mínima check
+            if (SU === 'M' || SU.includes('MIN') || SU.includes('NIGHT') || SU.includes('ESTANCIA M')) {
+                const match = S.match(/(\d+)/);
+                const nightsNum = match ? parseInt(match[1]) : null;
+                return {
+                    price: 0,
+                    sold: false,
+                    status: 'minStay',
+                    minStayDays: nightsNum,
+                    raw: S
+                };
+            }
+
+            // S = Completo (Sold out / Cerrado / C / Completo)
+            if (SU === 'S' || SU === 'SOLD OUT' || SU === 'SOLD_OUT' || SU === 'COMPLETO' || SU === 'COMPLETADO' || SU === 'CERRADO' || SU === 'C') {
                 return { price: 0, sold: true, status: 'sold' };
             }
             
-            // M = Estancia mínima requerida
-            if (S === 'M') return { price: 0, sold: false, status: 'minStay' };
-            
             // - = Sin datos disponibles
-            if (S === '-' || S === '') return { price: 0, sold: false, status: 'noData' };
+            if (SU === '-' || SU === '') return { price: 0, sold: false, status: 'noData' };
 
             const p = parseFloat(val);
             return { price: isNaN(p) ? 0 : p, sold: false, status: 'available' };
