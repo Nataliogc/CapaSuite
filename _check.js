@@ -360,7 +360,7 @@
                 const rowStr = row.join(" ").toLowerCase();
 
                 // Find Guadiana
-                if (guadianaRow === -1 && rowStr.includes("guadiana") && !rowStr.includes("tarifas")) {
+                if (guadianaRow === -1 && (rowStr.includes("guadiana") || rowStr.includes("your property")) && !rowStr.includes("tarifas")) {
                     // Check if this row actually has data columns? 
                     // The main row usually has values to the right.
                     if (row.length > 2) {
@@ -380,7 +380,7 @@
             if (guadianaRow === -1) {
                 for (let r = 0; r < Math.min(rawData.length, 100); r++) {
                     const rowStr = (rawData[r] || []).join(" ").toLowerCase();
-                    if (rowStr.includes("guadiana") && !rowStr.includes("tarifas")) { guadianaRow = r; break; }
+                    if ((rowStr.includes("guadiana") || rowStr.includes("your property")) && !rowStr.includes("tarifas")) { guadianaRow = r; break; }
                 }
             }
 
@@ -622,6 +622,14 @@
                     dName = cellVal.replace(/\d+/g, '').replace(/\./g, '').trim();
                 }
 
+                // Fallback to row above if day name wasn't in the same cell
+                if (!dName && dateNumRow > 0 && rawData[dateNumRow - 1]) {
+                    const aboveVal = String(rawData[dateNumRow - 1][c] || "").trim();
+                    if (aboveVal && !aboveVal.match(/^\d+$/) && aboveVal.length <= 10) {
+                        dName = aboveVal;
+                    }
+                }
+
                 // Format Date & Occupancy
                 let occ = 0;
                 if (occupancyRow !== -1) {
@@ -801,7 +809,7 @@
                 if (activeHotel === "Cumbria" && guadianaRow !== -1) {
                     const gVal = dayObj.hotels["Guadiana"];
                     // Check if already included via loop (avoid double count)
-                    const alreadyIn = competitorsList.some(comp => comp.name.toLowerCase().includes("guadiana"));
+                    const alreadyIn = competitorsList.some(comp => comp.name.toLowerCase().includes("guadiana") && !comp.name.toLowerCase().includes("montes"));
                     if (!alreadyIn && gVal.price > 0 && !gVal.sold) {
                         compPrices.push(gVal.price);
                     }
