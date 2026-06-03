@@ -983,6 +983,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             let dayNum = meta.dNum;
             let dayName = meta.dShort;
             let monthName = "";
+            let yearVal = "";
 
             if (d.dateISO && d.dateISO !== 'INV-DATE') {
                 const parts = d.dateISO.split('-');
@@ -992,9 +993,15 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
                     dayName = days[dt.getDay()];
                     monthName = months[dt.getMonth()];
+                    yearVal = parts[0];
                 }
             }
             if (!monthName) monthName = meta.mShort || "";
+            if (!yearVal && d.month) {
+                const yearMatch = d.month.match(/(\d{4})/);
+                if (yearMatch) yearVal = yearMatch[1];
+            }
+            const yearSuffix = yearVal ? ` <span style="font-size:0.5rem; opacity:0.85;">'${yearVal.slice(-2)}</span>` : '';
 
             // Compact side-by-side display for OTB and Variation (Pick-up)
             let metricsHtml = '';
@@ -1026,7 +1033,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         <span style="font-size:1.3rem; font-weight:800; color:var(--text-main); line-height:1;">${dayNum}</span>
                         <div style="display:flex; flex-direction:column; line-height:1.1;">
                             <span style="font-size:0.75rem; font-weight:600; color:var(--text-main);">${dayName}</span>
-                            <span style="font-size:0.6rem; color:var(--text-muted);">${monthName}</span>
+                            <span style="font-size:0.6rem; color:var(--text-muted);">${monthName}${yearSuffix}</span>
                         </div>
                     </div>
                     ${occValFix}
