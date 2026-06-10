@@ -1170,6 +1170,24 @@
         // Shared Database logic (same as AnalisisProduccion.html)
         const DB_KEY = 'hotel_manager_db_v2';
         const CONFIG_KEY = 'upload_config_db_v2';
+
+        function formatDateTimezoneAgnostic(d) {
+            const localHour = d.getHours();
+            const utcHour = d.getUTCHours();
+            const localDiff = Math.min(localHour, 24 - localHour);
+            const utcDiff = Math.min(utcHour, 24 - utcHour);
+            if (utcDiff < localDiff) {
+                const y = d.getUTCFullYear();
+                const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+                const dayVal = String(d.getUTCDate()).padStart(2, '0');
+                return `${y}-${m}-${dayVal}`;
+            } else {
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const dayVal = String(d.getDate()).padStart(2, '0');
+                return `${y}-${m}-${dayVal}`;
+            }
+        }
         
         // Use var so they can gracefully fallback and try/catch to prevent TDZ breaks
         var db = {};
@@ -1885,31 +1903,7 @@
                             if (!dbYear.daily) dbYear.daily = {};
                             
                             // Format date to YYYY-MM-DD timezone-agnostically
-                            let iso = "";
-                            if (headerCell instanceof Date) {
-                                const utcHours = specDate.getUTCHours();
-                                if (utcHours === 0 || specDate.getUTCMinutes() > 0 || specDate.getUTCHours() > 22 || specDate.getUTCHours() < 2) {
-                                    const y = specDate.getUTCFullYear();
-                                    const m = String(specDate.getUTCMonth() + 1).padStart(2, '0');
-                                    const d = String(specDate.getUTCDate()).padStart(2, '0');
-                                    iso = `${y}-${m}-${d}`;
-                                } else {
-                                    const y = specDate.getFullYear();
-                                    const m = String(specDate.getMonth() + 1).padStart(2, '0');
-                                    const d = String(specDate.getDate()).padStart(2, '0');
-                                    iso = `${y}-${m}-${d}`;
-                                }
-                            } else if (typeof headerCell === 'number' && headerCell > 30000) {
-                                const y = specDate.getUTCFullYear();
-                                const m = String(specDate.getUTCMonth() + 1).padStart(2, '0');
-                                const d = String(specDate.getUTCDate()).padStart(2, '0');
-                                iso = `${y}-${m}-${d}`;
-                            } else {
-                                const y = specDate.getFullYear();
-                                const m = String(specDate.getMonth() + 1).padStart(2, '0');
-                                const d = String(specDate.getDate()).padStart(2, '0');
-                                iso = `${y}-${m}-${d}`;
-                            }
+                            const iso = formatDateTimezoneAgnostic(specDate);
                             
                             const dailyRev = parseVal(rowPro ? rowPro[c] : 0);
 

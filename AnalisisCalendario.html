@@ -1077,20 +1077,27 @@
             reader.readAsArrayBuffer(file);
         }
 
+        function formatDateTimezoneAgnostic(d) {
+            const localHour = d.getHours();
+            const utcHour = d.getUTCHours();
+            const localDiff = Math.min(localHour, 24 - localHour);
+            const utcDiff = Math.min(utcHour, 24 - utcHour);
+            if (utcDiff < localDiff) {
+                const y = d.getUTCFullYear();
+                const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+                const dayVal = String(d.getUTCDate()).padStart(2, '0');
+                return `${y}-${m}-${dayVal}`;
+            } else {
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const dayVal = String(d.getDate()).padStart(2, '0');
+                return `${y}-${m}-${dayVal}`;
+            }
+        }
+
         function formatDate(val) {
-            if (val instanceof Date) {
-                const y = val.getUTCFullYear();
-                const m = String(val.getUTCMonth() + 1).padStart(2, '0');
-                const d = String(val.getUTCDate()).padStart(2, '0');
-                return `${y}-${m}-${d}`;
-            }
-            if (typeof val === 'number') {
-                const dateObj = new Date((val - 25569) * 86400 * 1000);
-                const y = dateObj.getUTCFullYear();
-                const m = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
-                const d = String(dateObj.getUTCDate()).padStart(2, '0');
-                return `${y}-${m}-${d}`;
-            }
+            if (val instanceof Date) return formatDateTimezoneAgnostic(val);
+            if (typeof val === 'number') return formatDateTimezoneAgnostic(new Date((val - 25569) * 86400 * 1000));
             return val;
         }
 
