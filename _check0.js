@@ -437,6 +437,7 @@
             }
 
             // Start Column Logic
+            let gRowData = rawData[guadianaRow];
             let startCol = 1; // fallback seguro: columna B
 
             // Corrección obligatoria 1: detectar startCol desde la fila de fechas
