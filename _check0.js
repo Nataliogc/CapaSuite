@@ -437,36 +437,23 @@
             }
 
             // Start Column Logic
-            let startCol = 1;
-            let gRowData = rawData[guadianaRow];
-            if (gRowData) {
-                for (let c = 1; c < gRowData.length; c++) {
-                    const val = gRowData[c];
-                    if (val !== undefined && val !== null) {
-                        const valStr = String(val).trim().toUpperCase();
-                        if (!isNaN(parseFloat(val)) || 
-                            valStr === 'S' || 
-                            valStr === 'C' || 
-                            valStr.includes('SOLD') || 
-                            valStr.includes('COMPLET') || 
-                            valStr.includes('CERRADO') || 
-                            valStr.includes('MIN')) {
-                            startCol = c; break;
-                        }
-                    }
-                }
-                // Double check with Date Row - Logic: Find first column with a valid date number that ISN'T a percentage
-                if (rawData[dateNumRow]) {
-                    for (let c = 1; c < rawData[dateNumRow].length; c++) {
-                        const cellStr = String(rawData[dateNumRow][c]);
-                        if (cellStr.includes('%')) continue;
+            let startCol = 1; // fallback seguro: columna B
 
-                        const match = cellStr.match(/(\d+)/);
-                        if (match) {
-                            const val = parseInt(match[1]);
-                            if (val >= 1 && val <= 31) {
-                                startCol = c; break;
-                            }
+            // Corrección obligatoria 1: detectar startCol desde la fila de fechas
+            if (dateNumRow !== -1 && rawData[dateNumRow]) {
+                for (let c = 1; c < rawData[dateNumRow].length; c++) {
+                    const cellStr = String(rawData[dateNumRow][c] ?? '').trim();
+
+                    if (!cellStr || cellStr.includes('%')) continue;
+
+                    const match = cellStr.match(/(\d+)/);
+
+                    if (match) {
+                        const dayNumber = parseInt(match[1], 10);
+
+                        if (dayNumber >= 1 && dayNumber <= 31) {
+                            startCol = c;
+                            break;
                         }
                     }
                 }
@@ -508,17 +495,18 @@
                 for (let checkC = startCol; checkC < Math.min(startCol + 30, totalCols); checkC++) {
                     const cell = row[checkC];
                     if (cell !== undefined && cell !== null && cell !== '') {
-                        const cellStr = String(cell).trim().toUpperCase();
-                        if (!isNaN(parseFloat(cell)) || 
-                            cellStr === 'S' || 
-                            cellStr === 'M' || 
-                            cellStr === 'SOLD OUT' || 
-                            cellStr === 'COMPLETO' || 
-                            cellStr === 'CERRADO' || 
-                            cellStr === 'MINIMUM STAY' || 
-                            cellStr === 'MIN STAY' || 
-                            cellStr === 'ESTANCIA MÍNIMA' || 
-                            cellStr === 'ESTANCIA MINIMA') {
+                        const valStr = String(cell ?? '').trim().toUpperCase();
+                        const isValidDataColumn =
+                            !isNaN(parseFloat(cell)) ||
+                            valStr === 'S' ||
+                            valStr === 'C' ||
+                            valStr.includes('SOLD') ||
+                            valStr.includes('COMPLET') ||
+                            valStr.includes('CERRADO') ||
+                            valStr.includes('CLOSED') ||
+                            valStr.includes('MIN');
+                        
+                        if (isValidDataColumn) {
                             validPoints++;
                         }
                     }
@@ -664,6 +652,12 @@
                     if (aboveVal && !aboveVal.match(/^\d+$/) && aboveVal.length <= 10) {
                         dName = aboveVal;
                     }
+                }
+
+                // Corrección obligatoria 4: no permitir que un mes vacío se convierta en enero
+                if (!currentMonth || String(currentMonth).trim() === "") {
+                    console.warn("Month header not found for column:", c);
+                    continue;
                 }
 
                 // Format Date & Occupancy
