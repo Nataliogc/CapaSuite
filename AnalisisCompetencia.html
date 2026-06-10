@@ -1318,13 +1318,21 @@
             if (gRowData) {
                 for (let c = 1; c < gRowData.length; c++) {
                     const val = gRowData[c];
-                    // Look for valid price or 'S' (Closed)
-                    if (!isNaN(parseFloat(val)) || String(val).toUpperCase() === 'S') {
-                        startCol = c; break;
+                    if (val !== undefined && val !== null) {
+                        const valStr = String(val).trim().toUpperCase();
+                        if (!isNaN(parseFloat(val)) || 
+                            valStr === 'S' || 
+                            valStr === 'C' || 
+                            valStr.includes('SOLD') || 
+                            valStr.includes('COMPLET') || 
+                            valStr.includes('CERRADO') || 
+                            valStr.includes('MIN')) {
+                            startCol = c; break;
+                        }
                     }
                 }
                 // Double check with Date Row - Logic: Find first column with a valid date number that ISN'T a percentage
-                if (startCol === 1 && rawData[dateNumRow]) {
+                if (rawData[dateNumRow]) {
                     for (let c = 1; c < rawData[dateNumRow].length; c++) {
                         const cellStr = String(rawData[dateNumRow][c]);
                         if (cellStr.includes('%')) continue;
