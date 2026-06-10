@@ -1432,6 +1432,20 @@
             processedData = [];
             distinctMonths = [];
             let currentMonth = "";
+            
+            // Initialize currentMonth by looking backwards from startCol in the monthRow
+            if (monthRow !== -1 && rawData[monthRow]) {
+                for (let c = startCol; c >= 0; c--) {
+                    if (rawData[monthRow][c]) {
+                        const val = String(rawData[monthRow][c]).trim();
+                        if (val !== "") {
+                            currentMonth = val;
+                            break;
+                        }
+                    }
+                }
+            }
+            
             let prevDNum = -1;
             const maxCols = gRowData ? gRowData.length : 0;
 
