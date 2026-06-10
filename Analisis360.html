@@ -927,11 +927,28 @@
             const dayCounter = new Array(7).fill(0);
             if (dailyDb) {
                 Object.entries(dailyDb).forEach(([dateStr, obj]) => {
-                    const d = new Date(dateStr);
-                    if (d.getFullYear().toString() === currentYear) {
-                        const m = d.getMonth();
+                    let parts = dateStr.split(/[\/-]/);
+                    let d;
+                    if (parts.length === 3) {
+                        let y, m, dayNum;
+                        if (parts[0].length === 4) {
+                            y = parseInt(parts[0]);
+                            m = parseInt(parts[1]) - 1;
+                            dayNum = parseInt(parts[2]);
+                        } else {
+                            y = parseInt(parts[2].length === 2 ? "20" + parts[2] : parts[2]);
+                            m = parseInt(parts[1]) - 1;
+                            dayNum = parseInt(parts[0]);
+                        }
+                        d = new Date(Date.UTC(y, m, dayNum));
+                    } else {
+                        d = new Date(dateStr);
+                    }
+                    if (isNaN(d.getTime())) return;
+                    if (d.getUTCFullYear().toString() === currentYear) {
+                        const m = d.getUTCMonth();
                         if (currentMonth === "All" || m === midx) {
-                            let day = d.getDay(); 
+                            let day = d.getUTCDay(); 
                             day = (day === 0) ? 6 : day - 1;
                             const rms = (typeof obj === 'object') ? (obj.rooms || 0) : obj;
                             weeklyData[day] += rms;

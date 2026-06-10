@@ -2054,15 +2054,21 @@
             const midx = document.getElementById('monthSelector').value === "All" ? -1 : parseInt(document.getElementById('monthSelector').value);
 
             Object.entries(data.daily).forEach(([dateStr, dayData]) => {
-                // Robust date parsing for DD-MM-YYYY and YYYY-MM-DD
+                // Robust date parsing for DD-MM-YYYY and YYYY-MM-DD to UTC
                 let parts = dateStr.split(/[\/-]/);
                 let date;
                 if (parts.length === 3) {
-                    if (parts[0].length === 4) date = new Date(dateStr);
-                    else {
-                        const y = parts[2].length === 2 ? "20" + parts[2] : parts[2];
-                        date = new Date(`${y}-${parts[1]}-${parts[0]}`);
+                    let y, m, d;
+                    if (parts[0].length === 4) {
+                        y = parseInt(parts[0]);
+                        m = parseInt(parts[1]) - 1;
+                        d = parseInt(parts[2]);
+                    } else {
+                        y = parseInt(parts[2].length === 2 ? "20" + parts[2] : parts[2]);
+                        m = parseInt(parts[1]) - 1;
+                        d = parseInt(parts[0]);
                     }
+                    date = new Date(Date.UTC(y, m, d));
                 } else {
                     date = new Date(dateStr);
                 }
@@ -2070,9 +2076,9 @@
                 if (isNaN(date.getTime())) return;
                 
                 // Filter by month if selected
-                if (midx !== -1 && date.getMonth() !== midx) return;
+                if (midx !== -1 && date.getUTCMonth() !== midx) return;
 
-                let dayIdx = date.getDay() - 1; // 0=Mon, ..., 6=Sun
+                let dayIdx = date.getUTCDay() - 1; // 0=Mon, ..., 6=Sun
                 if (dayIdx === -1) dayIdx = 6; // Sunday fix
 
                 const rev = (typeof dayData === 'object') ? (dayData.revenue || 0) : 0;

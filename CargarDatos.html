@@ -1883,7 +1883,34 @@
 
                         if (specDate && !isNaN(specDate.getTime())) {
                             if (!dbYear.daily) dbYear.daily = {};
-                            const iso = specDate.toISOString().split('T')[0];
+                            
+                            // Format date to YYYY-MM-DD timezone-agnostically
+                            let iso = "";
+                            if (headerCell instanceof Date) {
+                                const utcHours = specDate.getUTCHours();
+                                if (utcHours === 0 || specDate.getUTCMinutes() > 0 || specDate.getUTCHours() > 22 || specDate.getUTCHours() < 2) {
+                                    const y = specDate.getUTCFullYear();
+                                    const m = String(specDate.getUTCMonth() + 1).padStart(2, '0');
+                                    const d = String(specDate.getUTCDate()).padStart(2, '0');
+                                    iso = `${y}-${m}-${d}`;
+                                } else {
+                                    const y = specDate.getFullYear();
+                                    const m = String(specDate.getMonth() + 1).padStart(2, '0');
+                                    const d = String(specDate.getDate()).padStart(2, '0');
+                                    iso = `${y}-${m}-${d}`;
+                                }
+                            } else if (typeof headerCell === 'number' && headerCell > 30000) {
+                                const y = specDate.getUTCFullYear();
+                                const m = String(specDate.getUTCMonth() + 1).padStart(2, '0');
+                                const d = String(specDate.getUTCDate()).padStart(2, '0');
+                                iso = `${y}-${m}-${d}`;
+                            } else {
+                                const y = specDate.getFullYear();
+                                const m = String(specDate.getMonth() + 1).padStart(2, '0');
+                                const d = String(specDate.getDate()).padStart(2, '0');
+                                iso = `${y}-${m}-${d}`;
+                            }
+                            
                             const dailyRev = parseVal(rowPro ? rowPro[c] : 0);
 
                             // Only store if there's actual data to avoid counting empty Excel columns
@@ -2120,11 +2147,29 @@
                     const cellRaw = headerRow[c];
                     if (cellRaw === null || cellRaw === undefined) continue;
 
-                    let dObj = null;
+                    let dateParts = null;
                     if (cellRaw instanceof Date) {
-                        dObj = cellRaw;
+                        const utcHours = cellRaw.getUTCHours();
+                        if (utcHours === 0 || cellRaw.getUTCMinutes() > 0 || cellRaw.getUTCHours() > 22 || cellRaw.getUTCHours() < 2) {
+                            dateParts = {
+                                y: cellRaw.getUTCFullYear(),
+                                m: cellRaw.getUTCMonth(),
+                                d: cellRaw.getUTCDate()
+                            };
+                        } else {
+                            dateParts = {
+                                y: cellRaw.getFullYear(),
+                                m: cellRaw.getMonth(),
+                                d: cellRaw.getDate()
+                            };
+                        }
                     } else if (typeof cellRaw === 'number' && cellRaw > 42000 && cellRaw < 60000) {
-                        dObj = new Date((cellRaw - 25569) * 86400 * 1000);
+                        const dObj = new Date((cellRaw - 25569) * 86400 * 1000);
+                        dateParts = {
+                            y: dObj.getUTCFullYear(),
+                            m: dObj.getUTCMonth(),
+                            d: dObj.getUTCDate()
+                        };
                     } else {
                         const cellStr = String(cellRaw).trim();
                         const dayMatch = cellStr.match(/(\d{1,4})[ \/-](\d{1,2})([ \/-](\d{1,4}))?/);
@@ -2149,8 +2194,7 @@
                                 }
                             }
                             if (y < 100) y += 2000; // Safeguard for 2-digit years
-                            dObj = new Date(y, m, d);
-                            lastMonthIndex = m;
+                            dateParts = { y, m, d };
                         } else {
                             const cellNorm = normalizeStr(cellStr);
                             for (const [mName, mIdx] of Object.entries(SHORT_MONTHS_MAP)) {
@@ -2161,12 +2205,13 @@
                         }
                     }
 
-                    if (dObj && !isNaN(dObj.getTime())) {
-                        const m = dObj.getMonth();
-                        const y = dObj.getFullYear();
+                    if (dateParts) {
+                        const m = dateParts.m;
+                        const y = dateParts.y;
+                        const d = dateParts.d;
                         if (y > currentYearTracker) currentYearTracker = y;
                         lastMonthIndex = m;
-                        const iso = `${y}-${String(m + 1).padStart(2, '0')}-${String(dObj.getDate()).padStart(2, '0')}`;
+                        const iso = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                         dailyCols[c] = iso;
                     }
                 }

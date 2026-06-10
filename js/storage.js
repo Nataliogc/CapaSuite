@@ -107,6 +107,77 @@
                 } catch(e) { console.warn("Purge Fail", e); }
             }
 
+            // --- CAPASUITE DATE SHIFT CORRECTION MIGRATION (One-time correction) ---
+            if (key === "hotel_manager_db_v2" && val && storageAvailable) {
+                const migrationKey = "capasuite_date_shift_migrated_v2";
+                if (!localStorage.getItem(migrationKey)) {
+                    try {
+                        const db = JSON.parse(val);
+                        let changed = false;
+                        
+                        const shiftDateString = (dateStr) => {
+                            const parts = dateStr.split('-');
+                            if (parts.length === 3) {
+                                const y = parseInt(parts[0]);
+                                const m = parseInt(parts[1]) - 1;
+                                const d = parseInt(parts[2]);
+                                const utcDate = new Date(Date.UTC(y, m, d));
+                                utcDate.setUTCDate(utcDate.getUTCDate() + 1);
+                                
+                                const newY = utcDate.getUTCFullYear();
+                                const newM = String(utcDate.getUTCMonth() + 1).padStart(2, '0');
+                                const newD = String(utcDate.getUTCDate()).padStart(2, '0');
+                                return `${newY}-${newM}-${newD}`;
+                            }
+                            return dateStr;
+                        };
+
+                        Object.keys(db).forEach(hotel => {
+                            if (typeof db[hotel] !== 'object') return;
+                            Object.keys(db[hotel]).forEach(year => {
+                                const yearData = db[hotel][year];
+                                if (yearData && typeof yearData === 'object') {
+                                    if (yearData.daily && typeof yearData.daily === 'object') {
+                                        const newDaily = {};
+                                        Object.entries(yearData.daily).forEach(([dateStr, dayData]) => {
+                                            const newDateStr = shiftDateString(dateStr);
+                                            newDaily[newDateStr] = dayData;
+                                            if (newDateStr !== dateStr) changed = true;
+                                        });
+                                        yearData.daily = newDaily;
+                                    }
+                                    if (yearData.daily_otb && typeof yearData.daily_otb === 'object') {
+                                        const newDailyOtb = {};
+                                        Object.entries(yearData.daily_otb).forEach(([dateStr, dayData]) => {
+                                            const newDateStr = shiftDateString(dateStr);
+                                            newDailyOtb[newDateStr] = dayData;
+                                            if (newDateStr !== dateStr) changed = true;
+                                        });
+                                        yearData.daily_otb = newDailyOtb;
+                                    }
+                                    if (yearData.otb_prev && yearData.otb_prev.daily_otb && typeof yearData.otb_prev.daily_otb === 'object') {
+                                        const newDailyOtbPrev = {};
+                                        Object.entries(yearData.otb_prev.daily_otb).forEach(([dateStr, dayData]) => {
+                                            const newDateStr = shiftDateString(dateStr);
+                                            newDailyOtbPrev[newDateStr] = dayData;
+                                            if (newDateStr !== dateStr) changed = true;
+                                        });
+                                        yearData.otb_prev.daily_otb = newDailyOtbPrev;
+                                    }
+                                }
+                            });
+                        });
+
+                        if (changed) {
+                            val = JSON.stringify(db);
+                            localStorage.setItem(`${VERSION}_${key}`, val);
+                            console.log("🛠️ CapaSuite: Global Database Date Shift correction applied.");
+                        }
+                        localStorage.setItem(migrationKey, "true");
+                    } catch(e) { console.warn("Date Shift Correction Fail", e); }
+                }
+            }
+
             return val;
         },
 
