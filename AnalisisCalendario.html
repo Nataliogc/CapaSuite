@@ -526,6 +526,133 @@
             z-index: 3000;
             display: none;
         }
+
+        /* MODAL STYLES */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 11000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal.show {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-content {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border);
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-premium);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            position: relative;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+            color: var(--text-main);
+        }
+
+        .modal.show .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            font-size: 1.5rem;
+            letter-spacing: -0.5px;
+        }
+
+        .close-modal {
+            color: var(--text-muted);
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .close-modal:hover {
+            color: var(--text-main);
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group input {
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-main);
+            padding: 12px 16px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            font-family: inherit;
+            font-size: 0.9rem;
+            outline: none;
+            transition: var(--transition);
+        }
+
+        [data-theme="light"] .form-group input {
+            background: #f8fafc;
+            color: #0f172a;
+            border-color: rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-glow);
+        }
+
+        .modal-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 10px 0;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-divider span {
+            background: var(--bg-surface);
+            padding: 0 10px;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
     </style>
 </head>
 
@@ -572,7 +699,7 @@
                 </div>
                 <span>Alto</span>
             </div>
-            <button class="btn btn-primary" onclick="document.getElementById('excelEvents').click()">
+            <button class="btn btn-primary" onclick="openAddEventModal()">
                 <span style="font-size: 1.2rem; line-height: 1;">+</span> Eventos
             </button>
             <input type="file" id="excelEvents" hidden accept=".xlsx, .xls">
@@ -605,6 +732,44 @@
     </section>
 
     <div id="tooltip"></div>
+
+    <!-- MODAL DE AGREGAR EVENTO -->
+    <div id="addEventModal" class="modal" onclick="if(event.target === this) closeAddEventModal()">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Añadir Evento</h3>
+                <span class="close-modal" onclick="closeAddEventModal()">&times;</span>
+            </div>
+            
+            <div class="form-group">
+                <label for="eventDesc">Nombre / Descripción del Evento</label>
+                <input type="text" id="eventDesc" placeholder="Ej. Congreso Médico, Festivo Local, etc.">
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label for="eventStart">Fecha de Inicio</label>
+                    <input type="date" id="eventStart">
+                </div>
+                <div class="form-group">
+                    <label for="eventEnd">Fecha de Fin (Opcional)</label>
+                    <input type="date" id="eventEnd">
+                </div>
+            </div>
+            
+            <button class="btn btn-primary" onclick="saveManualEvent()" style="justify-content: center; margin-top: 10px;">
+                Guardar Evento
+            </button>
+            
+            <div class="modal-divider">
+                <span>o</span>
+            </div>
+            
+            <button class="btn" onclick="document.getElementById('excelEvents').click(); closeAddEventModal();" style="justify-content: center; background: transparent; border: 1px solid var(--border);">
+                📁 Importar desde Excel
+            </button>
+        </div>
+    </div>
 
     <script>
         let revenueData = {};
@@ -1044,12 +1209,65 @@
 
         function renderEventList() {
             const list = document.getElementById('eventList');
-            list.innerHTML = rawEvents.map(e => `
-                <div style="background:rgba(255,158,11,0.1); color:var(--accent); padding:10px 20px; border-radius:15px; font-size:0.8rem; font-weight:700; border:1px solid rgba(245,158,11,0.2); display:flex; flex-direction:column; gap:2px; min-width:180px;">
-                    <span style="font-size:0.6rem; opacity:0.7; text-transform:uppercase; letter-spacing:1px;">${e.start}</span>
-                    <span>${e.desc}</span>
-                </div>
-            `).join('');
+            if (!rawEvents || rawEvents.length === 0) {
+                list.innerHTML = `<div style="color:var(--text-muted); font-size:0.9rem; padding: 10px 0; font-family: 'Outfit', sans-serif;">No hay eventos registrados.</div>`;
+                return;
+            }
+            list.innerHTML = rawEvents.map((e, index) => {
+                const dateText = e.start === e.end || !e.end ? e.start : `${e.start} al ${e.end}`;
+                return `
+                    <div style="background:rgba(255,158,11,0.1); color:var(--accent); padding:10px 20px; border-radius:15px; font-size:0.8rem; font-weight:700; border:1px solid rgba(245,158,11,0.2); display:flex; align-items:center; gap:12px; min-width:180px;">
+                        <div style="display:flex; flex-direction:column; gap:2px; flex-grow:1;">
+                            <span style="font-size:0.6rem; opacity:0.7; text-transform:uppercase; letter-spacing:1px;">${dateText}</span>
+                            <span>${e.desc}</span>
+                        </div>
+                        <span onclick="deleteEvent(${index})" style="cursor:pointer; font-size:1.2rem; opacity:0.5; transition:opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.5" title="Eliminar Evento">&times;</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function deleteEvent(index) {
+            if (confirm(`¿Estás seguro de que deseas eliminar el evento "${rawEvents[index].desc}"?`)) {
+                rawEvents.splice(index, 1);
+                CapaStorage.setItem('custom_events', JSON.stringify(rawEvents));
+                loadAllData();
+            }
+        }
+
+        function openAddEventModal() {
+            const modal = document.getElementById('addEventModal');
+            modal.style.display = 'flex';
+            setTimeout(() => {
+                modal.classList.add('show');
+            }, 10);
+        }
+
+        function closeAddEventModal() {
+            const modal = document.getElementById('addEventModal');
+            modal.classList.remove('show');
+            setTimeout(() => {
+                modal.style.display = 'none';
+                document.getElementById('eventDesc').value = '';
+                document.getElementById('eventStart').value = '';
+                document.getElementById('eventEnd').value = '';
+            }, 300);
+        }
+
+        function saveManualEvent() {
+            const desc = document.getElementById('eventDesc').value.trim();
+            const start = document.getElementById('eventStart').value;
+            const end = document.getElementById('eventEnd').value || start;
+
+            if (!desc || !start) {
+                alert("Por favor, introduce el nombre del evento y la fecha de inicio.");
+                return;
+            }
+
+            rawEvents.push({ start, end, desc });
+            CapaStorage.setItem('custom_events', JSON.stringify(rawEvents));
+            loadAllData();
+            closeAddEventModal();
         }
 
         function handleExcel(input) {
