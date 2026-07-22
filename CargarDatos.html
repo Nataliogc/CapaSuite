@@ -2683,7 +2683,7 @@
                     const sY = start[3].length === 2 ? "20" + start[3] : start[3];
                     const eY = end[3].length === 2 ? "20" + end[3] : end[3];
                     const fullRange = `${String(start[1]).padStart(2, '0')}-${String(start[2]).padStart(2, '0')}-${sY} al ${String(end[1]).padStart(2, '0')}-${String(end[2]).padStart(2, '0')}-${eY}`;
-                    return { day: parseInt(start[1]), month: parseInt(start[2]) - 1, year: sY, full: fullRange };
+                    return { day: parseInt(end[1]), month: parseInt(end[2]) - 1, year: eY, full: fullRange };
                 }
 
                 // Single date legacy logic

@@ -982,13 +982,18 @@
 
             // Sync monthDays with lastUpdate for headers
             if (prodData.lastUpdate) {
-                const parts = prodData.lastUpdate.split(' ')[0].split(/[\/-]/);
+                let datePart = prodData.lastUpdate.split(' ')[0];
+                if (prodData.lastUpdate.includes(" al ")) {
+                    const partsAl = prodData.lastUpdate.split(" al ");
+                    if (partsAl.length >= 2) datePart = partsAl[1].split(' ')[0];
+                }
+                const parts = datePart.split(/[\/-]/);
                 if (parts.length === 3) {
                     const d = parseInt(parts[0]);
                     const m = parseInt(parts[1]) - 1;
                     const y = parts[2].length === 2 ? "20" + parts[2] : parts[2];
                     if (y === String(currentYear) && m >= 0 && m < 12) {
-                        monthDays[m] = d;
+                        monthDays[m] = Math.max(monthDays[m], d);
                     }
                 }
             }
@@ -997,7 +1002,12 @@
                 const dailyDays = monthDays.reduce((a, b) => a + b, 0);
                 let updateDays = 0;
                 if (prodData.lastUpdate) {
-                    const parts = prodData.lastUpdate.split(' ')[0].split(/[\/-]/);
+                    let datePart = prodData.lastUpdate.split(' ')[0];
+                    if (prodData.lastUpdate.includes(" al ")) {
+                        const partsAl = prodData.lastUpdate.split(" al ");
+                        if (partsAl.length >= 2) datePart = partsAl[1].split(' ')[0];
+                    }
+                    const parts = datePart.split(/[\/-]/);
                     if (parts.length === 3) updateDays = (parseInt(parts[1]) - 1) * 30.42 + parseInt(parts[0]);
                 }
 

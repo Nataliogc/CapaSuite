@@ -716,7 +716,11 @@
                 badge.innerText = `📅 Actualizado: ${data.lastUpdate}`;
                 badge.style.display = 'inline-block';
                 // Try parse date (ignoring time if present)
-                const datePart = data.lastUpdate.split(' ')[0];
+                let datePart = data.lastUpdate.split(' ')[0];
+                if (data.lastUpdate.includes(" al ")) {
+                    const partsAl = data.lastUpdate.split(" al ");
+                    if (partsAl.length >= 2) datePart = partsAl[1].split(' ')[0];
+                }
                 const parts = datePart.split(/[/-]/);
                 if (parts.length >= 3) {
                     lastUpdateDate = new Date(parts[2].length === 2 ? "20" + parts[2] : parts[2], parseInt(parts[1]) - 1, parts[0]);
@@ -1117,7 +1121,12 @@
 
             // Sync monthDays with lastUpdate for headers
             if (data.lastUpdate) {
-                const parts = data.lastUpdate.split(' ')[0].split(/[\/-]/);
+                let datePart = data.lastUpdate.split(' ')[0];
+                if (data.lastUpdate.includes(" al ")) {
+                    const partsAl = data.lastUpdate.split(" al ");
+                    if (partsAl.length >= 2) datePart = partsAl[1].split(' ')[0];
+                }
+                const parts = datePart.split(/[\/-]/);
                 if (parts.length === 3) {
                     const d = parseInt(parts[0]);
                     const m = parseInt(parts[1]) - 1;
@@ -1133,7 +1142,12 @@
                 let dailyDaysYTD = monthDaysRecorded.reduce((a, b) => a + b, 0);
                 let updateDaysYTD = 0;
                 if (data.lastUpdate) {
-                    const parts = data.lastUpdate.split(' ')[0].split(/[\/-]/);
+                    let datePart = data.lastUpdate.split(' ')[0];
+                    if (data.lastUpdate.includes(" al ")) {
+                        const partsAl = data.lastUpdate.split(" al ");
+                        if (partsAl.length >= 2) datePart = partsAl[1].split(' ')[0];
+                    }
+                    const parts = datePart.split(/[\/-]/);
                     if (parts.length === 3) {
                         const d = parseInt(parts[0]);
                         const m = parseInt(parts[1]) - 1;
@@ -1154,7 +1168,12 @@
                 let daysInM = monthDaysRecorded[midx];
                 let updateDaysInM = 0;
                 if (data.lastUpdate) {
-                    const parts = data.lastUpdate.split(' ')[0].split(/[\/-]/);
+                    let datePart = data.lastUpdate.split(' ')[0];
+                    if (data.lastUpdate.includes(" al ")) {
+                        const partsAl = data.lastUpdate.split(" al ");
+                        if (partsAl.length >= 2) datePart = partsAl[1].split(' ')[0];
+                    }
+                    const parts = datePart.split(/[\/-]/);
                     if (parts.length === 3) {
                         const m = parseInt(parts[1]) - 1;
                         if (m === midx) updateDaysInM = parseInt(parts[0]);
@@ -1253,14 +1272,19 @@
             // Fallback: If no daily data, use lastUpdate to mark the current month's progress
             if (data.lastUpdate) {
                 try {
-                    const parts = data.lastUpdate.split(' ')[0].split(/[\/-]/);
+                    let datePart = data.lastUpdate.split(' ')[0];
+                    if (data.lastUpdate.includes(" al ")) {
+                        const partsAl = data.lastUpdate.split(" al ");
+                        if (partsAl.length >= 2) datePart = partsAl[1].split(' ')[0];
+                    }
+                    const parts = datePart.split(/[\/-]/);
                     if (parts.length === 3) {
                         const d = parseInt(parts[0]);
                         const m = parseInt(parts[1]) - 1;
                         const y = parts[2].length === 2 ? "20" + parts[2] : parts[2];
                         if (y === String(currentYear) && m >= 0 && m < 12) {
                             // Prioritize the manual update date if it's for this year
-                            monthDays[m] = d;
+                            monthDays[m] = Math.max(monthDays[m], d);
                         }
                     }
                 } catch (e) { }
