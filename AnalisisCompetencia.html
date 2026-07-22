@@ -717,6 +717,30 @@
             text-decoration: none;
             cursor: pointer;
         }
+
+        /* EVENT BADGE IN TABLE DATE CELL */
+        .event-badge {
+            cursor: help;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            color: #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 5px;
+            margin-left: auto;
+            margin-right: 2px;
+            transition: all 0.2s ease;
+        }
+
+        .event-badge:hover {
+            color: #ffffff;
+            background: #3b82f6;
+            border-color: #3b82f6;
+            transform: scale(1.15);
+        }
     </style>
 </head>
 
@@ -875,6 +899,7 @@
         let activeHotel = "Cumbria";
         let chartInstance = null;
         let distinctMonths = [];
+        let customEvents = [];
 
         // Load ignored competitors from memory
         try {
@@ -1899,6 +1924,28 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             }
             const yearSuffix = yearVal ? ` <span style="font-size:0.5rem; opacity:0.85;">'${yearVal.slice(-2)}</span>` : '';
 
+            // Filter events that cover this day
+            let dayEvents = [];
+            if (d.dateISO && d.dateISO !== 'INV-DATE' && typeof customEvents !== 'undefined' && customEvents.length > 0) {
+                dayEvents = customEvents.filter(e => d.dateISO >= e.start && d.dateISO <= e.end);
+            }
+
+            let eventIconHtml = '';
+            if (dayEvents.length > 0) {
+                const eventTitles = dayEvents.map(e => `• ${e.desc}`).join('\n');
+                const tooltipText = dayEvents.length === 1 ? `Evento:\n${eventTitles}` : `Eventos:\n${eventTitles}`;
+                eventIconHtml = `
+                    <span class="event-badge" title="${tooltipText.replace(/"/g, '&quot;')}">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                    </span>
+                `;
+            }
+
             // Compact side-by-side display for OTB and Variation (Pick-up)
             let metricsHtml = '';
             if (otb !== null && (otb > 0 || otbChange)) {
@@ -1931,6 +1978,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                             <span style="font-size:0.75rem; font-weight:600; color:var(--text-main);">${dayName}</span>
                             <span style="font-size:0.6rem; color:var(--text-muted);">${monthName}${yearSuffix}</span>
                         </div>
+                        ${eventIconHtml}
                     </div>
                     ${occValFix}
                     ${metricsHtml}
@@ -2625,6 +2673,20 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             if (sessionStorage.getItem('force_reset_pending') === 'true') {
                 console.log("🛑 Auto-load blocked by force_reset_pending. Waiting for manual file upload.");
                 return;
+            }
+
+            // Load custom events
+            try {
+                const localEvents = CapaStorage.getItem('custom_events');
+                if (localEvents) {
+                    customEvents = (typeof localEvents === 'string') ? JSON.parse(localEvents) : localEvents;
+                    console.log(`📅 Loaded ${customEvents.length} custom events`);
+                } else {
+                    customEvents = [];
+                }
+            } catch (e) {
+                console.warn("Failed to load custom events", e);
+                customEvents = [];
             }
 
             // Try to load saved competitor data from Storage (Local or Firebase populated)
