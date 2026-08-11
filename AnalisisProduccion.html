@@ -1701,37 +1701,58 @@
                 'occ': 'Ocupación (%)'
             };
 
-            // 3. Forecast Data (OTB) - Select based on metric
+            // Helper to check if a month is fully closed/past
+            const isMonthClosedChart = (mIndex) => {
+                const now = new Date();
+                const rY = now.getFullYear();
+                const rM = now.getMonth(); // 0-11
+                const sY = parseInt(currentYear);
+                if (sY < rY) return true;
+                if (sY > rY) return false;
+                return mIndex < rM;
+            };
+
+            // 3. Forecast Data (OTB / Proyección Total: Real + Previsión)
             let otbDataForChart = null;
             if (data.otb) {
+                const months = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
                 if (chartMetric === 'total') {
-                    otbDataForChart = data.otb.revenue;
-                } else if (chartMetric === 'hab') {
-                    // For room production revenue (€), use room breakdown if available, else total OTB revenue
-                    otbDataForChart = (data.otb.breakdown && data.otb.breakdown.habitacion) 
-                        ? data.otb.breakdown.habitacion 
-                        : data.otb.revenue;
-                } else if (chartMetric === 'adr') {
-                    // For ADR (€), calculate OTB revenue / OTB rooms
-                    const months = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
                     otbDataForChart = months.map(m => {
-                        const rev = (data.otb.breakdown && data.otb.breakdown.habitacion) ? data.otb.breakdown.habitacion[m] : (data.otb.revenue[m] || 0);
-                        const rms = data.otb.rooms[m] || 0;
-                        return rms > 0 ? parseFloat((rev / rms).toFixed(1)) : 0;
+                        const real = totalTY ? (totalTY.revenue[m] || 0) : 0;
+                        const otb = isMonthClosedChart(m) ? 0 : (data.otb.revenue[m] || 0);
+                        return real + otb;
+                    });
+                } else if (chartMetric === 'hab') {
+                    otbDataForChart = months.map(m => {
+                        const real = (groupedTY && groupedTY.HABITACION && groupedTY.HABITACION.revenue) ? (groupedTY.HABITACION.revenue[m] || 0) : 0;
+                        const otbArr = (data.otb.breakdown && data.otb.breakdown.habitacion) ? data.otb.breakdown.habitacion : data.otb.revenue;
+                        const otb = isMonthClosedChart(m) ? 0 : (otbArr[m] || 0);
+                        return real + otb;
+                    });
+                } else if (chartMetric === 'adr') {
+                    otbDataForChart = months.map(m => {
+                        const realHabRev = (groupedTY && groupedTY.HABITACION && groupedTY.HABITACION.revenue) ? (groupedTY.HABITACION.revenue[m] || 0) : 0;
+                        const realRms = totalTY ? (totalTY.rooms[m] || 0) : 0;
+                        const otbArr = (data.otb.breakdown && data.otb.breakdown.habitacion) ? data.otb.breakdown.habitacion : data.otb.revenue;
+                        const otbHabRev = isMonthClosedChart(m) ? 0 : (otbArr[m] || 0);
+                        const otbRms = isMonthClosedChart(m) ? 0 : (data.otb.rooms[m] || 0);
+                        const totRev = realHabRev + otbHabRev;
+                        const totRms = realRms + otbRms;
+                        return totRms > 0 ? parseFloat((totRev / totRms).toFixed(1)) : 0;
                     });
                 } else if (chartMetric === 'occ') {
-                    // For occupancy, calculate from OTB rooms
-                    const months = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
                     otbDataForChart = months.map(m => {
-                        const rms = data.otb.rooms[m] || 0;
-                        const days = new Date(parseInt(currentYear), m + 1, 0).getDate(); // exact days in month
-                        return ((rms / (HOTELS[currentHotel].rooms * days)) * 100).toFixed(1);
+                        const realRms = totalTY ? (totalTY.rooms[m] || 0) : 0;
+                        const otbRms = isMonthClosedChart(m) ? 0 : (data.otb.rooms[m] || 0);
+                        const totRms = realRms + otbRms;
+                        const days = new Date(parseInt(currentYear), m + 1, 0).getDate();
+                        return parseFloat(((totRms / (HOTELS[currentHotel].rooms * days)) * 100).toFixed(1));
                     });
                 }
             }
 
-            // Check if OTB has actual data (not all zeros)
-            const hasOTBData = otbDataForChart && otbDataForChart.some(v => v > 0);
+            // Check if OTB has actual data (non-zero OTB for any open month)
+            const hasOTBData = data.otb && data.otb.revenue && data.otb.revenue.some((v, i) => !isMonthClosedChart(i) && v > 0);
 
             // 4. Budget Data (Presupuesto)
             let budgetDataForChart = null;
