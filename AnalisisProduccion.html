@@ -1707,14 +1707,24 @@
                 if (chartMetric === 'total') {
                     otbDataForChart = data.otb.revenue;
                 } else if (chartMetric === 'hab') {
-                    // For room production, show OTB rooms converted to revenue (if needed, or just rooms)
-                    otbDataForChart = data.otb.rooms;
+                    // For room production revenue (€), use room breakdown if available, else total OTB revenue
+                    otbDataForChart = (data.otb.breakdown && data.otb.breakdown.habitacion) 
+                        ? data.otb.breakdown.habitacion 
+                        : data.otb.revenue;
+                } else if (chartMetric === 'adr') {
+                    // For ADR (€), calculate OTB revenue / OTB rooms
+                    const months = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+                    otbDataForChart = months.map(m => {
+                        const rev = (data.otb.breakdown && data.otb.breakdown.habitacion) ? data.otb.breakdown.habitacion[m] : (data.otb.revenue[m] || 0);
+                        const rms = data.otb.rooms[m] || 0;
+                        return rms > 0 ? parseFloat((rev / rms).toFixed(1)) : 0;
+                    });
                 } else if (chartMetric === 'occ') {
                     // For occupancy, calculate from OTB rooms
                     const months = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
                     otbDataForChart = months.map(m => {
                         const rms = data.otb.rooms[m] || 0;
-                        const days = 30.42; // average
+                        const days = new Date(parseInt(currentYear), m + 1, 0).getDate(); // exact days in month
                         return ((rms / (HOTELS[currentHotel].rooms * days)) * 100).toFixed(1);
                     });
                 }
