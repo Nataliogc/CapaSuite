@@ -667,6 +667,181 @@
             transform: scale(1.02);
         }
 
+        /* MANUAL PRICE SIMULATOR & STEPPERS */
+        .manual-price-wrap {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            padding: 2px 4px;
+            border-radius: 6px;
+            transition: background 0.15s ease;
+            user-select: none;
+            position: relative;
+        }
+
+        .manual-price-wrap:hover {
+            background: rgba(99, 102, 241, 0.08);
+        }
+
+        .manual-price-wrap.is-simulated {
+            background: rgba(99, 102, 241, 0.12);
+            border: 1px dashed var(--primary);
+        }
+
+        .step-btn {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            background: var(--bg-surface);
+            color: var(--text-muted);
+            font-size: 0.55rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            padding: 0;
+            opacity: 0.25;
+            transition: all 0.15s ease;
+        }
+
+        .manual-price-wrap:hover .step-btn {
+            opacity: 1;
+        }
+
+        .step-btn:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            transform: scale(1.15);
+        }
+
+        .price-editable {
+            cursor: pointer;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--text-main);
+            padding: 0 2px;
+            border-radius: 4px;
+            transition: color 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .manual-price-wrap.is-simulated .price-editable {
+            color: var(--primary);
+            font-weight: 800;
+        }
+
+        .price-editable:hover {
+            color: var(--primary);
+            text-decoration: underline;
+        }
+
+        .inline-price-input {
+            width: 52px;
+            padding: 1px 3px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text-main);
+            background: var(--bg-surface);
+            border: 2px solid var(--primary);
+            border-radius: 4px;
+            outline: none;
+            text-align: center;
+            box-shadow: 0 0 8px var(--primary-glow);
+        }
+
+        .sim-dot {
+            color: var(--primary);
+            font-size: 0.6rem;
+            line-height: 1;
+            margin-left: 2px;
+        }
+
+        /* Clickable Action Badges */
+        .action-badge-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 6px;
+            transition: all 0.15s ease;
+        }
+
+        .action-badge-btn.clickable {
+            cursor: pointer;
+            border: 1px dashed rgba(99, 102, 241, 0.4);
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .action-badge-btn.clickable:hover {
+            background: rgba(99, 102, 241, 0.18);
+            border-color: var(--primary);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(99, 102, 241, 0.2);
+        }
+
+        .apply-sparkle {
+            font-size: 0.7rem;
+            opacity: 0.8;
+            margin-left: 2px;
+        }
+
+        /* Simulation Toolbar */
+        .simulation-banner {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(90deg, rgba(99, 102, 241, 0.15), rgba(16, 185, 129, 0.12));
+            border: 1px solid var(--primary);
+            padding: 2px 8px;
+            border-radius: 16px;
+            font-size: 0.72rem;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        .simulation-banner .sim-info {
+            color: var(--text-main);
+            font-weight: 500;
+        }
+
+        .sim-btn {
+            border: none;
+            border-radius: 12px;
+            padding: 2px 8px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .sim-btn.sim-apply-all {
+            background: var(--primary);
+            color: white;
+        }
+
+        .sim-btn.sim-apply-all:hover {
+            opacity: 0.9;
+            transform: scale(1.02);
+        }
+
+        .sim-btn.sim-reset {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .sim-btn.sim-reset:hover {
+            background: var(--danger);
+            color: white;
+        }
+
         /* TABLE */
         .table-wrap {
             width: 100%;
@@ -1177,8 +1352,341 @@
             card.classList.toggle('collapsed');
         }
 
-        // --- ACTIONS ---
+        // --- ACTIONS & SIMULATION ENGINE ---
         let activeTableFilter = null;
+
+        function calculateSmartYield(d, hotel) {
+            ensureHotelStructure(d, hotel);
+            const my = d.hotels[hotel];
+            const myP = (my && !my.sold) ? my.price : 0;
+            const mktPrice = d.compAvg || 0;
+            if (!my || my.sold || myP === 0 || mktPrice === 0) {
+                return null;
+            }
+
+            const diff = ((myP - mktPrice) / mktPrice) * 100;
+            let cls = 'gap-ok';
+            let actionText = "Mantener";
+            let actionColor = "#94a3b8";
+
+            const cap = (hotel === 'Cumbria') ? 59 : 108;
+            let rooms;
+            if (my.otbRooms !== undefined) {
+                rooms = my.otbRooms;
+            } else if (my.occupancy !== undefined) {
+                rooms = my.occupancy;
+            } else {
+                rooms = null;
+            }
+            const occPct = (rooms !== null) ? (rooms / cap) * 100 : 0;
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            const targetDate = new Date(d.dateISO);
+            const daysOut = Math.ceil((targetDate - today) / (1000 * 60 * 60 * 24));
+
+            let soldComps = d.activeSoldComps || 0;
+            let compPricesArr = d.activeCompPrices || [];
+
+            const lowestCompPrice = compPricesArr.length > 0 ? Math.min(...compPricesArr) : mktPrice;
+            const highestCompPrice = compPricesArr.length > 0 ? Math.max(...compPricesArr) : mktPrice;
+
+            let targetPrice = myP;
+
+            // 1. CRITICAL / OVERBOOKING (>90%)
+            if (occPct >= 90) {
+                if (hotel === 'Guadiana') {
+                    targetPrice = Math.max(highestCompPrice * 1.05, mktPrice * 1.3);
+                } else {
+                    targetPrice = Math.max(mktPrice * 1.2, lowestCompPrice + 30);
+                    if (targetPrice > highestCompPrice * 0.8) targetPrice = highestCompPrice * 0.8;
+                }
+
+                if (myP < targetPrice * 0.95) {
+                    actionText = `▲▲ ${targetPrice.toFixed(0)}€ (Últimas)`;
+                    actionColor = "#b91c1c";
+                    cls = 'gap-low';
+                } else {
+                    actionText = "Mantener (Max)";
+                    actionColor = "#991b1b";
+                }
+            }
+            // 2. HIGH OCCUPANCY (70-90%) OR COMPETITORS SOLD OUT
+            else if (occPct >= 70 || soldComps >= 2) {
+                if (hotel === 'Guadiana') {
+                    targetPrice = Math.max(mktPrice * 1.15, highestCompPrice * 0.95);
+                } else {
+                    targetPrice = Math.max(mktPrice * 1.05, lowestCompPrice * 1.15);
+                    if (targetPrice > 115) targetPrice = 115;
+                    if (targetPrice > mktPrice * 1.25) targetPrice = mktPrice * 1.25;
+                }
+
+                let reasonText = occPct >= 70 ? ">70%" : "Comp. Llenos";
+                if (myP < targetPrice * 0.95) {
+                    actionText = `▲ ${targetPrice.toFixed(0)}€ (${reasonText})`;
+                    actionColor = "#16a34a";
+                    cls = 'gap-low';
+                } else if (myP > targetPrice * 1.1) {
+                    actionText = `▼ ${targetPrice.toFixed(0)}€ (Alta)`;
+                    actionColor = "#dc2626";
+                    cls = 'gap-high';
+                } else {
+                    actionText = "Bien (Alta)";
+                    actionColor = "#15803d";
+                }
+            }
+            // 3. LOW OCCUPANCY & LAST MINUTE (<40%, <7 days)
+            else if (occPct < 40 && daysOut < 7) {
+                targetPrice = (hotel === 'Guadiana') ? lowestCompPrice * 1.05 : lowestCompPrice * 0.95;
+                const floor = (hotel === 'Guadiana') ? 50 : 40;
+                if (targetPrice < floor) targetPrice = floor;
+
+                if (myP > targetPrice * 1.05) {
+                    actionText = `▼▼ ${targetPrice.toFixed(0)}€ (Liq.)`;
+                    actionColor = "#dc2626";
+                    cls = 'gap-high';
+                } else if (myP < targetPrice * 0.9) {
+                    actionText = `▲ ${targetPrice.toFixed(0)}€ (Subir)`;
+                    actionColor = "#16a34a";
+                    cls = 'gap-low';
+                } else {
+                    actionText = "Mantener (Bajo)";
+                    actionColor = "#ca8a04";
+                }
+            }
+            // 4. MEDIUM/STANDARD POSITIONING
+            else {
+                let weightLowest = 1 - (occPct / 100);
+                targetPrice = (lowestCompPrice * weightLowest) + (mktPrice * (1 - weightLowest));
+
+                if (hotel === 'Guadiana') {
+                    targetPrice *= 1.1;
+                } else {
+                    targetPrice *= 0.95;
+                }
+
+                if (myP > targetPrice * 1.1) {
+                    actionText = `▼ ${targetPrice.toFixed(0)}€ (Estabilizar)`;
+                    actionColor = "#ea580c";
+                    cls = 'gap-high';
+                } else if (myP < targetPrice * 0.9) {
+                    actionText = `▲ ${targetPrice.toFixed(0)}€ (Ajustar)`;
+                    actionColor = "#16a34a";
+                    cls = 'gap-low';
+                } else {
+                    actionText = "En Rango";
+                    actionColor = "#64748b";
+                }
+            }
+
+            const targetRounded = Math.round(targetPrice);
+            const myRounded = Math.round(myP);
+            const canApply = (targetRounded !== myRounded && 
+                              !actionText.startsWith("Mantener") && 
+                              !actionText.startsWith("En Rango") && 
+                              !actionText.startsWith("Bien"));
+
+            return {
+                targetPrice: targetRounded,
+                actionText: actionText,
+                actionColor: actionColor,
+                cls: cls,
+                diff: diff,
+                canApply: canApply
+            };
+        }
+
+        function setManualPrice(dayIndex, hotelName, newPrice) {
+            const day = processedData.find(d => d.dayIndex === dayIndex);
+            if (!day) return;
+            ensureHotelStructure(day, hotelName);
+            const h = day.hotels[hotelName];
+
+            if (h.originalPrice === undefined) {
+                h.originalPrice = h.price;
+                h.originalSold = h.sold;
+                h.originalStatus = h.status;
+            }
+
+            const num = Math.max(0, Math.round(Number(newPrice)));
+            if (isNaN(num)) return;
+
+            h.price = num;
+            h.sold = false;
+            if (num > 0) h.status = 'available';
+            h.isModified = (h.price !== h.originalPrice || h.sold !== h.originalSold);
+
+            refreshActiveView();
+        }
+
+        function stepManualPrice(dayIndex, hotelName, delta, event) {
+            if (event) {
+                event.stopPropagation();
+                if (event.shiftKey) delta *= 5;
+            }
+            const day = processedData.find(d => d.dayIndex === dayIndex);
+            if (!day) return;
+            ensureHotelStructure(day, hotelName);
+            const h = day.hotels[hotelName];
+            const currentP = (h && !h.sold && h.price > 0) ? h.price : (day.compAvg > 0 ? Math.round(day.compAvg) : 60);
+            setManualPrice(dayIndex, hotelName, currentP + delta);
+        }
+
+        function openManualPriceInput(dayIndex, hotelName, elem, event) {
+            if (event) event.stopPropagation();
+            if (elem.querySelector('input')) return;
+
+            const day = processedData.find(d => d.dayIndex === dayIndex);
+            if (!day) return;
+            ensureHotelStructure(day, hotelName);
+            const h = day.hotels[hotelName];
+            const currentVal = (h && !h.sold && h.price > 0) ? h.price : '';
+
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.className = 'inline-price-input';
+            input.value = currentVal;
+            input.min = '0';
+            input.max = '999';
+
+            elem.innerHTML = '';
+            elem.appendChild(input);
+            input.focus();
+            input.select();
+
+            let finished = false;
+            const finish = () => {
+                if (finished) return;
+                finished = true;
+                const val = input.value.trim();
+                if (val !== '' && !isNaN(val)) {
+                    setManualPrice(dayIndex, hotelName, val);
+                } else {
+                    refreshActiveView();
+                }
+            };
+
+            input.onblur = finish;
+            input.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    finish();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    finished = true;
+                    refreshActiveView();
+                }
+            };
+        }
+
+        function countModifiedPrices() {
+            let count = 0;
+            processedData.forEach(d => {
+                if (!d.hotels) return;
+                ['Cumbria', 'Guadiana'].forEach(hName => {
+                    if (d.hotels[hName]?.isModified) count++;
+                });
+            });
+            return count;
+        }
+
+        function resetAllManualPrices() {
+            processedData.forEach(d => {
+                if (!d.hotels) return;
+                ['Cumbria', 'Guadiana'].forEach(hName => {
+                    const h = d.hotels[hName];
+                    if (h && h.isModified) {
+                        h.price = h.originalPrice !== undefined ? h.originalPrice : h.price;
+                        h.sold = h.originalSold !== undefined ? h.originalSold : h.sold;
+                        h.status = h.originalStatus !== undefined ? h.originalStatus : h.status;
+                        h.isModified = false;
+                    }
+                });
+            });
+            refreshActiveView();
+        }
+
+        function applyAllVisibleRecommendations() {
+            const activeMonth = document.getElementById('monthSelector').value;
+            let baseData = [...processedData];
+            if (activeMonth !== 'all') baseData = baseData.filter(d => d.month === activeMonth);
+
+            let targetList = baseData;
+            const globalAvg = processedData.reduce((a, b) => a + (b.compAvg || 0), 0) / (processedData.length || 1);
+
+            if (activeTableFilter === 'opp') {
+                targetList = baseData.filter(d => d.hotels[activeHotel] && !d.hotels[activeHotel].sold && d.hotels[activeHotel].price > 0 && d.hotels[activeHotel].price < d.compAvg * 0.85);
+            } else if (activeTableFilter === 'risk') {
+                targetList = baseData.filter(d => d.hotels[activeHotel] && !d.hotels[activeHotel].sold && d.hotels[activeHotel].price > 0 && d.hotels[activeHotel].price > d.compAvg * 1.25);
+            } else if (activeTableFilter === 'compression') {
+                targetList = baseData.filter(d => d.compAvg > globalAvg * 1.35);
+            } else if (activeTableFilter === 'pickup_pos') {
+                targetList = baseData.filter(d => (d.hotels[activeHotel]?.otbChange || 0) >= 8);
+            } else if (activeTableFilter === 'pickup_neg') {
+                targetList = baseData.filter(d => (d.hotels[activeHotel]?.otbChange || 0) <= -8);
+            } else if (activeTableFilter === 'sold_out') {
+                targetList = baseData.filter(d => (d.activeSoldComps || 0) > 0);
+            }
+
+            let applied = 0;
+            targetList.forEach(d => {
+                const yieldInfo = calculateSmartYield(d, activeHotel);
+                if (yieldInfo && yieldInfo.targetPrice > 0) {
+                    const h = d.hotels[activeHotel];
+                    if (h.originalPrice === undefined) {
+                        h.originalPrice = h.price;
+                        h.originalSold = h.sold;
+                        h.originalStatus = h.status;
+                    }
+                    h.price = yieldInfo.targetPrice;
+                    h.sold = false;
+                    h.status = 'available';
+                    h.isModified = (h.price !== h.originalPrice);
+                    applied++;
+                }
+            });
+
+            refreshActiveView();
+        }
+
+        function refreshActiveView() {
+            activeHotel = document.getElementById('hotelSelector').value;
+            const selectedMonth = document.getElementById('monthSelector').value;
+            let data = [...processedData];
+            if (selectedMonth !== 'all') {
+                data = data.filter(d => d.month === selectedMonth);
+            }
+
+            recalcMarketAverages(data);
+            renderKPIs(data);
+            renderChart(data);
+
+            if (activeTableFilter) {
+                filterTable(activeTableFilter);
+            } else {
+                renderTable(data);
+                updateRecordCountDisplay(data.length);
+            }
+        }
+
+        function updateRecordCountDisplay(count) {
+            const countEl = document.getElementById('record-count');
+            if (!countEl) return;
+            const modCount = countModifiedPrices();
+
+            let simHtml = '';
+            if (modCount > 0) {
+                simHtml = `
+                    <span class="simulation-banner">
+                        <span class="sim-info">💡 <b>${modCount}</b> tarifa${modCount !== 1 ? 's' : ''} simulada${modCount !== 1 ? 's' : ''}</span>
+                        <button class="sim-btn sim-apply-all" onclick="applyAllVisibleRecommendations()" title="Aplicar tarifas recomendadas a las fechas visibles">⚡ Aplicar recomendados</button>
+                        <button class="sim-btn sim-reset" onclick="resetAllManualPrices()" title="Restablecer precios originales del archivo">↺ Restablecer</button>
+                    </span>
+                `;
+            }
+
+            let statusHtml = `<span>${count} días analizados</span>`;
+            statusHtml += `<span onclick="diagnoseAllData()" style="font-size:0.6rem; color:#94a3b8; cursor:pointer; margin-left:10px; text-decoration:underline;">[Debug]</span>`;
+            countEl.innerHTML = `<div style="display:flex; align-items:center; gap:8px;">${simHtml} ${statusHtml}</div>`;
+        }
 
         function focusRow(idx) {
             let row = document.getElementById(`row-${idx}`);
@@ -1204,12 +1712,7 @@
                 baseData = baseData.filter(d => d.month === activeMonth);
             }
             renderTable(baseData);
-            const countEl = document.getElementById('record-count');
-            if (countEl) {
-                let statusHtml = `<span>${baseData.length} días analizados</span>`;
-                statusHtml += `<span onclick="diagnoseAllData()" style="font-size:0.6rem; color:#94a3b8; cursor:pointer; margin-left:10px; text-decoration:underline;">[Debug]</span>`;
-                countEl.innerHTML = statusHtml;
-            }
+            updateRecordCountDisplay(baseData.length);
         }
 
         function filterTable(type) {
@@ -1270,11 +1773,25 @@
             renderTable(filtered);
             const countEl = document.getElementById('record-count');
             if (countEl) {
+                const modCount = countModifiedPrices();
+                let simHtml = '';
+                if (modCount > 0) {
+                    simHtml = `
+                        <span class="simulation-banner">
+                            <span class="sim-info">💡 <b>${modCount}</b> simulada${modCount !== 1 ? 's' : ''}</span>
+                            <button class="sim-btn sim-apply-all" onclick="applyAllVisibleRecommendations()" title="Aplicar tarifas recomendadas a las fechas visibles">⚡ Aplicar a las ${filtered.length}</button>
+                            <button class="sim-btn sim-reset" onclick="resetAllManualPrices()" title="Restablecer precios originales">↺ Restablecer</button>
+                        </span>
+                    `;
+                }
                 countEl.innerHTML = `
-                    <span class="table-filter-banner">
-                        <span>Filtrando: <b>${filterLabel}</b> (${filtered.length} fechas)</span>
-                        <button class="clear-btn" onclick="clearTableFilter()" title="Quitar filtro">✕ Ver todas</button>
-                    </span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        ${simHtml}
+                        <span class="table-filter-banner">
+                            <span>Filtrando: <b>${filterLabel}</b> (${filtered.length} fechas)</span>
+                            <button class="clear-btn" onclick="clearTableFilter()" title="Quitar filtro">✕ Ver todas</button>
+                        </span>
+                    </div>
                 `;
             }
         }
@@ -2442,11 +2959,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 renderChart(data);
                 renderTable(data);
                 
-                // DIAGNOSTIC BAR
-                const otbCount = data.filter(d => d.hasOtbData).length;
-                let statusHtml = `<span>${data.length} días analizados</span>`;
-                statusHtml += `<span onclick="diagnoseAllData()" style="font-size:0.6rem; color:#94a3b8; cursor:pointer; margin-left:10px; text-decoration:underline;">[Debug]</span>`;
-                document.getElementById('record-count').innerHTML = statusHtml;
+                updateRecordCountDisplay(data.length);
 
             } catch (e) {
                 console.error("renderAll Error:", e);
@@ -2809,136 +3322,25 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 const myP = (my && !my.sold) ? my.price : 0;
                 const sold = my && my.sold;
 
-                // Gap Badge
+                // Gap Badge & Smart Yield Action
                 let gapHtml = '-';
                 let actionHtml = '<span style="color:#cbd5e1">-</span>';
 
                 if (!sold && myP > 0 && d.compAvg > 0) {
-                    const diff = ((myP - d.compAvg) / d.compAvg) * 100;
-                    let cls = 'gap-ok';
-                    let actionText = "Mantener";
-                    let actionColor = "#94a3b8";
-
-                    // === PUNTO 3: Smart Yield — métricas separadas, sin mezcla ===
-                    const cap = (activeHotel === 'Cumbria') ? 59 : 108;
-                    let rooms;
-                    if (my.otbRooms !== undefined) {
-                        rooms = my.otbRooms;  // OTB = reservas reales en mano
-                    } else if (my.occupancy !== undefined) {
-                        rooms = my.occupancy; // Producción real histórica
-                    } else {
-                        rooms = null;         // Sin dato → no tomar decisiones
-                    }
-                    const occPct = (rooms !== null) ? (rooms / cap) * 100 : 0;
-                    const today = new Date(); today.setHours(0, 0, 0, 0);
-                    const targetDate = new Date(d.dateISO);
-                    const daysOut = Math.ceil((targetDate - today) / (1000 * 60 * 60 * 24));
-
-                    let soldComps = d.activeSoldComps || 0;
-                    let compPricesArr = d.activeCompPrices || [];
-
-                    const mktPrice = d.compAvg;
-                    const lowestCompPrice = compPricesArr.length > 0 ? Math.min(...compPricesArr) : mktPrice;
-                    const highestCompPrice = compPricesArr.length > 0 ? Math.max(...compPricesArr) : mktPrice;
-
-                    let targetPrice = myP;
-
-                    // 1. CRITICAL / OVERBOOKING (>90%)
-                    if (occPct >= 90) {
-                        if (activeHotel === 'Guadiana') {
-                            // Ignoramos el más barato. Apuntamos por encima del más caro o un +30% del mercado
-                            targetPrice = Math.max(highestCompPrice * 1.05, mktPrice * 1.3);
+                    const yieldInfo = calculateSmartYield(d, activeHotel);
+                    if (yieldInfo) {
+                        gapHtml = `<span class="gap-badge ${yieldInfo.cls}">${yieldInfo.diff > 0 ? '+' : ''}${yieldInfo.diff.toFixed(0)}%</span>`;
+                        if (yieldInfo.canApply) {
+                            actionHtml = `<button class="action-badge-btn clickable" 
+                                style="color:${yieldInfo.actionColor}; border-color:${yieldInfo.actionColor}40; background:${yieldInfo.actionColor}12;" 
+                                onclick="setManualPrice(${d.dayIndex}, '${activeHotel}', ${yieldInfo.targetPrice})" 
+                                title="Click para aplicar recomendación de ${yieldInfo.targetPrice}€ a ${activeHotel}">
+                                ${yieldInfo.actionText}
+                            </button>`;
                         } else {
-                            // Cumbria (3 estrellas): Tope razonable para no irse a precios de 4 estrellas super premium
-                            targetPrice = Math.max(mktPrice * 1.2, lowestCompPrice + 30);
-                            if (targetPrice > highestCompPrice * 0.8) targetPrice = highestCompPrice * 0.8;
-                        }
-
-                        if (myP < targetPrice * 0.95) {
-                            actionText = `▲▲ ${targetPrice.toFixed(0)}€ (Últimas)`;
-                            actionColor = "#b91c1c"; // Dark Red intent
-                            cls = 'gap-low';
-                        } else {
-                            actionText = "Mantener (Max)";
-                            actionColor = "#991b1b";
+                            actionHtml = `<span class="action-badge-btn" style="color:${yieldInfo.actionColor}; font-weight:700; font-size:0.8rem;">${yieldInfo.actionText}</span>`;
                         }
                     }
-                    // 2. HIGH OCCUPANCY (70-90%) OR COMPETITORS SOLD OUT
-                    else if (occPct >= 70 || soldComps >= 2) {
-                        // Posición fuerte.
-                        if (activeHotel === 'Guadiana') {
-                            targetPrice = Math.max(mktPrice * 1.15, highestCompPrice * 0.95);
-                        } else {
-                            // Cumbria: Mantenemos competitividad pero nos beneficiamos de la compresión, sin apuntar al highest (que será un 4 estrellas caro)
-                            targetPrice = Math.max(mktPrice * 1.05, lowestCompPrice * 1.15);
-                            if (targetPrice > 115) targetPrice = 115; // Un cap de seguridad general o dinámico a mktPrice * 1.2
-                            if (targetPrice > mktPrice * 1.25) targetPrice = mktPrice * 1.25;
-                        }
-
-                        let reasonText = occPct >= 70 ? ">70%" : "Comp. Llenos";
-                        if (myP < targetPrice * 0.95) {
-                            actionText = `▲ ${targetPrice.toFixed(0)}€ (${reasonText})`;
-                            actionColor = "#16a34a"; // Green
-                            cls = 'gap-low';
-                        } else if (myP > targetPrice * 1.1) {
-                            actionText = `▼ ${targetPrice.toFixed(0)}€ (Alta)`;
-                            actionColor = "#dc2626";
-                            cls = 'gap-high';
-                        } else {
-                            actionText = "Bien (Alta)";
-                            actionColor = "#15803d";
-                        }
-                    }
-                    // 3. LOW OCCUPANCY & LAST MINUTE (<40%, <7 days)
-                    else if (occPct < 40 && daysOut < 7) {
-                        // Urgencia -> Competimos agresivamente contra el PRECIO MÁS BAJO de la competencia
-                        targetPrice = (activeHotel === 'Guadiana') ? lowestCompPrice * 1.05 : lowestCompPrice * 0.95;
-                        const floor = (activeHotel === 'Guadiana') ? 50 : 40; // Suelo de precio
-                        if (targetPrice < floor) targetPrice = floor;
-
-                        if (myP > targetPrice * 1.05) {
-                            actionText = `▼▼ ${targetPrice.toFixed(0)}€ (Liq.)`;
-                            actionColor = "#dc2626"; // Red warning
-                            cls = 'gap-high';
-                        } else if (myP < targetPrice * 0.9) {
-                            actionText = `▲ ${targetPrice.toFixed(0)}€ (Subir)`;
-                            actionColor = "#16a34a";
-                            cls = 'gap-low';
-                        } else {
-                            actionText = "Mantener (Bajo)";
-                            actionColor = "#ca8a04";
-                        }
-                    }
-                    // 4. MEDIUM/STANDARD POSITIONING
-                    else {
-                        // Mezcla inteligente entre el PRECIO MÁS BAJO y la MEDIA DE MERCADO según Ocupación
-                        // Ej: Si Occ=20%, pesamos más (80%) el precio bajo para ganar tracción.
-                        // Si Occ=60%, pesamos más (60%) la media para estabilizar.
-                        let weightLowest = 1 - (occPct / 100);
-                        targetPrice = (lowestCompPrice * weightLowest) + (mktPrice * (1 - weightLowest));
-
-                        // Perfil de marca
-                        if (activeHotel === 'Guadiana') {
-                            targetPrice *= 1.1; // Guadiana tiene +10% de prima
-                        } else {
-                            targetPrice *= 0.95; // Cumbria se sitúa ligeramente por debajo del pool estándar
-                        }
-
-                        if (myP > targetPrice * 1.1) {
-                            actionText = `▼ ${targetPrice.toFixed(0)}€ (Estabilizar)`;
-                            actionColor = "#ea580c";
-                            cls = 'gap-high';
-                        } else if (myP < targetPrice * 0.9) {
-                            actionText = `▲ ${targetPrice.toFixed(0)}€ (Ajustar)`;
-                            actionColor = "#16a34a";
-                            cls = 'gap-low';
-                        } else {
-                            actionText = "En Rango";
-                            actionColor = "#64748b";
-                        }
-                    }
-                    actionHtml = `<span style="color:${actionColor}; font-weight:700; font-size:0.8rem;">${actionText}</span>`;
-                    gapHtml = `<span class="gap-badge ${cls}">${diff > 0 ? '+' : ''}${diff.toFixed(0)}%</span>`;
                 }
 
                 // Row Content
@@ -2974,7 +3376,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 let html = `<tr id="row-${d.dayIndex}">`;
                 html += `<td>${cellContent}</td>`;
 
-                // My Price
+                // My Price (Active Hotel)
                 const myStatus = my?.status || 'available';
                 let falseClosedAlert = "";
                 if ((sold || myStatus === 'sold') && currentOcc > 0 && currentOcc < capacityVal) {
@@ -2983,7 +3385,15 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 }
 
                 if (sold || myStatus === 'sold') {
-                    html += `<td><span class="price-sold">CERRADO</span>${falseClosedAlert}</td>`;
+                    const closedWrap = `
+                        <div class="manual-price-wrap">
+                            <button class="step-btn down" onclick="stepManualPrice(${d.dayIndex}, '${activeHotel}', -1, event)" title="Reabrir y bajar 1€">-</button>
+                            <span class="price-sold" onclick="openManualPriceInput(${d.dayIndex}, '${activeHotel}', this.parentElement, event)" title="Cerrado en snapshot. Click para introducir tarifa y simular apertura">CERRADO</span>
+                            <button class="step-btn up" onclick="stepManualPrice(${d.dayIndex}, '${activeHotel}', 1, event)" title="Reabrir y subir 1€">+</button>
+                        </div>
+                        ${falseClosedAlert}
+                    `;
+                    html += `<td>${closedWrap}</td>`;
                 } else if (myStatus === 'minStay') {
                     let displayText = "M";
                     if (my && my.minStayDays) {
@@ -2995,34 +3405,82 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     const titleText = (my && my.raw) ? my.raw : "Estancia mínima";
                     html += `<td><span class="price-minstay" title="${titleText}">${displayText}</span></td>`;
                 } else if (!myP || myP === 0 || myStatus === 'noData') {
-                    if (d.otbADR && d.otbADR > 0) html += `<td class="price-val" style="color:#4f46e5;">${d.otbADR.toFixed(0)}€</td>`;
-                    else html += `<td><span style="color:#cbd5e1">-</span></td>`;
+                    if (d.otbADR && d.otbADR > 0) {
+                        const noDataWrap = `
+                            <div class="manual-price-wrap">
+                                <button class="step-btn down" onclick="stepManualPrice(${d.dayIndex}, '${activeHotel}', -1, event)" title="Bajar 1€">▼</button>
+                                <span class="price-editable" onclick="openManualPriceInput(${d.dayIndex}, '${activeHotel}', this, event)" title="Sin tarifa en scraping. ADR OTB: ${d.otbADR.toFixed(0)}€. Click para fijar precio" style="color:#4f46e5;">
+                                    ${d.otbADR.toFixed(0)}€
+                                </span>
+                                <button class="step-btn up" onclick="stepManualPrice(${d.dayIndex}, '${activeHotel}', 1, event)" title="Subir 1€">▲</button>
+                            </div>
+                        `;
+                        html += `<td class="price-val">${noDataWrap}</td>`;
+                    } else {
+                        const emptyWrap = `
+                            <div class="manual-price-wrap">
+                                <button class="step-btn up" onclick="stepManualPrice(${d.dayIndex}, '${activeHotel}', 1, event)" title="Asignar tarifa inicial">+</button>
+                                <span class="price-editable" onclick="openManualPriceInput(${d.dayIndex}, '${activeHotel}', this, event)" title="Sin datos. Click para asignar tarifa" style="color:#cbd5e1;">-</span>
+                            </div>
+                        `;
+                        html += `<td>${emptyWrap}</td>`;
+                    }
                 } else {
-                    let content = `${myP.toFixed(0)}\u20AC`;
-                    if (my.change) {
+                    const isSimulated = !!my?.isModified;
+                    const simClass = isSimulated ? ' simulated' : '';
+                    const simTitle = isSimulated 
+                        ? `Tarifa simulada (Original: ${my.originalPrice !== undefined ? Math.round(my.originalPrice) : Math.round(my.price)}€). Click para editar o usa ▲/▼ (Shift: ±5€).`
+                        : 'Click para editar tarifa directamente o usa ▲/▼ (Shift: ±5€)';
+
+                    let changeTag = '';
+                    if (isSimulated) {
+                        changeTag = `<span class="sim-dot" title="Tarifa simulada manualmente o por yield"></span>`;
+                    } else if (my.change) {
                         const dir = my.change.dir;
                         const color = dir === 'up' ? 'var(--success)' : 'var(--danger)';
                         const arrow = dir === 'up' ? '▲' : '▼';
-                        content += `<span style="display:inline-block; font-size:0.65rem; color:${color}; background:var(--bg-surface); border:1px solid ${color}; padding:0px 2px; border-radius:3px; margin-left:3px; line-height:1.2; vertical-align:middle; font-weight:700;">${arrow}${my.change.prev}</span>`;
+                        changeTag = `<span style="display:inline-block; font-size:0.65rem; color:${color}; background:var(--bg-surface); border:1px solid ${color}; padding:0px 2px; border-radius:3px; margin-left:3px; line-height:1.2; vertical-align:middle; font-weight:700;">${arrow}${my.change.prev}</span>`;
                     }
-                    html += `<td class="price-val" style="font-size:1.1rem;">${content}</td>`;
-                }
 
+                    const priceWrap = `
+                        <div class="manual-price-wrap">
+                            <button class="step-btn down" onclick="stepManualPrice(${d.dayIndex}, '${activeHotel}', -1, event)" title="Bajar 1€ (Shift: 5€)">▼</button>
+                            <span class="price-editable${simClass}" onclick="openManualPriceInput(${d.dayIndex}, '${activeHotel}', this, event)" title="${simTitle}">
+                                ${Math.round(myP)}€${changeTag}
+                            </span>
+                            <button class="step-btn up" onclick="stepManualPrice(${d.dayIndex}, '${activeHotel}', 1, event)" title="Subir 1€ (Shift: 5€)">▲</button>
+                        </div>
+                    `;
+                    html += `<td class="price-val" style="font-size:1.05rem;">${priceWrap}</td>`;
+                }
 
                 html += `<td style="color:var(--primary); font-weight:600;">${d.compAvg.toFixed(0)}€</td>`;
                 html += `<td>${gapHtml}</td>`;
                 html += `<td>${actionHtml}</td>`;
 
-                // SIBLING
+                // SIBLING (Cross-hotel comparison and simulation)
                 if (siblingName) {
                     const hData = d.hotels[siblingName];
                     const isIgnored = ignoredCompetitors.has(siblingName);
                     const opacityStyle = isIgnored ? "opacity: 0.35; filter: grayscale(100%);" : "";
 
                     if (!hData || hData.status === 'noData') {
-                        html += `<td style="border-left:2px solid var(--border); background:var(--bg-surface); ${opacityStyle}">-</td>`;
+                        const emptyWrap = `
+                            <div class="manual-price-wrap">
+                                <button class="step-btn up" onclick="stepManualPrice(${d.dayIndex}, '${siblingName}', 1, event)" title="Asignar tarifa a ${siblingName}">+</button>
+                                <span class="price-editable" onclick="openManualPriceInput(${d.dayIndex}, '${siblingName}', this, event)" title="Sin datos para ${siblingName}. Click para asignar">-</span>
+                            </div>
+                        `;
+                        html += `<td style="border-left:2px solid var(--border); background:var(--bg-surface); ${opacityStyle}">${emptyWrap}</td>`;
                     } else if (hData.sold || hData.status === 'sold') {
-                        html += `<td style="border-left:2px solid var(--border); background:var(--bg-surface); ${opacityStyle}"><span class="price-sold">S</span></td>`;
+                        const closedWrap = `
+                            <div class="manual-price-wrap">
+                                <button class="step-btn down" onclick="stepManualPrice(${d.dayIndex}, '${siblingName}', -1, event)" title="Reabrir ${siblingName} y bajar 1€">-</button>
+                                <span class="price-sold" onclick="openManualPriceInput(${d.dayIndex}, '${siblingName}', this.parentElement, event)" title="${siblingName} cerrado. Click para simular reapertura">S</span>
+                                <button class="step-btn up" onclick="stepManualPrice(${d.dayIndex}, '${siblingName}', 1, event)" title="Reabrir ${siblingName} y subir 1€">+</button>
+                            </div>
+                        `;
+                        html += `<td style="border-left:2px solid var(--border); background:var(--bg-surface); ${opacityStyle}">${closedWrap}</td>`;
                     } else if (hData.status === 'minStay') {
                         let displayText = "M";
                         if (hData.minStayDays) {
@@ -3035,22 +3493,42 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         html += `<td style="border-left:2px solid var(--border); background:var(--bg-surface); ${opacityStyle}"><span class="price-minstay" title="${titleText}">${displayText}</span></td>`;
                     } else {
                         const style = (!sold && hData.price < myP) ? "color:#ef4444; font-weight:800;" : "color:var(--text-main); font-weight:700;";
-                        let sContent = `${hData.price.toFixed(0)}€`;
-                        if (hData.change) {
+                        const isSibSimulated = !!hData?.isModified;
+                        const sibSimClass = isSibSimulated ? ' simulated' : '';
+                        const sibSimTitle = isSibSimulated 
+                            ? `Tarifa simulada para ${siblingName} (Original: ${hData.originalPrice !== undefined ? Math.round(hData.originalPrice) : Math.round(hData.price)}€). Click para editar o usa ▲/▼.`
+                            : `Click para editar tarifa de ${siblingName} o usa ▲/▼ (Shift: ±5€)`;
+
+                        let sChangeTag = '';
+                        if (isSibSimulated) {
+                            sChangeTag = `<span class="sim-dot" title="Tarifa simulada (${siblingName})"></span>`;
+                        } else if (hData.change) {
                             const dir = hData.change.dir;
                             const color = dir === 'up' ? 'var(--success)' : 'var(--danger)';
                             const arrow = dir === 'up' ? '▲' : '▼';
-                            sContent += `<span style="display:inline-block; font-size:0.65rem; color:${color}; background:var(--bg-surface); border:1px solid ${color}; padding:0px 2px; border-radius:3px; margin-left:3px; line-height:1.2; vertical-align:middle; font-weight:700;">${arrow}${hData.change.prev}</span>`;
+                            sChangeTag = `<span style="display:inline-block; font-size:0.65rem; color:${color}; background:var(--bg-surface); border:1px solid ${color}; padding:0px 2px; border-radius:3px; margin-left:3px; line-height:1.2; vertical-align:middle; font-weight:700;">${arrow}${hData.change.prev}</span>`;
                         }
                         
-                        // NEW: Show OTB/Occ also for Sibling
+                        // Show OTB/Occ also for Sibling
+                        let sibOccHtml = '';
                         if (hData.otbRooms > 0) {
-                            sContent += `<div style="font-size:0.6rem; color:#8b5cf6; font-weight:800; margin-top:1px;">Hab: ${hData.otbRooms}</div>`;
+                            sibOccHtml = `<div style="font-size:0.6rem; color:#8b5cf6; font-weight:800; margin-top:1px;">Hab: ${hData.otbRooms}</div>`;
                         } else if (hData.occupancy > 0) {
-                            sContent += `<div style="font-size:0.6rem; color:#4f46e5; font-weight:700; margin-top:1px;">Hab: ${hData.occupancy}</div>`;
+                            sibOccHtml = `<div style="font-size:0.6rem; color:#4f46e5; font-weight:700; margin-top:1px;">Hab: ${hData.occupancy}</div>`;
                         }
 
-                        html += `<td style="border-left:2px solid var(--border); background:var(--bg-surface); font-size:1rem; ${style} ${opacityStyle}">${sContent}</td>`;
+                        const sibWrap = `
+                            <div class="manual-price-wrap">
+                                <button class="step-btn down" onclick="stepManualPrice(${d.dayIndex}, '${siblingName}', -1, event)" title="Bajar 1€ a ${siblingName} (Shift: 5€)">▼</button>
+                                <span class="price-editable${sibSimClass}" onclick="openManualPriceInput(${d.dayIndex}, '${siblingName}', this, event)" title="${sibSimTitle}">
+                                    ${Math.round(hData.price)}€${sChangeTag}
+                                </span>
+                                <button class="step-btn up" onclick="stepManualPrice(${d.dayIndex}, '${siblingName}', 1, event)" title="Subir 1€ a ${siblingName} (Shift: 5€)">▲</button>
+                            </div>
+                            ${sibOccHtml}
+                        `;
+
+                        html += `<td style="border-left:2px solid var(--border); background:var(--bg-surface); font-size:1rem; ${style} ${opacityStyle}">${sibWrap}</td>`;
                     }
                 }
 
