@@ -24,8 +24,16 @@
             --primary: #6366f1;
             --primary-glow: rgba(99, 102, 241, 0.4);
             --secondary: #10b981;
+            --success: #10b981;
+            --warning: #f59e0b;
             --accent: #f59e0b;
             --danger: #ef4444;
+            --purple: #8b5cf6;
+            --danger-bg: rgba(239, 68, 68, 0.12);
+            --success-bg: rgba(16, 185, 129, 0.12);
+            --warning-bg: rgba(245, 158, 11, 0.12);
+            --info-bg: rgba(99, 102, 241, 0.12);
+            --purple-bg: rgba(139, 92, 246, 0.12);
             --bg-deep: #0f172a;
             --bg-surface: #1e293b;
             --bg-glass: rgba(30, 41, 59, 0.7);
@@ -46,6 +54,15 @@
             --border: #e2e8f0;
             --primary: #4f46e5;
             --primary-glow: rgba(79, 70, 229, 0.2);
+            --secondary: #059669;
+            --success: #059669;
+            --warning: #d97706;
+            --purple: #7c3aed;
+            --danger-bg: #fef2f2;
+            --success-bg: #f0fdf4;
+            --warning-bg: #fffbeb;
+            --info-bg: #eff6ff;
+            --purple-bg: #f5f3ff;
             --shadow-premium: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
         }
 
@@ -412,36 +429,242 @@
             color: var(--danger);
         }
 
-        /* INSIGHTS list style */
+        /* EXPERT ANALYSIS & INSIGHTS */
+        .expert-badge-pill {
+            font-size: 0.68rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 20px;
+            background: rgba(99, 102, 241, 0.15);
+            color: var(--primary);
+            letter-spacing: 0.02em;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+
         .insight-list {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 10px;
+            max-height: 480px;
+            overflow-y: auto;
+            padding-right: 4px;
         }
 
-        .insight-box {
-            background: #f8fafc;
-            border-left: 3px solid var(--primary);
-            padding: 8px 10px;
-            /* Compact padding */
-            border-radius: 6px;
-            font-size: 0.75rem;
-            /* Compact text */
-            line-height: 1.3;
-            /* Tighter line height */
+        .insight-list::-webkit-scrollbar {
+            width: 4px;
+        }
+        .insight-list::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.4);
+            border-radius: 4px;
+        }
+
+        .expert-insight-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-left: 4px solid #94a3b8;
+            border-radius: 10px;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+            position: relative;
+        }
+
+        .expert-insight-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            transform: translateY(-1px);
+        }
+
+        /* Categories */
+        .expert-insight-card.pickup-pos {
+            border-left-color: #10b981;
+            background: linear-gradient(90deg, rgba(16, 185, 129, 0.08) 0%, var(--bg-surface) 40%);
+        }
+        .expert-insight-card.pickup-neg {
+            border-left-color: #ef4444;
+            background: linear-gradient(90deg, rgba(239, 68, 68, 0.08) 0%, var(--bg-surface) 40%);
+        }
+        .expert-insight-card.compression {
+            border-left-color: #f97316;
+            background: linear-gradient(90deg, rgba(249, 115, 22, 0.08) 0%, var(--bg-surface) 40%);
+        }
+        .expert-insight-card.opp {
+            border-left-color: #059669;
+            background: linear-gradient(90deg, rgba(5, 150, 105, 0.08) 0%, var(--bg-surface) 40%);
+        }
+        .expert-insight-card.risk {
+            border-left-color: #e11d48;
+            background: linear-gradient(90deg, rgba(225, 29, 72, 0.08) 0%, var(--bg-surface) 40%);
+        }
+        .expert-insight-card.soldout {
+            border-left-color: #8b5cf6;
+            background: linear-gradient(90deg, rgba(139, 92, 246, 0.08) 0%, var(--bg-surface) 40%);
+        }
+        .expert-insight-card.high-occ {
+            border-left-color: #3b82f6;
+            background: linear-gradient(90deg, rgba(59, 130, 246, 0.08) 0%, var(--bg-surface) 40%);
+        }
+        .expert-insight-card.neutral {
+            border-left-color: #6366f1;
+            background: linear-gradient(90deg, rgba(99, 102, 241, 0.06) 0%, var(--bg-surface) 40%);
+        }
+
+        .expert-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+        }
+
+        .expert-card-title {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+            font-weight: 700;
             color: var(--text-main);
         }
 
+        .expert-card-badge {
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.05);
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            white-space: nowrap;
+        }
+        [data-theme="dark"] .expert-card-badge {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-muted);
+        }
+
+        .expert-card-desc {
+            font-size: 0.74rem;
+            line-height: 1.35;
+            color: var(--text-main);
+            opacity: 0.92;
+        }
+
+        .expert-chips-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 3px;
+            align-items: center;
+        }
+
+        .date-chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            background: rgba(0, 0, 0, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-main);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+        [data-theme="dark"] .date-chip {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .date-chip:hover {
+            background: var(--primary);
+            color: #ffffff !important;
+            border-color: var(--primary);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 5px rgba(99, 102, 241, 0.3);
+        }
+        .date-chip:hover * {
+            color: #ffffff !important;
+        }
+
+        .expert-actions-row {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            margin-top: 4px;
+            padding-top: 4px;
+            border-top: 1px dashed var(--border);
+        }
+
+        .expert-filter-btn {
+            background: none;
+            border: none;
+            padding: 2px 4px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--primary);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            border-radius: 4px;
+            transition: all 0.15s ease;
+        }
+
+        .expert-filter-btn:hover {
+            background: rgba(99, 102, 241, 0.1);
+            text-decoration: underline;
+        }
+
+        /* Backward compatibility */
+        .insight-box {
+            background: var(--bg-surface);
+            border-left: 3px solid var(--primary);
+            padding: 8px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            line-height: 1.3;
+            color: var(--text-main);
+        }
         .insight-box.high {
             border-left-color: var(--danger);
             background: var(--danger-bg);
-            color: #991b1b;
+            color: var(--text-main);
         }
-
         .insight-box.opp {
             border-left-color: var(--success);
             background: var(--success-bg);
-            color: #065f46;
+            color: var(--text-main);
+        }
+
+        /* Table Filter Active Pill */
+        .table-filter-banner {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            color: var(--primary);
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 2px 10px;
+            border-radius: 20px;
+        }
+
+        .table-filter-banner .clear-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 1px 7px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .table-filter-banner .clear-btn:hover {
+            opacity: 0.85;
+            transform: scale(1.02);
         }
 
         /* TABLE */
@@ -658,11 +881,13 @@
 
         @keyframes highlightFade {
             0% {
-                background-color: #fef08a;
+                background-color: rgba(254, 240, 138, 0.6);
+                box-shadow: inset 0 0 0 2px var(--primary);
             }
 
             100% {
                 background-color: transparent;
+                box-shadow: none;
             }
         }
 
@@ -847,8 +1072,13 @@
 
             <!-- INSIGHTS -->
             <div class="card" id="expertAnalysisCard">
-                <div class="panel-heading collapsible" onclick="toggleExpertAnalysis()">⚡ Análisis Experto</div>
-                <div class="panel-body">
+                <div class="panel-heading collapsible" onclick="toggleExpertAnalysis()">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span>⚡ Análisis Experto</span>
+                        <span id="expert-badge-count" class="expert-badge-pill" style="display:none;">0 alertas</span>
+                    </div>
+                </div>
+                <div class="panel-body" style="padding:10px;">
                     <div id="insights-container" class="insight-list">
                         <!-- JS injected -->
                     </div>
@@ -948,41 +1178,105 @@
         }
 
         // --- ACTIONS ---
+        let activeTableFilter = null;
+
         function focusRow(idx) {
-            const row = document.getElementById(`row-${idx}`);
-            if (row) {
-                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                row.classList.remove('highlight-row');
-                void row.offsetWidth; // trigger reflow
-                row.classList.add('highlight-row');
+            let row = document.getElementById(`row-${idx}`);
+            if (!row && activeTableFilter) {
+                clearTableFilter();
+            }
+            setTimeout(() => {
+                row = document.getElementById(`row-${idx}`);
+                if (row) {
+                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    row.classList.remove('highlight-row');
+                    void row.offsetWidth; // trigger reflow
+                    row.classList.add('highlight-row');
+                }
+            }, 60);
+        }
+
+        function clearTableFilter() {
+            activeTableFilter = null;
+            const activeMonth = document.getElementById('monthSelector').value;
+            let baseData = [...processedData];
+            if (activeMonth !== 'all') {
+                baseData = baseData.filter(d => d.month === activeMonth);
+            }
+            renderTable(baseData);
+            const countEl = document.getElementById('record-count');
+            if (countEl) {
+                let statusHtml = `<span>${baseData.length} días analizados</span>`;
+                statusHtml += `<span onclick="diagnoseAllData()" style="font-size:0.6rem; color:#94a3b8; cursor:pointer; margin-left:10px; text-decoration:underline;">[Debug]</span>`;
+                countEl.innerHTML = statusHtml;
             }
         }
 
         function filterTable(type) {
+            activeTableFilter = type;
             const activeMonth = document.getElementById('monthSelector').value;
-            let baseData = processedData;
+            let baseData = [...processedData];
             if (activeMonth !== 'all') baseData = baseData.filter(d => d.month === activeMonth);
 
             let filtered = [];
-            const globalAvg = processedData.reduce((a, b) => a + b.compAvg, 0) / processedData.length;
+            let filterLabel = "";
+            const globalAvg = (processedData.length > 0) 
+                ? (processedData.reduce((a, b) => a + (b.compAvg || 0), 0) / processedData.length) 
+                : 0;
 
             if (type === 'opp') {
+                filterLabel = "Oportunidad (Tarifa baja)";
                 filtered = baseData.filter(d => {
                     const my = d.hotels[activeHotel];
-                    return my && !my.sold && my.price > 0 && my.price < d.compAvg * 0.85;
+                    return my && !my.sold && my.price > 0 && d.compAvg > 0 && my.price < d.compAvg * 0.85;
                 });
             } else if (type === 'risk') {
+                filterLabel = "Riesgo (Sobreprecio)";
                 filtered = baseData.filter(d => {
                     const my = d.hotels[activeHotel];
-                    return my && !my.sold && my.price > 0 && my.price > d.compAvg * 1.25;
+                    return my && !my.sold && my.price > 0 && d.compAvg > 0 && my.price > d.compAvg * 1.25;
                 });
             } else if (type === 'compression') {
-                filtered = baseData.filter(d => d.compAvg > globalAvg * 1.4);
+                filterLabel = "Demanda Pico";
+                filtered = baseData.filter(d => d.compAvg > globalAvg * 1.35);
+            } else if (type === 'pickup_pos') {
+                filterLabel = "Aceleración Pick-up (+)";
+                filtered = baseData.filter(d => {
+                    const my = d.hotels[activeHotel];
+                    return my && (my.otbChange || 0) >= 8;
+                });
+            } else if (type === 'pickup_neg') {
+                filterLabel = "Caída Reservas / Cancelaciones (-)";
+                filtered = baseData.filter(d => {
+                    const my = d.hotels[activeHotel];
+                    return my && (my.otbChange || 0) <= -8;
+                });
+            } else if (type === 'sold_out') {
+                filterLabel = "Competidores Llenos (Sold Out)";
+                filtered = baseData.filter(d => (d.activeSoldComps || 0) > 0);
+            } else if (type === 'high_occ') {
+                filterLabel = "Alta Carga (>75%)";
+                const cap = HOTEL_CAPACITY[activeHotel] || 100;
+                filtered = baseData.filter(d => {
+                    const my = d.hotels[activeHotel];
+                    const rooms = (my?.otbRooms !== undefined) ? my.otbRooms : (my?.occupancy !== undefined ? my.occupancy : 0);
+                    return (rooms / cap) >= 0.75;
+                });
+            } else {
+                clearTableFilter();
+                return;
             }
 
             renderTable(filtered);
-            document.getElementById('record-count').innerText = `${filtered.length} fechas filtradas (${type})`;
-            document.getElementById('record-count').style.color = 'var(--primary)';
+            const countEl = document.getElementById('record-count');
+            if (countEl) {
+                countEl.innerHTML = `
+                    <span class="table-filter-banner">
+                        <span>Filtrando: <b>${filterLabel}</b> (${filtered.length} fechas)</span>
+                        <button class="clear-btn" onclick="clearTableFilter()" title="Quitar filtro">✕ Ver todas</button>
+                    </span>
+                `;
+            }
         }
 
         // Month Dictionary - Full Spanish names
@@ -1996,6 +2290,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
         // --- RENDER ---
         function renderAll() {
+            activeTableFilter = null;
             activeHotel = document.getElementById('hotelSelector').value;
             const selectedMonth = document.getElementById('monthSelector').value;
 
@@ -2164,66 +2459,273 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
 
 
+        function makeDateChip(d, metricText = '', metricColor = '') {
+            const dayNum = d.dateISO ? parseInt(d.dateISO.split('-')[2], 10) : d.label.split(' ')[0];
+            const mShort = (d.dateMeta?.mShort || d.month || '').substring(0, 3);
+            const metricHtml = metricText ? `<span style="color:${metricColor}; font-weight:700; margin-left:3px;">${metricText}</span>` : '';
+            return `<span class="date-chip" onclick="focusRow(${d.dayIndex})" title="${d.label} (Click para ver en tabla)">${dayNum} ${mShort}${metricHtml}</span>`;
+        }
+
+        function addExpertInsightCard({ type, icon, title, badge, desc, chips = [], filterType = null, filterCount = 0 }) {
+            const container = document.getElementById('insights-container');
+            const div = document.createElement('div');
+            div.className = `expert-insight-card ${type}`;
+
+            let chipsHtml = '';
+            if (chips && chips.length > 0) {
+                chipsHtml = `<div class="expert-chips-container">${chips.join('')}</div>`;
+            }
+
+            let filterActionHtml = '';
+            if (filterType && filterCount > 0) {
+                filterActionHtml = `
+                    <div class="expert-actions-row">
+                        <button class="expert-filter-btn" onclick="filterTable('${filterType}')">
+                            <span>Filtrar en tabla (${filterCount})</span> <span>→</span>
+                        </button>
+                    </div>
+                `;
+            }
+
+            div.innerHTML = `
+                <div class="expert-card-header">
+                    <div class="expert-card-title">
+                        <span>${icon}</span>
+                        <span>${title}</span>
+                    </div>
+                    ${badge ? `<span class="expert-card-badge">${badge}</span>` : ''}
+                </div>
+                <div class="expert-card-desc">${desc}</div>
+                ${chipsHtml}
+                ${filterActionHtml}
+            `;
+
+            container.appendChild(div);
+        }
+
         function renderKPIs(data) {
             const container = document.getElementById('insights-container');
+            const badgeCountEl = document.getElementById('expert-badge-count');
             container.innerHTML = '';
 
-            if (data.length === 0) return;
+            if (data.length === 0) {
+                if (badgeCountEl) badgeCountEl.style.display = 'none';
+                return;
+            }
 
             let mySum = 0, compSum = 0, count = 0;
-            let opps = 0, risks = 0, pickupAlerts = [];
+            let opps = [];
+            let risks = [];
+            let posPickup = [];
+            let negPickup = [];
+            let soldOutDays = [];
+            let highOccDays = [];
 
-            const globalAvg = data.reduce((a, b) => a + b.compAvg, 0) / data.length;
+            const globalAvg = data.reduce((a, b) => a + (b.compAvg || 0), 0) / (data.length || 1);
+            const hotelCap = HOTEL_CAPACITY[activeHotel] || 100;
 
             data.forEach(d => {
                 ensureHotelStructure(d, activeHotel);
                 const my = d.hotels[activeHotel];
                 const myChange = (my.otbChange !== undefined) ? my.otbChange : 0;
                 
-                // Pick-up Alert (+/- 10 habs)
-                if (Math.abs(myChange) >= 10) {
-                    pickupAlerts.push({...d, otbChange: myChange});
+                // 1. Pick-up Detection (Aceleración >= 8 habs o Caída <= -8 habs)
+                if (myChange >= 8) {
+                    posPickup.push({ ...d, otbChange: myChange });
+                } else if (myChange <= -8) {
+                    negPickup.push({ ...d, otbChange: myChange });
                 }
+
+                // 2. Competidores Sold Out en esta fecha
+                if ((d.activeSoldComps || 0) >= 1 && my && !my.sold) {
+                    soldOutDays.push(d);
+                }
+
+                // 3. Alta Ocupación Propia
+                const currentRooms = (my.otbRooms !== undefined) ? my.otbRooms : (my.occupancy !== undefined ? my.occupancy : 0);
+                const occPct = (currentRooms / hotelCap) * 100;
+                if (occPct >= 75 && my && !my.sold && my.price > 0 && d.compAvg > 0 && my.price <= d.compAvg * 1.05) {
+                    highOccDays.push({ ...d, occPct: occPct });
+                }
+
                 if (!my || my.sold || my.price === 0) return;
 
                 count++;
                 mySum += my.price;
-                compSum += d.compAvg;
+                compSum += (d.compAvg || 0);
 
-                if (my.price < d.compAvg * 0.85) opps++;
-                if (my.price > d.compAvg * 1.25) risks++;
+                if (d.compAvg > 0 && my.price < d.compAvg * 0.85) opps.push(d);
+                if (d.compAvg > 0 && my.price > d.compAvg * 1.25) risks.push(d);
             });
 
-            // 1. Pick-up Alerts first (New priority)
-            if (pickupAlerts.length > 0) {
-                const totalChange = pickupAlerts.reduce((a, b) => a + (b.otbChange || 0), 0);
-                const exampleDates = pickupAlerts.slice(0, 3).map(d => 
-                    `<span class="action-link" onclick="focusRow(${d.dayIndex})">${d.label}</span>`
-                ).join(", ");
-                
-                const type = totalChange >= 0 ? 'opp' : 'high';
-                const icon = totalChange >= 0 ? '📈' : '📉';
-                addInsight(type, `${icon} <strong>Variación Ocurrencia:</strong> ${pickupAlerts.length} fechas con cambios > 10 hab (${exampleDates}).`);
+            // 4. Compresión de mercado (Demanda Pico)
+            const compression = data.filter(d => (d.compAvg || 0) > globalAvg * 1.35);
+
+            let alertCount = 0;
+
+            // --- INSIGHT 1: Aceleración de Pick-up (+) ---
+            if (posPickup.length > 0) {
+                alertCount++;
+                posPickup.sort((a, b) => (b.otbChange || 0) - (a.otbChange || 0));
+                const totalGain = posPickup.reduce((sum, d) => sum + (d.otbChange || 0), 0);
+                const chips = posPickup.slice(0, 4).map(d => 
+                    makeDateChip(d, `+${d.otbChange}`, '#10b981')
+                );
+                addExpertInsightCard({
+                    type: 'pickup-pos',
+                    icon: '🚀',
+                    title: 'Aceleración de Reservas',
+                    badge: `${posPickup.length} fecha${posPickup.length !== 1 ? 's' : ''}`,
+                    desc: `Fuerte entrada de reservas (+${totalGain} habs en total). Alta velocidad de demanda; momento óptimo para revisar tarifas al alza.`,
+                    chips: chips,
+                    filterType: 'pickup_pos',
+                    filterCount: posPickup.length
+                });
             }
 
-            // 2. Compression
-            const compression = data.filter(d => d.compAvg > globalAvg * 1.4);
+            // --- INSIGHT 2: Caída de Pick-up / Cancelaciones (-) ---
+            if (negPickup.length > 0) {
+                alertCount++;
+                negPickup.sort((a, b) => (a.otbChange || 0) - (b.otbChange || 0));
+                const totalLoss = Math.abs(negPickup.reduce((sum, d) => sum + (d.otbChange || 0), 0));
+                const chips = negPickup.slice(0, 4).map(d => 
+                    makeDateChip(d, `${d.otbChange}`, '#ef4444')
+                );
+                addExpertInsightCard({
+                    type: 'pickup-neg',
+                    icon: '📉',
+                    title: 'Caída de Reservas',
+                    badge: `${negPickup.length} fecha${negPickup.length !== 1 ? 's' : ''}`,
+                    desc: `Pérdida neta o cancelaciones (-${totalLoss} habs en total). Verifica si tus tarifas o condiciones están frenando la conversión.`,
+                    chips: chips,
+                    filterType: 'pickup_neg',
+                    filterCount: negPickup.length
+                });
+            }
+
+            // --- INSIGHT 3: Demanda Pico de Mercado (Compresión) ---
             if (compression.length > 0) {
-                const links = compression.slice(0, 3).map(d =>
-                    `<span class="action-link" onclick="focusRow(${d.dayIndex})">${d.label}</span>`
-                ).join(", ");
-
-                addInsight('high', `🔥 <strong>Demanda Pico:</strong> Fechas calientes (${links}) detectadas. <span class="action-link" onclick="filterTable('compression')">Ver todas (${compression.length})</span>`);
+                alertCount++;
+                compression.sort((a, b) => (b.compAvg || 0) - (a.compAvg || 0));
+                const chips = compression.slice(0, 4).map(d => 
+                    makeDateChip(d, `${Math.round(d.compAvg)}€`, '#f97316')
+                );
+                addExpertInsightCard({
+                    type: 'compression',
+                    icon: '🔥',
+                    title: 'Demanda Pico de Mercado',
+                    badge: `${compression.length} fecha${compression.length !== 1 ? 's' : ''}`,
+                    desc: `Tarifas de mercado >35% sobre la media. Fechas de alta compresión ideales para blindar precio y exigir estancias mínimas.`,
+                    chips: chips,
+                    filterType: 'compression',
+                    filterCount: compression.length
+                });
             }
 
-            if (opps > 0) {
-                addInsight('opp', `💰 <strong>Oportunidad:</strong> ${opps} fechas con tarifa muy baja. <span class="action-link" onclick="filterTable('opp')">Ver listado</span>`);
-            }
-            if (risks > 0) {
-                addInsight('high', `⚠️ <strong>Riesgo Tarifa:</strong> ${risks} fechas muy por encima del market. <span class="action-link" onclick="filterTable('risk')">Ver listado</span>`);
+            // --- INSIGHT 4: Oportunidad de Revenue (Tarifa Baja) ---
+            if (opps.length > 0) {
+                alertCount++;
+                opps.sort((a, b) => {
+                    const gapA = (a.compAvg || 0) - (a.hotels[activeHotel]?.price || 0);
+                    const gapB = (b.compAvg || 0) - (b.hotels[activeHotel]?.price || 0);
+                    return gapB - gapA;
+                });
+                const avgDiff = Math.round(opps.reduce((sum, d) => sum + ((d.compAvg || 0) - (d.hotels[activeHotel]?.price || 0)), 0) / opps.length);
+                const chips = opps.slice(0, 4).map(d => 
+                    makeDateChip(d, `${Math.round(d.hotels[activeHotel]?.price || 0)}€`, '#059669')
+                );
+                addExpertInsightCard({
+                    type: 'opp',
+                    icon: '💰',
+                    title: 'Oportunidad Tarifaria',
+                    badge: `${opps.length} fecha${opps.length !== 1 ? 's' : ''}`,
+                    desc: `Tu tarifa está >15% por debajo del mercado (diferencia media: -${avgDiff}€). Posible fuga de ingresos con margen de subida.`,
+                    chips: chips,
+                    filterType: 'opp',
+                    filterCount: opps.length
+                });
             }
 
+            // --- INSIGHT 5: Riesgo de Sobreprecio (Tarifa Alta) ---
+            if (risks.length > 0) {
+                alertCount++;
+                risks.sort((a, b) => {
+                    const gapA = (a.hotels[activeHotel]?.price || 0) - (a.compAvg || 0);
+                    const gapB = (b.hotels[activeHotel]?.price || 0) - (b.compAvg || 0);
+                    return gapB - gapA;
+                });
+                const chips = risks.slice(0, 4).map(d => 
+                    makeDateChip(d, `${Math.round(d.hotels[activeHotel]?.price || 0)}€`, '#e11d48')
+                );
+                addExpertInsightCard({
+                    type: 'risk',
+                    icon: '⚠️',
+                    title: 'Riesgo de Sobreprecio',
+                    badge: `${risks.length} fecha${risks.length !== 1 ? 's' : ''}`,
+                    desc: `Tarifa >25% por encima del mercado. Sin ocupación crítica (>80%), corres riesgo de frenar ventas ante la competencia.`,
+                    chips: chips,
+                    filterType: 'risk',
+                    filterCount: risks.length
+                });
+            }
 
+            // --- INSIGHT 6: Competidores Llenos (Sold Out) ---
+            if (soldOutDays.length > 0) {
+                alertCount++;
+                soldOutDays.sort((a, b) => (b.activeSoldComps || 0) - (a.activeSoldComps || 0));
+                const chips = soldOutDays.slice(0, 4).map(d => 
+                    makeDateChip(d, `${d.activeSoldComps} comp.`, '#8b5cf6')
+                );
+                addExpertInsightCard({
+                    type: 'soldout',
+                    icon: '🏆',
+                    title: 'Competencia Completa',
+                    badge: `${soldOutDays.length} fecha${soldOutDays.length !== 1 ? 's' : ''}`,
+                    desc: `Hoteles competidores sin plazas disponibles. Oportunidad directa de yielding para captar demanda a precio premium.`,
+                    chips: chips,
+                    filterType: 'sold_out',
+                    filterCount: soldOutDays.length
+                });
+            }
+
+            // --- INSIGHT 7: Carga Avanzada / Yielding de Cierre (>75%) ---
+            if (highOccDays.length > 0) {
+                alertCount++;
+                highOccDays.sort((a, b) => b.occPct - a.occPct);
+                const chips = highOccDays.slice(0, 4).map(d => 
+                    makeDateChip(d, `${Math.round(d.occPct)}%`, '#3b82f6')
+                );
+                addExpertInsightCard({
+                    type: 'high-occ',
+                    icon: '🎯',
+                    title: 'Carga Avanzada (>75%)',
+                    badge: `${highOccDays.length} fecha${highOccDays.length !== 1 ? 's' : ''}`,
+                    desc: `Ocupación alta sin prima sobre el mercado. Cierra tarifas promocionales y aplica precio dinámico de últimas plazas.`,
+                    chips: chips,
+                    filterType: 'high_occ',
+                    filterCount: highOccDays.length
+                });
+            }
+
+            // --- ESTADO EQUILIBRADO (Si no hay alertas) ---
+            if (alertCount === 0) {
+                addExpertInsightCard({
+                    type: 'neutral',
+                    icon: '✅',
+                    title: 'Posicionamiento Equilibrado',
+                    badge: 'Óptimo',
+                    desc: 'Tus tarifas y ritmo de reservas están correctamente alineados con la estrategia de mercado para este período.',
+                    chips: []
+                });
+            }
+
+            // Actualizar Badge en el encabezado
+            if (badgeCountEl) {
+                badgeCountEl.style.display = 'inline-block';
+                badgeCountEl.innerText = `${alertCount} alerta${alertCount !== 1 ? 's' : ''}`;
+            }
+
+            // --- KPI CARDS SUPERIORES ---
             if (count === 0) {
                 document.getElementById('kpi-avg').innerText = "N/A";
                 return;
@@ -2231,7 +2733,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
             const avg = mySum / count;
             const mkt = compSum / count;
-            const gap = ((avg - mkt) / mkt) * 100;
+            const gap = ((avg - mkt) / (mkt || 1)) * 100;
 
             document.getElementById('kpi-avg').innerText = avg.toFixed(0) + '€';
             document.getElementById('kpi-market').innerText = mkt.toFixed(0) + '€';
@@ -2251,7 +2753,6 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             } else if (gap < -10) {
                 posEl.className = 'kpi-value kpi-trend-pos'; // Positive trend because cheaper = opportunity? Or warning? Usually Revenue Managers want to be slightly above or matched.
                 txtPos.innerText = "Por debajo del mercado";
-                // Let's make "Too Cheap" a warning color in text
                 posEl.style.color = 'var(--warning)';
             } else {
                 posEl.className = 'kpi-value kpi-trend-pos';
@@ -2260,6 +2761,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             }
         }
 
+        // Backward compatibility
         function addInsight(type, html) {
             const div = document.createElement('div');
             div.className = `insight-box ${type}`;
