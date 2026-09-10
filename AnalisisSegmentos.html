@@ -980,39 +980,52 @@
                 });
             }
 
-            // Sync monthDays with lastUpdate for headers
-            if (prodData.lastUpdate) {
-                let datePart = prodData.lastUpdate.split(' ')[0];
-                if (prodData.lastUpdate.includes(" al ")) {
-                    const partsAl = prodData.lastUpdate.split(" al ");
+            // Obtener estrictamente la fecha de PRODUCCIÓN REAL (nunca OTB)
+            const prodDateStr = (prodData.updates && prodData.updates.prod && prodData.updates.prod !== "N/A") 
+                ? prodData.updates.prod 
+                : (prodData.lastProdDate || "");
+
+            let prodDay = 0, prodMonth = -1, prodYear = "";
+            if (prodDateStr) {
+                let datePart = prodDateStr.split(' ')[0];
+                if (prodDateStr.includes(" al ")) {
+                    const partsAl = prodDateStr.split(" al ");
                     if (partsAl.length >= 2) datePart = partsAl[1].split(' ')[0];
                 }
                 const parts = datePart.split(/[\/-]/);
                 if (parts.length === 3) {
-                    const d = parseInt(parts[0]);
-                    const m = parseInt(parts[1]) - 1;
-                    const y = parts[2].length === 2 ? "20" + parts[2] : parts[2];
-                    if (y === String(currentYear) && m >= 0 && m < 12) {
-                        monthDays[m] = Math.max(monthDays[m], d);
+                    prodDay = parseInt(parts[0]);
+                    prodMonth = parseInt(parts[1]) - 1;
+                    prodYear = parts[2].length === 2 ? "20" + parts[2] : parts[2];
+                }
+            } else if (prodData.lastUpdate) {
+                const isOtbDate = prodData.updates && prodData.updates.otb && prodData.lastUpdate.includes(prodData.updates.otb.split(' ')[0]);
+                if (!isOtbDate) {
+                    let datePart = prodData.lastUpdate.split(' ')[0];
+                    const parts = datePart.split(/[\/-]/);
+                    if (parts.length === 3) {
+                        prodDay = parseInt(parts[0]);
+                        prodMonth = parseInt(parts[1]) - 1;
+                        prodYear = parts[2].length === 2 ? "20" + parts[2] : parts[2];
                     }
+                }
+            }
+
+            if (prodYear === String(currentYear) && prodMonth >= 0 && prodMonth < 12) {
+                if (monthDays[prodMonth] === 0) {
+                    monthDays[prodMonth] = prodDay;
                 }
             }
 
             if (midx === -1) {
                 const dailyDays = monthDays.reduce((a, b) => a + b, 0);
                 let updateDays = 0;
-                if (prodData.lastUpdate) {
-                    let datePart = prodData.lastUpdate.split(' ')[0];
-                    if (prodData.lastUpdate.includes(" al ")) {
-                        const partsAl = prodData.lastUpdate.split(" al ");
-                        if (partsAl.length >= 2) datePart = partsAl[1].split(' ')[0];
-                    }
-                    const parts = datePart.split(/[\/-]/);
-                    if (parts.length === 3) updateDays = (parseInt(parts[1]) - 1) * 30.42 + parseInt(parts[0]);
+                if (prodYear === String(currentYear) && prodMonth >= 0) {
+                    updateDays = prodMonth * 30.42 + prodDay;
                 }
 
                 const currentRealYear = new Date().getFullYear();
-                elapsedDays = (parseInt(currentYear) < currentRealYear) ? 365 : (updateDays > 0 ? updateDays : dailyDays);
+                elapsedDays = (parseInt(currentYear) < currentRealYear) ? 365 : (dailyDays > 0 ? dailyDays : (updateDays > 0 ? updateDays : 1));
                 if (elapsedDays === 0) elapsedDays = 1;
 
                 // Add counter badge to dashboard
@@ -1021,15 +1034,10 @@
             } else {
                 let daysInM = monthDays[midx];
                 let updateDaysInM = 0;
-                if (prodData.lastUpdate) {
-                    const parts = prodData.lastUpdate.split(' ')[0].split(/[\/-]/);
-                    if (parts.length === 3) {
-                        const m = parseInt(parts[1]) - 1;
-                        if (m === midx) updateDaysInM = parseInt(parts[0]);
-                    }
+                if (prodYear === String(currentYear) && prodMonth === midx) {
+                    updateDaysInM = prodDay;
                 }
-                // If we have a manual update date for THIS month, use it as the authority.
-                elapsedDays = updateDaysInM > 0 ? updateDaysInM : daysInM;
+                elapsedDays = daysInM > 0 ? daysInM : (updateDaysInM > 0 ? updateDaysInM : 30.42);
                 if (elapsedDays === 0) elapsedDays = 30.42;
             }
 

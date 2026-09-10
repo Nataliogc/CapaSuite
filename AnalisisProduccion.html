@@ -709,16 +709,38 @@
 
             if (!data.otb) data.otb = { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) };
 
+            // Self-healing: si data.lastUpdate fue contaminado por la subida de OTB
+            if (data.updates && data.updates.otb && data.lastUpdate) {
+                const otbPrefix = data.updates.otb.split(' ')[0];
+                if (data.lastUpdate.includes(otbPrefix) && data.updates.prod && data.updates.prod !== 'N/A' && data.updates.prod !== data.updates.otb) {
+                    data.lastUpdate = data.updates.prod;
+                }
+            }
+
+            const prodUpdate = (data.updates && data.updates.prod && data.updates.prod !== "N/A") 
+                ? data.updates.prod 
+                : (data.lastProdDate || "");
+            const otbUpdate = (data.updates && data.updates.otb && data.updates.otb !== "N/A") 
+                ? data.updates.otb 
+                : (data.lastOtbDate || "");
+
             // Show last update if available (Hide for 2025 as requested)
             const badge = document.getElementById('updateBadge');
             let lastUpdateDate = null;
-            if (data.lastUpdate && currentYear !== "2025") {
-                badge.innerText = `📅 Actualizado: ${data.lastUpdate}`;
+            if (currentYear !== "2025" && (prodUpdate || otbUpdate || data.lastUpdate)) {
+                let badgeParts = [];
+                if (prodUpdate) badgeParts.push(`📈 Prod. Real: ${prodUpdate}`);
+                if (otbUpdate) badgeParts.push(`🔮 Previsión: ${otbUpdate}`);
+                if (badgeParts.length === 0 && data.lastUpdate) badgeParts.push(`📅 ${data.lastUpdate}`);
+
+                badge.innerHTML = badgeParts.join(' &nbsp;|&nbsp; ');
                 badge.style.display = 'inline-block';
-                // Try parse date (ignoring time if present)
-                let datePart = data.lastUpdate.split(' ')[0];
-                if (data.lastUpdate.includes(" al ")) {
-                    const partsAl = data.lastUpdate.split(" al ");
+
+                // Try parse date (prefer prod date or otb date)
+                const refDate = prodUpdate || otbUpdate || data.lastUpdate;
+                let datePart = refDate.split(' ')[0];
+                if (refDate.includes(" al ")) {
+                    const partsAl = refDate.split(" al ");
                     if (partsAl.length >= 2) datePart = partsAl[1].split(' ')[0];
                 }
                 const parts = datePart.split(/[/-]/);
@@ -731,7 +753,13 @@
 
             // Sync Detail Card Info
             const detailUpdate = document.getElementById('lastUpdateDetail');
-            if (detailUpdate) detailUpdate.innerText = data.lastUpdate ? `Actualizado: ${data.lastUpdate}` : 'Actualizado: --';
+            if (detailUpdate) {
+                let detailParts = [];
+                if (prodUpdate) detailParts.push(`Prod. Real: <b style="color:var(--primary);">${prodUpdate}</b>`);
+                if (otbUpdate) detailParts.push(`Previsión: <b style="color:#8b5cf6;">${otbUpdate}</b>`);
+                if (detailParts.length === 0 && data.lastUpdate) detailParts.push(`Actualizado: <b>${data.lastUpdate}</b>`);
+                detailUpdate.innerHTML = detailParts.length > 0 ? detailParts.join(' &nbsp;|&nbsp; ') : 'Actualizado: --';
+            }
             const detailLogo = document.getElementById('hotelLogoDetail');
             if (detailLogo) detailLogo.src = currentHotel === 'Guadiana' ? 'Imagen/logo-guadiana.svg' : 'Imagen/logo-cumbria.svg';
 
@@ -1107,7 +1135,7 @@
             document.getElementById('kpi-revpac').innerText = revpacTY.toFixed(2).replace('.', ',') + " €";
             document.getElementById('trend-revpac').innerHTML = trend(revpacTY, revpacLY, revpacLM, 'revpac');
 
-            // Calculate elapsed days for YTD calculation
+            // Calculate elapsed days for YTD calculation strictly from PRODUCCIÓN REAL
             const monthDaysRecorded = new Array(12).fill(0);
             if (data.daily) {
                 Object.keys(data.daily).forEach(dateStr => {
@@ -1119,21 +1147,42 @@
                 });
             }
 
-            // Sync monthDays with lastUpdate for headers
-            if (data.lastUpdate) {
-                let datePart = data.lastUpdate.split(' ')[0];
-                if (data.lastUpdate.includes(" al ")) {
-                    const partsAl = data.lastUpdate.split(" al ");
+            // Obtener estrictamente la fecha de PRODUCCIÓN REAL (nunca OTB)
+            const prodDateStr = (data.updates && data.updates.prod && data.updates.prod !== "N/A") 
+                ? data.updates.prod 
+                : (data.lastProdDate || "");
+
+            let prodDay = 0, prodMonth = -1, prodYear = "";
+            if (prodDateStr) {
+                let datePart = prodDateStr.split(' ')[0];
+                if (prodDateStr.includes(" al ")) {
+                    const partsAl = prodDateStr.split(" al ");
                     if (partsAl.length >= 2) datePart = partsAl[1].split(' ')[0];
                 }
                 const parts = datePart.split(/[\/-]/);
                 if (parts.length === 3) {
-                    const d = parseInt(parts[0]);
-                    const m = parseInt(parts[1]) - 1;
-                    const y = parts[2].length === 2 ? "20" + parts[2] : parts[2];
-                    if (y === String(currentYear) && m >= 0 && m < 12) {
-                        monthDaysRecorded[m] = Math.max(monthDaysRecorded[m], d);
+                    prodDay = parseInt(parts[0]);
+                    prodMonth = parseInt(parts[1]) - 1;
+                    prodYear = parts[2].length === 2 ? "20" + parts[2] : parts[2];
+                }
+            } else if (data.lastUpdate) {
+                // Solo usar fallback de lastUpdate si NO fue puesto por una carga de OTB
+                const isOtbDate = data.updates && data.updates.otb && data.lastUpdate.includes(data.updates.otb.split(' ')[0]);
+                if (!isOtbDate) {
+                    let datePart = data.lastUpdate.split(' ')[0];
+                    const parts = datePart.split(/[\/-]/);
+                    if (parts.length === 3) {
+                        prodDay = parseInt(parts[0]);
+                        prodMonth = parseInt(parts[1]) - 1;
+                        prodYear = parts[2].length === 2 ? "20" + parts[2] : parts[2];
                     }
+                }
+            }
+
+            // Sincronizar monthDaysRecorded solo con fecha de producción real si no hay daily
+            if (prodYear === String(currentYear) && prodMonth >= 0 && prodMonth < 12) {
+                if (monthDaysRecorded[prodMonth] === 0) {
+                    monthDaysRecorded[prodMonth] = prodDay;
                 }
             }
 
@@ -1141,25 +1190,11 @@
             if (midx === -1) {
                 let dailyDaysYTD = monthDaysRecorded.reduce((a, b) => a + b, 0);
                 let updateDaysYTD = 0;
-                if (data.lastUpdate) {
-                    let datePart = data.lastUpdate.split(' ')[0];
-                    if (data.lastUpdate.includes(" al ")) {
-                        const partsAl = data.lastUpdate.split(" al ");
-                        if (partsAl.length >= 2) datePart = partsAl[1].split(' ')[0];
-                    }
-                    const parts = datePart.split(/[\/-]/);
-                    if (parts.length === 3) {
-                        const d = parseInt(parts[0]);
-                        const m = parseInt(parts[1]) - 1;
-                        // Use the day number directly for the current month instead of complex rounding
-                        // This ensures "25-01" results in exactly 25 days.
-                        updateDaysYTD = (m * 30.42) + d;
-                    }
+                if (prodYear === String(currentYear) && prodMonth >= 0) {
+                    updateDaysYTD = (prodMonth * 30.42) + prodDay;
                 }
-                // If we are looking at the current year, the user's manual date (lastUpdate) 
-                // is the ultimate authority on how many days have passed.
                 const currentRealYear = new Date().getFullYear();
-                elapsedDays = (parseInt(currentYear) < currentRealYear) ? 365 : (updateDaysYTD > 0 ? updateDaysYTD : dailyDaysYTD);
+                elapsedDays = (parseInt(currentYear) < currentRealYear) ? 365 : (dailyDaysYTD > 0 ? dailyDaysYTD : (updateDaysYTD > 0 ? updateDaysYTD : 1));
                 if (elapsedDays === 0) elapsedDays = 1;
 
                 const dayCounterHTML = `<div style="font-size: 0.73rem; color: var(--primary); font-weight: 800; margin-top: 4px; background: #eef2ff; display: inline-block; padding: 2px 10px; border-radius: 20px; border: 1px solid #c7d2fe;">🗓️ Día ${Math.floor(elapsedDays)} de 365</div>`;
@@ -1167,20 +1202,10 @@
             } else {
                 let daysInM = monthDaysRecorded[midx];
                 let updateDaysInM = 0;
-                if (data.lastUpdate) {
-                    let datePart = data.lastUpdate.split(' ')[0];
-                    if (data.lastUpdate.includes(" al ")) {
-                        const partsAl = data.lastUpdate.split(" al ");
-                        if (partsAl.length >= 2) datePart = partsAl[1].split(' ')[0];
-                    }
-                    const parts = datePart.split(/[\/-]/);
-                    if (parts.length === 3) {
-                        const m = parseInt(parts[1]) - 1;
-                        if (m === midx) updateDaysInM = parseInt(parts[0]);
-                    }
+                if (prodYear === String(currentYear) && prodMonth === midx) {
+                    updateDaysInM = prodDay;
                 }
-                // If we have a manual update date for THIS month, use it as the authority.
-                elapsedDays = updateDaysInM > 0 ? updateDaysInM : daysInM;
+                elapsedDays = daysInM > 0 ? daysInM : (updateDaysInM > 0 ? updateDaysInM : 30.42);
                 if (elapsedDays === 0) elapsedDays = 30.42;
             }
 
@@ -1256,7 +1281,7 @@
         function renderTable(grouped, midx, total, fmt) {
             const thead = document.getElementById('tableHead');
 
-            // Calculate production days per month (from Daily keys or Last Update fallback)
+            // Calculate production days per month strictly from PRODUCCIÓN REAL
             const data = db[currentHotel][currentYear] || {};
             const monthDays = new Array(12).fill(0);
             if (data.daily && Object.keys(data.daily).length > 0) {
@@ -1269,25 +1294,41 @@
                 });
             }
 
-            // Fallback: If no daily data, use lastUpdate to mark the current month's progress
-            if (data.lastUpdate) {
-                try {
+            // Obtener estrictamente la fecha de PRODUCCIÓN REAL (nunca OTB)
+            const prodDateStr = (data.updates && data.updates.prod && data.updates.prod !== "N/A") 
+                ? data.updates.prod 
+                : (data.lastProdDate || "");
+
+            let prodDay = 0, prodMonth = -1, prodYear = "";
+            if (prodDateStr) {
+                let datePart = prodDateStr.split(' ')[0];
+                if (prodDateStr.includes(" al ")) {
+                    const partsAl = prodDateStr.split(" al ");
+                    if (partsAl.length >= 2) datePart = partsAl[1].split(' ')[0];
+                }
+                const parts = datePart.split(/[\/-]/);
+                if (parts.length === 3) {
+                    prodDay = parseInt(parts[0]);
+                    prodMonth = parseInt(parts[1]) - 1;
+                    prodYear = parts[2].length === 2 ? "20" + parts[2] : parts[2];
+                }
+            } else if (data.lastUpdate) {
+                const isOtbDate = data.updates && data.updates.otb && data.lastUpdate.includes(data.updates.otb.split(' ')[0]);
+                if (!isOtbDate) {
                     let datePart = data.lastUpdate.split(' ')[0];
-                    if (data.lastUpdate.includes(" al ")) {
-                        const partsAl = data.lastUpdate.split(" al ");
-                        if (partsAl.length >= 2) datePart = partsAl[1].split(' ')[0];
-                    }
                     const parts = datePart.split(/[\/-]/);
                     if (parts.length === 3) {
-                        const d = parseInt(parts[0]);
-                        const m = parseInt(parts[1]) - 1;
-                        const y = parts[2].length === 2 ? "20" + parts[2] : parts[2];
-                        if (y === String(currentYear) && m >= 0 && m < 12) {
-                            // Prioritize the manual update date if it's for this year
-                            monthDays[m] = Math.max(monthDays[m], d);
-                        }
+                        prodDay = parseInt(parts[0]);
+                        prodMonth = parseInt(parts[1]) - 1;
+                        prodYear = parts[2].length === 2 ? "20" + parts[2] : parts[2];
                     }
-                } catch (e) { }
+                }
+            }
+
+            if (prodYear === String(currentYear) && prodMonth >= 0 && prodMonth < 12) {
+                if (monthDays[prodMonth] === 0) {
+                    monthDays[prodMonth] = prodDay;
+                }
             }
 
             if (midx === -1) {
@@ -1298,8 +1339,6 @@
                 const selY = parseInt(currentYear);
 
                 const getDaysInMonth = (m, y) => new Date(y, m + 1, 0).getDate();
-
-                let totalRecordedDays = 0;
 
                 thead.innerHTML = '<tr><th>Categoría / Concepto</th>' + SHORT_MONTHS.map((m, i) => {
                     let daysToShow = 0;
@@ -1313,41 +1352,21 @@
                     } else {
                         // Current year context
                         const maxDays = getDaysInMonth(i, selY);
-                        let metaDays = 0;
-
-                        // 1. Logic-based days from lastUpdate (Authority for completion)
-                        if (data.lastUpdate) {
-                            const parts = data.lastUpdate.split(/[/-]/);
-                            if (parts.length >= 2) {
-                                const uD = parseInt(parts[0]);
-                                const uM = parseInt(parts[1]) - 1; // 0-based
-
-                                if (uM === i) {
-                                    metaDays = uD;
-                                } else if (uM > i) {
-                                    metaDays = maxDays; // Prior month -> Complete
-                                } else {
-                                    metaDays = 0; // Future month -> 0
-                                }
+                        if (i < rM) {
+                            // Meses cerrados anteriores al mes en curso
+                            daysToShow = maxDays;
+                        } else if (i === rM) {
+                            // Mes actual: ÚNICAMENTE según PRODUCCIÓN REAL cerrada
+                            let effectiveDays = monthDays[i] || 0;
+                            if (effectiveDays === 0 && prodYear === String(currentYear) && prodMonth === i) {
+                                effectiveDays = prodDay;
                             }
+                            daysToShow = Math.min(effectiveDays, maxDays);
                         } else {
-                            // No metadata? 
-                            metaDays = (i < rM) ? maxDays : 0;
+                            // Meses futuros: 0 días de producción real
+                            daysToShow = 0;
                         }
-
-                        // 2. Override/Supplement with actual daily records count
-                        // (In case daily records go further than lastUpdate string)
-                        effectiveDays = Math.max(metaDays, monthDays[i] || 0);
-
-                        // Override for Future Months (sanity check)
-                        if (i > rM && selY === rY) effectiveDays = 0;
-
-                        daysToShow = Math.min(effectiveDays, maxDays);
                     }
-
-                    // We only sum 'Recorded' days for internal logic if needed, 
-                    // but for the Total Header the user expects the full Projection Scope (365)
-                    // since the revenue column includes OTB (Future).
 
                     const daysTag = daysToShow > 0 ? `<span style="font-size:0.65rem; color:var(--success); font-weight:800; margin-right:4px;">${daysToShow}</span>` : '';
                     return `<th style="text-align:center;">${daysTag}${m}</th>`;

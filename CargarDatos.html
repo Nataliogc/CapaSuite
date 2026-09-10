@@ -751,7 +751,7 @@
                 const msg = document.getElementById('linkDetectionMsg');
                 if (!val) { msg.innerText = "Detecta el modelo automáticamente"; msg.style.color = 'var(--text-muted)'; return; }
 
-                const typeMap = { 'Prod': 'Producción', 'Hist': 'Histórico', 'Seg': 'Segmentos', 'Otb': 'Previsiones' };
+                const typeMap = { 'Prod': 'Producción', 'Hist': 'Histórico', 'Seg': 'Segmentos', 'Otb': 'Previsiones', 'Eventos': 'Calendario Estratégico' };
                 const detected = detectFileType(val);
 
                 if (detected) {
@@ -1358,6 +1358,8 @@
             if (n.includes("SEGMENTO") || n.includes("CANAL") || n.includes("MERCADO")) return 'Seg';
             // Histórico (Production/Segments from past years)
             if (n.includes("HISTORICO") || n.includes("YEARLY") || n.includes("ANUAL")) return 'Hist';
+            // Calendario Estratégico / Eventos / Fiestas
+            if (n.includes("CALENDARIO") || n.includes("EVENTO") || n.includes("FIESTA") || n.includes("PUENTE") || n.includes("AGENDA")) return 'Eventos';
             // Producción Diaria / Pickup
             if (n.includes("PRODUCCION") || n.includes("DIARIA") || n.includes("PICKUP") || n.includes("DIARIO")) return 'Prod';
             return null;
@@ -1403,7 +1405,7 @@
             let finalType = type || detected;
 
             if (type && detected && type !== detected) {
-                const typeMap = { 'Prod': 'Producción', 'Hist': 'Histórico', 'Seg': 'Segmentos', 'Otb': 'Previsiones' };
+                const typeMap = { 'Prod': 'Producción', 'Hist': 'Histórico', 'Seg': 'Segmentos', 'Otb': 'Previsiones', 'Eventos': 'Calendario Estratégico' };
                 if (!confirm(`⚠️ Pareces estar subiendo un archivo tipo "${typeMap[detected]}" en la sección de "${typeMap[type]}". \n\n¿Quieres usar la categoría correcta (${typeMap[detected]}) automáticamente?`)) {
                     finalType = type;
                 } else {
@@ -1429,9 +1431,10 @@
             else if (nName.includes('CUMBRIA')) detectedHotel = 'Cumbria';
 
             // --- UI FEEDBACK ---
-            const typeNames = { 'Prod': '📈 Producción', 'Hist': '📜 Histórico', 'Seg': '👥 Segmentos', 'Otb': '📅 Previsiones' };
             document.getElementById('detectFileName').innerText = file.name;
-            document.getElementById('detectTypeBadge').innerText = "MODELO: " + (typeNames[finalType] || 'Desconocido');
+            const typeSel = document.getElementById('modalTypeSelector');
+            if (typeSel) typeSel.value = finalType;
+            updateModalTypeHelp(finalType);
             
             const hotelBadge = document.getElementById('detectHotelBadge');
             if (detectedHotel) {
@@ -1462,13 +1465,249 @@
             document.getElementById('hotelConfirmModal').style.display = 'flex';
         }
 
+        function updateModalTypeHelp(type) {
+            const lbl = document.getElementById('manualPeriodLabel');
+            const help = document.getElementById('manualPeriodHelp');
+            if (!lbl || !help) return;
+            if (type === 'Otb') {
+                lbl.innerHTML = '🔮 Fecha de Inicio de Previsión (desde cuándo aplica):';
+                lbl.style.color = '#8b5cf6';
+                help.innerHTML = 'Indica la fecha inicial de la previsión (ej: 10-09-2026). Los datos se cargarán como Previsión/OTB sin alterar los días de producción real cerrada.';
+            } else if (type === 'Prod') {
+                lbl.innerHTML = '📈 Fecha de Cierre de Producción Real (hasta cuándo cierra):';
+                lbl.style.color = 'var(--primary)';
+                help.innerHTML = 'Indica la fecha hasta la que cierra la producción real (ej: 09-09-2026).';
+            } else if (type === 'Seg') {
+                lbl.innerHTML = '👥 Fecha de Segmentos (hasta cuándo aplica):';
+                lbl.style.color = 'var(--secondary)';
+                help.innerHTML = 'Indica la fecha de corte de los datos de segmentos.';
+            } else if (type === 'Eventos') {
+                lbl.innerHTML = '📅 Calendario de Eventos / Estratégico:';
+                lbl.style.color = '#f59e0b';
+                help.innerHTML = 'Importa la agenda de eventos, ferias, hitos y festivos a la base de datos de CapaSuite. No altera datos de producción ni ocupación.';
+            } else {
+                lbl.innerHTML = '📜 Año / Periodo Histórico:';
+                lbl.style.color = '#6366f1';
+                help.innerHTML = 'Indica el año o periodo correspondiente.';
+            }
+        }
+
+        function onModalTypeChange(type) {
+            pendingType = type;
+            updateModalTypeHelp(type);
+        }
+
         function confirmHotelUpload(selectedHotel) {
+            const typeSel = document.getElementById('modalTypeSelector');
+            if (typeSel) pendingType = typeSel.value;
             const manualDate = document.getElementById('manualPeriodInput').value;
             document.getElementById('hotelConfirmModal').style.display = 'none';
             // Sync the main selector
             document.getElementById('hotelSelector').value = selectedHotel;
             updateHistory();
             processFileFinal(pendingFile, pendingType, selectedHotel, manualDate);
+        }
+
+        function parseExcelDate(val) {
+            if (val === null || val === undefined || val === '') return null;
+            if (val instanceof Date) return formatDateTimezoneAgnostic(val);
+            if (typeof val === 'number') {
+                if (val > 30000 && val < 60000) {
+                    return formatDateTimezoneAgnostic(new Date((val - 25569) * 86400 * 1000));
+                }
+                return null;
+            }
+            const str = String(val).trim();
+            const mIso = str.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+            if (mIso) return `${mIso[1]}-${mIso[2].padStart(2, '0')}-${mIso[3].padStart(2, '0')}`;
+            const mEs = str.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{2,4})/);
+            if (mEs) {
+                let y = mEs[3];
+                if (y.length === 2) y = '20' + y;
+                return `${y}-${mEs[2].padStart(2, '0')}-${mEs[1].padStart(2, '0')}`;
+            }
+            return null;
+        }
+
+        function parseEventsFromWorkbook(workbook) {
+            const extracted = [];
+            const sheetNames = [...workbook.SheetNames].sort((a, b) => {
+                const score = (s) => {
+                    const low = s.toLowerCase();
+                    if (low.startsWith('eventos')) return 10;
+                    if (low.includes('fiesta') || low.includes('puente')) return 8;
+                    if (low.includes('agenda') || low.includes('calendario')) return 5;
+                    if (low.includes('hoja1')) return 3;
+                    if (low.includes('resumen')) return -5;
+                    return 0;
+                };
+                return score(b) - score(a);
+            });
+
+            sheetNames.forEach(sName => {
+                const sheet = workbook.Sheets[sName];
+                if (!sheet) return;
+                const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                if (!rows || rows.length < 2) return;
+
+                let startCol = -1, endCol = -1, descCol = -1, prioCol = -1, catCol = -1, impCol = -1, recCol = -1, zonaCol = -1, notesCol = -1;
+                let headerRowIdx = -1;
+
+                for (let r = 0; r < Math.min(15, rows.length); r++) {
+                    const row = rows[r];
+                    if (!Array.isArray(row)) continue;
+
+                    let sC = -1, eC = -1, dC = -1, pC = -1, cC = -1, iC = -1, rC = -1, zC = -1, nC = -1;
+
+                    row.forEach((cell, c) => {
+                        const h = String(cell || '').toLowerCase().trim();
+                        if (h === 'inicio' || h === 'desde' || h === 'start' || h === 'fecha inicio' || h === 'fecha' || h === 'date') {
+                            if (sC === -1) sC = c;
+                        } else if (h === 'fin' || h === 'hasta' || h === 'end' || h === 'fecha fin') {
+                            if (eC === -1) eC = c;
+                        } else if (h === 'evento' || h === 'descripción' || h === 'descripcion' || h === 'nombre' || h === 'ventana / fiesta' || h === 'hito' || h === 'eventos clave' || h === 'evento(s)') {
+                            if (dC === -1) dC = c;
+                        } else if (h === 'prioridad' || h === 'nivel') {
+                            pC = c;
+                        } else if (h === 'categoría' || h === 'categoria' || h === 'tipo') {
+                            cC = c;
+                        } else if (h.includes('impacto')) {
+                            iC = c;
+                        } else if (h.includes('recomendaci') || h.includes('acción') || h.includes('accion')) {
+                            rC = c;
+                        } else if (h === 'zona') {
+                            zC = c;
+                        } else if (h.includes('motivo') || h.includes('riesgo') || h.includes('lectura') || h.includes('observac') || h.includes('notas')) {
+                            nC = c;
+                        }
+                    });
+
+                    if (sC !== -1 && dC !== -1) {
+                        startCol = sC; endCol = eC; descCol = dC; prioCol = pC; catCol = cC; impCol = iC; recCol = rC; zonaCol = zC; notesCol = nC;
+                        headerRowIdx = r;
+                        break;
+                    }
+                }
+
+                if (startCol === -1 || descCol === -1) {
+                    for (let testR = 0; testR < Math.min(5, rows.length); testR++) {
+                        const r = rows[testR];
+                        if (r && parseExcelDate(r[0])) {
+                            startCol = 0;
+                            if (parseExcelDate(r[1])) { endCol = 1; descCol = 2; }
+                            else { descCol = 1; }
+                            headerRowIdx = testR - 1;
+                            break;
+                        }
+                    }
+                }
+
+                if (startCol !== -1 && descCol !== -1) {
+                    for (let r = Math.max(0, headerRowIdx + 1); r < rows.length; r++) {
+                        const row = rows[r];
+                        if (!row) continue;
+                        const sDate = parseExcelDate(row[startCol]);
+                        if (!sDate) continue;
+                        const eDate = (endCol !== -1 && row[endCol]) ? (parseExcelDate(row[endCol]) || sDate) : sDate;
+                        const desc = String(row[descCol] || '').trim();
+                        if (!desc || desc === 'null' || desc === 'undefined' || desc === '-' || desc === '0') continue;
+
+                        if (desc.includes('|')) {
+                            const parts = desc.split('|').map(p => p.trim().toLowerCase());
+                            const allCovered = parts.every(p => extracted.some(ex => ex.desc.toLowerCase().includes(p) && ex.start <= sDate && ex.end >= eDate));
+                            if (allCovered) continue;
+                        }
+
+                        const prio = prioCol !== -1 ? String(row[prioCol] || '').trim() : '';
+                        const cat = catCol !== -1 ? String(row[catCol] || '').trim() : '';
+                        const impact = impCol !== -1 ? String(row[impCol] || '').trim() : '';
+                        const rec = recCol !== -1 ? String(row[recCol] || '').trim() : '';
+                        const zona = zonaCol !== -1 ? String(row[zonaCol] || '').trim() : '';
+                        const notes = notesCol !== -1 ? String(row[notesCol] || '').trim() : '';
+
+                        const existing = extracted.find(ex => ex.desc.toLowerCase() === desc.toLowerCase());
+                        if (existing) {
+                            if (existing.start <= sDate && existing.end >= eDate) {
+                                if (!existing.prio && prio) existing.prio = prio;
+                                if (!existing.rec && rec) existing.rec = rec;
+                                if (!existing.impact && impact) existing.impact = impact;
+                                continue;
+                            }
+                            if (sDate <= existing.start && eDate >= existing.end) {
+                                existing.start = sDate;
+                                existing.end = eDate;
+                                if (!existing.prio && prio) existing.prio = prio;
+                                if (!existing.rec && rec) existing.rec = rec;
+                                if (!existing.impact && impact) existing.impact = impact;
+                                continue;
+                            }
+                        }
+
+                        extracted.push({
+                            start: sDate,
+                            end: eDate,
+                            desc: desc,
+                            prio: prio,
+                            cat: cat,
+                            impact: impact,
+                            rec: rec,
+                            zona: zona,
+                            notes: notes,
+                            sheet: sName
+                        });
+                    }
+                }
+            });
+
+            return extracted;
+        }
+
+        function processEventsWorkbook(workbook, fileName, hotel) {
+            const extracted = parseEventsFromWorkbook(workbook);
+            if (extracted.length === 0) {
+                throw new Error("No se detectaron eventos con fecha y descripción en las hojas del archivo.");
+            }
+
+            let customEvents = [];
+            const savedEvents = CapaStorage.getItem('custom_events');
+            if (savedEvents) {
+                try {
+                    customEvents = (typeof savedEvents === 'string') ? JSON.parse(savedEvents) : savedEvents;
+                } catch(e) { customEvents = []; }
+            }
+
+            let added = 0;
+            const yearsAffected = new Set();
+
+            extracted.forEach(newEv => {
+                if (newEv.start) yearsAffected.add(newEv.start.split('-')[0]);
+                const exists = customEvents.some(ex => 
+                    ex.desc.toLowerCase() === newEv.desc.toLowerCase() && 
+                    ex.start === newEv.start && 
+                    ex.end === newEv.end
+                );
+                if (!exists) {
+                    customEvents.push(newEv);
+                    added++;
+                }
+            });
+
+            CapaStorage.setItem('custom_events', JSON.stringify(customEvents));
+
+            if (!config[hotel]) config[hotel] = {};
+            if (!config[hotel].logs) config[hotel].logs = [];
+            config[hotel].logs.unshift({
+                timestamp: new Date().toLocaleString('es-ES'),
+                type: "Eventos",
+                period: Array.from(yearsAffected).sort().join(', ') || "2027",
+                filename: fileName
+            });
+            saveData();
+            updateHistory();
+
+            document.getElementById('loader').style.display = 'none';
+            showToast(`✅ ${added} eventos estratégicos importados con éxito (${Array.from(yearsAffected).join(', ')}).`, 'success');
+            if (window.forceCloudUpload) window.forceCloudUpload();
         }
 
         async function processFileFinal(file, type, hotel, manualDate) {
@@ -1479,6 +1718,12 @@
                 try {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
+
+                    if (type === 'Eventos') {
+                        processEventsWorkbook(workbook, file.name, hotel);
+                        return;
+                    }
+
                     const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
                     const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
 
@@ -1568,11 +1813,27 @@
                 
                 const now = new Date();
                 const timeStr = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-                db[hotel][yStr].lastUpdate = lastDateLabel + " " + timeStr;
+
                 if (!db[hotel][yStr].updates) db[hotel][yStr].updates = { prod: "N/A", seg: "N/A", otb: "N/A" };
-                if (type === 'Prod') db[hotel][yStr].updates.prod = period;
-                else if (type === 'Seg') db[hotel][yStr].updates.seg = period;
-                else if (type === 'Otb') db[hotel][yStr].updates.otb = period;
+
+                if (type === 'Prod') {
+                    db[hotel][yStr].updates.prod = lastDateLabel;
+                    db[hotel][yStr].lastProdDate = lastDateLabel;
+                    db[hotel][yStr].lastUpdate = lastDateLabel + " " + timeStr;
+                } else if (type === 'Seg') {
+                    db[hotel][yStr].updates.seg = lastDateLabel;
+                    db[hotel][yStr].lastSegDate = lastDateLabel;
+                    if (!db[hotel][yStr].lastUpdate) db[hotel][yStr].lastUpdate = lastDateLabel + " " + timeStr;
+                } else if (type === 'Otb') {
+                    db[hotel][yStr].updates.otb = lastDateLabel;
+                    db[hotel][yStr].lastOtbDate = lastDateLabel;
+                    // NUNCA sobreescribir lastUpdate con Otb si ya existe fecha de producción
+                    if (!db[hotel][yStr].lastUpdate) {
+                        db[hotel][yStr].lastUpdate = lastDateLabel + " " + timeStr;
+                    }
+                } else if (type === 'Hist') {
+                    if (!db[hotel][yStr].lastUpdate) db[hotel][yStr].lastUpdate = lastDateLabel + " " + timeStr;
+                }
             });
 
             config[hotel].logs.push({
@@ -2081,8 +2342,13 @@
                         }
                     }
                 }
-                // Save with time
-                dbYear.lastUpdate = new Date().toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                // Save with time for Seg
+                if (!dbYear.updates) dbYear.updates = { prod: "N/A", seg: "N/A", otb: "N/A" };
+                dbYear.updates.seg = finalPeriod || new Date().toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                dbYear.lastSegDate = finalPeriod;
+                if (!dbYear.lastUpdate) {
+                    dbYear.lastUpdate = new Date().toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                }
             } else if (type === 'Otb' || type === 'Prevision') {
                 // Parser for "Listado Previsiones Valoradas"
                 // 1. Detect Year and Dates from headers
@@ -2443,9 +2709,11 @@
                         const targetY = db[hotel][y];
                         if (type === 'Otb' || type === 'Prevision') {
                             if (!targetY.updates) targetY.updates = { prod: "N/A", seg: "N/A", otb: "N/A" };
-                            targetY.updates.otb = new Date().toLocaleDateString('es-ES') + " " + new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-                            // Save with time
-                            targetY.lastUpdate = new Date().toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                            targetY.updates.otb = finalPeriod || (new Date().toLocaleDateString('es-ES') + " " + new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }));
+                            targetY.lastOtbDate = finalPeriod;
+                            if (!targetY.lastUpdate) {
+                                targetY.lastUpdate = (finalPeriod || new Date().toLocaleDateString('es-ES')) + " " + new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                            }
                         }
                     }
                 });
@@ -2852,13 +3120,23 @@
                 <div id="detectFileName"
                     style="font-weight: 800; color: #0369a1; margin-bottom: 10px; word-break: break-all; font-size: 0.75rem; opacity: 0.8; font-family: monospace;">
                     Archivo: -</div>
-                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                    <span id="detectTypeBadge"
-                        style="background: #e0f2fe; color: #0284c7; padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 0.65rem; text-transform: uppercase; border: 1px solid #7dd3fc;">MODELO:
-                        -</span>
-                    <span id="detectHotelBadge"
-                        style="background: #ecfdf5; color: #059669; padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 0.65rem; text-transform: uppercase; border: 1px solid #6ee7b7; display: none;">HOTEL:
-                        -</span>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <div>
+                        <label style="font-size: 0.7rem; font-weight: 800; color: #0369a1; text-transform: uppercase; display: block; margin-bottom: 4px;">Tipo de Informe (Verifica o cámbialo aquí):</label>
+                        <select id="modalTypeSelector" onchange="onModalTypeChange(this.value)"
+                            style="width: 100%; padding: 8px 10px; border-radius: 8px; border: 1.5px solid #7dd3fc; font-weight: 700; color: #0284c7; background: white; font-family: 'Outfit', sans-serif; font-size: 0.85rem; cursor: pointer;">
+                            <option value="Prod">📈 Producción Real (Cierre diario/mensual)</option>
+                            <option value="Otb">🔮 Previsión / OTB (Listado de valoradas futuras)</option>
+                            <option value="Seg">👥 Segmentos de Mercado</option>
+                            <option value="Hist">📜 Histórico de Años Anteriores</option>
+                            <option value="Eventos">📅 Calendario Estratégico / Eventos</option>
+                        </select>
+                    </div>
+                    <div>
+                        <span id="detectHotelBadge"
+                            style="background: #ecfdf5; color: #059669; padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 0.65rem; text-transform: uppercase; border: 1px solid #6ee7b7; display: none;">HOTEL:
+                            -</span>
+                    </div>
                 </div>
             </div>
 
@@ -2867,14 +3145,14 @@
 
             <div
                 style="margin-top: 10px; padding: 12px; background: #f8fafc; border-radius: 12px; border: 1.5px solid #e2e8f0; text-align: left; margin-bottom: 25px;">
-                <label
+                <label id="manualPeriodLabel"
                     style="font-size: 0.7rem; font-weight: 800; color: var(--primary); display: block; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">📅
                     Periodo Detectado (Puedes corregirlo):</label>
                 <div style="display: flex; gap: 8px; align-items: center;">
                     <input type="text" id="manualPeriodInput" placeholder="DD-MM-YYYY"
                         style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.95rem; font-family: 'Outfit', sans-serif; font-weight: 600; color: var(--text-main);">
                 </div>
-                <small style="color: var(--text-muted); font-size: 0.65rem; margin-top: 4px; display: block;">Si el
+                <small id="manualPeriodHelp" style="color: var(--text-muted); font-size: 0.65rem; margin-top: 4px; display: block;">Si el
                     archivo es un rango, pon la fecha final o deseada.</small>
             </div>
 

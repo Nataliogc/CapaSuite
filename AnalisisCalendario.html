@@ -669,7 +669,7 @@
         </div>
         <div class="nav-user">
             <div class="user-chip">
-                <select id="hotelSelector" class="nav-hotel-select" onchange="renderCalendar()">
+                <select id="hotelSelector" class="nav-hotel-select" onchange="onFilterChange()">
                     <option value="Guadiana">Hotel Guadiana</option>
                     <option value="Cumbria">Hotel Cumbria</option>
                 </select>
@@ -706,7 +706,7 @@
             
             <div style="width:1px; height:24px; background:var(--border); margin:0 10px;"></div>
             
-            <select id="yearSelector" onchange="renderCalendar()">
+            <select id="yearSelector" onchange="onFilterChange()">
                 <!-- Rellenado dinámicamente -->
                 <option value="2025">2025</option>
                 <option value="2026" selected>2026</option>
@@ -727,7 +727,7 @@
     <main id="calendarGrid" class="calendar-container"></main>
 
     <section class="event-sidebar" style="max-width: 1700px; margin: 0 auto 60px; padding: 0 40px;">
-        <h3 style="margin-top:0; font-family: 'Outfit', sans-serif; font-weight: 800; letter-spacing: -0.5px;">Eventos del Periodo</h3>
+        <h3 id="eventListTitle" style="margin-top:0; font-family: 'Outfit', sans-serif; font-weight: 800; letter-spacing: -0.5px;">Eventos del Periodo</h3>
         <div id="eventList" style="display:flex; flex-wrap:wrap; gap:12px;"></div>
     </section>
 
@@ -810,17 +810,31 @@
             const rawProd = CapaStorage.getItem('hotel_manager_db_v2');
             if (rawProd) {
                 db = JSON.parse(rawProd);
-                enrichRevenueData();
             }
 
             // 3. Events
             const localEvents = CapaStorage.getItem('custom_events');
-            if (localEvents) rawEvents = JSON.parse(localEvents);
+            if (localEvents) {
+                try {
+                    rawEvents = (typeof localEvents === 'string') ? JSON.parse(localEvents) : localEvents;
+                } catch (e) {
+                    console.warn("Error parsing custom_events", e);
+                    rawEvents = [];
+                }
+            }
 
-            populateYearSelector(); // Detect and inject the available years from DataBase
+            populateYearSelector(); // Detect and inject the available years from Database & Events
+            enrichRevenueData();    // Multi-year enrichment for all detected years
             renderCalendar();
             renderEventList();
             renderInsights();
+        }
+
+        function onFilterChange() {
+            enrichRevenueData();
+            renderCalendar();
+            renderInsights();
+            renderEventList();
         }
 
         function populateYearSelector() {
@@ -834,6 +848,22 @@
                         if (k.length === 4 && !isNaN(k)) yearsSet.add(k);
                     });
                 }
+            });
+
+            // Detect from Events
+            if (Array.isArray(rawEvents)) {
+                rawEvents.forEach(e => {
+                    if (e.start) {
+                        const y = e.start.split('-')[0];
+                        if (y && y.length === 4 && !isNaN(y)) yearsSet.add(y);
+                    }
+                });
+            }
+
+            // Detect from Competitor / Revenue Data
+            Object.keys(revenueData).forEach(iso => {
+                const y = iso.split('-')[0];
+                if (y && y.length === 4 && !isNaN(y)) yearsSet.add(y);
             });
             
             const currentSelected = selector.value || new Date().getFullYear().toString();
@@ -868,7 +898,7 @@
             const pickupCard = document.createElement('div');
             pickupCard.className = 'insight-card-premium';
             pickupCard.innerHTML = `
-                <div class="insight-label">PICK-UP TOTAL</div>
+                <div class="insight-label">PICK-UP TOTAL (${yearStr})</div>
                 <div class="insight-value ${totalPickup >= 0 ? 'pos' : 'neg'}">
                     ${totalPickup > 0 ? '+' : ''}${new Intl.NumberFormat('es-ES').format(Math.round(totalPickup))}€
                 </div>
@@ -901,7 +931,7 @@
             const freshCard = document.createElement('div');
             freshCard.className = 'insight-card-premium';
             freshCard.innerHTML = `
-                <div class="insight-label">ESTADO DE DATOS</div>
+                <div class="insight-label">ESTADO DE DATOS (${yearStr})</div>
                 <div class="insight-value">Actualizado</div>
                 <div class="insight-sub">Sincronización: ${updateDateStr}</div>
             `;
@@ -911,76 +941,81 @@
         }
 
         function enrichRevenueData() {
-            // We need to ensure we cover all dates of the year, not just those in revenueData
-            const yearStr = document.getElementById('yearSelector').value;
-            const year = parseInt(yearStr);
+            // Collect all years to cover: db years, selected year, fallback years
+            const yearsToEnrich = new Set(['2025', '2026', '2027']);
+            const selY = document.getElementById('yearSelector')?.value;
+            if (selY) yearsToEnrich.add(selY);
 
-            // Create placeholders for all 365 days if they don't exist
-            for (let m = 0; m < 12; m++) {
-                const daysInM = new Date(year, m + 1, 0).getDate();
-                for (let d = 1; d <= daysInM; d++) {
-                    const iso = `${year}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                    if (!revenueData[iso]) revenueData[iso] = { dateISO: iso, hotels: {}, occupancyData: {} };
-                    if (!revenueData[iso].occupancyData) revenueData[iso].occupancyData = {};
-
-                    ['Guadiana', 'Cumbria'].forEach(hName => {
-                        const hKey = Object.keys(db).find(k => k.toLowerCase().includes(hName.toLowerCase()));
-                        if (hKey && db[hKey][yearStr]) {
-                            const yearData = db[hKey][yearStr];
-                            let adr = 0, otb = 0, occ = 0, otb_prev = null;
-                            if (yearData.daily_otb && yearData.daily_otb[iso]) {
-                                const v = yearData.daily_otb[iso];
-                                otb = Math.round((typeof v === 'object') ? (v.rooms || 0) : v);
-                                if (typeof v === 'object' && v.rooms > 0) {
-                                    adr = (v.revenue || 0) / v.rooms;
-                                }
-                            }
-                            if (yearData.daily && yearData.daily[iso]) {
-                                occ = Math.round(yearData.daily[iso].rooms || yearData.daily[iso]);
-                            }
-                            // SNAPSHOT FOR PICK-UP
-                            if (yearData.otb_prev && yearData.otb_prev.daily_otb && yearData.otb_prev.daily_otb[iso]) {
-                                const vPrev = yearData.otb_prev.daily_otb[iso];
-                                otb_prev = Math.round((typeof vPrev === 'object') ? (vPrev.rooms || 0) : vPrev);
-                            }
-
-                            // PRIORITIZE: If we already have data in revenueData (from Expedia upload), we merge it.
-                            // The Expedia upload puts otbRooms/otbADR at the root of revenueData[iso]
-                            const root = revenueData[iso];
-                            const nested = root.occupancyData[hName] || {};
-                            
-                            // If this hotel is the one from the Expedia upload, use those values as fallback
-                            let fallbackOtb = 0;
-                            let fallbackAdr = 0;
-                            
-                            // Check if the root data belongs to this hotel (simple check via activeHotel or similar)
-                            // In this suite, usually we only have OTB for the active hotel in revenue_data_v2
-                            if (root.otbRooms > 0) {
-                                // Dynamic check: if we are processing the active hotel, use root rooms
-                                const isActive = hKey && hKey.toLowerCase().includes(root.activeHotel?.toLowerCase() || "");
-                                if (isActive) {
-                                    fallbackOtb = root.otbRooms;
-                                    fallbackAdr = root.otbADR || 0;
-                                }
-                            }
-
-                            const finalOtb = (otb >= 0) ? otb : (nested.otb || fallbackOtb);
-                            // CHANGE: Prioritize OTB for the "Hab." display if we are looking at forecast/current data
-                            // If it's a past date with real production, we still want to see that, 
-                            // but for operational planning, OTB from the latest file is usually the most relevant "real" data.
-                            const finalOcc = (otb > 0) ? otb : ((occ > 0) ? occ : (nested.occ || finalOtb));
-                            const finalAdr = (adr > 0) ? adr : (nested.adr || fallbackAdr);
-
-                            revenueData[iso].occupancyData[hName] = { 
-                                otb: Math.round(finalOtb), 
-                                occ: Math.round(finalOcc), 
-                                otb_prev: otb_prev !== null ? Math.round(otb_prev) : (nested.otb_prev !== undefined ? Math.round(nested.otb_prev) : null), 
-                                adr: finalAdr 
-                            };
-                        }
+            Object.values(db).forEach(hotelData => {
+                if (hotelData && typeof hotelData === 'object') {
+                    Object.keys(hotelData).forEach(k => {
+                        if (k.length === 4 && !isNaN(k)) yearsToEnrich.add(k);
                     });
                 }
-            }
+            });
+
+            yearsToEnrich.forEach(yearStr => {
+                const year = parseInt(yearStr);
+                if (isNaN(year)) return;
+
+                // Create placeholders for all 365/366 days if they don't exist
+                for (let m = 0; m < 12; m++) {
+                    const daysInM = new Date(year, m + 1, 0).getDate();
+                    for (let d = 1; d <= daysInM; d++) {
+                        const iso = `${year}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                        if (!revenueData[iso]) revenueData[iso] = { dateISO: iso, hotels: {}, occupancyData: {} };
+                        if (!revenueData[iso].occupancyData) revenueData[iso].occupancyData = {};
+
+                        ['Guadiana', 'Cumbria'].forEach(hName => {
+                            const hKey = Object.keys(db).find(k => k.toLowerCase().includes(hName.toLowerCase()));
+                            if (hKey && db[hKey][yearStr]) {
+                                const yearData = db[hKey][yearStr];
+                                let adr = 0, otb = 0, occ = 0, otb_prev = null;
+                                if (yearData.daily_otb && yearData.daily_otb[iso]) {
+                                    const v = yearData.daily_otb[iso];
+                                    otb = Math.round((typeof v === 'object') ? (v.rooms || 0) : v);
+                                    if (typeof v === 'object' && v.rooms > 0) {
+                                        adr = (v.revenue || 0) / v.rooms;
+                                    }
+                                }
+                                if (yearData.daily && yearData.daily[iso]) {
+                                    occ = Math.round(yearData.daily[iso].rooms || yearData.daily[iso]);
+                                }
+                                // SNAPSHOT FOR PICK-UP
+                                if (yearData.otb_prev && yearData.otb_prev.daily_otb && yearData.otb_prev.daily_otb[iso]) {
+                                    const vPrev = yearData.otb_prev.daily_otb[iso];
+                                    otb_prev = Math.round((typeof vPrev === 'object') ? (vPrev.rooms || 0) : vPrev);
+                                }
+
+                                const root = revenueData[iso];
+                                const nested = root.occupancyData[hName] || {};
+                                
+                                let fallbackOtb = 0;
+                                let fallbackAdr = 0;
+                                
+                                if (root.otbRooms > 0) {
+                                    const isActive = hKey && hKey.toLowerCase().includes(root.activeHotel?.toLowerCase() || "");
+                                    if (isActive) {
+                                        fallbackOtb = root.otbRooms;
+                                        fallbackAdr = root.otbADR || 0;
+                                    }
+                                }
+
+                                const finalOtb = (otb >= 0) ? otb : (nested.otb || fallbackOtb);
+                                const finalOcc = (otb > 0) ? otb : ((occ > 0) ? occ : (nested.occ || finalOtb));
+                                const finalAdr = (adr > 0) ? adr : (nested.adr || fallbackAdr);
+
+                                revenueData[iso].occupancyData[hName] = { 
+                                    otb: Math.round(finalOtb), 
+                                    occ: Math.round(finalOcc), 
+                                    otb_prev: otb_prev !== null ? Math.round(otb_prev) : (nested.otb_prev !== undefined ? Math.round(nested.otb_prev) : null), 
+                                    adr: finalAdr 
+                                };
+                            }
+                        });
+                    }
+                }
+            });
         }
 
         function renderCalendar() {
@@ -1073,8 +1108,8 @@
                         else cell.classList.add('heat-1');
                     }
 
-                    const ev = rawEvents.find(e => iso >= e.start && iso <= e.end);
-                    if (ev) cell.classList.add('has-event');
+                    const dayEvents = rawEvents.filter(e => iso >= e.start && iso <= e.end);
+                    if (dayEvents.length > 0) cell.classList.add('has-event');
 
                     const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
                     const monthsNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
@@ -1107,6 +1142,29 @@
                         `;
                     }
 
+                    // Event Pill on Calendar Cell
+                    let eventPillHtml = '';
+                    if (dayEvents.length > 0) {
+                        const mainEv = dayEvents[0];
+                        let evColor = '#f59e0b';
+                        let evBg = 'rgba(245,158,11,0.15)';
+                        let evBorder = 'rgba(245,158,11,0.4)';
+                        const pLow = (mainEv.prio || '').toLowerCase();
+                        if (pLow.includes('muy alta')) {
+                            evColor = '#ef4444'; evBg = 'rgba(239,68,68,0.18)'; evBorder = 'rgba(239,68,68,0.5)';
+                        } else if (pLow.includes('alta')) {
+                            evColor = '#f59e0b'; evBg = 'rgba(245,158,11,0.18)'; evBorder = 'rgba(245,158,11,0.5)';
+                        } else if (pLow.includes('media')) {
+                            evColor = '#3b82f6'; evBg = 'rgba(59,130,246,0.15)'; evBorder = 'rgba(59,130,246,0.4)';
+                        }
+                        const shortDesc = mainEv.desc.length > 15 ? mainEv.desc.substring(0, 14) + '…' : mainEv.desc;
+                        eventPillHtml = `
+                            <div style="font-size:0.6rem; font-weight:800; color:${evColor}; background:${evBg}; border:1px solid ${evBorder}; border-radius:4px; padding:1px 4px; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;" title="${mainEv.desc}${dayEvents.length > 1 ? ` (+${dayEvents.length - 1} más)` : ''}">
+                                ⭐ ${shortDesc}${dayEvents.length > 1 ? ` <span style="opacity:0.8;">+${dayEvents.length - 1}</span>` : ''}
+                            </div>
+                        `;
+                    }
+
                     const priceText = heatmapVal > 0 ? (metric === 'price' ? `${Math.round(heatmapVal)}€` : `${Math.round(occPct)}%`) : "";
                     
                     cell.innerHTML = `
@@ -1116,9 +1174,10 @@
                         </div>
                         <div class="day-price">${priceText}</div>
                         ${badgeHtml}
+                        ${eventPillHtml}
                     `;
 
-                    cell.onmouseenter = (e) => showTooltip(e, iso, hData, dData, ev);
+                    cell.onmouseenter = (e) => showTooltip(e, iso, hData, dData, dayEvents);
                     cell.onmouseleave = hideTooltip;
 
                     grid.appendChild(cell);
@@ -1128,7 +1187,7 @@
             }
         }
 
-        function showTooltip(e, iso, hData, dData, ev) {
+        function showTooltip(e, iso, hData, dData, dayEvents) {
             const currentHotel = document.getElementById('hotelSelector').value;
             const cap = (currentHotel === 'Cumbria' ? 59 : 108);
             const t = document.getElementById('tooltip');
@@ -1186,8 +1245,25 @@
                 html += `<div style="padding:10px; text-align:center; color:#94a3b8;">Sin datos de mercado</div>`;
             }
 
-            if (ev) {
-                html += `<div style="margin-top:10px; padding:8px; background:#f0f7ff; color:#312e81; border-radius:8px; font-size:0.7rem; border:1px solid #e0e7ff;"><b>📅 Evento:</b> ${ev.desc}</div>`;
+            if (dayEvents && dayEvents.length > 0) {
+                html += `<div style="margin-top:10px; padding:10px; background:rgba(99,102,241,0.08); color:var(--text-main); border-radius:10px; font-size:0.75rem; border:1px solid rgba(99,102,241,0.25);">`;
+                html += `<div style="font-weight:800; color:var(--primary); margin-bottom:6px; font-size:0.8rem;">📅 ${dayEvents.length === 1 ? 'Evento Estratégico' : `Eventos Estratégicos (${dayEvents.length})`}:</div>`;
+                dayEvents.forEach(ev => {
+                    const prioBadge = ev.prio ? `<span style="font-size:0.6rem; padding:1px 5px; border-radius:4px; font-weight:800; background:rgba(245,158,11,0.2); color:var(--accent);">${ev.prio}</span>` : '';
+                    const impText = ev.impact ? `<div style="font-size:0.68rem; color:var(--text-muted); margin-top:2px;"><b>Impacto hotelero:</b> ${ev.impact}</div>` : '';
+                    const recText = ev.rec ? `<div style="font-size:0.68rem; color:#10b981; margin-top:2px;"><b>Recomendación comercial:</b> ${ev.rec}</div>` : '';
+                    html += `
+                        <div style="margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid rgba(255,255,255,0.08);">
+                            <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
+                                <b style="color:var(--text-main);">${ev.desc}</b>
+                                ${prioBadge}
+                            </div>
+                            ${impText}
+                            ${recText}
+                        </div>
+                    `;
+                });
+                html += `</div>`;
             }
 
             html += `</div>`;
@@ -1210,18 +1286,36 @@
         function renderEventList() {
             const list = document.getElementById('eventList');
             if (!rawEvents || rawEvents.length === 0) {
-                list.innerHTML = `<div style="color:var(--text-muted); font-size:0.9rem; padding: 10px 0; font-family: 'Outfit', sans-serif;">No hay eventos registrados.</div>`;
+                list.innerHTML = `<div style="color:var(--text-muted); font-size:0.9rem; padding: 10px 0; font-family: 'Outfit', sans-serif;">No hay eventos registrados. Usa el botón "+ Eventos" para añadir o importar desde Excel.</div>`;
                 return;
             }
-            list.innerHTML = rawEvents.map((e, index) => {
+
+            const currentYear = document.getElementById('yearSelector').value;
+            const yearEvents = rawEvents.filter(e => (e.start && e.start.startsWith(currentYear)) || (e.end && e.end.startsWith(currentYear)));
+            const eventsToShow = yearEvents.length > 0 ? yearEvents : rawEvents;
+            const titleSuffix = yearEvents.length > 0 ? `(${currentYear}: ${yearEvents.length} eventos)` : `(Total: ${rawEvents.length} eventos)`;
+            
+            const titleEl = document.getElementById('eventListTitle');
+            if (titleEl) titleEl.innerText = `Eventos del Periodo ${titleSuffix}`;
+
+            list.innerHTML = eventsToShow.map(e => {
+                const index = rawEvents.indexOf(e);
                 const dateText = e.start === e.end || !e.end ? e.start : `${e.start} al ${e.end}`;
+                const prioBadge = e.prio ? `<span style="font-size:0.6rem; padding:1px 5px; border-radius:4px; font-weight:800; background:rgba(245,158,11,0.2); color:var(--accent); align-self:flex-start;">${e.prio}</span>` : '';
+                const recText = e.rec ? `<span style="font-size:0.68rem; opacity:0.85; color:#10b981; margin-top:2px;">💡 ${e.rec}</span>` : '';
+                const impText = e.impact ? `<span style="font-size:0.65rem; color:var(--text-muted);">Impacto: ${e.impact}</span>` : '';
                 return `
-                    <div style="background:rgba(255,158,11,0.1); color:var(--accent); padding:10px 20px; border-radius:15px; font-size:0.8rem; font-weight:700; border:1px solid rgba(245,158,11,0.2); display:flex; align-items:center; gap:12px; min-width:180px;">
+                    <div style="background:rgba(255,158,11,0.08); color:var(--text-main); padding:10px 16px; border-radius:14px; font-size:0.8rem; font-weight:700; border:1px solid rgba(245,158,11,0.25); display:flex; align-items:center; gap:12px; min-width:260px; max-width:440px;">
                         <div style="display:flex; flex-direction:column; gap:2px; flex-grow:1;">
-                            <span style="font-size:0.6rem; opacity:0.7; text-transform:uppercase; letter-spacing:1px;">${dateText}</span>
-                            <span>${e.desc}</span>
+                            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                                <span style="font-size:0.65rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.8px;">${dateText}</span>
+                                ${prioBadge}
+                            </div>
+                            <span style="color:var(--text-main); font-size:0.85rem;">${e.desc}</span>
+                            ${impText}
+                            ${recText}
                         </div>
-                        <span onclick="deleteEvent(${index})" style="cursor:pointer; font-size:1.2rem; opacity:0.5; transition:opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.5" title="Eliminar Evento">&times;</span>
+                        <span onclick="deleteEvent(${index})" style="cursor:pointer; font-size:1.3rem; opacity:0.4; transition:opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.4" title="Eliminar Evento">&times;</span>
                     </div>
                 `;
             }).join('');
@@ -1270,31 +1364,6 @@
             closeAddEventModal();
         }
 
-        function handleExcel(input) {
-            const file = input.files[0];
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
-                
-                let added = 0;
-                for (let i = 1; i < json.length; i++) {
-                    const row = json[i];
-                    if (row[0] && row[2]) {
-                        rawEvents.push({ start: formatDate(row[0]), end: formatDate(row[1] || row[0]), desc: row[2] });
-                        added++;
-                    }
-                }
-                if (added > 0) {
-                    CapaStorage.setItem('custom_events', JSON.stringify(rawEvents));
-                    loadAllData();
-                    alert(`Importados ${added} eventos.`);
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
         function formatDateTimezoneAgnostic(d) {
             const localHour = d.getHours();
             const utcHour = d.getUTCHours();
@@ -1313,10 +1382,214 @@
             }
         }
 
-        function formatDate(val) {
+        function parseExcelDate(val) {
+            if (val === null || val === undefined || val === '') return null;
             if (val instanceof Date) return formatDateTimezoneAgnostic(val);
-            if (typeof val === 'number') return formatDateTimezoneAgnostic(new Date((val - 25569) * 86400 * 1000));
-            return val;
+            if (typeof val === 'number') {
+                if (val > 30000 && val < 60000) {
+                    return formatDateTimezoneAgnostic(new Date((val - 25569) * 86400 * 1000));
+                }
+                return null;
+            }
+            const str = String(val).trim();
+            const mIso = str.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+            if (mIso) return `${mIso[1]}-${mIso[2].padStart(2, '0')}-${mIso[3].padStart(2, '0')}`;
+            const mEs = str.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{2,4})/);
+            if (mEs) {
+                let y = mEs[3];
+                if (y.length === 2) y = '20' + y;
+                return `${y}-${mEs[2].padStart(2, '0')}-${mEs[1].padStart(2, '0')}`;
+            }
+            return null;
+        }
+
+        function formatDate(val) {
+            return parseExcelDate(val) || val;
+        }
+
+        function parseEventsFromWorkbook(workbook) {
+            const extracted = [];
+
+            // Sort sheets so that sheets named 'eventos', 'fiestas', 'puentes', 'agenda' are prioritized
+            const sheetNames = [...workbook.SheetNames].sort((a, b) => {
+                const score = (s) => {
+                    const low = s.toLowerCase();
+                    if (low.startsWith('eventos')) return 10;
+                    if (low.includes('fiesta') || low.includes('puente')) return 8;
+                    if (low.includes('agenda') || low.includes('calendario')) return 5;
+                    if (low.includes('hoja1')) return 3;
+                    if (low.includes('resumen')) return -5;
+                    return 0;
+                };
+                return score(b) - score(a);
+            });
+
+            sheetNames.forEach(sName => {
+                const sheet = workbook.Sheets[sName];
+                if (!sheet) return;
+                const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                if (!rows || rows.length < 2) return;
+
+                let startCol = -1, endCol = -1, descCol = -1, prioCol = -1, catCol = -1, impCol = -1, recCol = -1, zonaCol = -1, notesCol = -1;
+                let headerRowIdx = -1;
+
+                for (let r = 0; r < Math.min(15, rows.length); r++) {
+                    const row = rows[r];
+                    if (!Array.isArray(row)) continue;
+
+                    let sC = -1, eC = -1, dC = -1, pC = -1, cC = -1, iC = -1, rC = -1, zC = -1, nC = -1;
+
+                    row.forEach((cell, c) => {
+                        const h = String(cell || '').toLowerCase().trim();
+                        if (h === 'inicio' || h === 'desde' || h === 'start' || h === 'fecha inicio' || h === 'fecha' || h === 'date') {
+                            if (sC === -1) sC = c;
+                        } else if (h === 'fin' || h === 'hasta' || h === 'end' || h === 'fecha fin') {
+                            if (eC === -1) eC = c;
+                        } else if (h === 'evento' || h === 'descripción' || h === 'descripcion' || h === 'nombre' || h === 'ventana / fiesta' || h === 'hito' || h === 'eventos clave' || h === 'evento(s)') {
+                            if (dC === -1) dC = c;
+                        } else if (h === 'prioridad' || h === 'nivel') {
+                            pC = c;
+                        } else if (h === 'categoría' || h === 'categoria' || h === 'tipo') {
+                            cC = c;
+                        } else if (h.includes('impacto')) {
+                            iC = c;
+                        } else if (h.includes('recomendaci') || h.includes('acción') || h.includes('accion')) {
+                            rC = c;
+                        } else if (h === 'zona') {
+                            zC = c;
+                        } else if (h.includes('motivo') || h.includes('riesgo') || h.includes('lectura') || h.includes('observac') || h.includes('notas')) {
+                            nC = c;
+                        }
+                    });
+
+                    if (sC !== -1 && dC !== -1) {
+                        startCol = sC; endCol = eC; descCol = dC; prioCol = pC; catCol = cC; impCol = iC; recCol = rC; zonaCol = zC; notesCol = nC;
+                        headerRowIdx = r;
+                        break;
+                    }
+                }
+
+                // Fallback: Check if row has date in col 0
+                if (startCol === -1 || descCol === -1) {
+                    for (let testR = 0; testR < Math.min(5, rows.length); testR++) {
+                        const r = rows[testR];
+                        if (r && parseExcelDate(r[0])) {
+                            startCol = 0;
+                            if (parseExcelDate(r[1])) { endCol = 1; descCol = 2; }
+                            else { descCol = 1; }
+                            headerRowIdx = testR - 1;
+                            break;
+                        }
+                    }
+                }
+
+                if (startCol !== -1 && descCol !== -1) {
+                    for (let r = Math.max(0, headerRowIdx + 1); r < rows.length; r++) {
+                        const row = rows[r];
+                        if (!row) continue;
+                        const sDate = parseExcelDate(row[startCol]);
+                        if (!sDate) continue;
+                        const eDate = (endCol !== -1 && row[endCol]) ? (parseExcelDate(row[endCol]) || sDate) : sDate;
+                        const desc = String(row[descCol] || '').trim();
+                        if (!desc || desc === 'null' || desc === 'undefined' || desc === '-' || desc === '0') continue;
+
+                        // Skip composite planning slices if all individual parts are already covered
+                        if (desc.includes('|')) {
+                            const parts = desc.split('|').map(p => p.trim().toLowerCase());
+                            const allCovered = parts.every(p => extracted.some(ex => ex.desc.toLowerCase().includes(p) && ex.start <= sDate && ex.end >= eDate));
+                            if (allCovered) continue;
+                        }
+
+                        const prio = prioCol !== -1 ? String(row[prioCol] || '').trim() : '';
+                        const cat = catCol !== -1 ? String(row[catCol] || '').trim() : '';
+                        const impact = impCol !== -1 ? String(row[impCol] || '').trim() : '';
+                        const rec = recCol !== -1 ? String(row[recCol] || '').trim() : '';
+                        const zona = zonaCol !== -1 ? String(row[zonaCol] || '').trim() : '';
+                        const notes = notesCol !== -1 ? String(row[notesCol] || '').trim() : '';
+
+                        // Smart deduplication: check if already exists
+                        const existing = extracted.find(ex => ex.desc.toLowerCase() === desc.toLowerCase());
+                        if (existing) {
+                            if (existing.start <= sDate && existing.end >= eDate) {
+                                if (!existing.prio && prio) existing.prio = prio;
+                                if (!existing.rec && rec) existing.rec = rec;
+                                if (!existing.impact && impact) existing.impact = impact;
+                                continue;
+                            }
+                            if (sDate <= existing.start && eDate >= existing.end) {
+                                existing.start = sDate;
+                                existing.end = eDate;
+                                if (!existing.prio && prio) existing.prio = prio;
+                                if (!existing.rec && rec) existing.rec = rec;
+                                if (!existing.impact && impact) existing.impact = impact;
+                                continue;
+                            }
+                        }
+
+                        extracted.push({
+                            start: sDate,
+                            end: eDate,
+                            desc: desc,
+                            prio: prio,
+                            cat: cat,
+                            impact: impact,
+                            rec: rec,
+                            zona: zona,
+                            notes: notes,
+                            sheet: sName
+                        });
+                    }
+                }
+            });
+
+            return extracted;
+        }
+
+        function handleExcel(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const extracted = parseEventsFromWorkbook(workbook);
+
+                    if (extracted.length === 0) {
+                        alert("⚠️ No se pudieron detectar eventos en el archivo. Asegúrate de que contenga columnas como 'Inicio'/'Fecha' y 'Evento'/'Descripción'.");
+                        return;
+                    }
+
+                    let added = 0;
+                    extracted.forEach(newEv => {
+                        const exists = rawEvents.some(ex => 
+                            ex.desc.toLowerCase() === newEv.desc.toLowerCase() && 
+                            ex.start === newEv.start && 
+                            ex.end === newEv.end
+                        );
+                        if (!exists) {
+                            rawEvents.push(newEv);
+                            added++;
+                        }
+                    });
+
+                    if (added > 0) {
+                        CapaStorage.setItem('custom_events', JSON.stringify(rawEvents));
+                        populateYearSelector();
+                        enrichRevenueData();
+                        renderCalendar();
+                        renderEventList();
+                        renderInsights();
+                        alert(`✅ Importados ${added} eventos estratégicos con éxito.`);
+                    } else {
+                        alert(`ℹ️ Los ${extracted.length} eventos del archivo ya estaban registrados previamente.`);
+                    }
+                } catch (err) {
+                    console.error("Error al procesar archivo de eventos:", err);
+                    alert("❌ Error al procesar el archivo Excel: " + err.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
         }
 
         auth.onAuthStateChanged(user => {
