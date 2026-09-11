@@ -842,6 +842,75 @@
             color: white;
         }
 
+        /* MINIMUM PRICE PILLS & BADGES */
+        .min-price-pill {
+            display: inline-block;
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 1px 6px;
+            border-radius: 10px;
+            background: rgba(99, 102, 241, 0.12);
+            color: var(--primary);
+            border: 1px solid rgba(99, 102, 241, 0.25);
+            margin-left: 5px;
+            cursor: pointer;
+            vertical-align: middle;
+            transition: all 0.15s ease;
+        }
+        .min-price-pill:hover {
+            background: var(--primary);
+            color: white;
+            transform: scale(1.05);
+        }
+        .min-price-pill.empty {
+            background: rgba(148, 163, 184, 0.1);
+            color: var(--text-muted);
+            border-color: var(--border);
+            border-style: dashed;
+        }
+        .min-price-pill.comp {
+            background: rgba(100, 116, 139, 0.1);
+            color: var(--text-muted);
+            border-color: rgba(100, 116, 139, 0.2);
+            font-weight: 600;
+        }
+        .below-min-badge {
+            display: inline-block;
+            margin-left: 2px;
+            font-size: 0.75rem;
+            cursor: help;
+        }
+        .hotel-min-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            background: var(--bg-body);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            transition: all 0.2s ease;
+        }
+        .hotel-min-card:hover {
+            border-color: var(--primary);
+        }
+        .hotel-min-input {
+            width: 80px;
+            padding: 6px 10px;
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-main);
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            text-align: right;
+        }
+        .hotel-min-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+        }
+
         /* TABLE */
         .table-wrap {
             width: 100%;
@@ -1190,6 +1259,9 @@
                 </select>
                 <button class="btn"
                     style="background:var(--bg-surface); border:1px solid var(--border); color:var(--text-main); font-weight:600;"
+                    onclick="openMinPriceModal()" title="Configurar tarifas mínimas (suelo) para cada hotel">🏷️ Precios Mínimos</button>
+                <button class="btn"
+                    style="background:var(--bg-surface); border:1px solid var(--border); color:var(--text-main); font-weight:600;"
                     onclick="openCompConfig()">⚙️ Competencia</button>
                 <button id="updateBtn" class="btn btn-primary" onclick="clearData()">↺ Nuevo Archivo</button>
             </div>
@@ -1316,6 +1388,58 @@
             console.warn("Failed to load ignored competitors from local storage", e);
         }
 
+        // --- PRECIOS MÍNIMOS (TARIFAS SUELO) ---
+        const DEFAULT_HOTEL_MIN_PRICES = { "Cumbria": 50, "Guadiana": 60 };
+        let hotelMinPrices = { ...DEFAULT_HOTEL_MIN_PRICES };
+        let ignoreCompetitorsBelowMin = false;
+
+        function loadHotelMinPrices() {
+            try {
+                const saved = localStorage.getItem('capasuite_hotel_min_prices');
+                if (saved) {
+                    hotelMinPrices = Object.assign({ ...DEFAULT_HOTEL_MIN_PRICES }, JSON.parse(saved));
+                }
+                const savedIgnore = localStorage.getItem('capasuite_ignore_below_min');
+                if (savedIgnore !== null) {
+                    ignoreCompetitorsBelowMin = (savedIgnore === 'true');
+                }
+            } catch (e) {
+                console.warn("Failed to load hotel min prices from localStorage", e);
+            }
+        }
+        loadHotelMinPrices();
+
+        function getHotelMinPrice(hotelName) {
+            if (!hotelName) return 0;
+            // 1. Coincidencia directa exacta
+            if (hotelMinPrices[hotelName] !== undefined && hotelMinPrices[hotelName] !== null && hotelMinPrices[hotelName] !== '') {
+                const val = Number(hotelMinPrices[hotelName]);
+                return isNaN(val) ? 0 : val;
+            }
+            // 2. Coincidencia flexible (sin tildes/palabras de relleno)
+            const cleanTarget = hotelName.toLowerCase().replace(/hotel|sercotel|villa|spa/g, '').trim();
+            for (const [k, v] of Object.entries(hotelMinPrices)) {
+                const cleanK = k.toLowerCase().replace(/hotel|sercotel|villa|spa/g, '').trim();
+                if (cleanK && cleanTarget && (cleanK === cleanTarget || cleanTarget.includes(cleanK) || cleanK.includes(cleanTarget))) {
+                    const val = Number(v);
+                    return isNaN(val) ? 0 : val;
+                }
+            }
+            // 3. Fallbacks iniciales por defecto para nuestros hoteles
+            if (cleanTarget.includes('cumbria')) return DEFAULT_HOTEL_MIN_PRICES["Cumbria"];
+            if (cleanTarget.includes('guadiana')) return DEFAULT_HOTEL_MIN_PRICES["Guadiana"];
+            return 0;
+        }
+
+        function saveHotelMinPrices() {
+            try {
+                localStorage.setItem('capasuite_hotel_min_prices', JSON.stringify(hotelMinPrices));
+                localStorage.setItem('capasuite_ignore_below_min', String(ignoreCompetitorsBelowMin));
+            } catch (e) {
+                console.warn("Failed to save hotel min prices to localStorage", e);
+            }
+        }
+
         // --- UPDATE HOTEL LOGO (DEPRECATED: Use switchHotel) ---
         function updateHotelLogo() {
             const hotel = document.getElementById('hotelSelector').value;
@@ -1363,6 +1487,8 @@
             if (!my || my.sold || myP === 0 || mktPrice === 0) {
                 return null;
             }
+
+            const minPrice = getHotelMinPrice(hotel);
 
             const diff = ((myP - mktPrice) / mktPrice) * 100;
             let cls = 'gap-ok';
@@ -1436,8 +1562,7 @@
             // 3. LOW OCCUPANCY & LAST MINUTE (<40%, <7 days)
             else if (occPct < 40 && daysOut < 7) {
                 targetPrice = (hotel === 'Guadiana') ? lowestCompPrice * 1.05 : lowestCompPrice * 0.95;
-                const floor = (hotel === 'Guadiana') ? 50 : 40;
-                if (targetPrice < floor) targetPrice = floor;
+                if (minPrice > 0 && targetPrice < minPrice) targetPrice = minPrice;
 
                 if (myP > targetPrice * 1.05) {
                     actionText = `▼▼ ${targetPrice.toFixed(0)}€ (Liq.)`;
@@ -1474,6 +1599,29 @@
                 } else {
                     actionText = "En Rango";
                     actionColor = "#64748b";
+                }
+            }
+
+            // --- ENFORCE CONFIGURED MINIMUM PRICE (TARIFA SUELO) ---
+            if (minPrice > 0) {
+                if (myP < minPrice) {
+                    // Si el hotel ya vende por debajo de su suelo mínimo, alertar de inmediato
+                    targetPrice = minPrice;
+                    actionText = `▲ ${Math.round(minPrice)}€ (Suelo Mín.)`;
+                    actionColor = "#16a34a";
+                    cls = 'gap-low';
+                } else if (targetPrice < minPrice) {
+                    targetPrice = minPrice;
+                    if (myP > minPrice * 1.05) {
+                        actionText = `▼ ${Math.round(minPrice)}€ (Suelo)`;
+                        actionColor = "#ea580c";
+                        cls = 'gap-high';
+                    } else {
+                        // Ya está en su suelo (o dentro del 5%), no recomendar bajada
+                        actionText = "Mantener (Mínimo)";
+                        actionColor = "#64748b";
+                        cls = 'gap-ok';
+                    }
                 }
             }
 
@@ -1527,7 +1675,13 @@
             ensureHotelStructure(day, hotelName);
             const h = day.hotels[hotelName];
             const currentP = (h && !h.sold && h.price > 0) ? h.price : (day.compAvg > 0 ? Math.round(day.compAvg) : 60);
-            setManualPrice(dayIndex, hotelName, currentP + delta);
+            const minP = getHotelMinPrice(hotelName);
+            let nextP = currentP + delta;
+            // No bajar involuntariamente del suelo con un solo paso salvo Shift
+            if (delta < 0 && minP > 0 && nextP < minP && !event?.shiftKey) {
+                nextP = minP;
+            }
+            setManualPrice(dayIndex, hotelName, nextP);
         }
 
         function openManualPriceInput(dayIndex, hotelName, elem, event) {
@@ -1684,6 +1838,7 @@
             }
 
             let statusHtml = `<span>${count} días analizados</span>`;
+            statusHtml += `<button class="sim-btn" onclick="openMinPriceModal()" style="background:var(--bg-surface); border:1px solid var(--border); color:var(--text-main); font-size:0.75rem; padding:3px 9px; border-radius:12px; cursor:pointer;" title="Configurar tarifas mínimas para cada hotel">🏷️ Precios mín.</button>`;
             statusHtml += `<span onclick="diagnoseAllData()" style="font-size:0.6rem; color:#94a3b8; cursor:pointer; margin-left:10px; text-decoration:underline;">[Debug]</span>`;
             countEl.innerHTML = `<div style="display:flex; align-items:center; gap:8px;">${simHtml} ${statusHtml}</div>`;
         }
@@ -3296,13 +3451,23 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             }
 
             // Build Headers
-            let h = `<th>Fecha</th><th>${activeHotel}</th><th>Mercado</th><th>Gap</th><th>Acción</th>`;
+            const activeMinP = getHotelMinPrice(activeHotel);
+            const activeMinBadge = activeMinP > 0 
+                ? ` <span class="min-price-pill" onclick="openMinPriceModal()" title="Precio mínimo configurado: ${activeMinP}€. Click para configurar">Mín: ${activeMinP}€</span>` 
+                : ` <span class="min-price-pill empty" onclick="openMinPriceModal()" title="Configurar precio mínimo">+ Mín</span>`;
+
+            let h = `<th>Fecha</th><th>${activeHotel}${activeMinBadge}</th><th>Mercado</th><th>Gap</th><th>Acción</th>`;
 
             // Add Sibling Header
+            let sibMinP = 0;
             if (siblingName) {
                 const isIgnored = ignoredCompetitors.has(siblingName);
                 const opacityStyle = isIgnored ? "opacity: 0.35; filter: grayscale(100%); background:var(--bg-surface);" : "";
-                h += `<th title="${siblingName}" style="color:var(--primary); font-weight:800; border-left:2px solid var(--border); ${opacityStyle}">${siblingName}</th>`;
+                sibMinP = getHotelMinPrice(siblingName);
+                const sibMinBadge = sibMinP > 0 
+                    ? ` <span class="min-price-pill" onclick="openMinPriceModal()" title="Precio mínimo configurado: ${sibMinP}€. Click para configurar">Mín: ${sibMinP}€</span>` 
+                    : ` <span class="min-price-pill empty" onclick="openMinPriceModal()" title="Configurar precio mínimo">+ Mín</span>`;
+                h += `<th title="${siblingName}" style="color:var(--primary); font-weight:800; border-left:2px solid var(--border); ${opacityStyle}">${siblingName}${sibMinBadge}</th>`;
             }
 
             competitorsList.forEach(c => {
@@ -3310,7 +3475,11 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 const short = c.name.length > 25 ? c.name.substring(0, 25) + '..' : c.name;
                 const isIgnored = ignoredCompetitors.has(c.name);
                 const opacityStyle = isIgnored ? "opacity: 0.35; filter: grayscale(100%); background:var(--bg-surface);" : "";
-                h += `<th title="${c.name}" style="${opacityStyle}">${short}</th>`;
+                const cMinP = getHotelMinPrice(c.name);
+                const cMinBadge = cMinP > 0 
+                    ? ` <span class="min-price-pill comp" onclick="openMinPriceModal()" title="Mínimo configurado: ${cMinP}€">Mín: ${cMinP}€</span>` 
+                    : '';
+                h += `<th title="${c.name}" style="${opacityStyle}">${short}${cMinBadge}</th>`;
             });
             thead.innerHTML = h;
 
@@ -3442,11 +3611,14 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         changeTag = `<span style="display:inline-block; font-size:0.65rem; color:${color}; background:var(--bg-surface); border:1px solid ${color}; padding:0px 2px; border-radius:3px; margin-left:3px; line-height:1.2; vertical-align:middle; font-weight:700;">${arrow}${my.change.prev}</span>`;
                     }
 
+                    const isBelowMin = (activeMinP > 0 && myP > 0 && myP < activeMinP);
+                    const belowMinAlert = isBelowMin ? ` <span class="below-min-badge" title="⚠️ Tarifa de ${myP}€ por debajo del mínimo configurado (${activeMinP}€)">⚠️</span>` : '';
+
                     const priceWrap = `
                         <div class="manual-price-wrap">
                             <button class="step-btn down" onclick="stepManualPrice(${d.dayIndex}, '${activeHotel}', -1, event)" title="Bajar 1€ (Shift: 5€)">▼</button>
                             <span class="price-editable${simClass}" onclick="openManualPriceInput(${d.dayIndex}, '${activeHotel}', this, event)" title="${simTitle}">
-                                ${Math.round(myP)}€${changeTag}
+                                ${Math.round(myP)}€${changeTag}${belowMinAlert}
                             </span>
                             <button class="step-btn up" onclick="stepManualPrice(${d.dayIndex}, '${activeHotel}', 1, event)" title="Subir 1€ (Shift: 5€)">▲</button>
                         </div>
@@ -3517,11 +3689,14 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                             sibOccHtml = `<div style="font-size:0.6rem; color:#4f46e5; font-weight:700; margin-top:1px;">Hab: ${hData.occupancy}</div>`;
                         }
 
+                        const isSibBelowMin = (sibMinP > 0 && hData.price > 0 && hData.price < sibMinP);
+                        const sibBelowAlert = isSibBelowMin ? ` <span class="below-min-badge" title="⚠️ Tarifa de ${Math.round(hData.price)}€ por debajo del mínimo configurado (${sibMinP}€)">⚠️</span>` : '';
+
                         const sibWrap = `
                             <div class="manual-price-wrap">
                                 <button class="step-btn down" onclick="stepManualPrice(${d.dayIndex}, '${siblingName}', -1, event)" title="Bajar 1€ a ${siblingName} (Shift: 5€)">▼</button>
                                 <span class="price-editable${sibSimClass}" onclick="openManualPriceInput(${d.dayIndex}, '${siblingName}', this, event)" title="${sibSimTitle}">
-                                    ${Math.round(hData.price)}€${sChangeTag}
+                                    ${Math.round(hData.price)}€${sChangeTag}${sibBelowAlert}
                                 </span>
                                 <button class="step-btn up" onclick="stepManualPrice(${d.dayIndex}, '${siblingName}', 1, event)" title="Subir 1€ a ${siblingName} (Shift: 5€)">▲</button>
                             </div>
@@ -3552,8 +3727,12 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         return `<td style="${opacityStyle}"><span class="price-minstay" title="${titleText}">${displayText}</span></td>`;
                     }
 
+                    const compMinP = getHotelMinPrice(c.name);
+                    const isCompBelowMin = (compMinP > 0 && hData.price > 0 && hData.price < compMinP);
+                    const compBelowAlert = isCompBelowMin ? ` <span class="below-min-badge" title="⚠️ Tarifa (${hData.price.toFixed(0)}€) por debajo del mínimo (${compMinP}€)">⚠️</span>` : '';
+
                     const style = (!sold && hData.price < myP) ? "color:#ef4444; font-weight:600;" : "color:var(--text-light);";
-                        let priceContent = `${hData.price.toFixed(0)}€`;
+                        let priceContent = `${hData.price.toFixed(0)}€${compBelowAlert}`;
                         if (hData.change) {
                             const dir = hData.change.dir;
                             const color = dir === 'up' ? 'var(--success)' : 'var(--danger)';
@@ -3840,7 +4019,12 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     if (hData) {
                         if (hData.sold) soldComps++;
                         if (hData.price > 0 && !hData.sold) {
-                            compPrices.push(hData.price);
+                            const compMin = getHotelMinPrice(compName);
+                            if (ignoreCompetitorsBelowMin && compMin > 0 && hData.price < compMin) {
+                                // Omitir tarifa por estar por debajo del suelo mínimo configurado
+                            } else {
+                                compPrices.push(hData.price);
+                            }
                         }
                     }
                 });
@@ -3854,6 +4038,116 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     d.compAvg = 0;
                 }
             });
+        }
+
+        // --- PRECIOS MÍNIMOS MODAL LOGIC ---
+        function openMinPriceModal() {
+            const ourContainer = document.getElementById('ourHotelsMinList');
+            const compContainer = document.getElementById('compHotelsMinList');
+            if (!ourContainer || !compContainer) return;
+
+            ourContainer.innerHTML = '';
+            compContainer.innerHTML = '';
+
+            // 1. Nuestros hoteles (Cumbria y Guadiana)
+            const ourHotels = ["Cumbria", "Guadiana"];
+            ourHotels.forEach(hName => {
+                const curMin = getHotelMinPrice(hName) || (hName === 'Cumbria' ? 50 : 60);
+                ourContainer.innerHTML += `
+                    <div class="hotel-min-card">
+                        <div>
+                            <div style="font-weight:700; color:var(--text-main); font-size:0.95rem;">Hotel ${hName}</div>
+                            <div style="font-size:0.75rem; color:var(--text-muted);">Suelo mínimo para sugerencias y simulaciones</div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <input type="number" id="minPriceInput_${hName}" class="hotel-min-input" min="0" max="999" step="1" value="${curMin}">
+                            <span style="font-weight:700; color:var(--text-main);">€</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // 2. Competidores detectados
+            const allComps = new Set();
+            competitorsList.forEach(c => allComps.add(c.name));
+
+            if (allComps.size === 0) {
+                compContainer.innerHTML = `<div style="font-size:0.8rem; color:var(--text-muted); font-style:italic; padding:8px;">No se han detectado competidores aún (sube un archivo Excel).</div>`;
+            } else {
+                Array.from(allComps).forEach(compName => {
+                    const safeAttr = compName.replace(/"/g, '&quot;');
+                    const curMin = hotelMinPrices[compName] !== undefined ? hotelMinPrices[compName] : '';
+                    compContainer.innerHTML += `
+                        <div class="hotel-min-card" style="padding:8px 12px; margin-bottom:6px;">
+                            <div style="font-weight:600; color:var(--text-main); font-size:0.85rem;" title="${safeAttr}">
+                                ${compName}
+                            </div>
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <input type="number" data-hotel-name="${safeAttr}" class="hotel-min-input comp-min-input" min="0" max="999" step="1" placeholder="-" value="${curMin}">
+                                <span style="font-weight:600; color:var(--text-muted); font-size:0.85rem;">€</span>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            const chkIgnore = document.getElementById('chkIgnoreCompetitorsBelowMin');
+            if (chkIgnore) chkIgnore.checked = ignoreCompetitorsBelowMin;
+
+            document.getElementById('minPriceModal').style.display = 'flex';
+        }
+
+        function closeMinPriceModal() {
+            document.getElementById('minPriceModal').style.display = 'none';
+        }
+
+        function saveMinPriceConfig() {
+            // Guardar nuestros hoteles
+            ['Cumbria', 'Guadiana'].forEach(hName => {
+                const inp = document.getElementById(`minPriceInput_${hName}`);
+                if (inp) {
+                    const val = Number(inp.value.trim());
+                    hotelMinPrices[hName] = (!isNaN(val) && val > 0) ? Math.round(val) : (hName === 'Cumbria' ? 50 : 60);
+                }
+            });
+
+            // Guardar competidores
+            document.querySelectorAll('.comp-min-input').forEach(inp => {
+                const hName = inp.getAttribute('data-hotel-name');
+                const valStr = inp.value.trim();
+                if (valStr === '' || isNaN(Number(valStr)) || Number(valStr) <= 0) {
+                    delete hotelMinPrices[hName];
+                } else {
+                    hotelMinPrices[hName] = Math.round(Number(valStr));
+                }
+            });
+
+            const chkIgnore = document.getElementById('chkIgnoreCompetitorsBelowMin');
+            if (chkIgnore) {
+                ignoreCompetitorsBelowMin = chkIgnore.checked;
+            }
+
+            saveHotelMinPrices();
+            closeMinPriceModal();
+
+            // Recalcular promedios y actualizar toda la vista
+            if (processedData && processedData.length > 0) {
+                recalcMarketAverages(processedData);
+                refreshActiveView();
+            }
+        }
+
+        function resetMinPrices() {
+            if (confirm("¿Restablecer precios mínimos a los valores por defecto (Cumbria: 50€, Guadiana: 60€)?")) {
+                hotelMinPrices = { ...DEFAULT_HOTEL_MIN_PRICES };
+                ignoreCompetitorsBelowMin = false;
+                saveHotelMinPrices();
+                openMinPriceModal();
+                if (processedData && processedData.length > 0) {
+                    recalcMarketAverages(processedData);
+                    refreshActiveView();
+                }
+            }
         }
 
         // Run on load
@@ -3876,8 +4170,55 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 style="display:flex; flex-direction:column; gap:8px; margin-bottom:20px; max-height:350px; overflow-y:auto; padding-right:5px;">
                 <!-- Options injected here -->
             </div>
-            <div style="display:flex; justify-content:flex-end;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <button class="btn" style="background:transparent; border:1px solid var(--border); color:var(--primary); font-size:0.8rem; font-weight:600;" onclick="closeCompConfig(); openMinPriceModal();">🏷️ Precios Mínimos</button>
                 <button class="btn btn-primary" onclick="closeCompConfig()">Modificar y Recalcular</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MINIMUM PRICE CONFIG MODAL -->
+    <div id="minPriceModal" class="modal" style="z-index:999999;">
+        <div class="modal-content" style="max-width:560px; background:var(--bg-surface); color:var(--text-main); border:1px solid var(--border);">
+            <span class="close-modal" onclick="closeMinPriceModal()">&times;</span>
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:5px;">
+                <span style="font-size:1.6rem;">🏷️</span>
+                <h3 style="margin:0; color:var(--text-main);">Configuración de Precios Mínimos</h3>
+            </div>
+            <p style="font-size:0.85rem; color:var(--text-light); margin-bottom:18px; line-height:1.4;">
+                Define la <strong>tarifa suelo</strong> para cada hotel. Las recomendaciones inteligentes de Smart Yield y la aplicación masiva de tarifas <strong>nunca sugerirán ni aplicarán precios inferiores</strong> al límite establecido.
+            </p>
+
+            <!-- Sección Nuestros Hoteles -->
+            <div style="margin-bottom:20px;">
+                <div style="font-size:0.8rem; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; color:var(--primary); margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+                    <span>🏨</span> Nuestros Hoteles (Tarifa Suelo)
+                </div>
+                <div id="ourHotelsMinList">
+                    <!-- Injected by JS -->
+                </div>
+            </div>
+
+            <!-- Sección Hoteles Competidores -->
+            <div style="margin-bottom:20px;">
+                <div style="font-size:0.8rem; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+                    <span>👥</span> Hoteles de la Competencia (Umbral Opcional)
+                </div>
+                <div id="compHotelsMinList" style="max-height:220px; overflow-y:auto; padding-right:5px;">
+                    <!-- Injected by JS -->
+                </div>
+                <label style="display:flex; align-items:center; gap:10px; margin-top:12px; font-size:0.85rem; color:var(--text-main); cursor:pointer; background:var(--bg-body); padding:10px; border-radius:6px; border:1px solid var(--border);">
+                    <input type="checkbox" id="chkIgnoreCompetitorsBelowMin" style="width:16px; height:16px; accent-color:var(--primary);">
+                    <span>Ignorar tarifas de competidores por debajo de su mínimo en el cálculo del precio medio de mercado</span>
+                </label>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; padding-top:15px; border-top:1px solid var(--border);">
+                <button type="button" class="btn" onclick="resetMinPrices()" style="background:transparent; border:1px solid var(--border); color:var(--text-light); font-size:0.85rem;" title="Restablecer tarifas iniciales recomendadas">↺ Restablecer</button>
+                <div style="display:flex; gap:10px;">
+                    <button type="button" class="btn" onclick="closeMinPriceModal()" style="background:var(--bg-body); border:1px solid var(--border); color:var(--text-main);">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="saveMinPriceConfig()">Guardar y Aplicar</button>
+                </div>
             </div>
         </div>
     </div>
