@@ -36,6 +36,11 @@
         else if (typeof value === 'number' && value > 40000 && value < 80000) d = new Date(Date.UTC(1899, 11, 30) + Math.round(value) * 86400000);
         if (d) return { year: String(d.getUTCFullYear()), month: d.getUTCMonth(), day: d.getUTCDate() };
         const text = String(value ?? '').trim();
+        const shortDate = text.match(/^(\d{1,2})[/-](\d{1,2})$/);
+        if (shortDate) {
+            if (!hintYear) throw new Error('La cabecera contiene días y meses sin año. Indica un periodo de un solo año o incluye el año en el nombre del archivo.');
+            return column(`${shortDate[1]}/${shortDate[2]}/${hintYear}`, hintYear);
+        }
         const match = text.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2}|\d{4})$/);
         if (match) {
             const year = match[3].length === 2 ? '20' + match[3] : match[3];
@@ -54,8 +59,10 @@
         return null; // Period totals and percentage columns are deliberately excluded.
     }
     function parse(rows, fileName = '', hintYear, corrections = {}) {
-        const dateHint = fileName.match(/\d{1,2}[-/]\d{1,2}[-/](\d{4}|\d{2})/);
-        hintYear = dateHint ? (dateHint[1].length === 2 ? '20' + dateHint[1] : dateHint[1]) : hintYear;
+        const dateYears = [...fileName.matchAll(/\d{1,2}[-/]\d{1,2}[-/](\d{4}|\d{2})(?!\d)/g)].map(m => m[1].length === 2 ? '20' + m[1] : m[1]);
+        const periodYears = String(hintYear || '').match(/\b20\d{2}\b/g) || [];
+        const uniqueYears = [...new Set(periodYears.length ? periodYears : dateYears)];
+        hintYear = uniqueYears.length === 1 ? uniqueYears[0] : undefined;
         let header = -1, columns = [];
         for (let r = 0; r < Math.min(rows.length, 30); r++) {
             const mapped = (rows[r] || []).map((v, c) => c < 2 ? null : column(v, hintYear));

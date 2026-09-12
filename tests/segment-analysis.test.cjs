@@ -3,6 +3,21 @@ const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const fs = require('node:fs');
 const S = require('../js/segment-analysis.js');
+test('historical day/month headers use the filename year and ignore Total and Porc.', () => {
+    const rows = [['Seg.', '', '01/01', '02/01', 'Total', 'Porc.'], ['GRUPOS', 'Hab', 2, 3, 5, 100], ['', 'SUITE', 100, 200, 300, 100]];
+    const report = S.parse(rows, 'Guadiana seg Estadistica desde dia 01-01-25 hasta 31-01-25.xlsx');
+    const db = {}; S.merge(db, 'Guadiana', report);
+    assert.deepEqual(Object.keys(report.years), ['2025']);
+    assert.equal(S.aggregate(db.Guadiana[2025], [0]).rooms, 5);
+    assert.equal(S.aggregate(db.Guadiana[2025], [0]).revenue, 300);
+    assert.deepEqual(db.Guadiana[2025].segmentCoverage[0], [1, 2]);
+    assert.equal(S.parse(rows, 'historico.xlsx', '01-01-2024 al 31-01-2024').years[2024].segment.GRUPOS.rooms[0], 5);
+    assert.throws(() => S.parse(rows, 'historico.xlsx'), /sin año/);
+    assert.throws(() => S.parse(rows, '01-01-24 al 31-01-25.xlsx'), /sin año/);
+    const leap = [['Seg.', '', '29/02'], ['GRUPOS', 'Hab', 1], ['', 'SUITE', 100]];
+    assert.throws(() => S.parse(leap, '01-02-25.xlsx'), /Fecha no válida/);
+    assert.ok(S.parse(leap, '01-02-24.xlsx').years[2024]);
+});
 test('segment scope keeps coverage, isolates metrics and preserves the hotel denominator', () => {
     const hotel = { segmentCoverage: { 0: [1, 2] }, segment: { GRUPOS: { name: 'GRUPOS', revenue: [100], accommodation: [80], rooms: [2] }, OTROS: { name: 'OTROS', revenue: [900], accommodation: [720], rooms: [9] } } };
     const scoped = S.scope(hotel, 'GRUPOS');

@@ -2,10 +2,10 @@
 (function () {
     let active = false;
     window.SegmentReview = {
-        async read(rows, fileName) {
+        async read(rows, fileName, period) {
             if (active) throw new Error('Termina primero la revisión de segmentos abierta.');
             let initial;
-            try { return SegmentAnalysis.parse(rows, fileName); }
+            try { return SegmentAnalysis.parse(rows, fileName, period); }
             catch (error) { if (error.code !== 'SEGMENT_REVIEW') throw error; initial = error; }
             active = true;
             return new Promise(resolve => {
@@ -42,7 +42,7 @@
                 dialog.addEventListener('cancel', event => { event.preventDefault(); close(null); });
                 form.onsubmit = event => {
                     event.preventDefault();
-                    try { close(SegmentAnalysis.parse(rows, fileName, undefined, Object.fromEntries(inputs.map(([cell, input]) => [cell, input.value])))); }
+                    try { close(SegmentAnalysis.parse(rows, fileName, period, Object.fromEntries(inputs.map(([cell, input]) => [cell, input.value])))); }
                     catch (error) { status.textContent = error.message; }
                 };
                 form.append(status, save, cancel); dialog.append(title, description, note, form); document.body.append(dialog); dialog.showModal();
