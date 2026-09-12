@@ -4,6 +4,8 @@ const SHORT_MONTHS = MONTH_ORDER.map(m => m.slice(0, 3));
 const STORAGE_KEY = 'hotel_manager_db_v2';
 const HOTELS = { Guadiana: { rooms: 108 }, Cumbria: { rooms: 59 } };
 let segmentDB = {}, currentHotel = 'Guadiana', currentYear = '', currentMetric = 'revenue', charts = {};
+let currentSegment = null;
+function selectSegment(name) { currentSegment = name; renderDashboard(); }
 const el = id => document.getElementById(id);
 const escapeHTML = text => String(text ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = (n, metric = 'revenue') => n == null || !Number.isFinite(n) ? '—' : new Intl.NumberFormat('es-ES', metric === 'rooms' ? { maximumFractionDigits: 0 } : { style: 'currency', currency: 'EUR', maximumFractionDigits: metric === 'adr' ? 2 : 0 }).format(n);
@@ -22,7 +24,7 @@ function loadData() {
     } catch (e) { message('No se han podido leer los datos guardados. ' + e.message, true); }
 }
 function switchHotel(hotel) {
-    currentHotel = hotel; currentYear = '';
+    currentHotel = hotel; currentYear = ''; currentSegment = null;
     el('hotelLogo').src = hotel === 'Guadiana' ? 'Imagen/logo-guadiana.svg' : 'Imagen/logo-cumbria.svg';
     initControls();
 }
@@ -82,17 +84,25 @@ async function handleFiles(files) {
     } finally { el('loader').style.display = 'none'; el('import-button').disabled = false; el('fileInput').value = ''; }
 }
 function renderDashboard() {
-    const data = segmentDB[currentHotel]?.[currentYear];
-    if (!data || !currentYear) return;
+    const hotelData = segmentDB[currentHotel]?.[currentYear];
+    if (!hotelData || !currentYear) return;
     const compareYear = el('compareSelector').value;
-    const previous = segmentDB[currentHotel]?.[compareYear];
-    const months = el('monthSelector').value === 'All' ? SegmentAnalysis.availableMonths(data) : [Number(el('monthSelector').value)];
+    const hotelPrevious = segmentDB[currentHotel]?.[compareYear];
+    const months = el('monthSelector').value === 'All' ? SegmentAnalysis.availableMonths(hotelData) : [Number(el('monthSelector').value)];
+    const segmentNames = [...new Set([...SegmentAnalysis.segments(hotelData), ...SegmentAnalysis.segments(hotelPrevious)].map(s => s.name))].sort((a, b) => a.localeCompare(b, 'es'));
+    if (currentSegment === null || currentSegment && !segmentNames.includes(currentSegment)) currentSegment = SegmentAnalysis.segments(hotelData).slice().sort((a, b) => SegmentAnalysis.sum(b, 'revenue', months) - SegmentAnalysis.sum(a, 'revenue', months))[0]?.name || '';
+    el('segmentSelector').replaceChildren(new Option('Todos los segmentos', ''), ...segmentNames.map(name => new Option(name, name)));
+    el('segmentSelector').value = currentSegment;
+    const scopeName = currentSegment || 'Todos los segmentos';
+    const data = SegmentAnalysis.scope(hotelData, currentSegment), previous = SegmentAnalysis.scope(hotelPrevious, currentSegment);
     const comparable = SegmentAnalysis.comparable(data, previous, months);
     const totals = SegmentAnalysis.aggregate(data, months), prior = comparable ? SegmentAnalysis.aggregate(previous, months) : null;
+    const hotelTotals = SegmentAnalysis.aggregate(hotelData, months), hotelPrior = comparable ? SegmentAnalysis.aggregate(hotelPrevious, months) : null;
     const capacity = HOTELS[currentHotel].rooms;
     const revpar = totals.days ? totals.accommodation / (capacity * totals.days) : null;
     const priorRevpar = prior?.days ? prior.accommodation / (capacity * prior.days) : null;
-    el('metric-years').textContent = `${currentYear}${compareYear ? ' vs ' + compareYear : ''} · ${totals.days == null ? 'Cobertura sin verificar' : totals.days + ' días cargados'}`;
+    el('metric-years').textContent = `${scopeName} · ${currentYear}${compareYear ? ' vs ' + compareYear : ''} · ${totals.days == null ? 'Cobertura sin verificar' : totals.days + ' días cargados'}`;
+    el('revpar-label').textContent = currentSegment ? 'Aportación al RevPAR del hotel' : 'RevPAR · solo alojamiento';
     el('period-note').textContent = `${months.map(m => MONTH_ORDER[m]).join(', ')}. Producción = alojamiento y desayunos. ADR y RevPAR utilizan solo alojamiento. ${compareYear && !comparable ? 'Comparativa no disponible: faltan fechas o los días cargados no coinciden.' : ''}${totals.days == null ? ' Reimporta el Excel para verificar fechas y desglosar el alojamiento.' : ''}`;
     const invalidStored = SegmentAnalysis.segments(data).filter(s => !SegmentAnalysis.validSegments.includes(SegmentAnalysis.canonical(s.name)) && months.some(m => ['rooms', 'revenue', 'totalRevenue'].some(field => Number(s[field]?.[m]) !== 0 && s[field]?.[m] != null)));
     if (invalidStored.length) el('period-note').textContent += ` Atención: hay segmentos incorrectos guardados (${invalidStored.map(s => s.name).join(', ')}). Pulsa Importar Excel para revisarlos y asignar el segmento correcto antes de guardar.`;
@@ -102,9 +112,10 @@ function renderDashboard() {
         trend.textContent = delta(value, before) + (comparable && before !== 0 ? ` vs ${compareYear}` : '');
         trend.className = 'kpi-diff ' + (before != null && value != null ? (value > before ? 'positive' : value < before ? 'negative' : '') : '');
     });
-    const names = new Set([...SegmentAnalysis.segments(data), ...(comparable ? SegmentAnalysis.segments(previous) : [])].map(s => s.name));
-    const currentMap = new Map(SegmentAnalysis.segments(data).map(s => [s.name, s]));
-    const previousMap = new Map(SegmentAnalysis.segments(previous).map(s => [s.name, s]));
+    el('period-note').textContent = `${scopeName}. ` + el('period-note').textContent;
+    const names = new Set([...SegmentAnalysis.segments(hotelData), ...(comparable ? SegmentAnalysis.segments(hotelPrevious) : [])].map(s => s.name));
+    const currentMap = new Map(SegmentAnalysis.segments(hotelData).map(s => [s.name, s]));
+    const previousMap = new Map(SegmentAnalysis.segments(hotelPrevious).map(s => [s.name, s]));
     const rows = [...names].map(name => {
         const segment = currentMap.get(name), old = previousMap.get(name);
         const revenue = SegmentAnalysis.sum(segment, 'revenue', months), rooms = SegmentAnalysis.sum(segment, 'rooms', months);
@@ -118,31 +129,45 @@ function renderDashboard() {
     const sort = el('segment-sort').value;
     rows.sort((a, b) => sort === 'name' ? a.name.localeCompare(b.name, 'es') : sort === 'change' ? ((b.value ?? 0) - (b.before ?? 0)) - ((a.value ?? 0) - (a.before ?? 0)) : (b.value ?? -Infinity) - (a.value ?? -Infinity));
     const metricName = currentMetric === 'adr' ? 'ADR' : currentMetric === 'rooms' ? 'Habitaciones (RN)' : 'Producción';
-    el('table-title').textContent = `${metricName} por segmento`;
+    el('table-title').textContent = `${metricName} · todos los segmentos (pulsa un nombre para analizarlo)`;
+    el('evolution-title').textContent = `Evolución de ${metricName.toLowerCase()} · ${scopeName}`;
+    el('comparison-title').textContent = `Comparativa de ${metricName.toLowerCase()} · ${scopeName}`;
     el('tableHead').innerHTML = `<tr><th>Segmento</th><th>${currentYear}</th><th>${compareYear || 'Comparación'}</th><th>Diferencia</th><th>Variación</th><th>Peso ${currentMetric === 'rooms' ? 'habitaciones' : 'producción'}</th><th>Cambio de peso</th></tr>`;
-    const mixTotal = currentMetric === 'rooms' ? totals.rooms : totals.revenue;
-    const priorMixTotal = prior && (currentMetric === 'rooms' ? prior.rooms : prior.revenue);
+    const mixTotal = currentMetric === 'rooms' ? hotelTotals.rooms : hotelTotals.revenue;
+    const priorMixTotal = hotelPrior && (currentMetric === 'rooms' ? hotelPrior.rooms : hotelPrior.revenue);
     const query = el('segment-search').value.trim().toLocaleLowerCase('es');
     const visible = rows.filter(row => row.name.toLocaleLowerCase('es').includes(query));
     el('tableBody').innerHTML = visible.map(row => {
         const mix = mixTotal ? (currentMetric === 'rooms' ? row.rooms : row.revenue) / mixTotal : null;
         const oldMix = priorMixTotal ? (currentMetric === 'rooms' ? row.before : row.oldRevenue) / priorMixTotal : null;
         const difference = row.before != null && row.value != null ? row.value - row.before : null;
-        return `<tr><td>${escapeHTML(row.name)}</td><td>${fmt(row.value, currentMetric)}</td><td>${fmt(row.before, currentMetric)}</td><td class="${difference > 0 ? 'positive' : difference < 0 ? 'negative' : ''}">${difference > 0 ? '+' : ''}${fmt(difference, currentMetric)}</td><td>${delta(row.value, row.before)}</td><td>${pct(mix)}</td><td>${oldMix == null || mix == null ? '—' : new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1, signDisplay: 'always' }).format((mix - oldMix) * 100) + ' pp'}</td></tr>`;
+        return `<tr><td><button class="toggle-btn${row.name === currentSegment ? ' active' : ''}" data-segment="${escapeHTML(row.name)}">${escapeHTML(row.name)}</button></td><td>${fmt(row.value, currentMetric)}</td><td>${fmt(row.before, currentMetric)}</td><td class="${difference > 0 ? 'positive' : difference < 0 ? 'negative' : ''}">${difference > 0 ? '+' : ''}${fmt(difference, currentMetric)}</td><td>${delta(row.value, row.before)}</td><td>${pct(mix)}</td><td>${oldMix == null || mix == null ? '—' : new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1, signDisplay: 'always' }).format((mix - oldMix) * 100) + ' pp'}</td></tr>`;
     }).join('') || '<tr><td colspan="7">No hay segmentos para esta búsqueda.</td></tr>';
-    const totalValue = totals[currentMetric], priorValue = prior?.[currentMetric];
+    el('tableBody').querySelectorAll('[data-segment]').forEach(button => { button.onclick = () => selectSegment(button.dataset.segment); });
+    const totalValue = hotelTotals[currentMetric], priorValue = hotelPrior?.[currentMetric];
     el('tableFoot').innerHTML = `<tr><td>Total del periodo</td><td>${fmt(totalValue, currentMetric)}</td><td>${fmt(priorValue, currentMetric)}</td><td>${fmt(priorValue != null && totalValue != null ? totalValue - priorValue : null, currentMetric)}</td><td>${delta(totalValue, priorValue)}</td><td>${mixTotal ? '100 %' : '—'}</td><td>—</td></tr>`;
-    el('table-note').textContent = `${visible.length} de ${rows.length} segmentos. La búsqueda filtra las filas; los totales y gráficos mantienen todo el periodo. Peso en ADR = peso de producción. pp = puntos porcentuales.`;
+    el('table-note').textContent = `${visible.length} de ${rows.length} segmentos. La búsqueda localiza filas; selecciona el nombre para cambiar el análisis. Este total corresponde al hotel. Peso en ADR = peso de producción. pp = puntos porcentuales.`;
     const leaders = [...rows].sort((a, b) => b.revenue - a.revenue);
     const leader = leaders[0];
     const mover = comparable ? [...rows].sort((a, b) => Math.abs(b.revenue - b.oldRevenue) - Math.abs(a.revenue - a.oldRevenue))[0] : null;
     el('insights').replaceChildren();
     const notes = [];
-    if (leader && totals.revenue > 0) notes.push(`${leader.name} concentra el ${pct(leader.revenue / totals.revenue)} de la producción (${fmt(leader.revenue)}).`);
-    if (mover) notes.push(`${mover.name} presenta el mayor cambio absoluto: ${fmt(mover.revenue - mover.oldRevenue)} frente a ${compareYear}.`);
-    if (totals.days) notes.push(`Ocupación del periodo: ${pct(totals.rooms / (capacity * totals.days))}. ${fmt(totals.rooms, 'rooms')} habitaciones-noche sobre ${fmt(capacity * totals.days, 'rooms')} disponibles.`);
+    if (currentSegment) {
+        notes.push(`${scopeName}: ${pct(hotelTotals.revenue ? totals.revenue / hotelTotals.revenue : null)} de la producción del hotel y ${pct(hotelTotals.rooms ? totals.rooms / hotelTotals.rooms : null)} de sus habitaciones-noche.`);
+        if (prior) notes.push(`Frente a ${compareYear}: ${fmt(totals.revenue - prior.revenue)} de producción, ${fmt(totals.rooms - prior.rooms, 'rooms')} habitaciones-noche y ${fmt(totals.adr != null && prior.adr != null ? totals.adr - prior.adr : null, 'adr')} de diferencia en ADR.`);
+    } else {
+        if (leader && totals.revenue > 0) notes.push(`${leader.name} concentra el ${pct(leader.revenue / totals.revenue)} de la producción (${fmt(leader.revenue)}).`);
+        if (mover) notes.push(`${mover.name} presenta el mayor cambio absoluto: ${fmt(mover.revenue - mover.oldRevenue)} frente a ${compareYear}.`);
+    }
+    if (totals.days) notes.push(`${currentSegment ? 'Aportación a la ocupación del hotel' : 'Ocupación del periodo'}: ${pct(totals.rooms / (capacity * totals.days))}. ${fmt(totals.rooms, 'rooms')} habitaciones-noche sobre ${fmt(capacity * totals.days, 'rooms')} disponibles.`);
     if (invalidStored.length) notes.push('Hay errores de segmentación pendientes. Reimporta el informe para corregir los bloques señalados.');
     for (const note of notes) { const item = document.createElement('p'); item.textContent = note; el('insights').append(item); }
+    el('monthly-title').textContent = `Detalle mensual · ${scopeName} · ${currentYear}${compareYear ? ' vs ' + compareYear : ''}`;
+    el('monthly-body').innerHTML = months.map(m => {
+        const value = SegmentAnalysis.aggregate(data, [m]), hotel = SegmentAnalysis.aggregate(hotelData, [m]);
+        const old = SegmentAnalysis.comparable(data, previous, [m]) ? SegmentAnalysis.aggregate(previous, [m]) : null;
+        return `<tr><td>${MONTH_ORDER[m]}</td><td>${fmt(value.revenue)}</td><td>${fmt(old?.revenue)}</td><td>${delta(value.revenue, old?.revenue)}</td><td>${fmt(value.rooms, 'rooms')}</td><td>${fmt(value.adr, 'adr')}</td><td>${pct(hotel.revenue ? value.revenue / hotel.revenue : null)}</td></tr>`;
+    }).join('');
     updateCharts(data, previous, months, rows, totals, prior, compareYear, metricName);
 }
 function updateCharts(data, previous, months, rows, totals, prior, compareYear, metricName) {
@@ -162,6 +187,7 @@ function updateCharts(data, previous, months, rows, totals, prior, compareYear, 
     distOptions.indexAxis = 'y'; distOptions.plugins.legend.display = false;
     distOptions.scales = { x: { type: 'linear', beginAtZero: true, ticks: { color } }, y: { type: 'category', ticks: { color, autoSkip: false, font: { size: 10 } } } };
     distOptions.plugins.tooltip.callbacks.label = ctx => fmt(ctx.parsed.x, currentMetric);
+    distOptions.onClick = (_event, elements) => { if (elements.length) selectSegment(ranked[elements[0].index].name); };
     create('dist', 'distChart', { type: 'bar', data: { labels: ranked.map(r => r.name), datasets: [{ label: metricName, data: ranked.map(r => r.value), backgroundColor: '#818cf8' }] }, options: distOptions });
 }
 window.addEventListener('load', loadData);

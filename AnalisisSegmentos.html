@@ -504,6 +504,7 @@
         <div id="loader" class="loader" role="status" aria-label="Importando"></div>
 
         <div id="dashboard" class="dashboard">
+            <div class="metric-indicator"><label for="segmentSelector"><strong>Segmento que quieres analizar</strong></label><select id="segmentSelector" onchange="selectSegment(this.value)"></select><span class="analysis-note">Actualiza indicadores, evolución, comparativa y detalle mensual.</span></div>
             <p id="period-note" class="analysis-note"></p>
             <div class="kpi-grid">
                 <div class="card" style="border-left: 4px solid var(--primary);">
@@ -522,7 +523,7 @@
                     <div id="kpi-adr-diff" class="kpi-diff">—</div>
                 </div>
                 <div class="card">
-                    <div class="kpi-label">RevPAR · solo alojamiento</div>
+                    <div class="kpi-label" id="revpar-label">RevPAR · solo alojamiento</div>
                     <div class="kpi-value" id="kpi-revpar">0 €</div>
                     <div id="kpi-revpar-diff" class="kpi-diff">—</div>
                 </div>
@@ -546,19 +547,20 @@
 
             <div class="charts-row">
                 <div class="card">
-                    <div class="kpi-label">Evolución Mensual</div>
+                    <div class="kpi-label" id="evolution-title">Evolución mensual</div>
                     <div class="chart-container"><canvas id="mainChart"></canvas></div>
                 </div>
                 <div class="card">
-                    <div class="kpi-label">Comparativa del periodo</div>
+                    <div class="kpi-label" id="comparison-title">Comparativa del periodo</div>
                     <div class="chart-container"><canvas id="topChart"></canvas></div>
                 </div>
                 <div class="card">
-                    <div class="kpi-label">Ranking de segmentos</div>
+                    <div class="kpi-label">Todos los segmentos · selecciona una barra</div>
                     <div class="chart-container"><canvas id="distChart"></canvas></div>
                 </div>
             </div>
 
+            <section class="card"><h3 id="monthly-title">Detalle mensual</h3><div class="table-container"><table><thead><tr><th>Mes</th><th>Producción</th><th>Año comparado</th><th>Variación</th><th>Habitaciones (RN)</th><th>ADR</th><th>Peso en el hotel</th></tr></thead><tbody id="monthly-body"></tbody></table></div></section>
             <div class="card" style="padding: 0;">
                 <div style="padding: 20px; border-bottom: 1px solid var(--border);">
                     <h3 id="table-title">Detalle por segmentación</h3>

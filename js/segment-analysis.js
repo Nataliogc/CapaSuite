@@ -162,7 +162,11 @@
     function comparable(a, b, selected) {
         return selected.length > 0 && selected.every(m => a?.segmentCoverage?.[m] && b?.segmentCoverage?.[m] && JSON.stringify(a.segmentCoverage[m]) === JSON.stringify(b.segmentCoverage[m]));
     }
-    const api = { parse, merge, aggregate, comparable, availableMonths, segments, sum, number, reviewRows, validSegments, canonical };
+    function scope(data, name) {
+        if (!data || !name) return data;
+        return { ...data, segment: Object.fromEntries(Object.entries(data.segment || {}).filter(([, segment]) => segment.name === name)) };
+    }
+    const api = { parse, merge, aggregate, comparable, availableMonths, segments, sum, number, reviewRows, validSegments, canonical, scope };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.SegmentAnalysis = api;
 })(typeof window === 'undefined' ? globalThis : window);

@@ -3,6 +3,16 @@ const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const fs = require('node:fs');
 const S = require('../js/segment-analysis.js');
+test('segment scope keeps coverage, isolates metrics and preserves the hotel denominator', () => {
+    const hotel = { segmentCoverage: { 0: [1, 2] }, segment: { GRUPOS: { name: 'GRUPOS', revenue: [100], accommodation: [80], rooms: [2] }, OTROS: { name: 'OTROS', revenue: [900], accommodation: [720], rooms: [9] } } };
+    const scoped = S.scope(hotel, 'GRUPOS');
+    assert.equal(S.aggregate(scoped, [0]).revenue, 100);
+    assert.equal(S.aggregate(scoped, [0]).adr, 40);
+    assert.equal(S.aggregate(scoped, [0]).days, 2);
+    assert.equal(S.aggregate(hotel, [0]).revenue, 1000);
+    assert.equal(S.aggregate(S.scope(hotel, 'MISSING'), [0]).rooms, 0);
+    assert.equal(S.scope(hotel, ''), hotel);
+});
 const source = () => [
     ['Seg.', '', '01/01/26', '02/01/26', '01/01/25', '02/01/25', '01-02 Ene.26', '01-02 Ene.26%'],
     ['OTROS', 'Hab', 1, 0, 0, 0, 1, 10],
