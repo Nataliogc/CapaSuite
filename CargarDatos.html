@@ -9,6 +9,7 @@
     <script src="js/chart.js"></script>
     <script src="js/xlsx.full.min.js"></script>
     <script src="js/storage.js"></script>
+    <script src="js/segment-analysis.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -1915,6 +1916,21 @@
         }
 
         function processDataForDB(data, fileName, hotel, type, manualPeriod) {
+            if (type === 'Seg') {
+                const report = SegmentAnalysis.parse(data, fileName);
+                SegmentAnalysis.merge(db, hotel, report);
+                for (const year of Object.keys(report.years)) {
+                    const target = db[hotel][year];
+                    const coverage = report.years[year].coverage;
+                    const months = Object.keys(coverage).map(Number).sort((a, b) => a - b);
+                    const first = months[0], last = months[months.length - 1];
+                    const label = `${String(coverage[first][0]).padStart(2, '0')}-${String(first + 1).padStart(2, '0')}-${year} al ${String(coverage[last].at(-1)).padStart(2, '0')}-${String(last + 1).padStart(2, '0')}-${year}`;
+                    target.updates ||= { prod: 'N/A', seg: 'N/A', otb: 'N/A' };
+                    target.updates.seg = label;
+                    target.lastSegDate = label;
+                }
+                return;
+            }
             const fileNameNorm = normalizeStr(fileName);
             const dateInfo = extractDateFromFilename(fileName);
 
@@ -2261,128 +2277,6 @@
 
                 if (!hasData) {
                     alert("⚠️ Error: No se han detectado columnas de fechas válidas.\nRevisa que el archivo tenga una fila de cabecera con fechas (ej: 01/01/26) o meses (Enero, Febrero...).");
-                }
-            } else if (type === 'Seg') {
-                // 1. Detect Year and Months from headers
-                let detectedYear = reportYear;
-                let headerRow = null;
-                let colMap = [];
-
-                for (let r = 0; r < 20; r++) {
-                    const row = data[r] || [];
-                    if (row.some(cell => {
-                        const s = String(cell).toUpperCase();
-                        if (s.includes("ENE") || s.includes("JAN") || s.includes("TOTAL")) return true;
-                        if (s.match(/\d{1,2}[\/-]\d{1,2}/)) return true;
-                        if (cell instanceof Date) return true;
-                        return false;
-                    })) {
-                        headerRow = row;
-                        break;
-                    }
-                }
-
-                if (headerRow) {
-                    for (let c = 0; c < headerRow.length; c++) {
-                        const cell = headerRow[c];
-                        const s = String(cell).toUpperCase();
-
-                        // Detect Year if not already found (Stricter regex: avoid picking up day numbers 01-31 as years)
-                        const yrMatch = s.match(/[.\-\/ ](20\d{2})$/) || s.match(/[.\-\/ ](2\d)$/);
-                        if (yrMatch) {
-                            const yFound = yrMatch[1].length === 2 ? "20" + yrMatch[1] : yrMatch[1];
-                            const yNum = parseInt(yFound);
-                            if (yNum >= 2015 && yNum <= 2035) {
-                                let detectedYear = yFound; // Local to this block or use outer scope
-                                // reportYear is already defined in outer scope, we can use it
-                                reportYear = yFound;
-                            }
-                        }
-
-                        if (c < 2) continue; // Skip Seg and Metric columns for mapping
-
-                        let mIdx = -1;
-                        // Match month names
-                        for (const [name, index] of Object.entries(SHORT_MONTHS_MAP)) {
-                            if (s.startsWith(name)) { mIdx = index; break; }
-                        }
-                        // Match daily formats (e.g. 01/01)
-                        if (mIdx === -1) {
-                            const match = s.match(/(\d{1,2})[\/-](\d{1,2})/);
-                            if (match) {
-                                let m = parseInt(match[2]);
-                                if (m > 12) m = parseInt(match[1]); // Try swapped format
-                                mIdx = (m >= 1 && m <= 12) ? m - 1 : -1;
-                            }
-                        }
-                        // Match Dates/Excel numbers
-                        if (mIdx === -1) {
-                            if (cell instanceof Date) mIdx = cell.getMonth();
-                            else if (!isNaN(cell) && cell > 40000) mIdx = new Date((cell - 25569) * 86400 * 1000).getMonth();
-                        }
-                        colMap[c] = mIdx;
-                    }
-                }
-
-                if (!db[hotel]) db[hotel] = {};
-                if (!db[hotel][reportYear]) db[hotel][reportYear] = { service: {}, segment: {}, lastUpdate: "" };
-                const dbYear = db[hotel][reportYear];
-                // Ensure Segment structure exists
-                if (!dbYear.segment) dbYear.segment = {};
-
-                let currentSeg = null;
-
-                for (let r = 0; r < data.length; r++) {
-                    const row = data[r];
-                    if (!row || row.length < 2) continue;
-
-                    let rawA = String(row[0] || "").trim();
-                    let rawB = String(row[1] || "").trim();
-                    const nColA = normalizeStr(row[0]);
-                    const nColB = normalizeStr(row[1]);
-
-                    // --- DETECCIÓN DE MÉTRICA ---
-                    const isHab = nColB === "HAB" || nColB === "RMS" || nColB === "RN" || nColB === "HAB." || nColB === "NOCHES" || nColB.includes("HABITACIONES") || nColB === "UNIDADES";
-                    const isPro = nColB === "PROD" || nColB === "REVENUE" || nColB === "VENTA" || nColB === "VALOR" || nColB.includes("ALOJAMIENTO") || nColB.includes("HABITACION") || nColB === "VTA";
-                    const isOtherCharge = nColB.includes("DESAYUNO") || nColB.includes("ALMUERZO") || nColB.includes("CENA") || nColB.includes("SPA") || nColB.includes("VARIOS") || nColB.includes("GARAJE") || nColB.includes("PAX");
-                    const isMetric = isHab || isPro || isOtherCharge;
-
-                    // --- GESTIÓN DE SEGMENTOS (ULTRA-ESTRICTO) ---
-                    const knownSegments = ["CORPORATIVO LINEAL", "DIRECTO OFFLINE", "DIRONLINE", "GRTANTEO", "GRUPOS", "OTA/AAVV", "OTROS", "PARTICULARES", "TTOO DINAMICA"];
-                    const rawClean = rawA.toUpperCase().trim();
-                    const sFound = knownSegments.find(ks => rawClean === ks || normalizeStr(ks) === normalizeStr(rawClean));
-
-                    if (sFound) {
-                        currentSeg = sFound;
-                    } else if (rawA !== "" && !isMetric) {
-                        currentSeg = null; // Reseteamos si es basura
-                    }
-
-                    if (!currentSeg || nColA.includes("TOTAL") || nColA.includes("RESUMEN") || nColA.includes("SEGMENTAC")) continue;
-
-                    if (isHab || isPro) {
-                        if (!dbYear.segment[currentSeg]) {
-                            dbYear.segment[currentSeg] = { name: currentSeg, revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) };
-                        }
-                        const segObj = dbYear.segment[currentSeg];
-                        for (let c = 0; c < row.length; c++) {
-                            const mIdx = colMap[c];
-                            if (mIdx === undefined || mIdx < 0 || mIdx > 11) continue;
-                            const val = parseVal(row[c]);
-                            if (isHab) {
-                                segObj.rooms[mIdx] += val;
-                            } else {
-                                segObj.revenue[mIdx] += val;
-                            }
-                        }
-                    }
-                }
-                // Save with time for Seg
-                if (!dbYear.updates) dbYear.updates = { prod: "N/A", seg: "N/A", otb: "N/A" };
-                dbYear.updates.seg = finalPeriod || new Date().toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-                dbYear.lastSegDate = finalPeriod;
-                if (!dbYear.lastUpdate) {
-                    dbYear.lastUpdate = new Date().toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
                 }
             } else if (type === 'Otb' || type === 'Prevision') {
                 // Parser for "Listado Previsiones Valoradas"

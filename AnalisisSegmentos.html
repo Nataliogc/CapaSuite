@@ -38,6 +38,8 @@
             --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
+        *, *::before, *::after { box-sizing: border-box; }
+
         [data-theme="light"] {
             --bg-deep: #f8fafc;
             --bg-surface: #ffffff;
@@ -47,6 +49,8 @@
             --border: #e2e8f0;
             --primary: #4f46e5;
             --primary-glow: rgba(79, 70, 229, 0.2);
+            --secondary: #047857;
+            --danger: #b91c1c;
             --shadow-premium: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
         }
 
@@ -139,7 +143,7 @@
         .dot { width: 8px; height: 8px; background: #10b981; border-radius: 50%; }
 
         body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-family: 'Inter', sans-serif;
             background-color: var(--bg-deep);
             background-image: 
                 radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.1) 0px, transparent 50%),
@@ -401,6 +405,38 @@
                 transform: rotate(360deg);
             }
         }
+        .header { flex-wrap: wrap; gap: 18px; }
+        .header > div { flex-wrap: wrap; }
+        .compare-control, .table-tools label { display: flex; align-items: center; gap: 8px; font-size: .85rem; }
+        select, input[type="search"] { background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border); border-radius: 8px; padding: 10px; font: inherit; }
+        button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+        .toggle-btn { background: transparent; color: var(--text-muted); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; cursor: pointer; font: inherit; }
+        .toggle-btn.active { background: var(--primary); color: white; }
+        .metric-toggles, .table-tools { display: flex; gap: 10px; flex-wrap: wrap; }
+        .table-tools { margin-top: 14px; justify-content: space-between; }
+        .metric-indicator { flex-wrap: wrap; }
+        .analysis-note, #import-status { color: var(--text-muted); font-size: .85rem; line-height: 1.6; }
+        #import-status { white-space: pre-line; overflow-wrap: anywhere; }
+        #import-status.error, .negative { color: var(--danger); }
+        .positive { color: var(--secondary); }
+        .insights { border-left: 3px solid var(--primary); padding: 12px 24px; }
+        .insights p { margin: 10px 0; line-height: 1.5; }
+        .card { transition: border-color .2s; }
+        .card:hover { transform: none; }
+        [data-theme="light"] .nav-hotel-select { color: var(--text-main); }
+        .kpi-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        .kpi-value { font-size: clamp(1.35rem, 2.2vw, 1.8rem); }
+        .kpi-diff { font-size: .8rem; margin-top: 8px; }
+        .charts-row { grid-template-columns: 1.15fr .85fr 1.4fr; height: 390px; }
+        .charts-row > .card { min-width: 0; }
+        td, tfoot td { padding: 14px 16px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+        th { text-align: right; background: var(--bg-surface); }
+        td:first-child, th:first-child { text-align: left; background: var(--bg-surface); }
+        tr:hover td { background: var(--bg-glass); }
+        tfoot { font-weight: 700; background: var(--bg-surface); }
+        #table-note { padding: 0 16px; }
+        @media (max-width: 1100px) { .top-nav { height: auto; flex-wrap: wrap; padding: 10px 15px; gap: 12px; } .nav-links { overflow-x: auto; max-width: 100%; } .charts-row { grid-template-columns: 1fr; height: auto; } .charts-row .card { height: 360px; } }
+        @media (max-width: 640px) { .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .card { padding: 16px; } .title h1 { font-size: 1.4rem; } .nav-user, .user-chip { max-width: 100%; flex-wrap: wrap; } .metric-years { font-size: .8rem; } .container { width: 100%; } }
     </style>
     <script src="js/theme-manager.js"></script>
 </head>
@@ -440,11 +476,13 @@
                 </div>
             </div>
             <div style="display:flex; gap:12px; align-items:center;">
-                <select id="yearSelector" class="form-select" onchange="updateView()"
+                <select aria-label="Año del análisis" id="yearSelector" class="form-select" onchange="updateView()"
                     style="padding:10px; border-radius:8px; border:1px solid #e2e8f0;"></select>
-                <select id="monthSelector" class="form-select" onchange="updateView()"
+                <select aria-label="Periodo del análisis" id="monthSelector" class="form-select" onchange="updateView()"
                     style="padding:10px; border-radius:8px; border:1px solid #e2e8f0;"></select>
 
+                <label class="compare-control">Comparar con <select id="compareSelector" class="form-select" onchange="updateView()" aria-label="Año de comparación"></select></label>
+                <button id="import-button" class="btn" onclick="document.getElementById('fileInput').click()">Importar Excel</button>
                 <img id="hotelLogo" src="Imagen/logo-guadiana.svg" alt="Logo Hotel" style="height: 45px;">
             </div>
             <script>
@@ -457,36 +495,40 @@
         <div id="upload-section" class="upload-area" onclick="document.getElementById('fileInput').click()">
             <div style="font-size: 3rem; margin-bottom: 15px;">👥</div>
             <h2>Importar Datos de Segmentación</h2>
-            <p>Selecciona archivos Excel de segmentación mensual o anual</p>
-            <input type="file" id="fileInput" multiple accept=".xlsx,.xls" hidden onchange="handleFiles(this.files)">
+            <p>Selecciona un informe con fechas o meses y filas Hab. Los años se detectan en la cabecera. Cada carga sustituye los meses incluidos.</p>
+            
         </div>
 
-        <div id="loader" class="loader"></div>
+        <input type="file" id="fileInput" multiple accept=".xlsx,.xls" hidden onchange="handleFiles(this.files)">
+        <p id="import-status" role="status" aria-live="polite"></p>
+        <div id="loader" class="loader" role="status" aria-label="Importando"></div>
 
         <div id="dashboard" class="dashboard">
+            <p id="period-note" class="analysis-note"></p>
             <div class="kpi-grid">
                 <div class="card" style="border-left: 4px solid var(--primary);">
-                    <div class="kpi-label">Producción Total</div>
+                    <div class="kpi-label">Alojamiento + desayunos</div>
                     <div class="kpi-value" id="kpi-prod">0 €</div>
                     <div id="kpi-prod-diff" class="kpi-diff">—</div>
                 </div>
                 <div class="card">
-                    <div class="kpi-label">Habitaciones (RN)</div>
+                    <div class="kpi-label">Habitaciones-noche (RN)</div>
                     <div class="kpi-value" id="kpi-rooms">0</div>
                     <div id="kpi-rooms-diff" class="kpi-diff">—</div>
                 </div>
                 <div class="card">
-                    <div class="kpi-label">ADR Medio</div>
+                    <div class="kpi-label">ADR · solo alojamiento</div>
                     <div class="kpi-value" id="kpi-adr">0 €</div>
                     <div id="kpi-adr-diff" class="kpi-diff">—</div>
                 </div>
                 <div class="card">
-                    <div class="kpi-label">RevPAR</div>
+                    <div class="kpi-label">RevPAR · solo alojamiento</div>
                     <div class="kpi-value" id="kpi-revpar">0 €</div>
                     <div id="kpi-revpar-diff" class="kpi-diff">—</div>
                 </div>
             </div>
 
+            <section id="insights" class="card insights" aria-label="Claves del periodo"></section>
             <div class="metric-indicator" style="justify-content: space-between;">
                 <div class="metric-toggles">
                     <button class="toggle-btn active" id="btn-revenue" onclick="selectMetric('revenue')">
@@ -508,693 +550,34 @@
                     <div class="chart-container"><canvas id="mainChart"></canvas></div>
                 </div>
                 <div class="card">
-                    <div class="kpi-label">Comparativa Anual</div>
+                    <div class="kpi-label">Comparativa del periodo</div>
                     <div class="chart-container"><canvas id="topChart"></canvas></div>
                 </div>
                 <div class="card">
-                    <div class="kpi-label">Distribución Segmentos</div>
+                    <div class="kpi-label">Ranking de segmentos</div>
                     <div class="chart-container"><canvas id="distChart"></canvas></div>
                 </div>
             </div>
 
             <div class="card" style="padding: 0;">
                 <div style="padding: 20px; border-bottom: 1px solid var(--border);">
-                    <h3 id="table-title">Detalle por Segmentación</h3>
+                    <h3 id="table-title">Detalle por segmentación</h3>
+                    <div class="table-tools"><label>Buscar segmento <input id="segment-search" type="search" placeholder="Nombre del segmento" oninput="renderDashboard()"></label><label>Ordenar <select id="segment-sort" onchange="renderDashboard()"><option value="value">Mayor valor</option><option value="change">Mayor diferencia</option><option value="name">Nombre</option></select></label></div>
                 </div>
                 <div class="table-container">
                     <table id="dataTable">
                         <thead id="tableHead"></thead>
-                        <tbody id="tableBody"></tbody>
+                        <tbody id="tableBody"></tbody><tfoot id="tableFoot"></tfoot>
                     </table>
+                    <p id="table-note" class="analysis-note"></p>
                 </div>
             </div>
         </div>
     </div>
 
 
-    <script>
-        // Repost of core logic from AnalisisProduccion.html but locked to segments
-        const MONTH_ORDER = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-        const SHORT_MONTHS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-        const HOTELS = { "Guadiana": { name: "Hotel Guadiana", rooms: 108 }, "Cumbria": { name: "Hotel Cumbria", rooms: 59 } }; // Default Updated values
-
-        let db = {};
-        let currentHotel = "Guadiana";
-        let currentYear = "";
-        let currentMonthFilter = "All";
-        let currentMetric = "revenue";
-        const STORAGE_KEY = "hotel_manager_db_v2";
-        let charts = {};
-
-        window.onload = function () { loadData(); document.getElementById('hotelSelector').value = currentHotel; };
-
-        // Escuchar cambios desde la nube para recargar variables locales
-        window.addEventListener('capasuite-data-synced', () => {
-            const s = CapaStorage.getItem(STORAGE_KEY);
-            if (s) {
-                try {
-                    db = JSON.parse(s);
-                    refreshAvailableYears();
-                    if (currentYear) {
-                        initControls();
-                    }
-                } catch (e) { console.error("Error recargando DB desde nube", e); }
-            }
-        });
-
-        function switchHotel(h) {
-            currentHotel = h;
-            document.getElementById('hotelLogo').src = h === 'Guadiana' ? 'Imagen/logo-guadiana.svg' : 'Imagen/logo-cumbria.svg';
-            refreshAvailableYears();
-            if (currentYear) {
-                initControls();
-                document.getElementById('dashboard').style.display = 'flex';
-                document.getElementById('upload-section').style.display = 'none';
-            } else {
-                document.getElementById('dashboard').style.display = 'none';
-                document.getElementById('upload-section').style.display = 'block';
-                const ys = document.getElementById('yearSelector');
-                if (ys) ys.innerHTML = '';
-            }
-        }
-
-        function loadData() {
-            // Load Config for Rooms
-            const configData = CapaStorage.getItem('upload_config_db_v2');
-            if (configData) {
-                try {
-                    const conf = JSON.parse(configData);
-                    if (conf.options) {
-                        if (conf.options.roomsGuadiana) HOTELS["Guadiana"].rooms = conf.options.roomsGuadiana;
-                        if (conf.options.roomsCumbria) HOTELS["Cumbria"].rooms = conf.options.roomsCumbria;
-                    }
-                } catch (e) { console.error("Config Error", e); }
-            }
-
-            const s = CapaStorage.getItem(STORAGE_KEY);
-            if (s) {
-                try {
-                    db = JSON.parse(s);
-                    if (typeof db !== 'object' || db === null) db = {};
-                    
-                    // --- AUTO-CLEANUP DE SEGMENTOS JUNK (CapaSuite Fix) ---
-                    const knownSegments = ["CORPORATIVO LINEAL", "DIRECTO OFFLINE", "DIRONLINE", "GRTANTEO", "GRUPOS", "OTA/AAVV", "OTROS", "PARTICULARES", "TTOO DINAMICA"];
-                    let changed = false;
-                    Object.keys(db).forEach(hotel => {
-                        Object.keys(db[hotel]).forEach(year => {
-                            if(db[hotel][year].segment) {
-                                Object.keys(db[hotel][year].segment).forEach(seg => {
-                                    if(!knownSegments.includes(seg.toUpperCase().trim())) {
-                                        delete db[hotel][year].segment[seg];
-                                        changed = true;
-                                    }
-                                });
-                            }
-                        });
-                    });
-                    if (changed) {
-                        CapaStorage.setItem(STORAGE_KEY, JSON.stringify(db));
-                        console.log("🛠️ CapaSuite: Junk segments purged from database.");
-                    }
-                } catch (e) {
-                    console.error("Error parsing DB", e);
-                    db = {};
-                }
-                refreshAvailableYears();
-                if (currentYear) {
-                    initControls();
-                    document.getElementById('dashboard').style.display = 'flex';
-                    document.getElementById('upload-section').style.display = 'none';
-                    return;
-                }
-            }
-            document.getElementById('upload-section').style.display = 'block';
-            document.getElementById('dashboard').style.display = 'none';
-        }
-
-        function refreshAvailableYears() {
-            const y = (db[currentHotel] && typeof db[currentHotel] === 'object') 
-                ? Object.keys(db[currentHotel]).filter(k => /^(20\d{2})$/.test(k)) 
-                : [];
-            if (y.length) {
-                const systemYear = new Date().getFullYear().toString();
-                if (y.includes(systemYear)) {
-                    currentYear = systemYear;
-                } else {
-                    currentYear = y.sort((a, b) => parseInt(b) - parseInt(a))[0];
-                }
-            } else {
-                currentYear = "";
-            }
-        }
-
-        function saveData() { CapaStorage.setItem(STORAGE_KEY, JSON.stringify(db)); }
-
-        async function handleFiles(files) {
-            document.getElementById('loader').style.display = 'block';
-            document.getElementById('upload-section').style.display = 'none';
-            if (!db[currentHotel]) db[currentHotel] = {};
-
-            for (let f of files) {
-                // --- DETECCIÓN SMART POR FILENAME ---
-                const smart = extractInfoFromFileName(f.name);
-                if (smart.hotel) {
-                    currentHotel = smart.hotel;
-                    document.getElementById('hotelSelector').value = currentHotel;
-                    document.getElementById('hotelLogo').src = (currentHotel === 'Guadiana') ? 'Imagen/logo-guadiana.svg' : 'Imagen/logo-cumbria.svg';
-                }
-                
-                const buf = await f.arrayBuffer();
-                const wb = XLSX.read(buf, { type: 'array' });
-                const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
-
-                // Use the complex processing logic from the original file
-                processData(data, f.name);
-                
-                // Si el filename detectó un año y ya se procesó, nos movemos a ese año
-                if (smart.year) {
-                    currentYear = smart.year;
-                }
-            }
-            saveData(); refreshAvailableYears(); initControls();
-            document.getElementById('loader').style.display = 'none';
-            document.getElementById('dashboard').style.display = 'flex';
-        }
-
-        function extractInfoFromFileName(name) {
-            const res = { hotel: null, year: null, period: "" };
-            const n = name.toUpperCase();
-            if (n.includes("GUADIANA")) res.hotel = "Guadiana";
-            else if (n.includes("CUMBRIA")) res.hotel = "Cumbria";
-
-            const dateRegex = /(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})/g;
-            const matches = [...name.matchAll(dateRegex)];
-            
-            if (matches.length >= 2) {
-                const s = matches[0];
-                const e = matches[matches.length-1];
-                const sY = s[3].length === 2 ? "20"+s[3] : s[3];
-                const eY = e[3].length === 2 ? "20"+e[3] : e[3];
-                res.period = `${String(s[1]).padStart(2,'0')}-${String(s[2]).padStart(2,'0')}-${sY} al ${String(e[1]).padStart(2,'0')}-${String(e[2]).padStart(2,'0')}-${eY}`;
-                res.year = sY;
-            } else if (matches.length === 1) {
-                const s = matches[0];
-                res.year = s[3].length === 2 ? "20"+s[3] : s[3];
-                res.period = `${String(s[1]).padStart(2,'0')}-${String(s[2]).padStart(2,'0')}-${res.year}`;
-            }
-
-            if (!res.year) {
-                const yrMatch = n.match(/(202\d|203\d)/);
-                if (yrMatch) res.year = yrMatch[0];
-            }
-            return res;
-        }
-
-        function processData(data, fileName) {
-            let detectedYear = "2026";
-            // Hint from filename
-            const smart = extractInfoFromFileName(fileName);
-            if (smart.year) detectedYear = smart.year;
-            let headerRowIndex = -1;
-            let colMap = [];
-
-            // 1. Encontrar la verdadera fila de cabecera (buscando meses o fechas)
-            for (let r = 0; r < Math.min(data.length, 30); r++) {
-                const row = data[r] || [];
-                let monthsFound = 0;
-                let potentialColMap = [];
-
-                for (let c = 0; c < row.length; c++) {
-                    const cell = row[c];
-                    if (!cell) continue;
-
-                    let mIdx = -1;
-                    const s = normalizeStr(cell);
-                    const SHORT_MONTHS_MAP = { "ENE": 0, "JAN": 0, "FEB": 1, "MAR": 2, "ABR": 3, "APR": 3, "MAY": 4, "JUN": 5, "JUL": 6, "AGO": 7, "AUG": 7, "SEP": 8, "OCT": 9, "NOV": 10, "DIC": 11, "DEC": 11 };
-                    for (const [name, index] of Object.entries(SHORT_MONTHS_MAP)) {
-                        if (s.startsWith(name)) { mIdx = index; break; }
-                    }
-
-                    if (mIdx === -1) {
-                        if (cell instanceof Date) {
-                            mIdx = cell.getMonth();
-                            const y = cell.getFullYear();
-                            if (y > 2000) detectedYear = y.toString();
-                        } else if (!isNaN(cell) && parseFloat(cell) > 40000) {
-                            const dateObj = new Date((cell - 25569) * 86400 * 1000);
-                            mIdx = dateObj.getMonth();
-                            const y = dateObj.getFullYear();
-                            if (y > 2000) detectedYear = y.toString();
-                        }
-                    }
-
-                    if (mIdx !== -1) {
-                        potentialColMap[c] = mIdx;
-                        monthsFound++;
-                    }
-
-                    const yrMatch = String(cell).match(/[.\s\/-](\d{2,4})$/);
-                    if (yrMatch) {
-                        const yFound = yrMatch[1].length === 2 ? "20" + yrMatch[1] : yrMatch[1];
-                        if (parseInt(yFound) >= 2000) detectedYear = yFound;
-                    }
-                }
-
-                if (monthsFound >= 2) {
-                    headerRowIndex = r;
-                    colMap = potentialColMap;
-                    break;
-                }
-            }
-
-            if (headerRowIndex === -1) return;
-
-            if (!db[currentHotel][detectedYear]) db[currentHotel][detectedYear] = { segment: {}, lastUpdate: "" };
-            const dbYear = db[currentHotel][detectedYear];
-            if (!dbYear.segment) dbYear.segment = {};
-
-            const monthsInFile = new Set(colMap.filter(m => m !== undefined && m !== null && m >= 0));
-            if (monthsInFile.size > 0) {
-                Object.values(dbYear.segment).forEach(seg => {
-                    monthsInFile.forEach(m => {
-                        if (seg.revenue) seg.revenue[m] = 0;
-                        if (seg.rooms) seg.rooms[m] = 0;
-                    });
-                });
-            }
-
-            let currentSeg = null;
-
-            for (let r = headerRowIndex + 1; r < data.length; r++) {
-                const row = data[r];
-                if (!row || row.length < 2) continue;
-
-                let rawColA = String(row[0] || "").trim();
-                let rawColB = String(row[1] || "").trim();
-                const nColA = normalizeStr(rawColA);
-                const nColB = normalizeStr(rawColB);
-
-                // --- DETECCIÓN DE MÉTRICA ---
-                // Solo "Hab." (con punto) o "Hab" (exacto) para Room Nights
-                const isHab = nColB === "HAB" || nColB === "RMS" || nColB === "RN" || nColB === "HAB." || nColB === "OCUPACION" || nColB === "OCUP";
-                
-                // Solo "Habitación" y "Desayuno" para Producción, incluyendo Dia/Noche
-                const isPro = nColB.includes("HABITACION") || nColB.includes("DESAYUNO") || nColB === "ALOJAMIENTO" || nColB === "DIA" || nColB === "NOCHE" || nColB === "INDIVIDUAL" || nColB === "DOBLE";
-
-                // Si no es Hab ni Pro, y hay texto en A o B, podría ser un nuevo segmento
-                const isMetric = isHab || isPro || nColB === "PAX" || nColB === "PROD" || nColB.includes("ALMUERZO") || nColB.includes("CENA") || nColB.includes("SPA") || nColB.includes("VARIOS");
-
-                // --- GESTIÓN DE SEGMENTOS (ULTRA-ESTRICTO) ---
-                const knownSegments = ["CORPORATIVO LINEAL", "DIRECTO OFFLINE", "DIRONLINE", "GRTANTEO", "GRUPOS", "OTA/AAVV", "OTROS", "PARTICULARES", "TTOO DINAMICA"];
-                
-                const rawClean = rawColA.toUpperCase().trim();
-                const sFound = knownSegments.find(ks => rawClean === ks || normalizeStr(rawClean) === normalizeStr(ks));
-                
-                if (sFound) {
-                    currentSeg = sFound;
-                } else if (rawColA !== "" && !isMetric) {
-                    // Si hay contenido en A que no es un segmento conocido ni una métrica (ej. "Total" o "Segmentación")
-                    // Reseteamos el segmento actual para no sumar basura a los previos
-                    currentSeg = null;
-                }
-
-                // SEGMENTO DESCONOCIDO O ROW INVÁLIDA -> SALTAR
-                if (!currentSeg || nColA.includes("TOTAL") || nColA.includes("SEGMENTAC") || nColA.includes("RESUMEN")) continue;
-                if (!isHab && !isPro) continue; 
-
-
-                if (!dbYear.segment[currentSeg]) {
-                    dbYear.segment[currentSeg] = { name: currentSeg, revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) };
-                }
-                const segObj = dbYear.segment[currentSeg];
-
-                // --- EXTRACCIÓN DE DATOS ---
-                for (let c = 0; c < row.length; c++) {
-                    const midx = colMap[c];
-                    if (midx === undefined || midx < 0) continue;
-                    let val = parseVal(row[c]);
-                    if (isHab) segObj.rooms[midx] += val;
-                    else if (isPro) segObj.revenue[midx] += val;
-                }
-            }
-            // --- LIMPIEZA FINAL: ELIMINAR SEGMENTOS JUNK ---
-            Object.keys(dbYear.segment).forEach(segName => {
-                const norm = segName.toUpperCase().trim();
-                // Si el nombre del segmento NO está en la lista de conocidos, lo borramos de la DB para este año
-                const isValid = ["CORPORATIVO LINEAL", "DIRECTO OFFLINE", "DIRONLINE", "GRTANTEO", "GRUPOS", "OTA/AAVV", "OTROS", "PARTICULARES", "TTOO DINAMICA"].includes(norm);
-                if (!isValid) {
-                    delete dbYear.segment[segName];
-                }
-            });
-
-            // Save with time
-            dbYear.lastUpdate = new Date().toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-        }
-
-        // Definición explícita de normalizeStr para asegurar que funciona aquí
-        const normalizeStr = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[.\/-]/g, "").toUpperCase().trim();
-
-        function parseVal(val) {
-            if (val === null || val === undefined || val === "") return 0;
-            if (typeof val === 'number') return val;
-            let s = String(val).replace(/[€$\s\u00a0]/g, "").trim();
-            const lastComma = s.lastIndexOf(',');
-            const lastDot = s.lastIndexOf('.');
-            if (lastComma > lastDot) s = s.replace(/\./g, "").replace(",", ".");
-            else if (lastDot > lastComma && lastComma !== -1) s = s.replace(/,/g, "");
-            else if (lastComma !== -1) s = s.replace(",", ".");
-            const num = parseFloat(s);
-            return isNaN(num) ? 0 : num;
-        }
-
-        function initControls() {
-            const ys = document.getElementById('yearSelector');
-            const rawYears = (db[currentHotel] && typeof db[currentHotel] === 'object') 
-                ? Object.keys(db[currentHotel]).filter(k => /^(20\d{2})$/.test(k)) 
-                : [];
-            const years = rawYears.sort((a, b) => parseInt(b) - parseInt(a));
-            if (!years.length) years.push("2026");
-            ys.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
-            ys.value = currentYear || years[0];
-
-            const ms = document.getElementById('monthSelector');
-            ms.innerHTML = '<option value="All">Todos los meses</option>' + MONTH_ORDER.map((m, i) => `<option value="${i}">${m}</option>`).join('');
-
-            // Set default toggle state
-            selectMetric('revenue');
-        }
-
-        // --- TOGGLE LOGIC ---
-        function selectMetric(val) {
-            currentMetric = val;
-
-            // Update Toggle UI
-            document.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
-            // Safe check in case button IDs don't match exactly or during transitions
-            const targetBtn = document.getElementById('btn-' + val);
-            if (targetBtn) targetBtn.classList.add('active');
-
-            updateView();
-        }
-
-        function updateView() {
-            currentYear = document.getElementById('yearSelector').value;
-            currentMonthFilter = document.getElementById('monthSelector').value;
-
-            document.getElementById('metric-years').innerText = `${currentYear} vs ${(currentYear - 1)}`;
-
-            renderDashboard();
-        }
-
-        function renderDashboard() {
-            const data = db[currentHotel][currentYear]; if (!data) return;
-            const dataPrev = db[currentHotel][currentYear - 1];
-            const concepts = Object.values(data.segment);
-
-            const mTotals = new Array(12).fill(0);
-            const mRooms = new Array(12).fill(0);
-            concepts.forEach(c => {
-                if (normalizeStr(c.name) === "TOTAL" || normalizeStr(c.name) === "TOTAL_MASTER") return;
-                for (let i = 0; i < 12; i++) {
-                    mTotals[i] += c.revenue[i];
-                    mRooms[i] += c.rooms[i];
-                }
-            });
-
-            const mTotalsPrev = new Array(12).fill(0);
-            const mRoomsPrev = new Array(12).fill(0);
-            if (dataPrev) {
-                Object.values(dataPrev.segment).forEach(c => {
-                    if (normalizeStr(c.name) === "TOTAL" || normalizeStr(c.name) === "TOTAL_MASTER") return;
-                    for (let i = 0; i < 12; i++) {
-                        mTotalsPrev[i] += c.revenue[i];
-                        mRoomsPrev[i] += c.rooms[i];
-                    }
-                });
-            }
-
-            const midx = currentMonthFilter === "All" ? -1 : parseInt(currentMonthFilter);
-
-            // Prioritize the explicit "TOTAL" object from Excel if it exists
-            const totalObj = data.segment["TOTAL"];
-            let totalRev, totalRN;
-
-            if (totalObj) {
-                totalRev = midx === -1 ? totalObj.revenue.reduce((a, b) => a + b, 0) : totalObj.revenue[midx];
-                totalRN = midx === -1 ? totalObj.rooms.reduce((a, b) => a + b, 0) : totalObj.rooms[midx];
-            } else {
-                totalRev = midx === -1 ? mTotals.reduce((a, b) => a + b, 0) : mTotals[midx];
-                totalRN = midx === -1 ? mRooms.reduce((a, b) => a + b, 0) : mRooms[midx];
-            }
-
-            // LY Data for Trends
-            let totalRevPrev = 0, totalRNPrev = 0;
-            if (dataPrev) {
-                const totalObjPrev = dataPrev.segment["TOTAL"];
-                if (totalObjPrev) {
-                    totalRevPrev = midx === -1 ? totalObjPrev.revenue.reduce((a, b) => a + b, 0) : totalObjPrev.revenue[midx];
-                    totalRNPrev = midx === -1 ? totalObjPrev.rooms.reduce((a, b) => a + b, 0) : totalObjPrev.rooms[midx];
-                } else {
-                    totalRevPrev = midx === -1 ? mTotalsPrev.reduce((a, b) => a + b, 0) : mTotalsPrev[midx];
-                    totalRNPrev = midx === -1 ? mRoomsPrev.reduce((a, b) => a + b, 0) : mRoomsPrev[midx];
-                }
-            }
-
-            const fmt = (n) => {
-                if (n === 0 || n === null || n === undefined) return "0 €";
-                return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".") + " €";
-            };
-            const fmtNum = (n) => {
-                if (n === 0 || n === null || n === undefined) return "0";
-                return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-            };
-            const fmtVal = (n) => currentMetric === 'revenue' ? fmt(n) : (currentMetric === 'adr' ? n.toFixed(2).replace('.', ',') + " €" : fmtNum(n));
-
-            // Calculate elapsed days for YTD calculation (from Production data as source of truth for days)
-            let elapsedDays = 0;
-            const prodData = (db[currentHotel] && db[currentHotel][currentYear]) ? db[currentHotel][currentYear] : {};
-            const monthDays = new Array(12).fill(0);
-
-            if (prodData.daily) {
-                Object.keys(prodData.daily).forEach(dateStr => {
-                    const parts = dateStr.split('-');
-                    if (parts.length >= 2) {
-                        const m = parseInt(parts[1]) - 1;
-                        if (m >= 0 && m < 12) monthDays[m]++;
-                    }
-                });
-            }
-
-            // Obtener estrictamente la fecha de PRODUCCIÓN REAL (nunca OTB)
-            const prodDateStr = (prodData.updates && prodData.updates.prod && prodData.updates.prod !== "N/A") 
-                ? prodData.updates.prod 
-                : (prodData.lastProdDate || "");
-
-            let prodDay = 0, prodMonth = -1, prodYear = "";
-            if (prodDateStr) {
-                let datePart = prodDateStr.split(' ')[0];
-                if (prodDateStr.includes(" al ")) {
-                    const partsAl = prodDateStr.split(" al ");
-                    if (partsAl.length >= 2) datePart = partsAl[1].split(' ')[0];
-                }
-                const parts = datePart.split(/[\/-]/);
-                if (parts.length === 3) {
-                    prodDay = parseInt(parts[0]);
-                    prodMonth = parseInt(parts[1]) - 1;
-                    prodYear = parts[2].length === 2 ? "20" + parts[2] : parts[2];
-                }
-            } else if (prodData.lastUpdate) {
-                const isOtbDate = prodData.updates && prodData.updates.otb && prodData.lastUpdate.includes(prodData.updates.otb.split(' ')[0]);
-                if (!isOtbDate) {
-                    let datePart = prodData.lastUpdate.split(' ')[0];
-                    const parts = datePart.split(/[\/-]/);
-                    if (parts.length === 3) {
-                        prodDay = parseInt(parts[0]);
-                        prodMonth = parseInt(parts[1]) - 1;
-                        prodYear = parts[2].length === 2 ? "20" + parts[2] : parts[2];
-                    }
-                }
-            }
-
-            if (prodYear === String(currentYear) && prodMonth >= 0 && prodMonth < 12) {
-                if (monthDays[prodMonth] === 0) {
-                    monthDays[prodMonth] = prodDay;
-                }
-            }
-
-            if (midx === -1) {
-                const dailyDays = monthDays.reduce((a, b) => a + b, 0);
-                let updateDays = 0;
-                if (prodYear === String(currentYear) && prodMonth >= 0) {
-                    updateDays = prodMonth * 30.42 + prodDay;
-                }
-
-                const currentRealYear = new Date().getFullYear();
-                elapsedDays = (parseInt(currentYear) < currentRealYear) ? 365 : (dailyDays > 0 ? dailyDays : (updateDays > 0 ? updateDays : 1));
-                if (elapsedDays === 0) elapsedDays = 1;
-
-                // Add counter badge to dashboard
-                const dayCounterHTML = `<div style="font-size: 0.73rem; color: var(--primary); font-weight: 800; margin-top: 4px; background: #eef2ff; display: inline-block; padding: 2px 10px; border-radius: 20px; border: 1px solid #c7d2fe;">🗓️ Día ${Math.floor(elapsedDays)} de 365</div>`;
-                document.getElementById('metric-years').innerHTML += ` ${dayCounterHTML}`;
-            } else {
-                let daysInM = monthDays[midx];
-                let updateDaysInM = 0;
-                if (prodYear === String(currentYear) && prodMonth === midx) {
-                    updateDaysInM = prodDay;
-                }
-                elapsedDays = daysInM > 0 ? daysInM : (updateDaysInM > 0 ? updateDaysInM : 30.42);
-                if (elapsedDays === 0) elapsedDays = 30.42;
-            }
-
-            const hotelRooms = HOTELS[currentHotel].rooms;
-            document.getElementById('kpi-prod').innerText = fmt(totalRev);
-            document.getElementById('kpi-rooms').innerText = fmtNum(totalRN);
-            const adr = totalRN > 0 ? (totalRev / totalRN) : 0;
-            document.getElementById('kpi-adr').innerText = adr.toFixed(2).replace('.', ',') + " €";
-
-            const revpar = totalRev / (hotelRooms * elapsedDays);
-            document.getElementById('kpi-revpar').innerText = revpar.toFixed(2).replace('.', ',') + " €";
-
-            // Trends
-            const setTrend = (id, cur, prev) => {
-                const el = document.getElementById(id);
-                if (!prev) { el.innerText = "—"; return; }
-                const diff = ((cur - prev) / prev * 100).toFixed(1);
-                const isPos = parseFloat(diff) >= 0;
-                el.innerHTML = `<span style="color:${isPos ? 'var(--success)' : '#ef4444'}">${isPos ? '▲' : '▼'} ${Math.abs(diff)}%</span> vs LY`;
-            };
-            setTrend('kpi-prod-diff', totalRev, totalRevPrev);
-            setTrend('kpi-rooms-diff', totalRN, totalRNPrev);
-            const adrPrev = totalRNPrev > 0 ? (totalRevPrev / totalRNPrev) : 0;
-            setTrend('kpi-adr-diff', adr, adrPrev);
-
-            // RevPAR / Occupancy Fix
-            const revparPrev = totalRevPrev / (hotelRooms * (midx === -1 ? 365 : 30));
-            setTrend('kpi-revpar-diff', revpar, revparPrev);
-
-            // Table
-            const tbody = document.getElementById('tableBody');
-            const thead = document.getElementById('tableHead');
-            let body = '';
-
-            const activeConcepts = concepts.filter(c => c.revenue.some(v => v > 0) || c.rooms.some(v => v > 0));
-
-            if (midx === -1) {
-                thead.innerHTML = '<tr><th style="background:#f1f5f9; z-index:110;">Segmento</th>' + SHORT_MONTHS.map((m, i) => {
-                    return `<th style="text-align:center;">${m}</th>`;
-                }).join('') + '<th>Total</th><th>% Mix</th></tr>';
-
-                activeConcepts.sort((a, b) => b.revenue.reduce((x, y) => x + y, 0) - a.revenue.reduce((x, y) => x + y, 0)).forEach(c => {
-                    if (c.name === "TOTAL") return;
-                    const rowRev = c.revenue.reduce((a, b) => a + b, 0);
-                    const rowRooms = c.rooms.reduce((a, b) => a + b, 0);
-                    const valTotal = currentMetric === 'revenue' ? rowRev : (currentMetric === 'rooms' ? rowRooms : (rowRooms > 0 ? rowRev / rowRooms : 0));
-
-                    const cells = c.revenue.map((v, idx) => {
-                        const vCell = currentMetric === 'revenue' ? v : (currentMetric === 'rooms' ? c.rooms[idx] : (c.rooms[idx] > 0 ? v / c.rooms[idx] : 0));
-                        return `<td style="text-align:center;">${vCell ? fmtVal(vCell) : '-'}</td>`;
-                    }).join('');
-
-                    body += `<tr><td style="font-weight:600; background:white; position:sticky; left:0; z-index:20;">${c.name}</td>${cells}<td style="font-weight:700;">${fmtVal(valTotal)}</td><td>${(rowRev / totalRev * 100).toFixed(1)}%</td></tr>`;
-                });
-            } else {
-                thead.innerHTML = `<tr><th style="background:#f1f5f9; z-index:110;">Segmento</th><th>Valor Detalle</th><th>% Mix Total</th></tr>`;
-                activeConcepts.sort((a, b) => b.revenue[midx] - a.revenue[midx]).forEach(c => {
-                    if (c.name === "TOTAL") return;
-                    const rev = c.revenue[midx];
-                    const rooms = c.rooms[midx];
-                    const val = currentMetric === 'revenue' ? rev : (currentMetric === 'rooms' ? rooms : (rooms > 0 ? rev / rooms : 0));
-                    body += `<tr><td style="font-weight:600; background:white; position:sticky; left:0; z-index:20;">${c.name}</td><td>${fmtVal(val)}</td><td>${(rev / totalRev * 100).toFixed(1)}%</td></tr>`;
-                });
-            }
-            tbody.innerHTML = body;
-
-            updateCharts(data, mTotals, mRooms, mTotalsPrev, mRoomsPrev, concepts, midx);
-        }
-
-        function updateCharts(data, mTotals, mRooms, mTotalsPrev, mRoomsPrev, concepts, midx) {
-            const isRooms = currentMetric === 'rooms';
-            const isAdr = currentMetric === 'adr';
-
-            const getMetricData = (revArr, rmsArr) => {
-                if (isRooms) return rmsArr;
-                if (isAdr) return revArr.map((v, i) => rmsArr[i] > 0 ? (v / rmsArr[i]).toFixed(1) : 0);
-                return revArr;
-            };
-
-            const mainData = getMetricData(mTotals, mRooms);
-            const prevData = getMetricData(mTotalsPrev, mRoomsPrev);
-
-            if (charts.main) charts.main.destroy();
-            charts.main = new Chart(document.getElementById('mainChart'), {
-                type: 'line',
-                data: {
-                    labels: SHORT_MONTHS,
-                    datasets: [
-                        { label: currentYear, data: mainData, borderColor: '#4f46e5', fill: true, backgroundColor: 'rgba(79,70,229,0.1)', tension: 0.4, zIndex: 10 },
-                        { label: (currentYear - 1), data: prevData, borderColor: '#94a3b8', borderDash: [5, 5], fill: false, tension: 0.4, zIndex: 5 }
-                    ].filter(d => d)
-                },
-                options: {
-                    maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false
-                    },
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: function (context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) label += ': ';
-                                    if (context.parsed.y !== null) {
-                                        label += new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(context.parsed.y);
-                                    }
-                                    return label;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-
-            // Comparativa Anual Bar Chart
-            if (charts.top) charts.top.destroy();
-            const yearSum = mainData.reduce((a, b) => parseFloat(a) + parseFloat(b), 0);
-            const prevSum = prevData.reduce((a, b) => parseFloat(a) + parseFloat(b), 0);
-
-            charts.top = new Chart(document.getElementById('topChart'), {
-                type: 'bar',
-                data: {
-                    labels: [currentYear, (currentYear - 1)],
-                    datasets: [{
-                        data: [yearSum, prevSum],
-                        backgroundColor: ['#4f46e5', '#94a3b8']
-                    }]
-                },
-                options: { maintainAspectRatio: false, plugins: { legend: { display: false } } }
-            });
-
-            if (charts.dist) charts.dist.destroy();
-            const dLabels = [], dData = [];
-            concepts.forEach(c => {
-                if (c.name === "TOTAL") return;
-                let v = 0;
-                if (midx === -1) {
-                    const r = c.revenue.reduce((a, b) => a + b, 0);
-                    const rms = c.rooms.reduce((a, b) => a + b, 0);
-                    v = isRooms ? rms : (isAdr ? (rms > 0 ? r / rms : 0) : r);
-                } else {
-                    v = isRooms ? c.rooms[midx] : (isAdr ? (c.rooms[midx] > 0 ? c.revenue[midx] / c.rooms[midx] : 0) : c.revenue[midx]);
-                }
-                if (v > 0) { dLabels.push(c.name); dData.push(v); }
-            });
-            charts.dist = new Chart(document.getElementById('distChart'), {
-                type: 'doughnut', data: { labels: dLabels, datasets: [{ data: dData, backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#475569', '#94a3b8'] }] },
-                options: { maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
-            });
-        }
-    </script>
+    <script src="js/segment-analysis.js"></script>
+    <script src="js/segment-dashboard.js"></script>
 </body>
 
 </html>
