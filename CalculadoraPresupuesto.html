@@ -18,7 +18,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="js/firebase-config-env.js"></script>
     <script src="js/firebase-auth.js"></script>
     <script src="js/theme-manager.js"></script>
 
@@ -2553,14 +2552,17 @@
             <p style="margin:0 0 18px 0; font-size:0.85rem; color:#64748b; line-height:1.4;">
                 El presupuesto oficial de <b id="unlockYearText" style="color:var(--primary);">2027</b> está bloqueado. Introduce la clave para modificarlo:
             </p>
-            <input type="password" id="unlockPinInput" maxlength="10" placeholder="••••" 
-                style="width:100%; text-align:center; font-size:1.8rem; letter-spacing:8px; padding:10px; border:2px solid #cbd5e1; border-radius:14px; margin-bottom:10px; font-weight:700; color:#1e293b;" 
-                onkeydown="if(event.key==='Enter') verifyUnlockPin()">
-            <div id="unlockErrorMsg" style="color:#ef4444; font-size:0.8rem; min-height:20px; margin-bottom:14px; display:none; font-weight:600;">❌ Clave incorrecta</div>
-            <div style="display:flex; gap:10px; justify-content:center;">
-                <button onclick="closeUnlockModal()" class="btn" style="background:#f1f5f9; color:#475569; padding:9px 18px; border-radius:10px; font-weight:600;">Cancelar</button>
-                <button onclick="verifyUnlockPin()" class="btn btn-primary" style="padding:9px 22px; border-radius:10px; font-weight:700;">🔓 Desbloquear</button>
-            </div>
+            <form onsubmit="event.preventDefault(); verifyUnlockPin();" autocomplete="off" style="margin:0;">
+                <input type="password" id="unlockPinInput" autocomplete="current-password" maxlength="10" placeholder="••••" 
+                    style="width:100%; text-align:center; font-size:1.8rem; letter-spacing:8px; padding:10px; border:2px solid #cbd5e1; border-radius:14px; margin-bottom:10px; font-weight:700; color:#1e293b;">
+                <div id="unlockErrorMsg" style="color:#ef4444; font-size:0.8rem; min-height:20px; margin-bottom:14px; display:none; font-weight:600;">❌ Clave incorrecta</div>
+                <div style="display:flex; gap:10px; justify-content:center;">
+                    <button type="button" onclick="closeUnlockModal()" class="btn" style="background:#f1f5f9; color:#475569; padding:9px 18px; border-radius:10px; font-weight:600;">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" style="padding:9px 22px; border-radius:10px; font-weight:700;">🔓 Desbloquear</button>
+                </div>
+            </form>
+        </div>
+    </div>
     <!-- Scenario Detail Modal -->
     <div id="scenarioDetailModal" class="modal" style="display:none; position:fixed; z-index:9998; left:0; top:0; width:100%; height:100%; background:rgba(15,23,42,0.65); backdrop-filter:blur(4px); align-items:center; justify-content:center; padding: 20px;">
         <div style="background:#fff; border-radius:20px; padding:24px; width:100%; max-width:920px; max-height:90vh; overflow-y:auto; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); display: flex; flex-direction: column; gap: 16px;">
