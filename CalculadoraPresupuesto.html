@@ -630,14 +630,14 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
                     <div>
                         <h3 style="margin: 0; font-size: 1.15rem; display: flex; align-items: center; gap: 8px;">
-                            🎯 Comparativa de Escenarios Presupuestarios <span id="scenarioYearBadge" style="font-size:0.9rem; color:var(--primary); font-weight:800; background:rgba(99,102,241,0.1); padding:2px 8px; border-radius:6px;">2027</span>
+                            🎯 <span id="scSectionTitle">Comparativa de Escenarios Presupuestarios</span> <span id="scenarioYearBadge" style="font-size:0.9rem; color:var(--primary); font-weight:800; background:rgba(99,102,241,0.1); padding:2px 8px; border-radius:6px;">2027</span>
                         </h3>
-                        <p style="margin: 4px 0 0 0; font-size: 0.8rem; color: var(--text-muted);">
+                        <p id="scSectionDesc" style="margin: 4px 0 0 0; font-size: 0.8rem; color: var(--text-muted);">
                             Evalúa los escenarios recomendados para la dirección del hotel, compara el retorno anual y graba el Presupuesto Oficial definitivo.
                         </p>
                     </div>
                     <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                        <button onclick="openScenariosMatrixModal()" class="btn" style="background:#f8fafc; border:1px solid #cbd5e1; color:#334155; font-size:0.8rem; font-weight:700; padding:6px 12px; border-radius:8px; cursor:pointer; display:flex; align-items:center; gap:6px; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
+                        <button id="scMatrixBtn" onclick="openScenariosMatrixModal()" class="btn" style="background:#f8fafc; border:1px solid #cbd5e1; color:#334155; font-size:0.8rem; font-weight:700; padding:6px 12px; border-radius:8px; cursor:pointer; display:flex; align-items:center; gap:6px; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
                             📊 Comparativa Mes a Mes (Todos)
                         </button>
                         <div id="lockedBadgeContainer" style="display: flex; align-items: center; gap: 10px;"></div>
@@ -1055,6 +1055,13 @@
             const budgetKey = `custom_budget_${prevYear}`;
             let pBudget = (db[hotel] && db[hotel][budgetKey]) ? db[hotel][budgetKey] : null;
 
+            // For 2026, the official configured budget is hotelData[hotel].strategies.original
+            if (prevYear === '2026') {
+                if (!pBudget || pBudget.strategy !== 'user_custom') {
+                    pBudget = (hotelData[hotel] && hotelData[hotel].strategies) ? hotelData[hotel].strategies.original : pBudget;
+                }
+            }
+
             // Calendar check for closed months
             const now = new Date();
             const curCalYear = now.getFullYear();
@@ -1144,7 +1151,7 @@
             }
 
             // 2. Blend pVal with Stored Historical Baseline H ("y un poco en el histórico almacenado")
-            const wHist = typeof blendWeight === 'number' ? blendWeight : 0.20; // Default 20% historical, 80% prevYear
+            const wHist = (typeof blendWeight === 'number' && !isNaN(blendWeight)) ? blendWeight : 0.20; // Default 20% historical, 80% prevYear
             const wPrev = 1.0 - wHist;
 
             const blended = {
@@ -1261,11 +1268,31 @@
                 return;
             }
             const h = hotelData[currentHotel];
+            if (currentYear === '2026' && h && h.strategies && h.strategies.original) {
+                currentRev = [...h.strategies.original.rev];
+                currentAdr = [...h.strategies.original.adr];
+                updateAll();
+                showNotification(`🔄 Presupuesto 2026 restablecido al Presupuesto Oficial Aprobado.`);
+                return;
+            }
             if (h && h.referenceBase) {
                 currentRev = h.referenceBase.rev.map(v => v);
                 currentAdr = h.referenceBase.adr.map(v => v);
                 updateAll();
                 showNotification(`🔄 Presupuesto restablecido a Base de Referencia.`);
+            }
+        }
+
+        function goToYear(year) {
+            const ySel = document.getElementById('yearSelector');
+            if (ySel) {
+                ySel.value = String(year);
+                switchHotel();
+                const curTab = document.querySelector('.section.active')?.id;
+                if (!curTab || curTab === 'tab-bonus') {
+                    switchTab('tab-dashboard');
+                }
+                showNotification(`🚀 Cargando elaboración del Presupuesto ${year}...`);
             }
         }
 
@@ -1353,6 +1380,10 @@
             const yearBadge = document.getElementById('scenarioYearBadge');
             if (yearBadge) yearBadge.innerText = currentYear;
 
+            const scTitle = document.getElementById('scSectionTitle');
+            const scDesc = document.getElementById('scSectionDesc');
+            const scMatrixBtn = document.getElementById('scMatrixBtn');
+
             const badgeContainer = document.getElementById('lockedBadgeContainer');
             if (badgeContainer) {
                 if (isBudgetLocked) {
@@ -1375,6 +1406,80 @@
                     `;
                 }
             }
+
+            // In 2026: Official Budget is already configured and approved. Only official is valid!
+            if (currentYear === '2026') {
+                if (scTitle) scTitle.innerText = 'Presupuesto Oficial 2026';
+                if (scDesc) scDesc.innerText = 'Presupuesto oficial configurado y vigente para el ejercicio actual. Para simular y comparar escenarios, pasa a 2027.';
+                if (scMatrixBtn) scMatrixBtn.style.display = 'none';
+
+                const orig = h.strategies && h.strategies.original;
+                const offRevTot = orig ? orig.rev.reduce((a, b) => a + b, 0) : currentRev.reduce((a, b) => a + b, 0);
+                const offRnTot = orig ? orig.rev.reduce((acc, v, i) => acc + (orig.adr[i] > 0 ? Math.round(v / orig.adr[i]) : 0), 0) : 0;
+                const offAdr = offRnTot > 0 ? offRevTot / offRnTot : 0;
+                const offOcc = totalCap > 0 ? (offRnTot / totalCap) * 100 : 0;
+                const varVs25 = baseRevTotal > 0 ? ((offRevTot - baseRevTotal) / baseRevTotal * 100) : 0;
+
+                grid.innerHTML = `
+                <div style="grid-column: 1 / -1; background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%); border: 2px solid #93c5fd; border-radius: 16px; padding: 20px 24px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.08);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 15px; margin-bottom: 16px;">
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+                                <span style="background: #1e40af; color: #fff; font-size: 0.72rem; font-weight: 800; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.05em;">
+                                    🔒 OFICIAL CERRADO Y VIGENTE
+                                </span>
+                                <h4 style="margin: 0; font-size: 1.15rem; color: #1e293b; font-weight: 800;">
+                                    Presupuesto Oficial 2026 (${currentHotel})
+                                </h4>
+                            </div>
+                            <p style="margin: 0; font-size: 0.85rem; color: #475569; max-width: 800px; line-height: 1.5;">
+                                El presupuesto de 2026 ya fue configurado y aprobado formalmente por la Dirección General (Total: <b>${formatMoney(offRevTot)}</b>). En 2026 únicamente rige este presupuesto oficial y no se admiten escenarios alternativos. Para elaborar, comparar opciones y fijar objetivos futuros, utiliza el elaborador de <b>2027</b>.
+                            </p>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <button onclick="openScenarioDetailModal('official_2026')" class="btn"
+                                style="background: #fff; color: #1e40af; border: 1.5px solid #bfdbfe; font-size: 0.82rem; font-weight: 700; padding: 8px 14px; border-radius: 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                                🔍 Ver Detalle Mensual 2026
+                            </button>
+                            <button onclick="goToYear('2027')" class="btn btn-primary"
+                                style="background: linear-gradient(135deg, #4f46e5, #4338ca); color: #fff; font-size: 0.85rem; font-weight: 800; padding: 8px 18px; border-radius: 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35); border: none;">
+                                🚀 Elaborar Presupuesto 2027 →
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- KPIs Summary Bar for 2026 Official -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; background: #fff; padding: 14px 18px; border-radius: 12px; border: 1px solid #dbeafe;">
+                        <div>
+                            <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Revenue Habitaciones 2026</div>
+                            <div style="font-size: 1.35rem; font-weight: 800; color: #1e40af; margin-top: 2px;">${formatMoney(offRevTot)}</div>
+                            <div style="font-size: 0.72rem; color: #10b981; font-weight: 700;">+${varVs25.toFixed(1)}% vs Real 2025</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase;">ADR Medio Oficial</div>
+                            <div style="font-size: 1.35rem; font-weight: 800; color: #1e293b; margin-top: 2px;">${offAdr.toFixed(2)} €</div>
+                            <div style="font-size: 0.72rem; color: #64748b;">Precio medio presupuestado</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Habitaciones (RN)</div>
+                            <div style="font-size: 1.35rem; font-weight: 800; color: #c2410c; margin-top: 2px;">${formatInt(offRnTot)}</div>
+                            <div style="font-size: 0.72rem; color: #64748b;">Noches presupuestadas</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Ocupación Media</div>
+                            <div style="font-size: 1.35rem; font-weight: 800; color: #059669; margin-top: 2px;">${offOcc.toFixed(1)}%</div>
+                            <div style="font-size: 0.72rem; color: #64748b;">Sobre capacidad anual</div>
+                        </div>
+                    </div>
+                </div>
+                `;
+                return;
+            }
+
+            // CurrentYear >= 2027: Show full scenario comparison cards
+            if (scTitle) scTitle.innerText = 'Comparativa de Escenarios Presupuestarios';
+            if (scDesc) scDesc.innerText = 'Evalúa los escenarios recomendados para la dirección del hotel, compara el retorno anual y graba el Presupuesto Oficial definitivo.';
+            if (scMatrixBtn) scMatrixBtn.style.display = 'inline-flex';
 
             const scenarios = getScenarioList();
             const currentStrat = document.getElementById('strategySelector')?.value;
@@ -1456,8 +1561,25 @@
             const baseRnTotal = real.rn.reduce((a, b) => a + b, 0);
             const baseAdrAvg = baseRnTotal > 0 ? baseRevTotal / baseRnTotal : 0;
 
-            const scenarios = getScenarioList();
-            const sc = scenarios.find(s => s.key === key);
+            let sc;
+            if (key === 'official_2026' || (currentYear === '2026' && key === 'official')) {
+                const orig = h.strategies && h.strategies.original;
+                sc = {
+                    key: 'official_2026',
+                    title: `Presupuesto Oficial 2026 (${currentHotel})`,
+                    subtitle: 'Oficial Aprobado',
+                    desc: 'Presupuesto oficial vigente aprobado por la Dirección General para el ejercicio 2026.',
+                    isRecommended: true,
+                    color: '#1e40af',
+                    accentBg: '#eff6ff',
+                    border: '#93c5fd',
+                    rev: orig ? [...orig.rev] : [...currentRev],
+                    adr: orig ? [...orig.adr] : [...currentAdr]
+                };
+            } else {
+                const scenarios = getScenarioList();
+                sc = scenarios.find(s => s.key === key);
+            }
             if (!sc) return;
 
             const modal = document.getElementById('scenarioDetailModal');
@@ -1605,17 +1727,31 @@
             // Buttons inside modal
             const applyBtn = document.getElementById('scDetailApplyBtn');
             if (applyBtn) {
-                applyBtn.onclick = () => {
-                    closeScenarioDetailModal();
-                    applyScenario(key);
-                };
+                if (currentYear === '2026') {
+                    applyBtn.innerText = '👁️ Ver en Tabla';
+                    applyBtn.onclick = () => {
+                        closeScenarioDetailModal();
+                        switchTab('tab-dashboard');
+                    };
+                } else {
+                    applyBtn.innerText = '✏️ Aplicar Escenario a Tabla';
+                    applyBtn.onclick = () => {
+                        closeScenarioDetailModal();
+                        applyScenario(key);
+                    };
+                }
             }
             const saveBtn = document.getElementById('scDetailSaveBtn');
             if (saveBtn) {
-                saveBtn.onclick = () => {
-                    closeScenarioDetailModal();
-                    saveOfficialScenario(key);
-                };
+                if (currentYear === '2026') {
+                    saveBtn.style.display = 'none';
+                } else {
+                    saveBtn.style.display = 'inline-flex';
+                    saveBtn.onclick = () => {
+                        closeScenarioDetailModal();
+                        saveOfficialScenario(key);
+                    };
+                }
             }
 
             modal.style.display = 'flex';
@@ -1722,6 +1858,10 @@
         }
 
         function applyScenario(key) {
+            if (currentYear === '2026') {
+                showNotification("🔒 En 2026 únicamente rige el Presupuesto Oficial aprobado.", "error");
+                return;
+            }
             if (isBudgetLocked) {
                 showNotification("🔒 El presupuesto oficial está bloqueado. Introduce la clave 1234 para cambiarlo.", "error");
                 promptUnlockBudget();
@@ -1734,6 +1874,10 @@
         }
 
         function saveOfficialScenario(key) {
+            if (currentYear === '2026') {
+                showNotification("🔒 El Presupuesto Oficial 2026 ya está configurado y cerrado.", "error");
+                return;
+            }
             if (isBudgetLocked) {
                 showNotification("🔒 El presupuesto oficial ya está grabado y bloqueado. Introduce la clave 1234 para sobrescribir.", "error");
                 promptUnlockBudget();
@@ -1749,7 +1893,7 @@
             currentHotel = document.getElementById('hotelSelector').value;
             currentYear = document.getElementById('yearSelector').value;
             const blendSelectEl = document.getElementById('blendSelector');
-            const blendWeight = blendSelectEl ? parseFloat(blendSelectEl.value) : 0.20;
+            const blendWeight = (blendSelectEl && !isNaN(parseFloat(blendSelectEl.value))) ? parseFloat(blendSelectEl.value) : 0.20;
 
             const h = hotelData[currentHotel];
             document.getElementById('hotelLogo').src = h.logo;
@@ -1770,7 +1914,11 @@
             if (headerTitle) headerTitle.innerText = `Presupuestos ${currentYear}`;
 
             const editorTitle = document.getElementById('editorTitle');
-            if (editorTitle) editorTitle.innerText = `Elaboración del Presupuesto de ${currentYear}`;
+            if (editorTitle) {
+                editorTitle.innerText = (currentYear === '2026')
+                    ? `Presupuesto Oficial 2026 (Vigente)`
+                    : `Elaboración del Presupuesto de ${currentYear}`;
+            }
 
             const labelTotalRev = document.getElementById('label-total-rev');
             if (labelTotalRev) labelTotalRev.innerText = `Rev. Habitaciones ${currentYear}`;
@@ -1808,16 +1956,48 @@
 
             const db = JSON.parse(CapaStorage.getItem('hotel_manager_db_v2')) || {};
 
+            const stratSel = document.getElementById('strategySelector');
+            if (stratSel) {
+                if (currentYear === '2026') {
+                    stratSel.innerHTML = `
+                        <option value="official" selected>📈 Presupuesto Oficial 2026 (Aprobado)</option>
+                    `;
+                    stratSel.disabled = true;
+                    stratSel.title = "En 2026 solo es válido el Presupuesto Oficial aprobado";
+                } else {
+                    stratSel.disabled = false;
+                    stratSel.title = `Seleccionar escenario para ${currentYear}`;
+                    stratSel.innerHTML = `
+                        <option value="official">📈 Presupuesto Oficial ${currentYear}</option>
+                        <option value="optionB" selected>⭐ Opción B: Lógica de Mercado (Recomendado)</option>
+                        <option value="original">Opción A: Conservador (+4.5%)</option>
+                        <option value="optionC">💰 Opción C: Maximizar ADR (+12%)</option>
+                        <option value="optionD">🚀 Opción D: OTB + Yield (+15%)</option>
+                    `;
+                }
+            }
+
             // Check if budget is recorded and locked for this year
             const customKey = `custom_budget_${currentYear}`;
             const custom = (db[currentHotel] && db[currentHotel][customKey]) ? db[currentHotel][customKey] : null;
 
-            if (custom && custom.locked !== false) {
-                isBudgetLocked = true;
-                const stratSel = document.getElementById('strategySelector');
-                if (stratSel) stratSel.value = 'official';
+            if (currentYear === '2026') {
+                // 2026 is locked by default as official approved budget
+                if (custom && custom.strategy === 'user_custom' && custom.locked === false) {
+                    isBudgetLocked = false;
+                } else {
+                    isBudgetLocked = true;
+                }
             } else {
-                isBudgetLocked = false;
+                if (custom && custom.locked !== false) {
+                    isBudgetLocked = true;
+                    if (stratSel) stratSel.value = 'official';
+                } else {
+                    isBudgetLocked = false;
+                    if (stratSel) {
+                        stratSel.value = (custom && custom.strategy) ? custom.strategy : 'optionB';
+                    }
+                }
             }
 
             // Load CURRENT YEAR OTB (Vendido) from DB
@@ -1869,12 +2049,34 @@
 
         function loadStrategy() {
             const h = hotelData[currentHotel];
-            const key = document.getElementById('strategySelector').value;
+            const stratSel = document.getElementById('strategySelector');
+            const key = stratSel ? stratSel.value : 'official';
             const real = h.referenceBase || h.real2025;
 
+            // IN 2026: Strictly load the official configured budget
+            if (currentYear === '2026') {
+                const db = JSON.parse(CapaStorage.getItem('hotel_manager_db_v2')) || {};
+                const custom = db[currentHotel] && db[currentHotel]['custom_budget_2026'];
+                const orig = h.strategies && h.strategies.original;
+
+                if (custom && custom.strategy === 'user_custom' && custom.rev && custom.rev.some(v => v > 0)) {
+                    currentRev = [...custom.rev];
+                    currentAdr = [...custom.adr];
+                } else if (orig) {
+                    currentRev = [...orig.rev];
+                    currentAdr = [...orig.adr];
+                } else {
+                    currentRev = real.rev.map(v => v);
+                    currentAdr = real.adr.map(v => v);
+                }
+                updateAll();
+                return;
+            }
+
+            // For 2027 and future years:
             if (isBudgetLocked && key !== 'official') {
                 showNotification(`🔒 El Presupuesto Oficial está bloqueado. Introduce la clave 1234 para cambiarlo.`, 'error');
-                document.getElementById('strategySelector').value = 'official';
+                if (stratSel) stratSel.value = 'official';
                 promptUnlockBudget();
                 return;
             }
@@ -1893,7 +2095,7 @@
                     currentAdr = real.adr.map(v => v * 1.040);
                 }
             } else {
-                // Dynamic Strategies
+                // Dynamic Strategies for 2027+
                 if (key === 'original') {
                     currentRev = real.rev.map(v => v * 1.045);
                     currentAdr = real.adr.map(v => v * 1.028);
@@ -1954,7 +2156,7 @@
                 rev: [...currentRev],
                 adr: [...currentAdr],
                 locked: true,
-                strategy: strategyName || document.getElementById('strategySelector')?.value || 'custom',
+                strategy: strategyName || (currentYear === '2026' ? 'user_custom' : (document.getElementById('strategySelector')?.value || 'custom')),
                 lastSave: new Date().toLocaleString('es-ES')
             };
 
@@ -1962,7 +2164,9 @@
             isBudgetLocked = true;
 
             const stratSel = document.getElementById('strategySelector');
-            if (stratSel) stratSel.value = 'official';
+            if (stratSel && currentYear !== '2026') {
+                stratSel.value = 'official';
+            }
 
             updateAll();
             showNotification(`✅ Presupuesto Oficial ${currentYear} grabado y protegido. Se requiere clave 1234 para editar.`);
@@ -2024,10 +2228,11 @@
                         </button>
                     `;
                 } else {
+                    const resetLabel = (currentYear === '2026') ? '🔄 Restablecer a Oficial 2026' : `🔄 Resetear a Base ${prevYear}`;
                     actionsContainer.innerHTML = `
                         <button id="resetBtn" onclick="resetToBase()" class="btn"
                             style="background: #f1f5f9; color: #475569; font-size: 0.8rem; border-radius: 8px;">
-                            🔄 Resetear a Base ${prevYear}
+                            ${resetLabel}
                         </button>
                         <button onclick="saveCustomBudget()" class="btn btn-primary"
                             style="padding: 8px 16px; font-size: 0.85rem; border-radius: 8px; font-weight: 700;" id="saveBtn">
