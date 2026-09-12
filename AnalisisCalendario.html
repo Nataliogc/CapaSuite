@@ -188,6 +188,50 @@
             background-clip: text;
             -webkit-text-fill-color: transparent;
         }
+        [data-theme="light"] .header-title h1 {
+            background: linear-gradient(135deg, #0f172a 0%, #334155 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* CONTROLS & LEGEND */
+        .calendar-legend {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.72rem;
+            font-weight: 800;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            user-select: none;
+        }
+        .legend-boxes {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 3px 6px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        [data-theme="light"] .legend-boxes {
+            background: rgba(0, 0, 0, 0.04);
+            border-color: rgba(0, 0, 0, 0.08);
+        }
+        .legend-box {
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            border: 1px solid rgba(0, 0, 0, 0.12);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+        .legend-box:hover {
+            transform: scale(1.3);
+            z-index: 10;
+        }
 
         /* CONTROLS */
         .controls-bar {
@@ -333,8 +377,9 @@
             overflow: hidden;
         }
         [data-theme="light"] .day-cell { 
-            border-color: rgba(0,0,0,0.05); 
-            background: rgba(0,0,0,0.02); 
+            border-color: #e2e8f0; 
+            background: #ffffff; 
+            color: #0f172a;
         }
 
         .day-cell:hover {
@@ -346,7 +391,8 @@
         }
         [data-theme="light"] .day-cell:hover { 
             background: #ffffff; 
-            box-shadow: 0 10px 20px rgba(0,0,0,0.05); 
+            border-color: var(--primary);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.08); 
         }
 
         .day-num-container {
@@ -361,22 +407,47 @@
             font-weight: 800; 
             color: var(--text-main);
         }
+        [data-theme="light"] .day-num { color: #0f172a; }
         
         .day-name-short {
             font-size: 0.55rem;
             font-weight: 800;
             color: var(--text-muted);
             text-transform: uppercase;
-            opacity: 0.6;
+            opacity: 0.7;
         }
+        [data-theme="light"] .day-name-short { color: #64748b; }
         
         .day-price {
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             font-weight: 900;
             color: var(--text-main);
             text-align: center;
             margin: 2px 0;
             font-family: 'Outfit', sans-serif;
+            letter-spacing: -0.3px;
+        }
+        [data-theme="light"] .day-price { color: #0f172a; }
+
+        .cell-sub-market {
+            font-size: 0.65rem;
+            font-weight: 800;
+            padding: 1px 6px;
+            border-radius: 5px;
+            margin: 2px auto 0;
+            text-align: center;
+            display: inline-block;
+            background: rgba(99, 102, 241, 0.15);
+            color: #a5b4fc;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            font-family: 'Outfit', sans-serif;
+            letter-spacing: -0.2px;
+            white-space: nowrap;
+        }
+        [data-theme="light"] .cell-sub-market {
+            background: #eef2ff;
+            color: #4338ca;
+            border-color: #c7d2fe;
         }
         
         /* OTB BADGE */
@@ -392,32 +463,74 @@
             width: fit-content;
             margin: 2px auto 0;
         }
+        [data-theme="light"] .otb-badge {
+            background: #f3e8ff;
+            border-color: #d8b4fe;
+        }
         
         .otb-label { font-size: 0.55rem; font-weight: 800; color: #a78bfa; }
         .otb-val { color: #a78bfa; font-weight: 900; font-size: 0.75rem; }
+        [data-theme="light"] .otb-label { color: #7c3aed; }
+        [data-theme="light"] .otb-val { color: #6d28d9; }
 
-        .heat-1 { background-color: rgba(255, 255, 255, 0.05) !important; }
-        .heat-2 { background-color: rgba(99, 102, 241, 0.15) !important; }
-        .heat-3 { background-color: rgba(99, 102, 241, 0.35) !important; }
+        /* HEATMAP PALETTE (Bajo -> Alto: Verde -> Azul -> Amarillo -> Naranja -> Rojo) */
+        /* Modo Oscuro */
+        .heat-1 { 
+            background-color: rgba(16, 185, 129, 0.12) !important; 
+            border-color: rgba(16, 185, 129, 0.3) !important; 
+        }
+        .heat-2 { 
+            background-color: rgba(56, 189, 248, 0.15) !important; 
+            border-color: rgba(56, 189, 248, 0.35) !important; 
+        }
+        .heat-3 { 
+            background-color: rgba(245, 158, 11, 0.20) !important; 
+            border-color: rgba(245, 158, 11, 0.4) !important; 
+        }
         .heat-4 { 
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.7), rgba(129, 140, 248, 0.7)) !important; 
-            color: white !important;
+            background-color: rgba(249, 115, 22, 0.28) !important; 
+            border-color: rgba(249, 115, 22, 0.5) !important; 
         }
         .heat-5 { 
-            background: linear-gradient(135deg, #6366f1, #a855f7) !important; 
-            color: white !important; 
-            box-shadow: 0 0 20px rgba(99, 102, 241, 0.4); 
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.45), rgba(225, 29, 72, 0.55)) !important; 
+            border-color: rgba(239, 68, 68, 0.65) !important; 
+            box-shadow: 0 0 16px rgba(239, 68, 68, 0.3); 
         }
 
-        [data-theme="light"] .heat-1 { background-color: #f8fafc !important; }
-        [data-theme="light"] .heat-2 { background-color: #e0e7ff !important; }
-        [data-theme="light"] .heat-3 { background-color: #c7d2fe !important; }
-        [data-theme="light"] .heat-4 { background: #818cf8 !important; color: white !important; }
-        [data-theme="light"] .heat-5 { background: #6366f1 !important; color: white !important; }
+        /* Modo Claro */
+        [data-theme="light"] .heat-1 { 
+            background-color: #ecfdf5 !important; 
+            border-color: #a7f3d0 !important; 
+        }
+        [data-theme="light"] .heat-2 { 
+            background-color: #e0f2fe !important; 
+            border-color: #bae6fd !important; 
+        }
+        [data-theme="light"] .heat-3 { 
+            background-color: #fef3c7 !important; 
+            border-color: #fde68a !important; 
+        }
+        [data-theme="light"] .heat-4 { 
+            background-color: #ffedd5 !important; 
+            border-color: #fed7aa !important; 
+        }
+        [data-theme="light"] .heat-5 { 
+            background: linear-gradient(135deg, #fee2e2, #fecdd3) !important; 
+            border-color: #fca5a5 !important; 
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15); 
+        }
 
-        .is-past { opacity: 0.2; filter: grayscale(0.8); pointer-events: none; }
-        .is-weekend { background: rgba(255, 255, 255, 0.04) !important; border-color: rgba(255, 255, 255, 0.1) !important; }
+        .is-past { opacity: 0.25; filter: grayscale(0.8); pointer-events: none; }
+        .is-weekend { 
+            background: rgba(255, 255, 255, 0.04) !important; 
+            border-color: rgba(255, 255, 255, 0.1) !important; 
+        }
         .is-weekend .day-num { color: #f87171; }
+        [data-theme="light"] .is-weekend { 
+            background: #f8fafc !important; 
+            border-color: #e2e8f0 !important; 
+        }
+        [data-theme="light"] .is-weekend .day-num { color: #ef4444; }
         
         .is-full { 
             border: 2px solid var(--danger) !important; 
@@ -497,8 +610,44 @@
         .tt-comp-section { margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border); }
         .tt-comp-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
         .tt-comp-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; }
-        .tt-comp-price { font-weight: 800; color: var(--text-main); }
         .tt-sold { color: var(--danger) !important; font-weight: 900; }
+
+        /* LIGHT THEME REFINEMENTS */
+        [data-theme="light"] .month-card {
+            background: #ffffff;
+            border-color: #e2e8f0;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+        }
+        [data-theme="light"] .month-title {
+            color: #0f172a;
+        }
+        [data-theme="light"] .insight-card-premium {
+            background: #ffffff;
+            border-color: #e2e8f0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+        }
+        [data-theme="light"] .insight-label { color: #64748b; }
+        [data-theme="light"] .insight-value { color: #0f172a; }
+        [data-theme="light"] .insight-sub { color: #64748b; }
+        [data-theme="light"] #tooltip {
+            background: rgba(255, 255, 255, 0.98);
+            border: 1px solid #cbd5e1;
+            color: #0f172a;
+            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.12);
+        }
+        [data-theme="light"] .tt-date { color: #0f172a; }
+        [data-theme="light"] .tt-comp-name { color: #475569; }
+        [data-theme="light"] .tt-comp-price { color: #0f172a; }
+        [data-theme="light"] .event-sidebar h3 { color: #0f172a; }
+        
+        select option {
+            background-color: var(--bg-surface);
+            color: var(--text-main);
+        }
+        [data-theme="light"] select option {
+            background-color: #ffffff;
+            color: #0f172a;
+        }
         
         /* ANIMATIONS */
         @keyframes fadeInUp {
@@ -687,15 +836,15 @@
         <div class="header-title">
             <h1>Calendario Estratégico</h1>
         </div>
-        <div class="controls-bar" style="align-items: center;">
-            <div class="calendar-legend" style="margin-right:20px;">
+        <div class="controls-bar" style="align-items: center; flex-wrap: wrap;">
+            <div class="calendar-legend" style="margin-right:15px;" title="Escala térmica: Nivel 1 (Bajo) a Nivel 5 (Alto)">
                 <span>Bajo</span>
                 <div class="legend-boxes">
-                    <div class="legend-box heat-1"></div>
-                    <div class="legend-box heat-2"></div>
-                    <div class="legend-box heat-3"></div>
-                    <div class="legend-box heat-4"></div>
-                    <div class="legend-box heat-5"></div>
+                    <div class="legend-box heat-1" title="Nivel 1: Muy Bajo / Económico"></div>
+                    <div class="legend-box heat-2" title="Nivel 2: Bajo"></div>
+                    <div class="legend-box heat-3" title="Nivel 3: Medio"></div>
+                    <div class="legend-box heat-4" title="Nivel 4: Alto"></div>
+                    <div class="legend-box heat-5" title="Nivel 5: Muy Alto / Pico de demanda"></div>
                 </div>
                 <span>Alto</span>
             </div>
@@ -704,7 +853,7 @@
             </button>
             <input type="file" id="excelEvents" hidden accept=".xlsx, .xls">
             
-            <div style="width:1px; height:24px; background:var(--border); margin:0 10px;"></div>
+            <div style="width:1px; height:24px; background:var(--border); margin:0 8px;"></div>
             
             <select id="yearSelector" onchange="onFilterChange()">
                 <!-- Rellenado dinámicamente -->
@@ -713,9 +862,12 @@
                 <option value="2027">2027</option>
                 <option value="2028">2028</option>
             </select>
-            <select id="metricSelector" onchange="renderCalendar()">
-                <option value="occupancy" selected>Ver Ocupación</option>
-                <option value="price">Ver Precios</option>
+            <select id="metricSelector" onchange="renderCalendar()" style="min-width: 250px;">
+                <option value="market_avg">🌐 Ver Media Mercado (Todos los Hoteles)</option>
+                <option value="price" selected>🏷️ Ver Precios Hotel</option>
+                <option value="comp_avg">🏢 Ver Media Competencia</option>
+                <option value="diff_vs_avg">⚖️ Ver Diferencia vs Media (€)</option>
+                <option value="occupancy">📊 Ver Ocupación</option>
             </select>
         </div>
     </header>
@@ -787,15 +939,71 @@
                 setTimeout(() => { loadAllData(); toast.style.display = 'none'; }, 2000);
             });
 
-            window.addEventListener('themeChanged', () => {
+            function syncThemeIcon() {
                 const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-                document.getElementById('themeToggleBtn').innerHTML = isDark ? '🌙' : '☀️';
-            });
-            
-            // Initial icon sync
-            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-            document.getElementById('themeToggleBtn').innerHTML = isDark ? '🌙' : '☀️';
+                const btn = document.getElementById('themeToggleBtn');
+                if (btn) {
+                    btn.innerHTML = isDark ? '☀️' : '🌙';
+                    btn.title = isDark ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Noche';
+                }
+            }
+            window.addEventListener('themeChanged', syncThemeIcon);
+            syncThemeIcon();
         };
+
+        function getDayPriceMetrics(iso, dData, currentHotel) {
+            let hotelPrice = 0;
+            if (dData && dData.hotels && dData.hotels[currentHotel]) {
+                const v = dData.hotels[currentHotel];
+                hotelPrice = (typeof v === 'object') ? (v.price || 0) : (Number(v) || 0);
+            }
+            if (hotelPrice <= 0 && dData && dData.occupancyData && dData.occupancyData[currentHotel] && dData.occupancyData[currentHotel].adr > 0) {
+                hotelPrice = Math.round(dData.occupancyData[currentHotel].adr);
+            }
+
+            const allPrices = [];
+            const compPrices = [];
+
+            if (dData && dData.hotels) {
+                Object.entries(dData.hotels).forEach(([hName, val]) => {
+                    const price = (typeof val === 'object') ? (val.price || 0) : (Number(val) || 0);
+                    const isSold = (typeof val === 'object') && (val.sold === true || val.soldOut === true || val.price === 0 || val.price === '0');
+
+                    if (price > 0 && !isSold) {
+                        allPrices.push({ name: hName, price: price });
+                        const isCurrent = hName.toLowerCase().includes(currentHotel.toLowerCase()) || currentHotel.toLowerCase().includes(hName.toLowerCase());
+                        if (!isCurrent) {
+                            compPrices.push({ name: hName, price: price });
+                        }
+                    }
+                });
+            }
+
+            const hasCurrentInAll = allPrices.some(p => p.name.toLowerCase().includes(currentHotel.toLowerCase()) || currentHotel.toLowerCase().includes(p.name.toLowerCase()));
+            if (!hasCurrentInAll && hotelPrice > 0) {
+                allPrices.push({ name: currentHotel, price: hotelPrice });
+            }
+
+            const allPricesArr = allPrices.map(p => p.price);
+            const compPricesArr = compPrices.map(p => p.price);
+
+            const marketAvg = allPricesArr.length > 0 ? Math.round(allPricesArr.reduce((a, b) => a + b, 0) / allPricesArr.length) : 0;
+            const compAvg = compPricesArr.length > 0 ? Math.round(compPricesArr.reduce((a, b) => a + b, 0) / compPricesArr.length) : 0;
+            const minMarketPrice = allPricesArr.length > 0 ? Math.min(...allPricesArr) : 0;
+            const maxMarketPrice = allPricesArr.length > 0 ? Math.max(...allPricesArr) : 0;
+            const diffVsMarket = (hotelPrice > 0 && marketAvg > 0) ? (hotelPrice - marketAvg) : 0;
+
+            return {
+                hotelPrice,
+                marketAvg,
+                compAvg,
+                diffVsMarket,
+                minMarketPrice,
+                maxMarketPrice,
+                totalHotelsReporting: allPricesArr.length,
+                allPrices
+            };
+        }
 
         function loadAllData() {
             // 1. Competitor Data
@@ -823,8 +1031,8 @@
                 }
             }
 
-            populateYearSelector(); // Detect and inject the available years from Database & Events
-            enrichRevenueData();    // Multi-year enrichment for all detected years
+            populateYearSelector();
+            enrichRevenueData();
             renderCalendar();
             renderEventList();
             renderInsights();
@@ -839,9 +1047,8 @@
 
         function populateYearSelector() {
             const selector = document.getElementById('yearSelector');
-            const yearsSet = new Set(['2025', '2026', '2027']); // Fallback estandar
+            const yearsSet = new Set(['2025', '2026', '2027']);
             
-            // Detect from Database
             Object.values(db).forEach(hotelData => {
                 if(hotelData && typeof hotelData === 'object') {
                     Object.keys(hotelData).forEach(k => {
@@ -850,7 +1057,6 @@
                 }
             });
 
-            // Detect from Events
             if (Array.isArray(rawEvents)) {
                 rawEvents.forEach(e => {
                     if (e.start) {
@@ -860,7 +1066,6 @@
                 });
             }
 
-            // Detect from Competitor / Revenue Data
             Object.keys(revenueData).forEach(iso => {
                 const y = iso.split('-')[0];
                 if (y && y.length === 4 && !isNaN(y)) yearsSet.add(y);
@@ -887,36 +1092,101 @@
             if (!hotelData) return;
 
             const insightsContainer = document.createElement('div');
-            insightsContainer.style.cssText = 'display:flex; gap:20px; max-width:1700px; margin:0 auto 30px; padding:0 40px;';
+            insightsContainer.style.cssText = 'display:flex; gap:16px; max-width:1700px; margin:0 auto 30px; padding:0 40px; flex-wrap:wrap;';
 
-            // 1. Pick-up Highlight
-            let totalPickup = 0;
+            // 1. Pick-up Total (€)
+            let totalPickupRev = 0;
+            let totalPickupRooms = 0;
             if (hotelData.otb && hotelData.otb_prev) {
-                totalPickup = hotelData.otb.revenue.reduce((a, b, i) => a + (b - (hotelData.otb_prev.revenue[i] || 0)), 0);
+                totalPickupRev = hotelData.otb.revenue.reduce((a, b, i) => a + (b - (hotelData.otb_prev.revenue[i] || 0)), 0);
+                if (hotelData.otb.rooms && hotelData.otb_prev.rooms) {
+                    totalPickupRooms = hotelData.otb.rooms.reduce((a, b, i) => a + (b - (hotelData.otb_prev.rooms[i] || 0)), 0);
+                }
             }
 
             const pickupCard = document.createElement('div');
             pickupCard.className = 'insight-card-premium';
             pickupCard.innerHTML = `
-                <div class="insight-label">PICK-UP TOTAL (${yearStr})</div>
-                <div class="insight-value ${totalPickup >= 0 ? 'pos' : 'neg'}">
-                    ${totalPickup > 0 ? '+' : ''}${new Intl.NumberFormat('es-ES').format(Math.round(totalPickup))}€
+                <div class="insight-label">PICK-UP INGRESOS (${yearStr})</div>
+                <div class="insight-value ${totalPickupRev >= 0 ? 'pos' : 'neg'}">
+                    ${totalPickupRev > 0 ? '+' : ''}${new Intl.NumberFormat('es-ES').format(Math.round(totalPickupRev))}€
                 </div>
-                <div class="insight-sub">${totalPickup >= 0 ? 'Tendencia positiva' : 'Tendencia negativa'}</div>
+                <div class="insight-sub">${totalPickupRev >= 0 ? '▲ Subida vs última actualización' : '▼ Bajada vs última actualización'}</div>
             `;
             insightsContainer.appendChild(pickupCard);
 
-            // 2. Data Freshness
+            // 2. Pick-up Habitaciones / Estancias (RN)
+            const pickupRoomsCard = document.createElement('div');
+            pickupRoomsCard.className = 'insight-card-premium';
+            pickupRoomsCard.innerHTML = `
+                <div class="insight-label">PICK-UP ESTANCIAS (${yearStr})</div>
+                <div class="insight-value ${totalPickupRooms >= 0 ? 'pos' : 'neg'}">
+                    ${totalPickupRooms > 0 ? '+' : ''}${new Intl.NumberFormat('es-ES').format(Math.round(totalPickupRooms))} Hab.
+                </div>
+                <div class="insight-sub">${totalPickupRooms >= 0 ? '🚀 Ganadas vs última actualización' : '📉 Cancelaciones vs última act.'}</div>
+            `;
+            insightsContainer.appendChild(pickupRoomsCard);
+
+            // 3. Media Anual de Mercado (Todos los Hoteles) & Hotel Propio
+            let yearMarketSum = 0;
+            let yearMarketCount = 0;
+            let yearHotelSum = 0;
+            let yearHotelCount = 0;
+
+            Object.values(revenueData).forEach(d => {
+                if (new Date(d.dateISO).getFullYear() === year) {
+                    const m = getDayPriceMetrics(d.dateISO, d, hotel);
+                    if (m.marketAvg > 0) {
+                        yearMarketSum += m.marketAvg;
+                        yearMarketCount++;
+                    }
+                    if (m.hotelPrice > 0) {
+                        yearHotelSum += m.hotelPrice;
+                        yearHotelCount++;
+                    }
+                }
+            });
+
+            const avgMarketYear = yearMarketCount > 0 ? Math.round(yearMarketSum / yearMarketCount) : 0;
+            const avgHotelYear = yearHotelCount > 0 ? Math.round(yearHotelSum / yearHotelCount) : 0;
+            const diffYearAvg = (avgHotelYear > 0 && avgMarketYear > 0) ? (avgHotelYear - avgMarketYear) : 0;
+
+            if (avgMarketYear > 0) {
+                const marketCard = document.createElement('div');
+                marketCard.className = 'insight-card-premium';
+                marketCard.innerHTML = `
+                    <div class="insight-label">MEDIA MERCADO (${yearStr})</div>
+                    <div class="insight-value" style="color:var(--primary);">
+                        ${avgMarketYear}€
+                    </div>
+                    <div class="insight-sub">Todos los hoteles (incluida competencia)</div>
+                `;
+                insightsContainer.appendChild(marketCard);
+
+                const hotelPriceCard = document.createElement('div');
+                hotelPriceCard.className = 'insight-card-premium';
+                const diffPct = avgMarketYear > 0 ? ((diffYearAvg / avgMarketYear) * 100).toFixed(1) : '0';
+                hotelPriceCard.innerHTML = `
+                    <div class="insight-label">PRECIO MEDIO HOTEL (${hotel})</div>
+                    <div class="insight-value">
+                        ${avgHotelYear > 0 ? avgHotelYear + '€' : '--€'}
+                    </div>
+                    <div class="insight-sub" style="color:${diffYearAvg >= 0 ? 'var(--secondary)' : 'var(--danger)'}; font-weight:700;">
+                        ${diffYearAvg >= 0 ? '▲ +' : '▼ '}${Math.abs(diffYearAvg)}€ (${diffYearAvg >= 0 ? '+' : ''}${diffPct}%) vs Media Mercado
+                    </div>
+                `;
+                insightsContainer.appendChild(hotelPriceCard);
+            }
+
+            // 4. Data Freshness
             let updateDateStr = '---';
             const otbSync = hotelData.updates?.otb;
             const lastSync = hotelData.lastUpdate;
             
-            // Select the most detailed timestamp
             if (otbSync && (otbSync.includes(' ') || otbSync.includes('T'))) updateDateStr = otbSync;
             else if (lastSync && (lastSync.includes(' ') || lastSync.includes('T'))) updateDateStr = lastSync;
             else updateDateStr = otbSync || lastSync || '---';
             
-            // Format if it's an ISO string to include time
             if (updateDateStr !== '---' && updateDateStr.includes('T')) {
                 try {
                     const dateObj = new Date(updateDateStr);
@@ -941,7 +1211,6 @@
         }
 
         function enrichRevenueData() {
-            // Collect all years to cover: db years, selected year, fallback years
             const yearsToEnrich = new Set(['2025', '2026', '2027']);
             const selY = document.getElementById('yearSelector')?.value;
             if (selY) yearsToEnrich.add(selY);
@@ -958,7 +1227,6 @@
                 const year = parseInt(yearStr);
                 if (isNaN(year)) return;
 
-                // Create placeholders for all 365/366 days if they don't exist
                 for (let m = 0; m < 12; m++) {
                     const daysInM = new Date(year, m + 1, 0).getDate();
                     for (let d = 1; d <= daysInM; d++) {
@@ -981,7 +1249,6 @@
                                 if (yearData.daily && yearData.daily[iso]) {
                                     occ = Math.round(yearData.daily[iso].rooms || yearData.daily[iso]);
                                 }
-                                // SNAPSHOT FOR PICK-UP
                                 if (yearData.otb_prev && yearData.otb_prev.daily_otb && yearData.otb_prev.daily_otb[iso]) {
                                     const vPrev = yearData.otb_prev.daily_otb[iso];
                                     otb_prev = Math.round((typeof vPrev === 'object') ? (vPrev.rooms || 0) : vPrev);
@@ -1027,30 +1294,54 @@
             const metric = document.getElementById('metricSelector').value;
             const capacity = (hotel === 'Cumbria' ? 59 : 108);
 
-            // Calculate Scale for Heatmap
-            let minVal = 9999, maxVal = 0;
+            // Calculate Scale for Heatmap based on active metric
+            let minVal = 9999, maxVal = -9999;
             Object.values(revenueData).forEach(d => {
                 if (new Date(d.dateISO).getFullYear() === year) {
+                    const pMetrics = getDayPriceMetrics(d.dateISO, d, hotel);
                     let v = 0;
+                    let valid = false;
+
                     if (metric === 'price') {
-                        v = (d.hotels[hotel] && d.hotels[hotel].price) ? d.hotels[hotel].price : 0;
+                        v = pMetrics.hotelPrice;
+                        if (v > 0) valid = true;
+                    } else if (metric === 'market_avg') {
+                        v = pMetrics.marketAvg;
+                        if (v > 0) valid = true;
+                    } else if (metric === 'comp_avg') {
+                        v = pMetrics.compAvg;
+                        if (v > 0) valid = true;
+                    } else if (metric === 'diff_vs_avg') {
+                        if (pMetrics.hotelPrice > 0 && pMetrics.marketAvg > 0) {
+                            v = pMetrics.diffVsMarket;
+                            valid = true;
+                        }
                     } else {
+                        // Occupancy
                         const rooms = (d.occupancyData && d.occupancyData[hotel]) ? d.occupancyData[hotel].otb : 0;
                         v = (rooms / capacity) * 100;
+                        if (v > 0) valid = true;
                     }
-                    if (v > 0) { minVal = Math.min(minVal, v); maxVal = Math.max(maxVal, v); }
+
+                    if (valid) {
+                        minVal = Math.min(minVal, v);
+                        maxVal = Math.max(maxVal, v);
+                    }
                 }
             });
-            if (minVal > maxVal) { minVal = 0; maxVal = 100; }
+
+            if (minVal > maxVal) { 
+                minVal = 0; 
+                maxVal = (metric.includes('price') || metric.includes('avg')) ? 150 : 100; 
+            }
 
             const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
             const now = new Date();
             const currentYear = now.getFullYear();
-            const currentMonth = now.getMonth(); // 0-indexed
+            const currentMonth = now.getMonth();
 
             for (let m = 0; m < 12; m++) {
-                // Ocultar meses pasados (solo del año actual o anterior)
                 if (year <= currentYear && m < currentMonth) continue;
 
                 const card = document.createElement('div');
@@ -1077,9 +1368,59 @@
                     const roomsSold = (hData.otb > 0) ? hData.otb : (hData.occ || 0);
                     const occPct = (roomsSold / capacity) * 100;
                     
-                    let heatmapVal = metric === 'price' ? 
-                        ((dData.hotels && dData.hotels[hotel]) ? (dData.hotels[hotel].price || dData.hotels[hotel]) : 0) : 
-                        occPct;
+                    const pMetrics = getDayPriceMetrics(iso, dData, hotel);
+
+                    let heatmapVal = 0;
+                    let primaryText = "";
+                    let subBadgeHtml = "";
+                    let hasValue = false;
+
+                    if (metric === 'price') {
+                        heatmapVal = pMetrics.hotelPrice;
+                        if (heatmapVal > 0) {
+                            primaryText = `${Math.round(heatmapVal)}€`;
+                            hasValue = true;
+                        }
+                        if (pMetrics.marketAvg > 0) {
+                            subBadgeHtml = `<div class="cell-sub-market" title="Media mercado (todos los hoteles): ${pMetrics.marketAvg}€">Med: ${pMetrics.marketAvg}€</div>`;
+                        }
+                    } else if (metric === 'market_avg') {
+                        heatmapVal = pMetrics.marketAvg;
+                        if (heatmapVal > 0) {
+                            primaryText = `${Math.round(heatmapVal)}€`;
+                            hasValue = true;
+                        }
+                        if (pMetrics.hotelPrice > 0) {
+                            subBadgeHtml = `<div class="cell-sub-market" title="Precio hotel propio (${hotel}): ${pMetrics.hotelPrice}€">${hotel.substring(0,4)}: ${pMetrics.hotelPrice}€</div>`;
+                        }
+                    } else if (metric === 'comp_avg') {
+                        heatmapVal = pMetrics.compAvg;
+                        if (heatmapVal > 0) {
+                            primaryText = `${Math.round(heatmapVal)}€`;
+                            hasValue = true;
+                        }
+                        if (pMetrics.hotelPrice > 0) {
+                            subBadgeHtml = `<div class="cell-sub-market" title="Precio hotel propio (${hotel}): ${pMetrics.hotelPrice}€">${hotel.substring(0,4)}: ${pMetrics.hotelPrice}€</div>`;
+                        }
+                    } else if (metric === 'diff_vs_avg') {
+                        if (pMetrics.hotelPrice > 0 && pMetrics.marketAvg > 0) {
+                            heatmapVal = pMetrics.diffVsMarket;
+                            const sign = heatmapVal > 0 ? '+' : '';
+                            primaryText = `${sign}${Math.round(heatmapVal)}€`;
+                            hasValue = true;
+                            subBadgeHtml = `<div class="cell-sub-market" title="Hotel: ${pMetrics.hotelPrice}€ | Media Mercado: ${pMetrics.marketAvg}€">${pMetrics.hotelPrice}€ / ${pMetrics.marketAvg}€</div>`;
+                        }
+                    } else {
+                        // Occupancy
+                        heatmapVal = occPct;
+                        if (heatmapVal > 0) {
+                            primaryText = `${Math.round(occPct)}%`;
+                            hasValue = true;
+                        }
+                        if (pMetrics.marketAvg > 0) {
+                            subBadgeHtml = `<div class="cell-sub-market" title="Media mercado (todos los hoteles): ${pMetrics.marketAvg}€">Med: ${pMetrics.marketAvg}€</div>`;
+                        }
+                    }
 
                     const cell = document.createElement('div');
                     cell.className = 'day-cell';
@@ -1098,7 +1439,8 @@
                         pickupHtml = `<span class="pickup-badge ${pClass}">${pIcon}${Math.abs(diff) || ''}</span>`;
                     }
 
-                    if (heatmapVal > 0) {
+                    // Heatmap scoring (Bajo=1 a Alto=5)
+                    if (hasValue) {
                         const range = maxVal - minVal;
                         const score = range > 0 ? (heatmapVal - minVal) / range : 0.5;
                         if (score >= 0.8) cell.classList.add('heat-5');
@@ -1126,9 +1468,9 @@
                             const numericDiff = Math.round(otb - prev);
                             if (numericDiff !== 0) {
                                 const cls = numericDiff > 0 ? '#10b981' : '#ef4444';
-                                const bg = numericDiff > 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)';
+                                const bg = numericDiff > 0 ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)';
                                 const brd = numericDiff > 0 ? 'rgba(16,185,129,0.4)' : 'rgba(239,68,68,0.4)';
-                                diffHtml = `<span style="font-size:0.6rem; font-weight:800; color:${cls}; background:${bg}; border:1px solid ${brd}; padding:0px 3px; border-radius:3px; line-height:1;">${numericDiff > 0 ? '+' : ''}${numericDiff}</span>`;
+                                diffHtml = `<span style="font-size:0.6rem; font-weight:800; color:${cls}; background:${bg}; border:1px solid ${brd}; padding:0px 3px; border-radius:3px; line-height:1;" title="Pick-up vs última actualización: ${numericDiff > 0 ? '+' : ''}${numericDiff} hab.">${numericDiff > 0 ? '+' : ''}${numericDiff}</span>`;
                             }
                         }
                         badgeHtml = `
@@ -1165,14 +1507,13 @@
                         `;
                     }
 
-                    const priceText = heatmapVal > 0 ? (metric === 'price' ? `${Math.round(heatmapVal)}€` : `${Math.round(occPct)}%`) : "";
-                    
                     cell.innerHTML = `
                         <div class="day-num-container">
                             <span class="day-num">${d}</span>
                             <span class="day-name-short">${dayName.substring(0,3)}</span>
                         </div>
-                        <div class="day-price">${priceText}</div>
+                        <div class="day-price">${primaryText}</div>
+                        ${subBadgeHtml}
                         ${badgeHtml}
                         ${eventPillHtml}
                     `;
@@ -1198,29 +1539,54 @@
             const roomsSold = (hData.occ > 0) ? hData.occ : (hData.otb || 0);
             const occPct = Math.round((roomsSold / cap) * 100);
 
+            const pMetrics = getDayPriceMetrics(iso, dData, currentHotel);
+            const diffMarket = pMetrics.diffVsMarket;
+            const diffBadge = pMetrics.marketAvg > 0 && pMetrics.hotelPrice > 0 ? 
+                `<span style="font-size:0.75rem; font-weight:800; color:${diffMarket >= 0 ? '#10b981' : '#ef4444'};">
+                    (${diffMarket >= 0 ? '+' : ''}${diffMarket}€ vs media)
+                </span>` : '';
+
             let html = `
                 <div class="tt-header">
                     <div class="tt-date">📅 ${dateStr}</div>
-                    <div class="tt-mkt">PMP: ${Math.round(hotelADR)}€</div>
+                    <div class="tt-mkt">PMP OTB: ${Math.round(hotelADR)}€</div>
                 </div>
-                <div class="tt-main-hotel">
-                    <div class="tt-hotel-info">🏢 ${currentHotel}</div>
+                <div class="tt-main-hotel" style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+                    <div>
+                        <div class="tt-hotel-info">🏢 ${currentHotel}</div>
+                        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">
+                            Tarifa Venta: <b style="color:var(--text-main); font-size:0.95rem;">${hotelPrice > 0 ? hotelPrice + '€' : '--€'}</b> ${diffBadge}
+                        </div>
+                    </div>
                     <div class="tt-price-info">
-                        <span class="tt-price" style="font-weight:800; font-size:1.1rem; color:var(--text-main);">${hotelPrice > 0 ? hotelPrice + '€' : '--€'}</span>
-                        <div style="font-size:0.7rem; color:var(--text-muted); text-align:right;">
-                            Ocup: <b style="color:var(--text-main); font-size:0.8rem;">${occPct}%</b><br/>
-                            <span style="font-size:0.6rem;">(${roomsSold} / ${cap} Hab)</span>
+                        <div style="font-size:0.72rem; color:var(--text-muted); text-align:right;">
+                            Ocupación: <b style="color:var(--text-main); font-size:0.85rem;">${occPct}%</b><br/>
+                            <span style="font-size:0.65rem;">(${roomsSold} / ${cap} Hab)</span>
                         </div>
                     </div>
                 </div>
+
+                <div style="background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.25); border-radius:10px; padding:10px; margin-bottom:12px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-weight:800; font-size:0.8rem; color:var(--primary);">🌐 MEDIA DE MERCADO:</span>
+                        <span style="font-weight:900; font-size:1.1rem; color:var(--primary); font-family:'Outfit',sans-serif;">
+                            ${pMetrics.marketAvg > 0 ? pMetrics.marketAvg + '€' : '--€'}
+                        </span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-top:4px;">
+                        <span>Competencia: <b>${pMetrics.compAvg > 0 ? pMetrics.compAvg + '€' : '--€'}</b></span>
+                        <span>Rango: <b>${pMetrics.minMarketPrice}€ - ${pMetrics.maxMarketPrice}€</b></span>
+                    </div>
+                </div>
+
                 <div class="tt-comp-section">
-                    <span class="tt-comp-title" style="display:block; margin-bottom:5px; font-weight:700; color:var(--text-muted);">MERCADO</span>
+                    <span class="tt-comp-title" style="display:block; margin-bottom:8px; font-weight:800; font-size:0.75rem; color:var(--text-muted); letter-spacing:0.5px; text-transform:uppercase;">
+                        TODOS LOS HOTELES (${pMetrics.totalHotelsReporting})
+                    </span>
             `;
 
-            if (dData.hotels) {
-                // Sort by price and filter out the main hotel (already shown)
+            if (dData.hotels && Object.keys(dData.hotels).length > 0) {
                 const comps = Object.entries(dData.hotels)
-                    .filter(([name]) => name !== currentHotel)
                     .sort((a,b) => {
                         const pA = (typeof a[1] === 'object') ? a[1].price : a[1];
                         const pB = (typeof b[1] === 'object') ? b[1].price : b[1];
@@ -1230,11 +1596,16 @@
                 comps.forEach(([name, val]) => {
                     const price = (typeof val === 'object') ? val.price : val;
                     const isSoldOut = (typeof val === 'object' && (val.soldOut === true || val.price === 0 || val.price === '0'));
+                    const isCurrent = name.toLowerCase().includes(currentHotel.toLowerCase()) || currentHotel.toLowerCase().includes(name.toLowerCase());
                     const isCumbria = name.toLowerCase().includes('cumbria');
                     
+                    let highlightStyle = '';
+                    if (isCurrent) highlightStyle = 'font-weight:800; color:var(--primary);';
+                    else if (isCumbria) highlightStyle = 'color:#818cf8;';
+
                     html += `
-                        <div class="tt-comp-row" style="${isCumbria ? 'color:#4f46e5;' : ''}">
-                            <span class="tt-comp-name">${name}</span>
+                        <div class="tt-comp-row" style="${highlightStyle}">
+                            <span class="tt-comp-name">${name} ${isCurrent ? '(Propio)' : ''}</span>
                             <span class="tt-comp-price ${isSoldOut ? 'tt-sold' : ''}">
                                 ${isSoldOut ? 'SOLD' : (price ? price + '€' : '--€')}
                             </span>
@@ -1246,8 +1617,8 @@
             }
 
             if (dayEvents && dayEvents.length > 0) {
-                html += `<div style="margin-top:10px; padding:10px; background:rgba(99,102,241,0.08); color:var(--text-main); border-radius:10px; font-size:0.75rem; border:1px solid rgba(99,102,241,0.25);">`;
-                html += `<div style="font-weight:800; color:var(--primary); margin-bottom:6px; font-size:0.8rem;">📅 ${dayEvents.length === 1 ? 'Evento Estratégico' : `Eventos Estratégicos (${dayEvents.length})`}:</div>`;
+                html += `<div style="margin-top:10px; padding:10px; background:rgba(245,158,11,0.08); color:var(--text-main); border-radius:10px; font-size:0.75rem; border:1px solid rgba(245,158,11,0.25);">`;
+                html += `<div style="font-weight:800; color:var(--accent); margin-bottom:6px; font-size:0.8rem;">📅 ${dayEvents.length === 1 ? 'Evento Estratégico' : `Eventos Estratégicos (${dayEvents.length})`}:</div>`;
                 dayEvents.forEach(ev => {
                     const prioBadge = ev.prio ? `<span style="font-size:0.6rem; padding:1px 5px; border-radius:4px; font-weight:800; background:rgba(245,158,11,0.2); color:var(--accent);">${ev.prio}</span>` : '';
                     const impText = ev.impact ? `<div style="font-size:0.68rem; color:var(--text-muted); margin-top:2px;"><b>Impacto hotelero:</b> ${ev.impact}</div>` : '';

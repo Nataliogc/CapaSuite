@@ -1017,6 +1017,80 @@
             if (options.roomsGuadiana) HOTELS["Guadiana"].rooms = options.roomsGuadiana;
             if (options.roomsCumbria) HOTELS["Cumbria"].rooms = options.roomsCumbria;
 
+            // --- CÁLCULO DE SUBIDA / VARIACIÓN VS ÚLTIMA ACTUALIZACIÓN ---
+            const otbCurrentRev = (data.otb && data.otb.revenue) ? getV(data.otb, midx) : 0;
+            const otbPrevRev = (data.otb_prev && data.otb_prev.revenue) ? getV(data.otb_prev, midx) : 0;
+            const otbPickupRev = otbCurrentRev - otbPrevRev;
+
+            const otbCurrentRooms = (data.otb && data.otb.rooms) ? getR(data.otb, midx) : 0;
+            const otbPrevRooms = (data.otb_prev && data.otb_prev.rooms) ? getR(data.otb_prev, midx) : 0;
+            const otbPickupRooms = otbCurrentRooms - otbPrevRooms;
+
+            let prodPrevTotal = null;
+            let prodPrevHab = null;
+            let prodPrevRooms = null;
+            let prodPrevPax = null;
+            let prodSnapshotDate = "";
+
+            if (data.prod_prev && data.prod_prev.service) {
+                prodSnapshotDate = data.prod_prev.snapshotDate || "";
+                const sPrev = data.prod_prev.service;
+                if (sPrev["TOTAL_MASTER"]) {
+                    prodPrevTotal = getV(sPrev["TOTAL_MASTER"], midx);
+                    prodPrevRooms = getR(sPrev["TOTAL_MASTER"], midx);
+                    prodPrevPax = getP(sPrev["TOTAL_MASTER"], midx);
+                }
+                let habPrevRev = 0;
+                Object.values(sPrev).forEach(item => {
+                    const gid = getGroupID(item.name);
+                    if (gid === 'HABITACION') {
+                        habPrevRev += getV(item, midx);
+                    }
+                });
+                prodPrevHab = habPrevRev;
+            }
+
+            // Delta efectivo según disponibilidad de datos
+            const deltaTotalRev = (prodPrevTotal !== null) ? (revTY - prodPrevTotal) : (otbPickupRev !== 0 ? otbPickupRev : (data.otb_prev ? 0 : null));
+            const deltaHabRev = (prodPrevHab !== null) ? (habRevTY - prodPrevHab) : (otbPickupRev !== 0 ? otbPickupRev : (data.otb_prev ? 0 : null));
+            const deltaRooms = (prodPrevRooms !== null) ? (rmsTY - prodPrevRooms) : (otbPickupRooms !== 0 ? otbPickupRooms : (data.otb_prev ? 0 : null));
+            const deltaPax = (prodPrevPax !== null) ? (paxTY - prodPrevPax) : null;
+
+            const refDatePickup = prodSnapshotDate || data.otb_prev?.snapshotDate || data.updates?.prod || data.updates?.otb || "";
+
+            function renderPickupBadge(diffVal, unit = '€', isPp = false, forceDecimals = false) {
+                if (diffVal === null || diffVal === undefined || isNaN(diffVal)) return '';
+                const val = Math.abs(diffVal) < 0.005 ? 0 : diffVal;
+                const dLabel = refDatePickup ? ` (Ref: ${refDatePickup.split(' ')[0]})` : '';
+
+                if (val === 0) {
+                    return `<div style="font-size:0.68rem; color:var(--text-muted); font-weight:700; margin-top:3px;" title="Sin cambios respecto a la última actualización${dLabel}">
+                        <span style="opacity:0.75;">= 0 ${unit} vs últ. act.</span>
+                    </div>`;
+                }
+
+                const isPos = val > 0;
+                const icon = isPos ? '🚀' : '📉';
+                const color = isPos ? '#10b981' : '#ef4444';
+                const bg = isPos ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)';
+                const sign = isPos ? '+' : '';
+
+                let text = '';
+                if (isPp) text = `${sign}${val.toFixed(1).replace('.', ',')} pp`;
+                else if (unit === 'RN' || unit === 'Pax') text = `${sign}${fmtNum(Math.round(val))} ${unit}`;
+                else if (unit === '€') {
+                    if (forceDecimals || Math.abs(val) < 20) {
+                        text = `${sign}${val.toFixed(2).replace('.', ',')} €`;
+                    } else {
+                        text = `${sign}${fmtNum(Math.round(val))} €`;
+                    }
+                } else text = `${sign}${val.toFixed(2).replace('.', ',')} ${unit}`;
+
+                return `<div style="font-size:0.7rem; color:${color}; font-weight:800; margin-top:3px; display:inline-block; padding:1px 6px; border-radius:4px; background:${bg}; cursor:help;" title="Variación vs última actualización${dLabel}: ${text}">
+                    ${icon} ${text} vs últ. act.
+                </div>`;
+            }
+
             const trend = (ty, ly, lm, key) => {
                 let res = '';
                 if (ly) {
@@ -1031,14 +1105,6 @@
                     </span>`;
                 }
 
-                // PICK-UP MONITOR (Only for Rooms/Habitación - Only for Current Year)
-                const realYear = new Date().getFullYear();
-                if (key === 'hab' && options.pickupEnabled && ty > 0 && parseInt(currentYear) >= realYear) {
-                    const pickup = (ty * 0.02 * (Math.random() > 0.5 ? 1 : -1)); // Simulated pickup
-                    const pickupP = ((pickup / ty) * 100).toFixed(1);
-                    res += `<span style="font-size:0.7rem; color:${pickup >= 0 ? 'var(--success)' : 'var(--danger)'}; display:block; font-weight:700;">${pickup >= 0 ? '🚀' : '📉'} Pick-up: ${pickupP}% (7d)</span>`;
-                }
-
                 if (lm !== undefined && lm !== 0 && midx !== -1) {
                     const p = ((ty - lm) / lm * 100).toFixed(1);
                     res += `<span style="font-size:0.7rem; color:var(--text-muted); display:block;">${p >= 0 ? '▲' : '▼'} ${Math.abs(p)}% vs Mes Ant.</span>`;
@@ -1047,7 +1113,7 @@
             }
 
             document.getElementById('kpi-total').innerText = fmt(revTY);
-            let totalTrendHTML = trend(revTY, revLY, revLM, 'total');
+            let totalTrendHTML = trend(revTY, revLY, revLM, 'total') + renderPickupBadge(deltaTotalRev, '€');
 
             // PROJECTED LINE ADDITION
             if (midx === -1 && parseInt(currentYear) >= new Date().getFullYear()) {
@@ -1089,8 +1155,7 @@
 
             document.getElementById('trend-total').innerHTML = totalTrendHTML;
 
-            // Include Projection for Habitación too?
-            let habTrendHTML = trend(habRevTY, habRevLY, habRevLM, 'hab');
+            let habTrendHTML = trend(habRevTY, habRevLY, habRevLM, 'hab') + renderPickupBadge(deltaHabRev, '€');
             if (midx === -1 && parseInt(currentYear) >= new Date().getFullYear()) {
                 let projHab = 0;
                 const now = new Date();
@@ -1114,16 +1179,25 @@
             document.getElementById('trend-prod-hab').innerHTML = habTrendHTML;
 
             document.getElementById('kpi-rn').innerText = fmtNum(rmsTY);
-            document.getElementById('trend-rn').innerHTML = trend(rmsTY, rmsLY, rmsLM, 'rn');
+            document.getElementById('trend-rn').innerHTML = trend(rmsTY, rmsLY, rmsLM, 'rn') + renderPickupBadge(deltaRooms, 'RN');
 
             document.getElementById('kpi-pax').innerText = fmtNum(paxTY);
-            document.getElementById('trend-pax').innerHTML = trend(paxTY, paxLY, paxLM, 'pax');
+            document.getElementById('trend-pax').innerHTML = trend(paxTY, paxLY, paxLM, 'pax') + (deltaPax !== null ? renderPickupBadge(deltaPax, 'Pax') : '');
 
             const adrTY = rmsTY > 0 ? habRevTY / rmsTY : 0;
             const adrLY = rmsLY > 0 ? habRevLY / rmsLY : 0;
             const adrLM = rmsLM > 0 ? habRevLM / rmsLM : 0;
             document.getElementById('kpi-adr').innerText = adrTY.toFixed(2).replace('.', ',') + " €";
-            document.getElementById('trend-adr').innerHTML = trend(adrTY, adrLY, adrLM, 'adr');
+            
+            let deltaAdr = null;
+            if (deltaRooms !== null && deltaHabRev !== null && rmsTY > 0) {
+                const prevRms = rmsTY - deltaRooms;
+                const prevRev = habRevTY - deltaHabRev;
+                if (prevRms > 0 && prevRev > 0) {
+                    deltaAdr = adrTY - (prevRev / prevRms);
+                }
+            }
+            document.getElementById('trend-adr').innerHTML = trend(adrTY, adrLY, adrLM, 'adr') + renderPickupBadge(deltaAdr, '€', false, true);
 
             const hospitalityRevTY = revTY - getV(groupedTY.OFICINAS, midx);
             const hospitalityRevLY = revLY - (dataPrev ? getV(groupedLY.OFICINAS, midx) : 0);
@@ -1213,13 +1287,21 @@
             const occLY = (rmsLY / (HOTELS[currentHotel].rooms * (midx === -1 ? 365 : 30)) * 100);
             const occLM = midx > 0 ? (rmsLM / (HOTELS[currentHotel].rooms * 30) * 100) : 0;
             document.getElementById('kpi-occ').innerText = occTY.toFixed(1).replace('.', ',') + " %";
-            document.getElementById('trend-occ').innerHTML = trend(occTY, occLY, occLM, 'occ');
+            
+            const deltaOcc = (deltaRooms !== null && elapsedDays > 0 && HOTELS[currentHotel] && HOTELS[currentHotel].rooms > 0)
+                ? (deltaRooms / (HOTELS[currentHotel].rooms * elapsedDays) * 100)
+                : null;
+            document.getElementById('trend-occ').innerHTML = trend(occTY, occLY, occLM, 'occ') + renderPickupBadge(deltaOcc, '%', true);
 
             const revparTY = habRevTY / (HOTELS[currentHotel].rooms * elapsedDays);
             const revparLY = habRevLY / (HOTELS[currentHotel].rooms * (midx === -1 ? 365 : 30));
             const revparLM = midx > 0 ? habRevLM / (HOTELS[currentHotel].rooms * 30) : 0;
             document.getElementById('kpi-revpar').innerText = revparTY.toFixed(2).replace('.', ',') + " €";
-            document.getElementById('trend-revpar').innerHTML = trend(revparTY, revparLY, revparLM, 'revpar');
+
+            const deltaRevpar = (deltaHabRev !== null && elapsedDays > 0 && HOTELS[currentHotel] && HOTELS[currentHotel].rooms > 0)
+                ? (deltaHabRev / (HOTELS[currentHotel].rooms * elapsedDays))
+                : null;
+            document.getElementById('trend-revpar').innerHTML = trend(revparTY, revparLY, revparLM, 'revpar') + renderPickupBadge(deltaRevpar, '€', false, true);
 
             const comppaxTY = paxTY > 0 ? compTY / paxTY : 0;
             const comppaxLY = paxLY > 0 ? compLY / paxLY : 0;

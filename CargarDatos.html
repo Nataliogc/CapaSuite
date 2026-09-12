@@ -1817,6 +1817,13 @@
                 if (!db[hotel][yStr].updates) db[hotel][yStr].updates = { prod: "N/A", seg: "N/A", otb: "N/A" };
 
                 if (type === 'Prod') {
+                    // Guardar snapshot previo de Producción para cálculo de Pick-up / Subida exacta
+                    if (db[hotel][yStr].service && db[hotel][yStr].service["TOTAL_MASTER"]) {
+                        db[hotel][yStr].prod_prev = {
+                            service: JSON.parse(JSON.stringify(db[hotel][yStr].service)),
+                            snapshotDate: db[hotel][yStr].updates?.prod || db[hotel][yStr].lastUpdate || new Date().toLocaleString()
+                        };
+                    }
                     db[hotel][yStr].updates.prod = lastDateLabel;
                     db[hotel][yStr].lastProdDate = lastDateLabel;
                     db[hotel][yStr].lastUpdate = lastDateLabel + " " + timeStr;
