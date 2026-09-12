@@ -553,8 +553,7 @@
                 </nav>
             </div>
 
-            <div class="strategy-control">
-                <div class="select-wrapper">
+            <div class="strategy-control" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                 <div class="select-wrapper">
                     <select id="yearSelector" onchange="switchHotel()" style="min-width: 90px; text-align: center;">
                         <option value="2025">📅 2025</option>
@@ -568,11 +567,21 @@
                 <div style="width: 1px; height: 24px; background: #cbd5e1; margin: 0 2px; opacity: 0.5;"></div>
                 <div class="select-wrapper">
                     <select id="strategySelector" onchange="loadStrategy()"
-                        style="min-width: 260px; background-color: #fff;">
+                        style="min-width: 240px; background-color: #fff;">
                         <option value="official" selected>📈 Presupuesto Oficial</option>
                         <option value="optionB">✅ Opción B: Lógica</option>
                         <option value="optionC">💰 Opción C: Maximizar</option>
                         <option value="optionD">🚀 Opción D: OTB + Yield</option>
+                    </select>
+                </div>
+                <div style="width: 1px; height: 24px; background: #cbd5e1; margin: 0 2px; opacity: 0.5;"></div>
+                <div class="select-wrapper">
+                    <select id="blendSelector" onchange="switchHotel()" title="Ponderación del Histórico Almacenado"
+                        style="min-width: 220px; background-color: #fff; font-size: 0.8rem; font-weight: 500;">
+                        <option value="0.20" selected>⚖️ 80% Año Ant. + 20% Hist.</option>
+                        <option value="0.15">⚖️ 85% Año Ant. + 15% Hist.</option>
+                        <option value="0.30">⚖️ 70% Año Ant. + 30% Hist.</option>
+                        <option value="0">⚖️ 100% Año Anterior</option>
                     </select>
                 </div>
             </div>
@@ -623,10 +632,10 @@
                     style="padding: 15px; background: #fff; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 20px;">
                     <h3 style="margin:0;" id="editorTitle">Elaboración del Presupuesto</h3>
                     <div style="display: flex; gap: 10px;">
-                        <button
-                            onclick="currentRev = hotelData[currentHotel].real2025.rev.map(v => v); currentAdr = hotelData[currentHotel].real2025.adr.map(v => v); updateAll();"
+                        <button id="resetBtn"
+                            onclick="resetToBase()"
                             class="btn" style="background: #f1f5f9; color: #475569; font-size: 0.8rem;">
-                            🔄 Resetear a Real 2025
+                            🔄 Resetear a Base 2025
                         </button>
                         <button onclick="saveCustomBudget()" class="btn btn-primary"
                             style="padding: 8px 16px; font-size: 0.85rem;" id="saveBtn">
@@ -640,10 +649,10 @@
                             <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
                                 <th rowspan="2" style="text-align: left; vertical-align: middle; padding-left: 15px;">
                                     Mes</th>
-                                <th colspan="3"
+                                <th id="th-hist-ref" colspan="3"
                                     style="text-align: center; background: #fdf2f2; color: #991b1b; font-size: 0.75rem; letter-spacing: 0.05em; border-right: 2px solid #fee2e2;">
                                     HISTÓRICO 2025 (Referencia)</th>
-                                <th colspan="4"
+                                <th id="th-obj-target" colspan="4"
                                     style="text-align: center; background: #eff6ff; color: #1e40af; font-size: 0.75rem; letter-spacing: 0.05em; border-right: 1px solid #dbeafe;">
                                     OBJETIVO 2026 (Presupuesto)</th>
                                 <th colspan="4"
@@ -678,9 +687,8 @@
 
         <!-- DETAILED TABLE VIEW -->
         <div id="tab-detail" class="section active">
-            <div style="margin-bottom: 10px; font-size: 0.85rem; color: var(--text-muted); padding-left: 5px;">
-                💡 <b>VENDIDO 26:</b> Muestra la producción real de habitaciones (meses cerrados) + OTB actual (meses
-                futuros).
+            <div id="detailInfoTip" style="margin-bottom: 10px; font-size: 0.85rem; color: var(--text-muted); padding-left: 5px;">
+                💡 <b>VENDIDO 26:</b> Muestra la producción real de habitaciones (meses cerrados) + OTB actual (meses futuros).
             </div>
             <div class="table-container table-responsive">
                 <table id="fullTable">
@@ -694,23 +702,23 @@
                             <th colspan="2">OCUPACIÓN %</th>
                         </tr>
                         <tr>
-                            <th class="bg-group-rev" style="font-size: 0.7rem;">Real 25</th>
-                            <th class="bg-group-rev">OBJ 26 + <span
+                            <th class="bg-group-rev detail-th-prev" style="font-size: 0.7rem;">Real 25</th>
+                            <th class="bg-group-rev detail-th-curr">OBJ 26 + <span
                                     style="font-size: 0.7rem; color: var(--primary);">REAL 26</span></th>
                             <th class="bg-group-rev border-sep">Var %</th>
 
-                            <th class="bg-group-adr" style="font-size: 0.7rem;">Real 25</th>
-                            <th class="bg-group-adr">OBJ 26 + <span
+                            <th class="bg-group-adr detail-th-prev" style="font-size: 0.7rem;">Real 25</th>
+                            <th class="bg-group-adr detail-th-curr">OBJ 26 + <span
                                     style="font-size: 0.7rem; color: var(--primary);">REAL 26</span></th>
                             <th class="bg-group-adr border-sep">Var %</th>
 
-                            <th class="bg-group-occ" style="font-size: 0.7rem;">Real 25</th>
-                            <th class="bg-group-occ">OBJ 26 + <span style="font-size: 0.7rem; color: #c2410c;">REAL
+                            <th class="bg-group-occ detail-th-prev" style="font-size: 0.7rem;">Real 25</th>
+                            <th class="bg-group-occ detail-th-curr">OBJ 26 + <span style="font-size: 0.7rem; color: #c2410c;">REAL
                                     26</span></th>
                             <th class="bg-group-occ border-sep">Var %</th>
 
-                            <th style="font-size: 0.7rem;">Real 25</th>
-                            <th>OBJ 26</th>
+                            <th class="detail-th-prev" style="font-size: 0.7rem;">Real 25</th>
+                            <th class="detail-th-curr-only">OBJ 26</th>
                         </tr>
                     </thead>
                     <tbody id="fullBody"></tbody>
@@ -953,6 +961,171 @@
         }
 
 
+        function getHotelHistoricalBaseline(hotel) {
+            const db = JSON.parse(CapaStorage.getItem('hotel_manager_db_v2')) || {};
+            const defaults = {
+                Guadiana: {
+                    rev: [46629, 65367, 84793, 115352, 160450, 107417, 129720, 124567, 140798, 156106, 111396, 92671],
+                    rn: [783, 1110, 1398, 1739, 1984, 1591, 1838, 2141, 2350, 2637, 1785, 1532],
+                    adr: [59.55, 58.89, 60.65, 66.33, 80.87, 67.52, 70.58, 58.18, 59.91, 59.20, 62.41, 60.49]
+                },
+                Cumbria: {
+                    rev: [58500, 63750, 73500, 93750, 111000, 101250, 116250, 108750, 105000, 101250, 86250, 73500],
+                    rn: [943, 996, 1080, 1302, 1353, 1298, 1383, 1359, 1346, 1368, 1232, 1113],
+                    adr: [62.00, 64.00, 68.00, 72.00, 82.00, 78.00, 84.00, 80.00, 78.00, 74.00, 70.00, 66.00]
+                }
+            };
+
+            // Check if DB has consolidated 2025 service data
+            if (db[hotel] && db[hotel]["2025"] && db[hotel]["2025"].service) {
+                const res = resolveRoomData(db[hotel]["2025"].service);
+                if (res.rev.some(v => v > 0)) {
+                    const adr = res.rev.map((r, i) => res.rn[i] > 0 ? r / res.rn[i] : (defaults[hotel] ? defaults[hotel].adr[i] : 65));
+                    return { rev: [...res.rev], rn: [...res.rn], adr };
+                }
+            }
+
+            return defaults[hotel] ? JSON.parse(JSON.stringify(defaults[hotel])) : {
+                rev: new Array(12).fill(50000),
+                rn: new Array(12).fill(800),
+                adr: new Array(12).fill(62.5)
+            };
+        }
+
+        function buildReferenceBaseline(hotel, targetYearStr, blendWeight) {
+            const db = JSON.parse(CapaStorage.getItem('hotel_manager_db_v2')) || {};
+            const targetYear = parseInt(targetYearStr);
+            const prevYear = String(targetYear - 1);
+            const H = getHotelHistoricalBaseline(hotel);
+
+            // Case 1: If targetYear is 2026 or earlier, the previous year is 2025 (pure historical)
+            if (targetYear <= 2026) {
+                if (db[hotel] && db[hotel][prevYear] && db[hotel][prevYear].service) {
+                    const res = resolveRoomData(db[hotel][prevYear].service);
+                    if (res.rev.some(v => v > 0)) {
+                        const adr = res.rev.map((r, i) => res.rn[i] > 0 ? r / res.rn[i] : H.adr[i]);
+                        return { rev: res.rev, rn: res.rn, adr };
+                    }
+                }
+                return H;
+            }
+
+            // Case 2: targetYear >= 2027 (e.g. 2027, 2028...)
+            // 1. Gather raw data for prevYear (e.g. 2026 for 2027, 2027 for 2028)
+            let pRealRev = new Array(12).fill(0);
+            let pRealRN = new Array(12).fill(0);
+            if (db[hotel] && db[hotel][prevYear] && db[hotel][prevYear].service) {
+                const res = resolveRoomData(db[hotel][prevYear].service);
+                pRealRev = res.rev;
+                pRealRN = res.rn;
+            }
+
+            // OTB for prevYear
+            let pOtbRev = new Array(12).fill(0);
+            let pOtbRN = new Array(12).fill(0);
+            if (db[hotel] && db[hotel][prevYear] && db[hotel][prevYear].otb) {
+                const o = db[hotel][prevYear].otb;
+                pOtbRev = o.breakdown?.habitacion || o.revenue || new Array(12).fill(0);
+                pOtbRN = o.breakdown?.habitacion_rn || o.rooms || new Array(12).fill(0);
+            }
+
+            // Saved Custom Budget for prevYear (e.g. custom_budget_2026 or custom_budget_2027)
+            const budgetKey = `custom_budget_${prevYear}`;
+            let pBudget = (db[hotel] && db[hotel][budgetKey]) ? db[hotel][budgetKey] : null;
+
+            // Calendar check for closed months
+            const now = new Date();
+            const curCalYear = now.getFullYear();
+            const curCalMonth = now.getMonth();
+            const prevYearInt = parseInt(prevYear);
+
+            // Compute Pace: Growth of prevYear over historical baseline in closed months
+            let closedRealSum = 0;
+            let closedHistSum = 0;
+            for (let i = 0; i < 12; i++) {
+                const isClosed = (prevYearInt < curCalYear) || (prevYearInt === curCalYear && i < curCalMonth);
+                if (isClosed && pRealRev[i] > 0) {
+                    closedRealSum += pRealRev[i];
+                    closedHistSum += H.rev[i];
+                }
+            }
+            let paceFactor = (closedHistSum > 0 && closedRealSum > 0) ? (closedRealSum / closedHistSum) : 1.05;
+            paceFactor = Math.max(0.85, Math.min(1.35, paceFactor)); // Safety clamp
+
+            // Reconstruct full 12 months for year P (pVal)
+            const pVal = {
+                rev: new Array(12).fill(0),
+                rn: new Array(12).fill(0),
+                adr: new Array(12).fill(0)
+            };
+
+            for (let i = 0; i < 12; i++) {
+                const isClosed = (prevYearInt < curCalYear) || (prevYearInt === curCalYear && i < curCalMonth);
+                
+                if (isClosed && pRealRev[i] > 0) {
+                    pVal.rev[i] = pRealRev[i];
+                    pVal.rn[i] = pRealRN[i];
+                    pVal.adr[i] = pVal.rn[i] > 0 ? pVal.rev[i] / pVal.rn[i] : H.adr[i];
+                } else {
+                    // Open, future, or zero production month in prevYear
+                    const bRev = (pBudget && pBudget.rev && pBudget.rev[i] > 0) ? pBudget.rev[i] : 0;
+                    const bAdr = (pBudget && pBudget.adr && pBudget.adr[i] > 0) ? pBudget.adr[i] : 0;
+                    const bRN = bAdr > 0 ? Math.round(bRev / bAdr) : (bRev > 0 ? Math.round(bRev / H.adr[i]) : 0);
+
+                    const otbRev = pOtbRev[i] || 0;
+                    const otbRN = pOtbRN[i] || 0;
+
+                    // Project from historical baseline with pace
+                    const projRev = Math.round(H.rev[i] * paceFactor);
+                    const projRN = Math.round(H.rn[i] * Math.sqrt(paceFactor));
+
+                    // Priority for unclosed months:
+                    // 1) Budget if saved
+                    // 2) Max of OTB and Pace-projected historical
+                    if (bRev > 0) {
+                        pVal.rev[i] = bRev;
+                        pVal.rn[i] = bRN;
+                        pVal.adr[i] = bAdr;
+                    } else if (otbRev > projRev * 0.8) {
+                        pVal.rev[i] = Math.max(otbRev, projRev);
+                        pVal.rn[i] = Math.max(otbRN, projRN);
+                        pVal.adr[i] = pVal.rn[i] > 0 ? pVal.rev[i] / pVal.rn[i] : H.adr[i];
+                    } else {
+                        pVal.rev[i] = projRev;
+                        pVal.rn[i] = projRN;
+                        pVal.adr[i] = projRN > 0 ? projRev / projRN : H.adr[i];
+                    }
+                }
+            }
+
+            // 2. Blend pVal with Stored Historical Baseline H ("y un poco en el histórico almacenado")
+            const wHist = typeof blendWeight === 'number' ? blendWeight : 0.20; // Default 20% historical, 80% prevYear
+            const wPrev = 1.0 - wHist;
+
+            const blended = {
+                rev: new Array(12).fill(0),
+                rn: new Array(12).fill(0),
+                adr: new Array(12).fill(0)
+            };
+
+            for (let i = 0; i < 12; i++) {
+                blended.rev[i] = Math.round(wPrev * pVal.rev[i] + wHist * H.rev[i]);
+                blended.rn[i] = Math.round(wPrev * pVal.rn[i] + wHist * H.rn[i]);
+                blended.adr[i] = blended.rn[i] > 0 ? parseFloat((blended.rev[i] / blended.rn[i]).toFixed(2)) : (wPrev * pVal.adr[i] + wHist * H.adr[i]);
+            }
+
+            return blended;
+        }
+
+        function resetToBase() {
+            const h = hotelData[currentHotel];
+            if (h && h.referenceBase) {
+                currentRev = h.referenceBase.rev.map(v => v);
+                currentAdr = h.referenceBase.adr.map(v => v);
+                updateAll();
+            }
+        }
+
         function init() {
             switchHotel();
 
@@ -966,65 +1139,24 @@
         function switchHotel() {
             currentHotel = document.getElementById('hotelSelector').value;
             currentYear = document.getElementById('yearSelector').value;
+            const blendSelectEl = document.getElementById('blendSelector');
+            const blendWeight = blendSelectEl ? parseFloat(blendSelectEl.value) : 0.20;
+
             const h = hotelData[currentHotel];
             document.getElementById('hotelLogo').src = h.logo;
 
+            const prevYear = String(parseInt(currentYear) - 1);
 
+            console.log(`🔍 Construyendo Base de Referencia para ${currentYear} (basada en ${prevYear} e histórico) para ${currentHotel}...`);
 
+            // Build dynamic blended reference baseline
+            h.referenceBase = buildReferenceBaseline(currentHotel, currentYear, blendWeight);
+            h.real2025 = h.referenceBase; // Backward compatibility with all existing formulas
 
-
-            // Load Real 2025 data from the database
-            const dbRealData = JSON.parse(CapaStorage.getItem('hotel_manager_db_v2')) || {};
-            const prevYear = String(parseInt(currentYear) - 1); // "2025" when currentYear is "2026"
-
-            console.log(`🔍 Cargando Real ${prevYear} para ${currentHotel}...`);
-
-            // Data is stored as: db[hotelName][year].service
-            if (dbRealData[currentHotel] && dbRealData[currentHotel][prevYear] && dbRealData[currentHotel][prevYear].service) {
-                const servicesData = dbRealData[currentHotel][prevYear].service;
-                const { rev, rn } = resolveRoomData(servicesData);
-                const adr = rev.map((r, i) => rn[i] > 0 ? r / rn[i] : 0);
-
-                console.log(`✅ Datos Real ${prevYear} cargados:`, {
-                    enero: { rev: rev[0].toFixed(0), rn: rn[0], adr: adr[0].toFixed(2) },
-                    source: `db["${currentHotel}"]["${prevYear}"].service`
-                });
-
-                h.real2025 = {
-                    rev: [...rev],
-                    rn: [...rn],
-                    adr: [...adr]
-                };
-            } else {
-                console.warn(`⚠️ No hay datos guardados para ${currentHotel} ${prevYear}, usando defaults`);
-
-                // Fallback to defaults if no data found
-                const defaults = {
-                    Guadiana: {
-                        rev: [46630, 65367, 86107, 112763, 161092, 107383, 129876, 124567, 143225, 146425, 106485, 90885],
-                        rn: [800, 950, 1100, 1400, 1800, 1500, 1700, 1850, 2100, 2300, 1650, 1400],
-                        adr: [58.29, 68.81, 78.28, 80.55, 89.49, 71.59, 76.40, 67.33, 68.20, 63.66, 64.54, 64.92]
-                    },
-                    Cumbria: {
-                        rev: [50000, 52000, 60000, 65000, 75000, 70000, 80000, 75000, 72000, 70000, 65000, 60000],
-                        rn: [800, 820, 900, 950, 1050, 1000, 1100, 1050, 1020, 1000, 950, 900],
-                        adr: [62.50, 63.41, 66.67, 68.42, 71.43, 70.00, 72.73, 71.43, 70.59, 70.00, 68.42, 66.67]
-                    }
-                };
-
-                h.real2025 = (currentYear === "2026" && defaults[currentHotel])
-                    ? JSON.parse(JSON.stringify(defaults[currentHotel]))
-                    : {
-                        rev: new Array(12).fill(0),
-                        rn: new Array(12).fill(0),
-                        adr: new Array(12).fill(0)
-                    };
-            }
             h.otbData = new Array(12).fill(0);
             h.otbRN = new Array(12).fill(0);
 
-
-            // Update Dynamic Titles (with null checks for elements that may not exist)
+            // Update Dynamic Titles and Headers
             const headerTitle = document.querySelector('.header-title h1');
             if (headerTitle) headerTitle.innerText = `Presupuestos ${currentYear}`;
 
@@ -1033,6 +1165,31 @@
 
             const labelTotalRev = document.getElementById('label-total-rev');
             if (labelTotalRev) labelTotalRev.innerText = `Rev. Habitaciones ${currentYear}`;
+
+            const resetBtn = document.getElementById('resetBtn');
+            if (resetBtn) resetBtn.innerHTML = `🔄 Resetear a Base ${prevYear}`;
+
+            const thHistRef = document.getElementById('th-hist-ref');
+            if (thHistRef) {
+                const histPct = Math.round(blendWeight * 100);
+                const prevPct = 100 - histPct;
+                const blendSub = histPct > 0 
+                    ? `<br><span style="font-size:0.65rem; font-weight:normal; opacity:0.85;">(${prevPct}% ${prevYear} + ${histPct}% Histórico)</span>`
+                    : `<br><span style="font-size:0.65rem; font-weight:normal; opacity:0.85;">(100% ${prevYear})</span>`;
+                thHistRef.innerHTML = `BASE ${prevYear} (Referencia)${blendSub}`;
+            }
+
+            const thObjTarget = document.getElementById('th-obj-target');
+            if (thObjTarget) thObjTarget.innerText = `OBJETIVO ${currentYear} (Presupuesto)`;
+
+            const detailInfoTip = document.getElementById('detailInfoTip');
+            if (detailInfoTip) {
+                detailInfoTip.innerHTML = `💡 <b>VENDIDO ${currentYear.slice(-2)}:</b> Muestra la producción real de habitaciones (meses cerrados) + OTB actual (meses futuros).`;
+            }
+
+            document.querySelectorAll('.detail-th-prev').forEach(el => el.innerText = `Ref. ${prevYear.slice(-2)}`);
+            document.querySelectorAll('.detail-th-curr').forEach(el => el.innerHTML = `OBJ ${currentYear.slice(-2)} + <span style="font-size: 0.7rem; color: var(--primary);">REAL ${currentYear.slice(-2)}</span>`);
+            document.querySelectorAll('.detail-th-curr-only').forEach(el => el.innerText = `OBJ ${currentYear.slice(-2)}`);
 
             const headerCurrYearSold = document.getElementById('header-curr-year-sold');
             if (headerCurrYearSold) headerCurrYearSold.innerText = `Vendido ${currentYear.slice(-2)}`;
@@ -1045,10 +1202,7 @@
 
             const db = JSON.parse(CapaStorage.getItem('hotel_manager_db_v2')) || {};
 
-            // Real 2025 is already loaded above (lines 1076-1120), don't overwrite it
-            // Just load CURRENT YEAR OTB data here
-
-            // 2. Load CURRENT YEAR OTB (Vendido) from DB
+            // Load CURRENT YEAR OTB (Vendido) from DB
             if (db[currentHotel] && db[currentHotel][currentYear]) {
                 const cyData = db[currentHotel][currentYear];
                 let realRoomRev = new Array(12).fill(0);
@@ -1063,7 +1217,6 @@
                 let otbRoomRev = new Array(12).fill(0);
                 let otbRoomRN = new Array(12).fill(0);
                 if (cyData.otb) {
-                    // Use breakdown if available to be Room-Only, fallback to total OTB (which is usually room-only anyway)
                     otbRoomRev = cyData.otb.breakdown?.habitacion || cyData.otb.revenue || new Array(12).fill(0);
                     otbRoomRN = cyData.otb.breakdown?.habitacion_rn || cyData.otb.rooms || new Array(12).fill(0);
                 }
@@ -1076,11 +1229,9 @@
                 for (let i = 0; i < 12; i++) {
                     const isClosed = (budgetYear < curY) || (budgetYear === curY && i < curM);
                     if (isClosed && realRoomRev.some(v => v > 0)) {
-                        // Prioritize ACTUAL Room Production for closed months
                         h.otbData[i] = realRoomRev[i] || 0;
                         h.otbRN[i] = realRoomRN[i] || 0;
                     } else {
-                        // For future/current months, use OTB as floor but keep Real if it's already higher
                         h.otbData[i] = Math.max(realRoomRev[i] || 0, otbRoomRev[i] || 0);
                         h.otbRN[i] = Math.max(realRoomRN[i] || 0, otbRoomRN[i] || 0);
                     }
@@ -1307,10 +1458,12 @@
             const totalOcc26 = (t_rn26 / t_cap) * 100;
             const totalGrowth = t_rev25 > 0 ? ((t_rev26 - t_rev25) / t_rev25) * 100 : 0;
 
+            const prevYear = String(parseInt(currentYear) - 1);
+
             document.getElementById('kpi-revenue').innerText = formatMoney(t_rev26);
             const kpiTrend = document.getElementById('kpi-rev-trend');
             if (kpiTrend) {
-                kpiTrend.innerHTML = `${totalGrowth >= 0 ? '+' : ''}${totalGrowth.toFixed(1)}%`;
+                kpiTrend.innerHTML = `${totalGrowth >= 0 ? '+' : ''}${totalGrowth.toFixed(1)}% <span style="font-size:0.75rem; font-weight:normal; opacity:0.8;">vs ${prevYear}</span>`;
                 kpiTrend.className = `kpi-trend ${totalGrowth >= 0 ? 'trend-up' : 'trend-down'}`;
             }
 
@@ -1320,7 +1473,7 @@
             const adrGrowth = adr25_total > 0 ? ((totalAdr26 - adr25_total) / adr25_total * 100) : 0;
             const adrTrend = document.getElementById('kpi-adr-trend');
             if (adrTrend) {
-                adrTrend.innerHTML = `${adrGrowth >= 0 ? '+' : ''}${adrGrowth.toFixed(1)}%`;
+                adrTrend.innerHTML = `${adrGrowth >= 0 ? '+' : ''}${adrGrowth.toFixed(1)}% <span style="font-size:0.75rem; font-weight:normal; opacity:0.8;">vs ${prevYear}</span>`;
                 adrTrend.className = `kpi-trend ${adrGrowth >= 0 ? 'trend-up' : 'trend-down'}`;
             }
 
@@ -1331,7 +1484,7 @@
             const occTrend = document.getElementById('kpi-occ-trend');
             if (occTrend) {
                 const growthPct = occ25_total > 0 ? ((totalOcc26 - occ25_total) / occ25_total * 100) : 0;
-                occTrend.innerHTML = `${growthPct >= 0 ? '+' : ''}${growthPct.toFixed(1)}%`;
+                occTrend.innerHTML = `${growthPct >= 0 ? '+' : ''}${growthPct.toFixed(1)}% <span style="font-size:0.75rem; font-weight:normal; opacity:0.8;">vs ${prevYear}</span>`;
                 occTrend.className = `kpi-trend ${growthPct >= 0 ? 'trend-up' : 'trend-down'}`;
             }
         }
@@ -1349,7 +1502,7 @@
                     labels: months,
                     datasets: [
                         {
-                            label: `Real ${prevYear}`,
+                            label: `Base ${prevYear} (Ref)`,
                             data: h.real2025.rev,
                             borderColor: '#94a3b8',
                             backgroundColor: 'rgba(148, 163, 184, 0.1)',
