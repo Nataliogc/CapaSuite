@@ -634,13 +634,15 @@
         }
 
         function refreshAvailableYears() {
-            const y = (db[currentHotel] && typeof db[currentHotel] === 'object') ? Object.keys(db[currentHotel]) : [];
+            const y = (db[currentHotel] && typeof db[currentHotel] === 'object') 
+                ? Object.keys(db[currentHotel]).filter(k => /^(20\d{2})$/.test(k)) 
+                : [];
             if (y.length) {
                 const systemYear = new Date().getFullYear().toString();
                 if (y.includes(systemYear)) {
                     currentYear = systemYear;
                 } else {
-                    currentYear = y.sort().reverse()[0];
+                    currentYear = y.sort((a, b) => parseInt(b) - parseInt(a))[0];
                 }
             } else {
                 currentYear = "";
@@ -868,9 +870,13 @@
 
         function initControls() {
             const ys = document.getElementById('yearSelector');
-            const years = db[currentHotel] ? Object.keys(db[currentHotel]) : ["2026"];
-            ys.innerHTML = years.sort().reverse().map(y => `<option value="${y}">${y}</option>`).join('');
-            ys.value = currentYear;
+            const rawYears = (db[currentHotel] && typeof db[currentHotel] === 'object') 
+                ? Object.keys(db[currentHotel]).filter(k => /^(20\d{2})$/.test(k)) 
+                : [];
+            const years = rawYears.sort((a, b) => parseInt(b) - parseInt(a));
+            if (!years.length) years.push("2026");
+            ys.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
+            ys.value = currentYear || years[0];
 
             const ms = document.getElementById('monthSelector');
             ms.innerHTML = '<option value="All">Todos los meses</option>' + MONTH_ORDER.map((m, i) => `<option value="${i}">${m}</option>`).join('');

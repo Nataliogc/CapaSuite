@@ -736,7 +736,9 @@
 
         function initSelectors() {
             const ySel = document.getElementById('yearSelector');
-            const years = db[currentHotel] ? Object.keys(db[currentHotel]).sort().reverse() : ["2026", "2025"];
+            const rawYears = db[currentHotel] ? Object.keys(db[currentHotel]).filter(k => /^(20\d{2})$/.test(k)) : [];
+            const years = rawYears.sort((a, b) => parseInt(b) - parseInt(a));
+            if (!years.length) years.push("2026", "2025");
             ySel.innerHTML = years.map(y => `<option value="${y}" ${y==currentYear?'selected':''}>${y}</option>`).join('');
             currentYear = ySel.value;
         }

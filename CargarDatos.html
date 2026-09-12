@@ -910,7 +910,8 @@
                 container.style.display = 'block';
                 tbody.innerHTML = '';
 
-                const years = db[hotel] ? Object.keys(db[hotel]).sort().reverse() : [];
+                const rawYears = db[hotel] ? Object.keys(db[hotel]).filter(k => /^(20\d{2})$/.test(k)) : [];
+                const years = rawYears.sort((a, b) => parseInt(b) - parseInt(a));
 
                 if (years.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="5" style="padding:15px; text-align:center; color:var(--text-muted);">No hay datos cargados para este hotel.</td></tr>';
@@ -1194,7 +1195,35 @@
         var config = {};
         try {
             db = JSON.parse(CapaStorage.getItem(DB_KEY)) || {};
+            sanitizeDbYears();
         } catch(e) { console.error("Error al cargar db local.", e); }
+
+        function sanitizeDbYears() {
+            let dbModified = false;
+            if (db && typeof db === 'object') {
+                Object.keys(db).forEach(hotel => {
+                    if (db[hotel] && typeof db[hotel] === 'object') {
+                        Object.keys(db[hotel]).forEach(k => {
+                            if (/^\d{2}$/.test(k)) {
+                                const fullYear = "20" + k;
+                                if (!db[hotel][fullYear]) {
+                                    db[hotel][fullYear] = db[hotel][k];
+                                } else {
+                                    db[hotel][fullYear] = { ...db[hotel][k], ...db[hotel][fullYear] };
+                                }
+                                delete db[hotel][k];
+                                dbModified = true;
+                            }
+                        });
+                    }
+                });
+                if (dbModified) {
+                    try {
+                        CapaStorage.setItem(DB_KEY, JSON.stringify(db));
+                    } catch (err) { console.warn("Error persistiendo DB sanitizada:", err); }
+                }
+            }
+        }
         
         try {
             config = JSON.parse(CapaStorage.getItem(CONFIG_KEY)) || {};
@@ -2849,7 +2878,8 @@
             tbody.innerHTML = '';
 
 
-            const years = Object.keys(db[hotel] || {}).sort().reverse();
+            const rawYears = Object.keys(db[hotel] || {}).filter(k => /^(20\d{2})$/.test(k));
+            const years = rawYears.sort((a, b) => parseInt(b) - parseInt(a));
 
             if (years.length === 0) return;
             container.style.display = 'block';
