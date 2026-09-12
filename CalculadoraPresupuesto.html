@@ -626,12 +626,30 @@
                 </div>
             </div>
 
+            <!-- ESCENARIOS PRESUPUESTARIOS -->
+            <div class="card" style="padding: 20px; margin-bottom: 20px; background: #fff;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <h3 style="margin: 0; font-size: 1.15rem; display: flex; align-items: center; gap: 8px;">
+                            🎯 Comparativa de Escenarios Presupuestarios <span id="scenarioYearBadge" style="font-size:0.9rem; color:var(--primary); font-weight:800; background:rgba(99,102,241,0.1); padding:2px 8px; border-radius:6px;">2027</span>
+                        </h3>
+                        <p style="margin: 4px 0 0 0; font-size: 0.8rem; color: var(--text-muted);">
+                            Evalúa los escenarios recomendados para la dirección del hotel, compara el retorno anual y graba el Presupuesto Oficial definitivo.
+                        </p>
+                    </div>
+                    <div id="lockedBadgeContainer" style="display: flex; align-items: center; gap: 10px;"></div>
+                </div>
+                <div id="scenarioCardsGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                    <!-- Rendered dynamically by renderScenarioCards() -->
+                </div>
+            </div>
+
             <div class="table-container">
                 <!-- Simplified Editor Table -->
                 <div
-                    style="padding: 15px; background: #fff; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 20px;">
+                    style="padding: 15px; background: #fff; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap;">
                     <h3 style="margin:0;" id="editorTitle">Elaboración del Presupuesto</h3>
-                    <div style="display: flex; gap: 10px;">
+                    <div id="tableActionsContainer" style="display: flex; gap: 10px; align-items: center;">
                         <button id="resetBtn"
                             onclick="resetToBase()"
                             class="btn" style="background: #f1f5f9; color: #475569; font-size: 0.8rem;">
@@ -1037,6 +1055,8 @@
             const now = new Date();
             const curCalYear = now.getFullYear();
             const curCalMonth = now.getMonth();
+            const curCalDay = now.getDate();
+            const daysInCurMonth = new Date(curCalYear, curCalMonth + 1, 0).getDate();
             const prevYearInt = parseInt(prevYear);
 
             // Compute Pace: Growth of prevYear over historical baseline in closed months
@@ -1060,11 +1080,32 @@
             };
 
             for (let i = 0; i < 12; i++) {
-                const isClosed = (prevYearInt < curCalYear) || (prevYearInt === curCalYear && i < curCalMonth);
+                const isStrictlyClosed = (prevYearInt < curCalYear) || (prevYearInt === curCalYear && i < curCalMonth);
+                const isInProgress = (prevYearInt === curCalYear && i === curCalMonth);
                 
-                if (isClosed && pRealRev[i] > 0) {
+                if (isStrictlyClosed && pRealRev[i] > 0) {
+                    // Fully closed past month with confirmed actuals
                     pVal.rev[i] = pRealRev[i];
                     pVal.rn[i] = pRealRN[i];
+                    pVal.adr[i] = pVal.rn[i] > 0 ? pVal.rev[i] / pVal.rn[i] : H.adr[i];
+                } else if (isInProgress) {
+                    // CURRENT MONTH IN PROGRESS (e.g. September with partial month-to-date)
+                    const mtdRev = pRealRev[i] || 0;
+                    const mtdRN = pRealRN[i] || 0;
+                    const otbRev = pOtbRev[i] || 0;
+                    const otbRN = pOtbRN[i] || 0;
+
+                    // Days projection: extrapolate MTD to 30 days
+                    const extrapolatedRev = curCalDay > 0 ? Math.round(mtdRev * (daysInCurMonth / curCalDay)) : 0;
+                    const extrapolatedRN = curCalDay > 0 ? Math.round(mtdRN * (daysInCurMonth / curCalDay)) : 0;
+
+                    // Historical pace projection
+                    const paceRev = Math.round(H.rev[i] * paceFactor);
+                    const paceRN = Math.round(H.rn[i] * Math.sqrt(paceFactor));
+
+                    // Take the best realistic estimation: Real MTD + OTB, Extrapolated, or Historical Pace
+                    pVal.rev[i] = Math.max(mtdRev + otbRev, extrapolatedRev, paceRev);
+                    pVal.rn[i] = Math.max(mtdRN + otbRN, extrapolatedRN, paceRN);
                     pVal.adr[i] = pVal.rn[i] > 0 ? pVal.rev[i] / pVal.rn[i] : H.adr[i];
                 } else {
                     // Open, future, or zero production month in prevYear
@@ -1117,12 +1158,106 @@
             return blended;
         }
 
+        let isBudgetLocked = false;
+
+        function promptUnlockBudget() {
+            const modal = document.getElementById('unlockModal');
+            if (!modal) return;
+            const yearText = document.getElementById('unlockYearText');
+            if (yearText) yearText.innerText = currentYear;
+            const pinInput = document.getElementById('unlockPinInput');
+            if (pinInput) pinInput.value = '';
+            const err = document.getElementById('unlockErrorMsg');
+            if (err) err.style.display = 'none';
+            modal.style.display = 'flex';
+            setTimeout(() => { if (pinInput) pinInput.focus(); }, 100);
+        }
+
+        function closeUnlockModal() {
+            const modal = document.getElementById('unlockModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function verifyUnlockPin() {
+            const pinInput = document.getElementById('unlockPinInput');
+            const pin = pinInput ? pinInput.value.trim() : '';
+            if (pin === '1234') {
+                isBudgetLocked = false;
+                const db = JSON.parse(CapaStorage.getItem('hotel_manager_db_v2')) || {};
+                const customKey = `custom_budget_${currentYear}`;
+                if (db[currentHotel] && db[currentHotel][customKey]) {
+                    db[currentHotel][customKey].locked = false;
+                    CapaStorage.setItem('hotel_manager_db_v2', JSON.stringify(db));
+                }
+                closeUnlockModal();
+                updateAll();
+                showNotification(`🔓 Presupuesto de ${currentYear} desbloqueado correctamente. Ya puedes editar.`);
+            } else {
+                const err = document.getElementById('unlockErrorMsg');
+                if (err) {
+                    err.style.display = 'block';
+                    err.innerText = '❌ Clave incorrecta. Debe ser 1234.';
+                }
+                if (pinInput) {
+                    pinInput.value = '';
+                    pinInput.focus();
+                }
+            }
+        }
+
+        function lockBudget() {
+            isBudgetLocked = true;
+            const db = JSON.parse(CapaStorage.getItem('hotel_manager_db_v2')) || {};
+            const customKey = `custom_budget_${currentYear}`;
+            if (db[currentHotel] && db[currentHotel][customKey]) {
+                db[currentHotel][customKey].locked = true;
+                CapaStorage.setItem('hotel_manager_db_v2', JSON.stringify(db));
+            }
+            updateAll();
+            showNotification(`🔒 Presupuesto de ${currentYear} protegido con clave.`);
+        }
+
+        function showNotification(msg, type = 'info') {
+            let container = document.getElementById('budgetToastContainer');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'budgetToastContainer';
+                container.style.cssText = 'position:fixed; bottom:25px; right:25px; z-index:100000; display:flex; flex-direction:column; gap:10px; pointer-events:none;';
+                document.body.appendChild(container);
+            }
+            const toast = document.createElement('div');
+            const isError = type === 'error';
+            toast.style.cssText = `background:${isError ? '#dc2626' : '#0f172a'}; color:#fff; padding:12px 20px; border-radius:12px; font-weight:600; font-size:0.9rem; box-shadow:0 10px 25px rgba(0,0,0,0.25); display:flex; align-items:center; gap:10px; opacity:0; transform:translateY(15px); transition:all 0.3s ease; pointer-events:auto; border: 1px solid rgba(255,255,255,0.15);`;
+            toast.innerHTML = msg;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '1';
+                toast.style.transform = 'translateY(0)';
+            }, 10);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(15px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // Close unlock modal with ESC key
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeUnlockModal();
+        });
+
         function resetToBase() {
+            if (isBudgetLocked) {
+                showNotification("🔒 Presupuesto oficial bloqueado. Desbloquea con clave 1234.", "error");
+                promptUnlockBudget();
+                return;
+            }
             const h = hotelData[currentHotel];
             if (h && h.referenceBase) {
                 currentRev = h.referenceBase.rev.map(v => v);
                 currentAdr = h.referenceBase.adr.map(v => v);
                 updateAll();
+                showNotification(`🔄 Presupuesto restablecido a Base de Referencia.`);
             }
         }
 
@@ -1134,6 +1269,185 @@
                 console.log("☁️ Syncing Budget from Cloud...");
                 switchHotel();
             });
+        }
+
+        function renderScenarioCards() {
+            const grid = document.getElementById('scenarioCardsGrid');
+            if (!grid) return;
+
+            const h = hotelData[currentHotel];
+            if (!h || !h.referenceBase) return;
+
+            const real = h.referenceBase;
+            const baseRevTotal = real.rev.reduce((a, b) => a + b, 0);
+            const totalCap = h.capacity.reduce((a, b) => a + b, 0);
+            const prevYear = String(parseInt(currentYear) - 1);
+
+            const yearBadge = document.getElementById('scenarioYearBadge');
+            if (yearBadge) yearBadge.innerText = currentYear;
+
+            const badgeContainer = document.getElementById('lockedBadgeContainer');
+            if (badgeContainer) {
+                if (isBudgetLocked) {
+                    badgeContainer.innerHTML = `
+                        <span style="background:#fee2e2; color:#991b1b; padding:6px 12px; border-radius:8px; font-weight:700; font-size:0.8rem; display:inline-flex; align-items:center; gap:6px; border:1px solid #fecaca;">
+                            🔒 Presupuesto Oficial Bloqueado
+                        </span>
+                        <button onclick="promptUnlockBudget()" class="btn" style="background:#fef3c7; color:#92400e; border:1px solid #fde68a; padding:6px 12px; font-size:0.8rem; font-weight:700; border-radius:8px; cursor:pointer;">
+                            🔓 Desbloquear (PIN)
+                        </button>
+                    `;
+                } else {
+                    badgeContainer.innerHTML = `
+                        <span style="background:#dcfce7; color:#166534; padding:6px 12px; border-radius:8px; font-weight:700; font-size:0.8rem; display:inline-flex; align-items:center; gap:6px; border:1px solid #bbf7d0;">
+                            ✏️ Modo Edición Activo
+                        </span>
+                        <button onclick="lockBudget()" class="btn" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; padding:6px 10px; font-size:0.8rem; font-weight:600; border-radius:8px; cursor:pointer;" title="Bloquear edición">
+                            🔒 Proteger
+                        </button>
+                    `;
+                }
+            }
+
+            const scenarios = [
+                {
+                    key: 'original',
+                    title: 'Opción A: Conservador',
+                    subtitle: `Base +4.5%`,
+                    desc: 'Crecimiento moderado alineado con inflación y estabilidad.',
+                    isRecommended: false,
+                    color: '#475569',
+                    accentBg: '#f8fafc',
+                    border: '#cbd5e1',
+                    rev: real.rev.map(v => v * 1.045),
+                    adr: real.adr.map(v => v * 1.028)
+                },
+                {
+                    key: 'optionB',
+                    title: 'Opción B: Lógica de Mercado',
+                    subtitle: `Recomendado (+7.5%)`,
+                    desc: 'Equilibrio óptimo entre optimización de tarifa media y ocupación.',
+                    isRecommended: true,
+                    color: '#4338ca',
+                    accentBg: '#eef2ff',
+                    border: '#6366f1',
+                    rev: real.rev.map(v => v * 1.075),
+                    adr: real.adr.map(v => v * 1.040)
+                },
+                {
+                    key: 'optionC',
+                    title: 'Opción C: Maximizar ADR',
+                    subtitle: `Agresivo (+12.0%)`,
+                    desc: 'Foco en maximización de tarifa media y rentabilidad.',
+                    isRecommended: false,
+                    color: '#0284c7',
+                    accentBg: '#f0f9ff',
+                    border: '#7dd3fc',
+                    rev: real.rev.map(v => v * 1.120),
+                    adr: real.adr.map(v => v * 1.060)
+                },
+                {
+                    key: 'optionD',
+                    title: 'Opción D: Yield Dinámico',
+                    subtitle: `OTB + Yield (+15.0%)`,
+                    desc: 'Explotación de picos de demanda y reservas anticipadas.',
+                    isRecommended: false,
+                    color: '#c2410c',
+                    accentBg: '#fff7ed',
+                    border: '#fdba74',
+                    rev: real.rev.map((v, i) => {
+                        const otbVal = (h.otbData && h.otbData[i]) ? h.otbData[i] : 0;
+                        return Math.max(v * 1.15, otbVal * 1.025);
+                    }),
+                    adr: real.adr.map(v => v * 1.080)
+                }
+            ];
+
+            const currentStrat = document.getElementById('strategySelector')?.value;
+
+            let html = '';
+            scenarios.forEach(sc => {
+                const scTotRev = sc.rev.reduce((a, b) => a + b, 0);
+                const scTotRn = sc.rev.reduce((acc, v, i) => acc + (sc.adr[i] > 0 ? Math.round(v / sc.adr[i]) : 0), 0);
+                const scAdr = scTotRn > 0 ? scTotRev / scTotRn : 0;
+                const scOcc = totalCap > 0 ? (scTotRn / totalCap) * 100 : 0;
+                const scVar = baseRevTotal > 0 ? ((scTotRev - baseRevTotal) / baseRevTotal * 100) : 0;
+
+                const isCurrentlyApplied = (currentStrat === sc.key);
+
+                html += `
+                <div style="background: ${sc.accentBg}; border: ${sc.isRecommended ? '2px solid #6366f1' : '1px solid ' + sc.border}; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; position: relative; box-shadow: ${sc.isRecommended ? '0 10px 15px -3px rgba(99, 102, 241, 0.15)' : '0 1px 3px rgba(0,0,0,0.05)'};">
+                    ${sc.isRecommended ? `
+                        <div style="position: absolute; top: -11px; right: 14px; background: linear-gradient(135deg, #6366f1, #4f46e5); color: #fff; font-size: 0.68rem; font-weight: 800; padding: 3px 10px; border-radius: 20px; box-shadow: 0 2px 5px rgba(79, 70, 229, 0.4); text-transform: uppercase; letter-spacing: 0.05em;">
+                            ⭐ Recomendado
+                        </div>
+                    ` : ''}
+
+                    <div>
+                        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
+                            <h4 style="margin: 0; font-size: 0.95rem; color: #1e293b; font-weight: 700;">${sc.title}</h4>
+                            <span style="font-size: 0.75rem; font-weight: 700; color: ${scVar >= 0 ? '#10b981' : '#ef4444'}; background: #fff; padding: 2px 7px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                ${scVar >= 0 ? '+' : ''}${scVar.toFixed(1)}% vs ${prevYear}
+                            </span>
+                        </div>
+                        <p style="margin: 0 0 12px 0; font-size: 0.72rem; color: #64748b; line-height: 1.35; min-height: 28px;">
+                            ${sc.desc}
+                        </p>
+
+                        <div style="background: #fff; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; border: 1px solid rgba(0,0,0,0.05);">
+                            <div style="font-size: 0.68rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Rev. Habitaciones ${currentYear}</div>
+                            <div style="font-size: 1.35rem; font-weight: 800; color: ${sc.color}; margin: 2px 0 6px 0;">
+                                ${formatMoney(scTotRev)}
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: #475569; border-top: 1px dashed #e2e8f0; padding-top: 6px;">
+                                <span>ADR: <b style="color: #1e293b;">${scAdr.toFixed(1)} €</b></span>
+                                <span>Ocup: <b style="color: #1e293b;">${scOcc.toFixed(1)}%</b></span>
+                                <span>RN: <b style="color: #1e293b;">${formatInt(scTotRn)}</b></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 5px;">
+                        <button onclick="applyScenario('${sc.key}')" class="btn" 
+                            style="font-size: 0.75rem; padding: 7px 6px; background: ${isCurrentlyApplied ? '#e0e7ff' : '#fff'}; color: #4f46e5; border: 1px solid ${isCurrentlyApplied ? '#6366f1' : '#cbd5e1'}; font-weight: 700; border-radius: 8px; cursor: pointer;"
+                            title="Cargar este escenario en la tabla para revisar o retocar">
+                            ${isCurrentlyApplied ? '👁️ En Pantalla' : '✏️ Aplicar'}
+                        </button>
+                        <button onclick="saveOfficialScenario('${sc.key}')" class="btn btn-primary" 
+                            style="font-size: 0.75rem; padding: 7px 6px; border-radius: 8px; font-weight: 700; background: ${sc.isRecommended ? '#4f46e5' : '#1e293b'}; border-color: ${sc.isRecommended ? '#4f46e5' : '#1e293b'}; cursor: pointer;"
+                            title="Grabar como presupuesto oficial definitivo y proteger con clave 1234">
+                            💾 Grabar Oficial
+                        </button>
+                    </div>
+                </div>
+                `;
+            });
+
+            grid.innerHTML = html;
+        }
+
+        function applyScenario(key) {
+            if (isBudgetLocked) {
+                showNotification("🔒 El presupuesto oficial está bloqueado. Introduce la clave 1234 para cambiarlo.", "error");
+                promptUnlockBudget();
+                return;
+            }
+            const stratSel = document.getElementById('strategySelector');
+            if (stratSel) stratSel.value = key;
+            loadStrategy();
+            showNotification(`📋 Escenario cargado en la tabla de edición.`);
+        }
+
+        function saveOfficialScenario(key) {
+            if (isBudgetLocked) {
+                showNotification("🔒 El presupuesto oficial ya está grabado y bloqueado. Introduce la clave 1234 para sobrescribir.", "error");
+                promptUnlockBudget();
+                return;
+            }
+            const stratSel = document.getElementById('strategySelector');
+            if (stratSel) stratSel.value = key;
+            loadStrategy();
+            saveCustomBudget(key);
         }
 
         function switchHotel() {
@@ -1165,9 +1479,6 @@
 
             const labelTotalRev = document.getElementById('label-total-rev');
             if (labelTotalRev) labelTotalRev.innerText = `Rev. Habitaciones ${currentYear}`;
-
-            const resetBtn = document.getElementById('resetBtn');
-            if (resetBtn) resetBtn.innerHTML = `🔄 Resetear a Base ${prevYear}`;
 
             const thHistRef = document.getElementById('th-hist-ref');
             if (thHistRef) {
@@ -1201,6 +1512,18 @@
             if (headerPrevYear) headerPrevYear.innerText = `Real ${prevYear}`;
 
             const db = JSON.parse(CapaStorage.getItem('hotel_manager_db_v2')) || {};
+
+            // Check if budget is recorded and locked for this year
+            const customKey = `custom_budget_${currentYear}`;
+            const custom = (db[currentHotel] && db[currentHotel][customKey]) ? db[currentHotel][customKey] : null;
+
+            if (custom && custom.locked !== false) {
+                isBudgetLocked = true;
+                const stratSel = document.getElementById('strategySelector');
+                if (stratSel) stratSel.value = 'official';
+            } else {
+                isBudgetLocked = false;
+            }
 
             // Load CURRENT YEAR OTB (Vendido) from DB
             if (db[currentHotel] && db[currentHotel][currentYear]) {
@@ -1252,7 +1575,14 @@
         function loadStrategy() {
             const h = hotelData[currentHotel];
             const key = document.getElementById('strategySelector').value;
-            const real = h.real2025; // This is now always the latest 2025 Real data
+            const real = h.referenceBase || h.real2025;
+
+            if (isBudgetLocked && key !== 'official') {
+                showNotification(`🔒 El Presupuesto Oficial está bloqueado. Introduce la clave 1234 para cambiarlo.`, 'error');
+                document.getElementById('strategySelector').value = 'official';
+                promptUnlockBudget();
+                return;
+            }
 
             if (key === 'official') {
                 const db = JSON.parse(CapaStorage.getItem('hotel_manager_db_v2')) || {};
@@ -1263,9 +1593,9 @@
                     currentRev = [...custom.rev];
                     currentAdr = [...custom.adr];
                 } else {
-                    // Fallback: Real 2025 + reasonable growth
-                    currentRev = real.rev.map(v => v * 1.050);
-                    currentAdr = real.adr.map(v => v * 1.030);
+                    // Fallback to recommended Opción B (+7.5% Rev, +4.0% ADR)
+                    currentRev = real.rev.map(v => v * 1.075);
+                    currentAdr = real.adr.map(v => v * 1.040);
                 }
             } else {
                 // Dynamic Strategies
@@ -1300,21 +1630,27 @@
         }
 
         function applyMonthIncrease(idx, pct) {
+            if (isBudgetLocked) {
+                showNotification("🔒 Presupuesto oficial bloqueado. Introduce clave 1234 para modificarlo.", "error");
+                promptUnlockBudget();
+                updateAll();
+                return;
+            }
             const h = hotelData[currentHotel];
             const p = parseFloat(pct) / 100;
-            const rev25 = h.real2025.rev[idx];
+            const rev25 = (h.referenceBase || h.real2025).rev[idx];
 
             // New Target
             currentRev[idx] = rev25 * (1 + p);
 
             // Maintain RN to calc ADR
-            const rnPrev = h.real2025.rn[idx] || 1;
+            const rnPrev = (h.referenceBase || h.real2025).rn[idx] || 1;
             currentAdr[idx] = currentRev[idx] / rnPrev;
 
             updateAll();
         }
 
-        function saveCustomBudget() {
+        function saveCustomBudget(strategyName) {
             const db = JSON.parse(CapaStorage.getItem('hotel_manager_db_v2')) || {};
             if (!db[currentHotel]) db[currentHotel] = {};
 
@@ -1322,27 +1658,29 @@
             db[currentHotel][customKey] = {
                 rev: [...currentRev],
                 adr: [...currentAdr],
+                locked: true,
+                strategy: strategyName || document.getElementById('strategySelector')?.value || 'custom',
                 lastSave: new Date().toLocaleString('es-ES')
             };
 
             CapaStorage.setItem('hotel_manager_db_v2', JSON.stringify(db));
+            isBudgetLocked = true;
 
-            const btn = document.getElementById('saveBtn');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = `✅ ${currentYear} Guardado y Protegido`;
-            btn.style.background = "#10b981";
-            btn.style.borderColor = "#10b981";
+            const stratSel = document.getElementById('strategySelector');
+            if (stratSel) stratSel.value = 'official';
 
-            document.getElementById('strategySelector').value = 'official';
-
-            setTimeout(() => {
-                btn.innerHTML = originalText;
-                btn.style.background = "";
-                btn.style.borderColor = "";
-            }, 3000);
+            updateAll();
+            showNotification(`✅ Presupuesto Oficial ${currentYear} grabado y protegido. Se requiere clave 1234 para editar.`);
         }
 
         function updateValue(type, index, val) {
+            if (isBudgetLocked) {
+                showNotification("🔒 Presupuesto oficial bloqueado. Introduce clave 1234 para modificarlo.", "error");
+                promptUnlockBudget();
+                updateAll();
+                return;
+            }
+
             // Robust parsing: Remove dots (thousands), replace comma with dot (decimal)
             let cleanVal = String(val).replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, '');
             const v = parseFloat(cleanVal);
@@ -1373,7 +1711,46 @@
             const editorBody = document.getElementById('editorBody');
             editorBody.innerHTML = '';
 
+            // Render Scenario Cards and Security Badge
+            renderScenarioCards();
+
+            // Dynamic Action Buttons
+            const actionsContainer = document.getElementById('tableActionsContainer');
+            const prevYear = String(parseInt(currentYear) - 1);
+            if (actionsContainer) {
+                if (isBudgetLocked) {
+                    actionsContainer.innerHTML = `
+                        <span style="font-size: 0.8rem; color: #991b1b; font-weight: 700; background: #fee2e2; padding: 7px 12px; border-radius: 8px; border: 1px solid #fecaca; display: inline-flex; align-items: center; gap: 6px;">
+                            🔒 Bloqueado contra modificaciones
+                        </span>
+                        <button onclick="promptUnlockBudget()" class="btn"
+                            style="background: #fef3c7; color: #92400e; border: 1px solid #fde68a; font-size: 0.82rem; font-weight: 700; padding: 7px 14px; border-radius: 8px; cursor: pointer;">
+                            🔓 Desbloquear con Clave (1234)
+                        </button>
+                    `;
+                } else {
+                    actionsContainer.innerHTML = `
+                        <button id="resetBtn" onclick="resetToBase()" class="btn"
+                            style="background: #f1f5f9; color: #475569; font-size: 0.8rem; border-radius: 8px;">
+                            🔄 Resetear a Base ${prevYear}
+                        </button>
+                        <button onclick="saveCustomBudget()" class="btn btn-primary"
+                            style="padding: 8px 16px; font-size: 0.85rem; border-radius: 8px; font-weight: 700;" id="saveBtn">
+                            💾 Grabar Presupuesto Oficial
+                        </button>
+                        <button onclick="lockBudget()" class="btn"
+                            style="background: #f8fafc; border: 1px solid #cbd5e1; color: #475569; padding: 8px 12px; font-size: 0.85rem; border-radius: 8px;"
+                            title="Bloquear edición para evitar cambios accidentales">
+                            🔒 Bloquear
+                        </button>
+                    `;
+                }
+            }
+
             let t_rev25 = 0, t_rev26 = 0, t_rn25 = 0, t_rn26 = 0, t_cap = 0;
+            const disabledAttr = isBudgetLocked ? 'disabled' : '';
+            const lockInputStyle = isBudgetLocked ? 'background: #f8fafc; cursor: not-allowed; opacity: 0.85;' : '';
+            const lockClickAttr = isBudgetLocked ? 'onclick="promptUnlockBudget()"' : '';
 
             for (let i = 0; i < 12; i++) {
                 const rev25 = h.real2025.rev[i] || 0;
@@ -1403,7 +1780,7 @@
                 <tr style="border-bottom: 1px solid #f1f5f9;">
                     <td class="text-left font-bold" style="padding: 12px 15px; color:#1e293b; background: #fdfdfd;">${months[i]}</td>
                     
-                    <!-- HISTORICO 2025 -->
+                    <!-- HISTORICO BASE (Referencia) -->
                     <td style="text-align: right; color:#94a3b8; font-size: 0.75rem; background: #fefafa;">${formatInt(rev25)} €</td>
                     <td style="text-align: right; color:#94a3b8; font-size: 0.75rem; background: #fefafa;">
                         ${(rn25 === 0 && rev25 > 0) ? '<span title="Falta dato de Habitaciones" style="cursor:help;">⚠️ 0</span>' : rn25}
@@ -1412,31 +1789,31 @@
                         ${(adr25 === 0 && rev25 > 0) ? '<span title="Calculado sin Habitaciones" style="cursor:help; color:#f59e0b;">0.0 €</span>' : adr25.toFixed(1) + ' €'}
                     </td>
                     
-                    <!-- OBJETIVO 2026 -->
+                    <!-- OBJETIVO TARGET -->
                     <td style="text-align: center; background: #f0f7ff;">
-                        <input type="number" step="0.5" value="${varRev.toFixed(1)}" 
-                            style="width: 65px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px; text-align: center; font-weight: 700; color: ${varRev >= 0 ? '#1e40af' : '#ef4444'};"
+                        <input type="number" step="0.5" value="${varRev.toFixed(1)}" ${disabledAttr} ${lockClickAttr}
+                            style="width: 65px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px; text-align: center; font-weight: 700; color: ${varRev >= 0 ? '#1e40af' : '#ef4444'}; ${lockInputStyle}"
                             onchange="applyMonthIncrease(${i}, this.value)">
                     </td>
                     <td style="padding: 8px 5px; border-left: 1px solid #dbeafe; background: #f8fafc;">
-                        <input type="text" class="editable" 
-                            style="width: 110px; text-align: right; background: #fff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 5px 10px; font-weight:700; color:#4f46e5;"
+                        <input type="text" class="editable" ${disabledAttr} ${lockClickAttr}
+                            style="width: 110px; text-align: right; background: #fff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 5px 10px; font-weight:700; color:#4f46e5; ${lockInputStyle}"
                             value="${formatInt(rev)} €" 
                             onfocus="this.value = this.value.replace(/\\./g, '').replace(' €', '')"
                             onblur="this.value = formatInt(this.value) + ' €'"
                             onchange="updateValue('rev', ${i}, this.value)">
                     </td>
                     <td style="padding: 8px 5px; background: #f8fafc;">
-                        <input type="text" class="editable" 
-                            style="width: 85px; text-align: right; background: #fff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 5px 10px; font-weight:700; color:#4f46e5;"
+                        <input type="text" class="editable" ${disabledAttr} ${lockClickAttr}
+                            style="width: 85px; text-align: right; background: #fff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 5px 10px; font-weight:700; color:#4f46e5; ${lockInputStyle}"
                             value="${formatNum(adr)} €" 
                             onfocus="this.value = this.value.replace(/\\./g, '').replace(',', '.').replace(' €', '')"
                             onblur="const v = parseFloat(this.value.replace(',', '.')); if(!isNaN(v)) this.value = formatNum(v) + ' €'"
                             onchange="updateValue('adr', ${i}, this.value)">
                     </td>
                     <td style="padding: 8px 5px; border-right: 1px solid #dbeafe; background: #f8fafc;">
-                        <input type="text" class="editable" 
-                            style="width: 65px; text-align: right; background: #fff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 5px 10px; font-weight:700; color:#c2410c;"
+                        <input type="text" class="editable" ${disabledAttr} ${lockClickAttr}
+                            style="width: 65px; text-align: right; background: #fff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 5px 10px; font-weight:700; color:#c2410c; ${lockInputStyle}"
                             value="${formatInt(rn)}" 
                             onfocus="this.value = this.value.replace(/\\./g, '')"
                             onblur="this.value = formatInt(this.value)"
@@ -1457,8 +1834,6 @@
             const totalAdr26 = t_rn26 > 0 ? t_rev26 / t_rn26 : 0;
             const totalOcc26 = (t_rn26 / t_cap) * 100;
             const totalGrowth = t_rev25 > 0 ? ((t_rev26 - t_rev25) / t_rev25) * 100 : 0;
-
-            const prevYear = String(parseInt(currentYear) - 1);
 
             document.getElementById('kpi-revenue').innerText = formatMoney(t_rev26);
             const kpiTrend = document.getElementById('kpi-rev-trend');
@@ -1870,6 +2245,25 @@
                         </tr>
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unlock Security Modal -->
+    <div id="unlockModal" class="modal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background:rgba(15,23,42,0.65); backdrop-filter:blur(4px); align-items:center; justify-content:center;">
+        <div style="background:#fff; border-radius:20px; padding:28px; width:90%; max-width:380px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); text-align:center;">
+            <div style="font-size:2.8rem; margin-bottom:10px;">🔒</div>
+            <h3 style="margin:0 0 8px 0; color:#0f172a; font-size:1.25rem;">Presupuesto Protegido</h3>
+            <p style="margin:0 0 18px 0; font-size:0.85rem; color:#64748b; line-height:1.4;">
+                El presupuesto oficial de <b id="unlockYearText" style="color:var(--primary);">2027</b> está bloqueado. Introduce la clave para modificarlo:
+            </p>
+            <input type="password" id="unlockPinInput" maxlength="10" placeholder="••••" 
+                style="width:100%; text-align:center; font-size:1.8rem; letter-spacing:8px; padding:10px; border:2px solid #cbd5e1; border-radius:14px; margin-bottom:10px; font-weight:700; color:#1e293b;" 
+                onkeydown="if(event.key==='Enter') verifyUnlockPin()">
+            <div id="unlockErrorMsg" style="color:#ef4444; font-size:0.8rem; min-height:20px; margin-bottom:14px; display:none; font-weight:600;">❌ Clave incorrecta</div>
+            <div style="display:flex; gap:10px; justify-content:center;">
+                <button onclick="closeUnlockModal()" class="btn" style="background:#f1f5f9; color:#475569; padding:9px 18px; border-radius:10px; font-weight:600;">Cancelar</button>
+                <button onclick="verifyUnlockPin()" class="btn btn-primary" style="padding:9px 22px; border-radius:10px; font-weight:700;">🔓 Desbloquear</button>
             </div>
         </div>
     </div>
