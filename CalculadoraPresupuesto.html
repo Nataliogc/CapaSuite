@@ -1207,7 +1207,7 @@
                 const err = document.getElementById('unlockErrorMsg');
                 if (err) {
                     err.style.display = 'block';
-                    err.innerText = '❌ Clave incorrecta. Debe ser 1234.';
+                    err.innerText = '❌ Clave incorrecta.';
                 }
                 if (pinInput) {
                     pinInput.value = '';
@@ -1263,7 +1263,7 @@
 
         function resetToBase() {
             if (isBudgetLocked) {
-                showNotification("🔒 Presupuesto oficial bloqueado. Desbloquea con clave 1234.", "error");
+                showNotification("🔒 Presupuesto oficial bloqueado. Introduce la clave de seguridad para desbloquear.", "error");
                 promptUnlockBudget();
                 return;
             }
@@ -1392,7 +1392,7 @@
                             🔒 Presupuesto Oficial Bloqueado
                         </span>
                         <button onclick="promptUnlockBudget()" class="btn" style="background:#fef3c7; color:#92400e; border:1px solid #fde68a; padding:6px 12px; font-size:0.8rem; font-weight:700; border-radius:8px; cursor:pointer;">
-                            🔓 Desbloquear (PIN)
+                            🔓 Desbloquear
                         </button>
                     `;
                 } else {
@@ -1539,7 +1539,7 @@
                             </button>
                             <button onclick="event.stopPropagation(); saveOfficialScenario('${sc.key}')" class="btn btn-primary" 
                                 style="font-size: 0.72rem; padding: 6px 4px; border-radius: 8px; font-weight: 700; background: ${sc.isRecommended ? '#4f46e5' : '#1e293b'}; border-color: ${sc.isRecommended ? '#4f46e5' : '#1e293b'}; cursor: pointer;"
-                                title="Grabar como presupuesto oficial definitivo y proteger con clave 1234">
+                                title="Grabar como presupuesto oficial definitivo y proteger con clave">
                                 💾 Grabar
                             </button>
                         </div>
@@ -1863,7 +1863,7 @@
                 return;
             }
             if (isBudgetLocked) {
-                showNotification("🔒 El presupuesto oficial está bloqueado. Introduce la clave 1234 para cambiarlo.", "error");
+                showNotification("🔒 El presupuesto oficial está bloqueado. Introduce la clave de seguridad para cambiarlo.", "error");
                 promptUnlockBudget();
                 return;
             }
@@ -1879,7 +1879,7 @@
                 return;
             }
             if (isBudgetLocked) {
-                showNotification("🔒 El presupuesto oficial ya está grabado y bloqueado. Introduce la clave 1234 para sobrescribir.", "error");
+                showNotification("🔒 El presupuesto oficial ya está grabado y bloqueado. Introduce la clave de seguridad para sobrescribir.", "error");
                 promptUnlockBudget();
                 return;
             }
@@ -2075,7 +2075,7 @@
 
             // For 2027 and future years:
             if (isBudgetLocked && key !== 'official') {
-                showNotification(`🔒 El Presupuesto Oficial está bloqueado. Introduce la clave 1234 para cambiarlo.`, 'error');
+                showNotification(`🔒 El Presupuesto Oficial está bloqueado. Introduce la clave de seguridad para cambiarlo.`, 'error');
                 if (stratSel) stratSel.value = 'official';
                 promptUnlockBudget();
                 return;
@@ -2128,7 +2128,7 @@
 
         function applyMonthIncrease(idx, pct) {
             if (isBudgetLocked) {
-                showNotification("🔒 Presupuesto oficial bloqueado. Introduce clave 1234 para modificarlo.", "error");
+                showNotification("🔒 Presupuesto oficial bloqueado. Introduce la clave de seguridad para modificarlo.", "error");
                 promptUnlockBudget();
                 updateAll();
                 return;
@@ -2169,12 +2169,12 @@
             }
 
             updateAll();
-            showNotification(`✅ Presupuesto Oficial ${currentYear} grabado y protegido. Se requiere clave 1234 para editar.`);
+            showNotification(`✅ Presupuesto Oficial ${currentYear} grabado y protegido con clave.`);
         }
 
         function updateValue(type, index, val) {
             if (isBudgetLocked) {
-                showNotification("🔒 Presupuesto oficial bloqueado. Introduce clave 1234 para modificarlo.", "error");
+                showNotification("🔒 Presupuesto oficial bloqueado. Introduce la clave de seguridad para modificarlo.", "error");
                 promptUnlockBudget();
                 updateAll();
                 return;
@@ -2224,7 +2224,7 @@
                         </span>
                         <button onclick="promptUnlockBudget()" class="btn"
                             style="background: #fef3c7; color: #92400e; border: 1px solid #fde68a; font-size: 0.82rem; font-weight: 700; padding: 7px 14px; border-radius: 8px; cursor: pointer;">
-                            🔓 Desbloquear con Clave (1234)
+                            🔓 Desbloquear con Clave
                         </button>
                     `;
                 } else {
