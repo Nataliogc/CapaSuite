@@ -62,8 +62,9 @@ async function handleFiles(files) {
         for (const file of files) {
             try {
                 const book = XLSX.read(await file.arrayBuffer(), { type: 'array' });
-                const rows = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { header: 1, defval: null });
-                const report = SegmentAnalysis.parse(rows, file.name);
+                const rows = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { header: 1, defval: null, range: 0, blankrows: true });
+                const report = await SegmentReview.read(rows, file.name);
+                if (!report) { failures.push(`${file.name}: importación cancelada. No se han guardado cambios.`); continue; }
                 const hotel = /guadiana/i.test(file.name) ? 'Guadiana' : /cumbria/i.test(file.name) ? 'Cumbria' : currentHotel;
                 const next = JSON.parse(JSON.stringify(segmentDB));
                 const years = SegmentAnalysis.merge(next, hotel, report);
@@ -93,6 +94,8 @@ function renderDashboard() {
     const priorRevpar = prior?.days ? prior.accommodation / (capacity * prior.days) : null;
     el('metric-years').textContent = `${currentYear}${compareYear ? ' vs ' + compareYear : ''} · ${totals.days == null ? 'Cobertura sin verificar' : totals.days + ' días cargados'}`;
     el('period-note').textContent = `${months.map(m => MONTH_ORDER[m]).join(', ')}. Producción = alojamiento y desayunos. ADR y RevPAR utilizan solo alojamiento. ${compareYear && !comparable ? 'Comparativa no disponible: faltan fechas o los días cargados no coinciden.' : ''}${totals.days == null ? ' Reimporta el Excel para verificar fechas y desglosar el alojamiento.' : ''}`;
+    const invalidStored = SegmentAnalysis.segments(data).filter(s => !SegmentAnalysis.validSegments.includes(SegmentAnalysis.canonical(s.name)) && months.some(m => ['rooms', 'revenue', 'totalRevenue'].some(field => Number(s[field]?.[m]) !== 0 && s[field]?.[m] != null)));
+    if (invalidStored.length) el('period-note').textContent += ` Atención: hay segmentos incorrectos guardados (${invalidStored.map(s => s.name).join(', ')}). Pulsa Importar Excel para revisarlos y asignar el segmento correcto antes de guardar.`;
     [['prod', totals.revenue, prior?.revenue, 'revenue'], ['rooms', totals.rooms, prior?.rooms, 'rooms'], ['adr', totals.adr, prior?.adr, 'adr'], ['revpar', revpar, priorRevpar, 'adr']].forEach(([id, value, before, metric]) => {
         el('kpi-' + id).textContent = fmt(value, metric);
         const trend = el('kpi-' + id + '-diff');
@@ -138,7 +141,7 @@ function renderDashboard() {
     if (leader && totals.revenue > 0) notes.push(`${leader.name} concentra el ${pct(leader.revenue / totals.revenue)} de la producción (${fmt(leader.revenue)}).`);
     if (mover) notes.push(`${mover.name} presenta el mayor cambio absoluto: ${fmt(mover.revenue - mover.oldRevenue)} frente a ${compareYear}.`);
     if (totals.days) notes.push(`Ocupación del periodo: ${pct(totals.rooms / (capacity * totals.days))}. ${fmt(totals.rooms, 'rooms')} habitaciones-noche sobre ${fmt(capacity * totals.days, 'rooms')} disponibles.`);
-    if (rows.some(r => r.name === 'SIN SEGMENTO' && (r.rooms || r.revenue))) notes.push('Hay actividad sin segmento asignado. Revisa su clasificación en el origen.');
+    if (invalidStored.length) notes.push('Hay errores de segmentación pendientes. Reimporta el informe para corregir los bloques señalados.');
     for (const note of notes) { const item = document.createElement('p'); item.textContent = note; el('insights').append(item); }
     updateCharts(data, previous, months, rows, totals, prior, compareYear, metricName);
 }

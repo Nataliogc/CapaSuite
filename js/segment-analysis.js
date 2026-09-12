@@ -3,7 +3,21 @@
     'use strict';
     const norm = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[.]/g, '').trim();
     const months = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
-    const aliases = { CORPORATI: 'CORPORATIVO LINEAL', 'DIRECTO O': 'DIRECTO OFFLINE', 'TTOO DINA': 'TTOO DINAMICA', PARTICULA: 'PARTICULARES' };
+    const aliases = { CORPORATI: 'CORPORATIVO LINEAL', 'DIRECTO O': 'DIRECTO OFFLINE', 'TTOO DINA': 'TTOO DINAMICA' };
+    const validSegments = ['CORPORATIVO LINEAL', 'DIRECTO OFFLINE', 'DIRONLINE', 'GRTANTEO', 'GRUPOS', 'OTA/AAVV', 'OTROS', 'TTOO DINAMICA'];
+    const isRoomMetric = value => /^(HAB|HABI|RN|RMS|NOCHES|HABITACIONES|UNIDADES)$/.test(norm(value));
+    const canonical = value => aliases[norm(value)] || norm(value);
+    const isTotalName = value => /^(TOTAL|TOTAL GENERAL|TOTAL MASTER|RESUMEN)$/.test(norm(value));
+    function reviewRows(rows, corrections = {}) {
+        return rows.flatMap((row, index) => {
+            if (!isRoomMetric(row?.[1])) return [];
+            const cell = 'A' + (index + 1), original = String(row[0] ?? '').trim();
+            const value = Object.hasOwn(corrections, cell) ? corrections[cell] : original;
+            const name = canonical(value);
+            const reason = !name ? 'Falta el segmento a la izquierda de Hab.' : !validSegments.includes(name) && !isTotalName(name) ? 'Segmento no válido. Debes asignarlo a un segmento correcto.' : '';
+            return [{ cell, row: index + 1, original, name, reason }];
+        });
+    }
     const fields = ['revenue', 'rooms', 'accommodation', 'totalRevenue'];
     const empty = name => ({ name, ...Object.fromEntries(fields.map(k => [k, Array(12).fill(0)])) });
     function number(value) {
@@ -39,17 +53,23 @@
         }
         return null; // Period totals and percentage columns are deliberately excluded.
     }
-    function parse(rows, fileName = '', hintYear) {
+    function parse(rows, fileName = '', hintYear, corrections = {}) {
         const dateHint = fileName.match(/\d{1,2}[-/]\d{1,2}[-/](\d{4}|\d{2})/);
         hintYear = dateHint ? (dateHint[1].length === 2 ? '20' + dateHint[1] : dateHint[1]) : hintYear;
         let header = -1, columns = [];
         for (let r = 0; r < Math.min(rows.length, 30); r++) {
             const mapped = (rows[r] || []).map((v, c) => c < 2 ? null : column(v, hintYear));
-            if (mapped.some(Boolean) && rows.slice(r + 1, r + 6).some(row => /^(HAB|RN|RMS|NOCHES)$/.test(norm(row?.[1])))) {
+            if (mapped.some(Boolean) && rows.slice(r + 1, r + 6).some(row => isRoomMetric(row?.[1]))) {
                 header = r; columns = mapped; break;
             }
         }
         if (header < 0) throw new Error('No se reconoce la cabecera de fechas y habitaciones del informe.');
+        const blocks = reviewRows(rows, corrections), issues = blocks.filter(block => block.reason);
+        if (issues.length) {
+            const error = new Error('Revisa los segmentos: ' + issues.map(b => `${b.cell}: ${b.reason}`).join(' '));
+            error.code = 'SEGMENT_REVIEW'; error.issues = issues; error.blocks = blocks;
+            throw error;
+        }
         // Prefer daily columns if the report also contains monthly summaries.
         const dailyKeys = new Set(columns.filter(c => c?.day).map(c => c.year + '-' + c.month));
         columns = columns.map(c => c && !c.day && dailyKeys.has(c.year + '-' + c.month) ? null : c);
@@ -64,16 +84,15 @@
             if (c.day) days.push(c.day);
             else for (let day = 1; day <= new Date(Date.UTC(Number(c.year), c.month + 1, 0)).getUTCDate(); day++) days.push(day);
         });
-        let segment = 'SIN SEGMENTO', afterBlank = false, totalBlock = false, roomRows = 0, lodgingRows = 0;
+        let segment = null, totalBlock = false, roomRows = 0, lodgingRows = 0;
         for (let r = header + 1; r < rows.length; r++) {
             const row = rows[r] || [], rawName = String(row[0] ?? '').trim(), metric = norm(row[1]);
-            if (!rawName && !metric && !columns.some((c, i) => c && row[i] != null && String(row[i]).trim() !== '')) { afterBlank = true; continue; }
-            const isRooms = /^(HAB|RN|RMS|NOCHES|HABITACIONES|UNIDADES)$/.test(metric);
-            if (rawName) {
-                totalBlock = /^(TOTAL|TOTAL GENERAL|TOTAL MASTER|RESUMEN)$/.test(norm(rawName));
-                segment = totalBlock ? null : (aliases[norm(rawName)] || rawName.toUpperCase());
-            } else if (afterBlank && isRooms) { totalBlock = true; segment = null; }
-            afterBlank = false;
+            const isRooms = isRoomMetric(metric);
+            if (isRooms) {
+                const block = blocks.find(b => b.row === r + 1);
+                totalBlock = isTotalName(block.name);
+                segment = totalBlock ? null : block.name;
+            }
             if (!metric || (!segment && !totalBlock)) continue;
             const isTotal = /^(PRO|PROD|PRODUCCION|REVENUE|VENTA|VTA)$/.test(metric);
             const isLodging = /HABITACION|ALOJAMIENTO|SUITE|CAMA SUPLETORIA|LATE CHECK OUT|AMPLIACION|RECARGO GDS|REGARGO GDS/.test(metric) || /^(DIA|NOCHE|INDIVIDUAL|DOBLE)$/.test(metric);
@@ -105,7 +124,7 @@
                 }
             }
         }
-        return { years, source: fileName };
+        return { years, source: fileName, corrections: blocks.filter(b => b.original !== b.name).map(b => ({ cell: b.cell, original: b.original, segment: b.name })) };
     }
     function merge(db, hotel, report) {
         db[hotel] ||= {};
@@ -114,6 +133,7 @@
             target.segment ||= {};
             target.segmentCoverage ||= {};
             target.segmentSources ||= {};
+            target.segmentCorrections ||= {};
             for (const m of Object.keys(incoming.coverage)) {
                 for (const seg of Object.values(target.segment)) for (const field of fields) if (seg[field]) seg[field][m] = 0;
                 for (const [name, seg] of Object.entries(incoming.segment)) {
@@ -123,6 +143,7 @@
                 }
                 target.segmentCoverage[m] = incoming.coverage[m];
                 target.segmentSources[m] = report.source;
+                target.segmentCorrections[m] = report.corrections || [];
             }
             target.segmentUpdatedAt = new Date().toISOString();
         }
@@ -141,7 +162,7 @@
     function comparable(a, b, selected) {
         return selected.length > 0 && selected.every(m => a?.segmentCoverage?.[m] && b?.segmentCoverage?.[m] && JSON.stringify(a.segmentCoverage[m]) === JSON.stringify(b.segmentCoverage[m]));
     }
-    const api = { parse, merge, aggregate, comparable, availableMonths, segments, sum, number };
+    const api = { parse, merge, aggregate, comparable, availableMonths, segments, sum, number, reviewRows, validSegments, canonical };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.SegmentAnalysis = api;
 })(typeof window === 'undefined' ? globalThis : window);

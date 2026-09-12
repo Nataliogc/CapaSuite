@@ -10,6 +10,7 @@
     <script src="js/xlsx.full.min.js"></script>
     <script src="js/storage.js"></script>
     <script src="js/segment-analysis.js"></script>
+    <script src="js/segment-review.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -1754,7 +1755,7 @@
                     }
 
                     const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, type === 'Seg' ? { header: 1, range: 0, blankrows: true, defval: null } : { header: 1 });
 
                     // Use manual date if provided correctly
                     let dateInfo = extractDateFromFilename(file.name);
@@ -1788,9 +1789,11 @@
                     console.log("🛠️ Invocando processDataForDB...");
                     
                     // 5. Evita congelar la UI usando setTimeout para permitir renderizado del loader (Fase 1)
-                    setTimeout(() => {
+                    setTimeout(async () => {
                         try {
-                            processDataForDB(jsonData, file.name, hotel, type, manualDate);
+                            const reviewed = type === 'Seg' ? await SegmentReview.read(jsonData, file.name) : null;
+                            if (type === 'Seg' && !reviewed) { document.getElementById('loader').style.display = 'none'; showToast('Importación cancelada. No se han guardado cambios.', 'info'); return; }
+                            processDataForDB(jsonData, file.name, hotel, type, manualDate, reviewed);
                             finalizeUpload(type, hotel, period, year, file, manualDate, dateInfo);
                         } catch (pErr) {
                             console.error("❌ Fallo crítico en processDataForDB:", pErr);
@@ -1915,9 +1918,9 @@
             }, 4000);
         }
 
-        function processDataForDB(data, fileName, hotel, type, manualPeriod) {
+        function processDataForDB(data, fileName, hotel, type, manualPeriod, reviewedReport) {
             if (type === 'Seg') {
-                const report = SegmentAnalysis.parse(data, fileName);
+                const report = reviewedReport || SegmentAnalysis.parse(data, fileName);
                 SegmentAnalysis.merge(db, hotel, report);
                 for (const year of Object.keys(report.years)) {
                     const target = db[hotel][year];
