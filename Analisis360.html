@@ -608,6 +608,21 @@
             </div>
         </div>
 
+        <!-- HISTORICAL CHART (NEW) -->
+        <div class="chart-container" style="margin-bottom: 25px; min-height: 380px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3><span style="color: #8b5cf6;">📈</span> Evolución Histórica (Comparativa Anual)</h3>
+                <select id="histMetric" onchange="refreshAll()" style="font-size: 0.75rem; padding: 6px 12px; border-radius: 8px; background: rgba(30,41,59,0.8); color: white; border: 1px solid var(--primary); cursor:pointer; font-weight: 600;">
+                    <option value="rev">Producción (€)</option>
+                    <option value="rn">Estancias (RN)</option>
+                    <option value="adr">Precio Medio (ADR)</option>
+                </select>
+            </div>
+            <div class="chart-wrapper">
+                <canvas id="historicalChart"></canvas>
+            </div>
+        </div>
+
         <!-- CHARTS GRID -->
         <div class="charts-grid">
             <div class="chart-container">
@@ -756,6 +771,7 @@
             const agg = aggregateServices(data.service || {}, midx);
             
             renderKPIRow(agg, currentHotel);
+            renderHistoricalChart(midx);
             renderCharts(agg, data.segment || {}, data.daily || {}, midx);
             renderTables(agg, data.segment || {}, midx);
         }
@@ -1012,9 +1028,150 @@
                     <td style="font-weight:600;">${fmt(item.rev)}</td>
                     <td style="color:var(--text-muted); font-size:0.8rem;">${item.rms}</td>
                     <td>${adr}€</td>
-                    <td style="color:var(--secondary); font-weight:700;">${mix}%</td>
                 </tr>`;
             });
+        }
+
+        function renderHistoricalChart(midx) {
+            if (charts['historicalChart']) charts['historicalChart'].destroy();
+            const ctx = document.getElementById('historicalChart').getContext('2d');
+            const metric = document.getElementById('histMetric').value;
+
+            const rawYears = db[currentHotel] ? Object.keys(db[currentHotel]).filter(k => /^(20\d{2})$/.test(k)) : [];
+            const years = rawYears.sort((a, b) => parseInt(a) - parseInt(b)); // Ascending
+            
+            if (years.length === 0) return;
+
+            const datasets = [];
+            const colorPalette = ['#f59e0b', '#10b981', '#6366f1', '#ec4899', '#06b6d4'];
+            const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+            let labels = [];
+
+            if (midx === -1) {
+                // Multi-line chart
+                labels = months;
+                years.forEach((y, i) => {
+                    const dataObj = db[currentHotel][y]?.service?.["TOTAL_MASTER"] || {};
+                    let datasetData = new Array(12).fill(null);
+                    let hasData = false;
+                    for (let m = 0; m < 12; m++) {
+                        const rev = dataObj.revenue ? (dataObj.revenue[m] || 0) : 0;
+                        const rms = dataObj.rooms ? (dataObj.rooms[m] || 0) : 0;
+                        let v = 0;
+                        if (metric === 'rev') v = rev;
+                        else if (metric === 'rn') v = rms;
+                        else if (metric === 'adr') v = rms > 0 ? rev / rms : 0;
+                        
+                        const now = new Date();
+                        if (parseInt(y) === now.getFullYear() && m > now.getMonth()) {
+                            if (rev > 0) { datasetData[m] = v; hasData = true; }
+                        } else if (parseInt(y) > now.getFullYear()) {
+                            if (rev > 0) { datasetData[m] = v; hasData = true; }
+                        } else {
+                            // If past month, only push if rev > 0 or it's genuinely a 0 month (like closed)
+                            // Usually we can just push v.
+                            datasetData[m] = v;
+                            if (v > 0) hasData = true;
+                        }
+                    }
+                    if (hasData) {
+                        datasets.push({
+                            label: y,
+                            data: datasetData,
+                            borderColor: colorPalette[i % colorPalette.length],
+                            backgroundColor: colorPalette[i % colorPalette.length] + '15',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4,
+                            pointBackgroundColor: '#1e293b',
+                            pointBorderColor: colorPalette[i % colorPalette.length],
+                            pointBorderWidth: 2,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        });
+                    }
+                });
+
+                charts['historicalChart'] = new Chart(ctx, {
+                    type: 'line',
+                    data: { labels, datasets },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: { display: true, position: 'top', labels: { usePointStyle: true, padding: 20, font: {family: "'Outfit', sans-serif", weight: '600'} } },
+                            tooltip: { 
+                                callbacks: { 
+                                    label: function(context) {
+                                        let val = context.parsed.y;
+                                        if (metric === 'rev' || metric === 'adr') return context.dataset.label + ': ' + new Intl.NumberFormat('es-ES').format(Math.round(val)) + ' €';
+                                        return context.dataset.label + ': ' + new Intl.NumberFormat('es-ES').format(Math.round(val)) + ' RN';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: { grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false } },
+                            y: { 
+                                grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false },
+                                ticks: {
+                                    callback: function(value) {
+                                        if (value >= 1000) return (value/1000).toFixed(value % 1000 === 0 ? 0 : 1) + 'k';
+                                        return value;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            } else {
+                // Bar chart
+                labels = years;
+                const datasetData = [];
+                years.forEach(y => {
+                    const dataObj = db[currentHotel][y]?.service?.["TOTAL_MASTER"] || {};
+                    const rev = dataObj.revenue ? (dataObj.revenue[midx] || 0) : 0;
+                    const rms = dataObj.rooms ? (dataObj.rooms[midx] || 0) : 0;
+                    let v = 0;
+                    if (metric === 'rev') v = rev;
+                    else if (metric === 'rn') v = rms;
+                    else if (metric === 'adr') v = rms > 0 ? rev / rms : 0;
+                    datasetData.push(v);
+                });
+
+                datasets.push({
+                    label: months[midx],
+                    data: datasetData,
+                    backgroundColor: 'rgba(99, 102, 241, 0.8)',
+                    borderRadius: 6,
+                    barPercentage: 0.5
+                });
+
+                charts['historicalChart'] = new Chart(ctx, {
+                    type: 'bar',
+                    data: { labels, datasets },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { 
+                                callbacks: { 
+                                    label: function(context) {
+                                        let val = context.parsed.y;
+                                        if (metric === 'rev' || metric === 'adr') return new Intl.NumberFormat('es-ES').format(Math.round(val)) + ' €';
+                                        return new Intl.NumberFormat('es-ES').format(Math.round(val)) + ' RN';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: { grid: { display: false } },
+                            y: { grid: { color: 'rgba(255,255,255,0.05)' } }
+                        }
+                    }
+                });
+            }
         }
 
         function updateChart(canvasId, type, labels, data, colors) {
