@@ -560,7 +560,7 @@
                     <div id="budget-bar-rev" class="budget-progress-bar"></div>
                 </div>
                 <div class="budget-label">
-                    <span>Progreso Objetivo</span>
+                    <span>Progreso Objetivo <span id="budget-target-rev" style="font-weight:500; font-size:0.65rem; opacity:0.8; margin-left:3px;"></span></span>
                     <span id="budget-pct-rev">0%</span>
                 </div>
             </div>
@@ -588,7 +588,7 @@
                     <div id="budget-bar-adr" class="budget-progress-bar" style="background: linear-gradient(90deg, var(--accent), #fbbf24);"></div>
                 </div>
                 <div class="budget-label">
-                    <span>vs Objetivo de Precio</span>
+                    <span>vs Objetivo de Precio <span id="budget-target-adr" style="font-weight:500; font-size:0.65rem; opacity:0.8; margin-left:3px;"></span></span>
                     <span id="budget-pct-adr">0%</span>
                 </div>
             </div>
@@ -884,9 +884,11 @@
                 const pctRev = bRev > 0 ? Math.min(100, (habRev / bRev * 100)) : 0;
                 const pctAdr = bAdr > 0 ? Math.min(100, (adr / bAdr * 100)) : 0;
                 
+            document.getElementById('budget-target-rev').innerText = `(Obj: ${fmt(bRev)})`;
             document.getElementById('budget-bar-rev').style.width = pctRev + '%';
             document.getElementById('budget-pct-rev').innerText = Math.round(habRev / bRev * 100) + '%';
             
+            document.getElementById('budget-target-adr').innerText = `(Obj: ${bAdr.toFixed(1).replace('.', ',')} €)`;
             document.getElementById('budget-bar-adr').style.width = pctAdr + '%';
             document.getElementById('budget-pct-adr').innerText = Math.round(adr / bAdr * 100) + '%';
             
@@ -902,8 +904,10 @@
             document.getElementById('kpi-mix-label').innerHTML = `<span>●</span> Mix Alojamiento: ${roomsPerc.toFixed(1)}%`;
             document.getElementById('budget-pct-revpar').innerText = pctRev.toFixed(0) + '% del ideal';
             } else {
+                document.getElementById('budget-target-rev').innerText = '';
                 document.getElementById('budget-bar-rev').style.width = '0%';
                 document.getElementById('budget-pct-rev').innerText = '0%';
+                document.getElementById('budget-target-adr').innerText = '';
                 document.getElementById('budget-bar-adr').style.width = '0%';
                 document.getElementById('budget-pct-adr').innerText = '0%';
                 document.getElementById('budget-bar-revpar').style.width = '0%';
