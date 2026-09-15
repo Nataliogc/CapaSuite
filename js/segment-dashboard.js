@@ -10,8 +10,12 @@ const el = id => document.getElementById(id);
 const escapeHTML = text => String(text ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = (n, metric = 'revenue') => n == null || !Number.isFinite(n) ? '—' : new Intl.NumberFormat('es-ES', metric === 'rooms' ? { maximumFractionDigits: 0 } : { style: 'currency', currency: 'EUR', maximumFractionDigits: metric === 'adr' ? 2 : 0 }).format(n);
 const pct = n => n == null || !Number.isFinite(n) ? '—' : new Intl.NumberFormat('es-ES', { style: 'percent', maximumFractionDigits: 1 }).format(n);
-const delta = (a, b) => a == null || b == null ? 'Sin base comparable' : b === 0 ? (a === 0 ? 'Sin variación' : 'Sin base en el año comparado') : `${a >= b ? '+' : ''}${pct((a - b) / Math.abs(b))}`;
-function message(text, error = false) { el('import-status').textContent = text; el('import-status').classList.toggle('error', error); }
+const delta = (a, b) => a == null || b == null ? '—' : b === 0 ? (a === 0 ? '=' : 'N/A') : `${a >= b ? '+' : ''}${pct((a - b) / Math.abs(b))}`;
+function message(text, error = false) { 
+    el('import-status').textContent = text; 
+    el('import-status').classList.toggle('error', error); 
+    if(text) setTimeout(() => message(''), 8000);
+}
 function loadData() {
     try {
         segmentDB = JSON.parse(CapaStorage.getItem(STORAGE_KEY) || '{}') || {};

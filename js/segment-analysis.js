@@ -41,9 +41,11 @@
             if (!hintYear) throw new Error('La cabecera contiene días y meses sin año. Indica un periodo de un solo año o incluye el año en el nombre del archivo.');
             return column(`${shortDate[1]}/${shortDate[2]}/${hintYear}`, hintYear);
         }
+        const toFullYear = y => y.length === 2 ? (Number(y) > 50 ? '19' : '20') + y : y;
+        
         const match = text.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2}|\d{4})$/);
         if (match) {
-            const year = match[3].length === 2 ? '20' + match[3] : match[3];
+            const year = toFullYear(match[3]);
             const month = Number(match[2]) - 1, day = Number(match[1]);
             const date = new Date(Date.UTC(Number(year), month, day));
             if (date.getUTCMonth() !== month || date.getUTCDate() !== day) throw new Error('Fecha no válida: ' + text);
@@ -53,13 +55,13 @@
         const monthName = m ? ({ JAN: 'ENE', APR: 'ABR', AUG: 'AGO', DEC: 'DIC' }[m[1].slice(0, 3)] || m[1].slice(0, 3)) : '';
         const idx = months.indexOf(monthName);
         if (idx >= 0) {
-            const year = m[2] ? (m[2].length === 2 ? '20' + m[2] : m[2]) : hintYear;
+            const year = m[2] ? toFullYear(m[2]) : hintYear;
             if (year) return { year: String(year), month: idx, day: null };
         }
         return null; // Period totals and percentage columns are deliberately excluded.
     }
     function parse(rows, fileName = '', hintYear, corrections = {}) {
-        const dateYears = [...fileName.matchAll(/\d{1,2}[-/]\d{1,2}[-/](\d{4}|\d{2})(?!\d)/g)].map(m => m[1].length === 2 ? '20' + m[1] : m[1]);
+        const dateYears = [...fileName.matchAll(/\d{1,2}[-/]\d{1,2}[-/](\d{4}|\d{2})(?!\d)/g)].map(m => m[1].length === 2 ? (Number(m[1]) > 50 ? '19' : '20') + m[1] : m[1]);
         const periodYears = String(hintYear || '').match(/\b20\d{2}\b/g) || [];
         const uniqueYears = [...new Set(periodYears.length ? periodYears : dateYears)];
         hintYear = uniqueYears.length === 1 ? uniqueYears[0] : undefined;
