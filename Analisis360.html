@@ -1101,17 +1101,20 @@
                     if (!activeHistYears.has(y)) return;
                     
                     let dataObj = null;
+                    let masterObj = null;
                     if (db[currentHotel][y] && db[currentHotel][y].service) {
                         const pyRoomsGrp = Object.values(db[currentHotel][y].service).find(s => s.name && s.name.toUpperCase().includes('HABITACION') && !s.name.toUpperCase().includes('TOTAL_MASTER'));
                         if (pyRoomsGrp) dataObj = pyRoomsGrp;
                         else dataObj = db[currentHotel][y].service["TOTAL_MASTER"];
+                        masterObj = db[currentHotel][y].service["TOTAL_MASTER"];
                     }
                     dataObj = dataObj || {};
+                    masterObj = masterObj || {};
                     let datasetData = new Array(12).fill(null);
                     let hasData = false;
                     for (let m = 0; m < 12; m++) {
                         const rev = dataObj.revenue ? (dataObj.revenue[m] || 0) : 0;
-                        const rms = dataObj.rooms ? (dataObj.rooms[m] || 0) : 0;
+                        const rms = masterObj.rooms ? (masterObj.rooms[m] || 0) : 0;
                         let v = 0;
                         if (metric === 'rev') v = rev;
                         else if (metric === 'rn') v = rms;
@@ -1186,14 +1189,17 @@
                 const bgColors = [];
                 labels.forEach(y => {
                     let dataObj = null;
+                    let masterObj = null;
                     if (db[currentHotel][y] && db[currentHotel][y].service) {
                         const pyRoomsGrp = Object.values(db[currentHotel][y].service).find(s => s.name && s.name.toUpperCase().includes('HABITACION') && !s.name.toUpperCase().includes('TOTAL_MASTER'));
                         if (pyRoomsGrp) dataObj = pyRoomsGrp;
                         else dataObj = db[currentHotel][y].service["TOTAL_MASTER"];
+                        masterObj = db[currentHotel][y].service["TOTAL_MASTER"];
                     }
                     dataObj = dataObj || {};
+                    masterObj = masterObj || {};
                     const rev = dataObj.revenue ? (dataObj.revenue[midx] || 0) : 0;
-                    const rms = dataObj.rooms ? (dataObj.rooms[midx] || 0) : 0;
+                    const rms = masterObj.rooms ? (masterObj.rooms[midx] || 0) : 0;
                     let v = 0;
                     if (metric === 'rev') v = rev;
                     else if (metric === 'rn') v = rms;
