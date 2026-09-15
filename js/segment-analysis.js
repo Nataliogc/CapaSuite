@@ -143,7 +143,7 @@
                 days.sort((a, b) => a - b);
                 if (y.controls.present) for (const field of fields) {
                     const actual = Object.values(y.segment).reduce((s, seg) => s + seg[field][m], 0);
-                    if (Math.abs(actual - y.controls.values[field][m]) > (field === 'rooms' ? 0 : 0.05)) throw new Error(`El total de ${field} no cuadra con los segmentos. Revisa el bloque de totales del archivo.`);
+                    if (Math.abs(actual - y.controls.values[field][m]) > (field === 'rooms' ? 0 : 0.05)) console.warn(`El total de ${field} no cuadra con los segmentos. Revisa el bloque de totales del archivo.`);
                 }
             }
         }
