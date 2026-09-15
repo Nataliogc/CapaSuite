@@ -479,7 +479,7 @@
                         style="font-size: 0.75rem; padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(30,41,59,0.5); color: white; cursor: pointer;">
                         <option value="rev">Producción (€)</option>
                         <option value="rn">Ocupación (RN)</option>
-                        <option value="adr">Precio Medio (ADR)</option>
+                        <option value="adr">Prod. Total / Hab (TrevPOR)</option>
                     </select>
                 </div>
                 <div id="weekday-heatmap" class="heatmap-grid">
@@ -2346,7 +2346,7 @@
                     <div class="heatmap-cell" style="background: ${color}; border: 1px solid ${score > 0.8 ? 'rgba(255,255,255,0.3)' : 'transparent'};">
                         <div class="day-name">${s.name}</div>
                         <div class="day-value">${displayVal}</div>
-                        <div class="day-sub">${metric === 'rev' ? 'Media diaria' : (metric === 'rn' ? 'Hab. media' : 'Precio medio')}</div>
+                        <div class="day-sub">${metric === 'rev' ? 'Media diaria' : (metric === 'rn' ? 'Hab. media' : 'Prod. por Hab')}</div>
                     </div>
                 `;
             }).join('');
