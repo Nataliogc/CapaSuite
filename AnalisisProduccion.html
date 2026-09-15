@@ -1200,11 +1200,30 @@
                 if (ly) {
                     const p = ((ty - ly) / ly * 100).toFixed(1);
                     const diffVal = ty - ly;
-                    const tooltip = `Comparativa:\nEste año: ${fmt(ty)}\nAño pasado: ${fmt(ly)}\nDiferencia: ${fmt(diffVal)}`;
+                    
+                    let f_ly = fmt(ly);
+                    let f_ty = fmt(ty);
+                    let f_diff = fmt(diffVal);
+                    
+                    if (key === 'rn' || key === 'pax') {
+                        f_ly = fmtNum(ly); f_ty = fmtNum(ty); f_diff = fmtNum(diffVal);
+                    } else if (key === 'occ') {
+                        f_ly = ly.toFixed(1).replace('.', ',') + " %";
+                        f_ty = ty.toFixed(1).replace('.', ',') + " %";
+                        f_diff = diffVal.toFixed(1).replace('.', ',') + " pp";
+                    } else if (key === 'adr' || key === 'revpar' || key === 'revpac' || key === 'comppax') {
+                        f_ly = ly.toFixed(2).replace('.', ',') + " €";
+                        f_ty = ty.toFixed(2).replace('.', ',') + " €";
+                        f_diff = diffVal.toFixed(2).replace('.', ',') + " €";
+                    }
 
-                    const label = midx === -1 ? "vs Año Ant. (Acum)" : "vs Año Ant. (Mes)";
+                    const tooltip = `Comparativa:\nEste año: ${f_ty}\nAño pasado: ${f_ly}\nDiferencia: ${f_diff}`;
 
-                    res += `<span class="${p >= 0 ? 'trend-up' : 'trend-down'}" style="display:block; cursor:help;" title="${tooltip}">
+                    const label = midx === -1 
+                        ? `vs Año Ant.<br><span style="font-size:0.75rem; color:var(--text-muted); font-weight:normal; margin-top:1px; display:inline-block;">(Acum: ${f_ly})</span>` 
+                        : `vs Año Ant.<br><span style="font-size:0.75rem; color:var(--text-muted); font-weight:normal; margin-top:1px; display:inline-block;">(Mes: ${f_ly})</span>`;
+
+                    res += `<span class="${p >= 0 ? 'trend-up' : 'trend-down'}" style="display:block; cursor:help; line-height:1.2;" title="${tooltip}">
                         ${p >= 0 ? '▲' : '▼'} ${Math.abs(p)}% ${label}
                     </span>`;
                 }
