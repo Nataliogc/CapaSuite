@@ -112,34 +112,34 @@ function renderDashboard() {
     const scopeName = currentSegment || 'Todos los segmentos';
     const data = SegmentAnalysis.scope(hotelData, currentSegment), previous = SegmentAnalysis.scope(hotelPrevious, currentSegment);
     const comparable = SegmentAnalysis.comparable(data, previous, months);
-    const totals = SegmentAnalysis.aggregate(data, months), prior = comparable ? SegmentAnalysis.aggregate(previous, months) : null;
-    const hotelTotals = SegmentAnalysis.aggregate(hotelData, months), hotelPrior = comparable ? SegmentAnalysis.aggregate(hotelPrevious, months) : null;
+    const totals = SegmentAnalysis.aggregate(data, months), prior = previous ? SegmentAnalysis.aggregate(previous, months) : null;
+    const hotelTotals = SegmentAnalysis.aggregate(hotelData, months), hotelPrior = previous ? SegmentAnalysis.aggregate(hotelPrevious, months) : null;
     const capacity = HOTELS[currentHotel].rooms;
     const revpar = totals.days ? totals.accommodation / (capacity * totals.days) : null;
     const priorRevpar = prior?.days ? prior.accommodation / (capacity * prior.days) : null;
     el('metric-years').textContent = `${scopeName} · ${currentYear}${compareYear ? ' vs ' + compareYear : ''} · ${totals.days == null ? 'Cobertura sin verificar' : totals.days + ' días cargados'}`;
     el('revpar-label').textContent = currentSegment ? 'Aportación al RevPAR del hotel' : 'RevPAR · solo alojamiento';
-    el('period-note').textContent = `${months.map(m => MONTH_ORDER[m]).join(', ')}. Producción = alojamiento y desayunos. ADR y RevPAR utilizan solo alojamiento. ${compareYear && !comparable ? 'Comparativa no disponible: faltan fechas o los días cargados no coinciden.' : ''}${totals.days == null ? ' Reimporta el Excel para verificar fechas y desglosar el alojamiento.' : ''}`;
+    el('period-note').textContent = `${months.map(m => MONTH_ORDER[m]).join(', ')}. Producción = alojamiento y desayunos. ADR y RevPAR utilizan solo alojamiento. ${compareYear && !comparable ? '(Nota: Días cargados no coinciden, comparativa puede ser inexacta).' : ''}${totals.days == null ? ' Reimporta el Excel para verificar fechas y desglosar el alojamiento.' : ''}`;
     const invalidStored = SegmentAnalysis.segments(data).filter(s => !SegmentAnalysis.validSegments.includes(SegmentAnalysis.canonical(s.name)) && months.some(m => ['rooms', 'revenue', 'totalRevenue'].some(field => Number(s[field]?.[m]) !== 0 && s[field]?.[m] != null)));
     if (invalidStored.length) el('period-note').textContent += ` Atención: hay segmentos incorrectos guardados (${invalidStored.map(s => s.name).join(', ')}). Pulsa Importar Excel para revisarlos y asignar el segmento correcto antes de guardar.`;
     [['prod', totals.revenue, prior?.revenue, 'revenue'], ['rooms', totals.rooms, prior?.rooms, 'rooms'], ['adr', totals.adr, prior?.adr, 'adr'], ['revpar', revpar, priorRevpar, 'adr']].forEach(([id, value, before, metric]) => {
         el('kpi-' + id).textContent = fmt(value, metric);
         const trend = el('kpi-' + id + '-diff');
-        trend.textContent = delta(value, before) + (comparable && before !== 0 ? ` vs ${compareYear}` : '');
+        trend.textContent = delta(value, before) + (previous && before !== 0 ? ` vs ${compareYear}` : '');
         trend.className = 'kpi-diff ' + (before != null && value != null ? (value > before ? 'positive' : value < before ? 'negative' : '') : '');
     });
     el('period-note').textContent = `${scopeName}. ` + el('period-note').textContent;
-    const names = new Set([...SegmentAnalysis.segments(hotelData), ...(comparable ? SegmentAnalysis.segments(hotelPrevious) : [])].map(s => s.name));
+    const names = new Set([...SegmentAnalysis.segments(hotelData), ...(previous ? SegmentAnalysis.segments(hotelPrevious) : [])].map(s => s.name));
     const currentMap = new Map(SegmentAnalysis.segments(hotelData).map(s => [s.name, s]));
     const previousMap = new Map(SegmentAnalysis.segments(hotelPrevious).map(s => [s.name, s]));
     const rows = [...names].map(name => {
         const segment = currentMap.get(name), old = previousMap.get(name);
         const revenue = SegmentAnalysis.sum(segment, 'revenue', months), rooms = SegmentAnalysis.sum(segment, 'rooms', months);
         const accommodation = totals.days != null ? SegmentAnalysis.sum(segment, 'accommodation', months) : null;
-        const oldRevenue = comparable ? SegmentAnalysis.sum(old, 'revenue', months) : null;
-        const oldRooms = comparable ? SegmentAnalysis.sum(old, 'rooms', months) : null;
+        const oldRevenue = previous ? SegmentAnalysis.sum(old, 'revenue', months) : null;
+        const oldRooms = previous ? SegmentAnalysis.sum(old, 'rooms', months) : null;
         const adr = accommodation != null && rooms > 0 ? accommodation / rooms : null;
-        const oldAdr = comparable && oldRooms > 0 ? SegmentAnalysis.sum(old, 'accommodation', months) / oldRooms : null;
+        const oldAdr = previous && oldRooms > 0 ? SegmentAnalysis.sum(old, 'accommodation', months) / oldRooms : null;
         return { name, revenue, rooms, adr, value: currentMetric === 'adr' ? adr : currentMetric === 'rooms' ? rooms : revenue, before: currentMetric === 'adr' ? oldAdr : currentMetric === 'rooms' ? oldRooms : oldRevenue, oldRevenue, oldRooms };
     }).filter(row => row.revenue !== 0 || row.rooms !== 0 || row.oldRevenue !== 0 && row.oldRevenue != null || row.oldRooms !== 0 && row.oldRooms != null);
     const sort = el('segment-sort').value;
@@ -165,7 +165,7 @@ function renderDashboard() {
     el('table-note').textContent = `${visible.length} de ${rows.length} segmentos. La búsqueda localiza filas; selecciona el nombre para cambiar el análisis. Este total corresponde al hotel. Peso en ADR = peso de producción. pp = puntos porcentuales.`;
     const leaders = [...rows].sort((a, b) => b.revenue - a.revenue);
     const leader = leaders[0];
-    const mover = comparable ? [...rows].sort((a, b) => Math.abs(b.revenue - b.oldRevenue) - Math.abs(a.revenue - a.oldRevenue))[0] : null;
+    const mover = previous ? [...rows].sort((a, b) => Math.abs(b.revenue - b.oldRevenue) - Math.abs(a.revenue - a.oldRevenue))[0] : null;
     el('insights').replaceChildren();
     const notes = [];
     if (currentSegment) {
@@ -181,7 +181,7 @@ function renderDashboard() {
     el('monthly-title').textContent = `Detalle mensual · ${scopeName} · ${currentYear}${compareYear ? ' vs ' + compareYear : ''}`;
     el('monthly-body').innerHTML = months.map(m => {
         const value = SegmentAnalysis.aggregate(data, [m]), hotel = SegmentAnalysis.aggregate(hotelData, [m]);
-        const old = SegmentAnalysis.comparable(data, previous, [m]) ? SegmentAnalysis.aggregate(previous, [m]) : null;
+        const old = previous ? SegmentAnalysis.aggregate(previous, [m]) : null;
         return `<tr><td>${MONTH_ORDER[m]}</td><td>${fmt(value.revenue)}</td><td>${fmt(old?.revenue)}</td><td>${delta(value.revenue, old?.revenue)}</td><td>${fmt(value.rooms, 'rooms')}</td><td>${fmt(value.adr, 'adr')}</td><td>${pct(hotel.revenue ? value.revenue / hotel.revenue : null)}</td></tr>`;
     }).join('');
     updateCharts(data, previous, months, rows, totals, prior, compareYear, metricName);
@@ -193,7 +193,7 @@ function updateCharts(data, previous, months, rows, totals, prior, compareYear, 
     const makeOptions = () => ({ animation: false, maintainAspectRatio: false, plugins: { legend: { labels: { color } }, tooltip: { callbacks: { label: ctx => `${ctx.dataset.label || ctx.label}: ${fmt(ctx.parsed.y ?? ctx.parsed, currentMetric)}` } } }, scales: { x: { ticks: { color } }, y: { beginAtZero: true, ticks: { color } } } });
     const create = (key, canvas, config) => { charts[key]?.destroy(); charts[key] = new Chart(el(canvas), config); };
     const datasets = [{ label: currentYear, data: months.map(m => SegmentAnalysis.aggregate(data, [m])[currentMetric]), borderColor: '#818cf8', backgroundColor: '#818cf8', tension: 0.2 }];
-    if (compareYear) datasets.push({ label: compareYear, data: months.map(m => SegmentAnalysis.comparable(data, previous, [m]) ? SegmentAnalysis.aggregate(previous, [m])[currentMetric] : null), borderColor: '#94a3b8', backgroundColor: '#94a3b8', borderDash: [5, 5] });
+    if (compareYear) datasets.push({ label: compareYear, data: months.map(m => previous ? SegmentAnalysis.aggregate(previous, [m])[currentMetric] : null), borderColor: '#94a3b8', backgroundColor: '#94a3b8', borderDash: [5, 5] });
     create('main', 'mainChart', { type: 'line', data: { labels: months.map(m => SHORT_MONTHS[m]), datasets }, options: makeOptions() });
     const topOptions = makeOptions(); topOptions.plugins.legend.display = false;
     create('top', 'topChart', { type: 'bar', data: { labels: [currentYear, ...(compareYear ? [compareYear] : [])], datasets: [{ label: metricName, data: [totals[currentMetric], ...(compareYear ? [prior?.[currentMetric] ?? null] : [])], backgroundColor: ['#818cf8', '#94a3b8'] }] }, options: topOptions });
