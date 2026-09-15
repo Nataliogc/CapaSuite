@@ -669,20 +669,18 @@
                 </div>
             </div>
 
-            <!-- SEGMENTS TABLE -->
+            <!-- DEPARTMENTS TABLE -->
             <div class="table-card">
                 <div class="table-header">
-                    <span>Performance por Canales de Venta</span>
-                    <span class="tag tag-seg">ESTRATEGIA</span>
+                    <span>Producción por Departamento</span>
+                    <span class="tag tag-seg" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">FINANZAS</span>
                 </div>
                 <div style="max-height: 500px; overflow-y: auto;">
                     <table id="segmentsTable">
                         <thead>
                             <tr>
-                                <th>Canal de Venta</th>
+                                <th>Departamento</th>
                                 <th>Revenue</th>
-                                <th>RN</th>
-                                <th>ADR</th>
                                 <th>Mix %</th>
                             </tr>
                         </thead>
@@ -1032,38 +1030,19 @@
             const segBody = document.getElementById('segmentsBody');
             segBody.innerHTML = '';
 
-            const channelGroups = {
-                "Directo": ["DIRONLINE", "DIRECTO OFFLINE"],
-                "OTA / AAVV": ["OTA/AAVV", "TTOO DINAMICA"],
-                "Grupos": ["GRUPOS", "GRTANTEO"],
-                "Corporativo": ["CORPORATIVO LINEAL"],
-                "Otros Canales": ["OTROS", "PARTICULARES"]
-            };
-
-            const channelData = [];
-            Object.entries(channelGroups).forEach(([chanName, segNames]) => {
-                let v = 0;
-                let r = 0;
-                segNames.forEach(sName => {
-                    const obj = segmentDb[sName];
-                    if (obj) {
-                        v += getVal(obj.revenue);
-                        r += getVal(obj.rooms);
-                    }
-                });
-                if (v > 0 || r > 0) {
-                    channelData.push({ name: chanName, rev: v, rms: r });
+            const deptData = [];
+            Object.entries(agg.summary).forEach(([deptName, data]) => {
+                if (data.revenue > 0) {
+                    deptData.push({ name: deptName, rev: data.revenue });
                 }
             });
 
-            channelData.sort((a, b) => b.rev - a.rev).forEach(item => {
-                const adr = item.rms > 0 ? (item.rev / item.rms).toFixed(1) : 0;
+            deptData.sort((a, b) => b.rev - a.rev).forEach(item => {
                 const mix = agg.totalRev > 0 ? (item.rev / agg.totalRev * 100).toFixed(1) : 0;
                 segBody.innerHTML += `<tr>
-                    <td style="font-weight:700; color:white;">${item.name}</td>
+                    <td style="font-weight:700; color:var(--text-main);">${item.name}</td>
                     <td style="font-weight:600;">${fmt(item.rev)}</td>
-                    <td style="color:var(--text-muted); font-size:0.8rem;">${item.rms}</td>
-                    <td>${adr}€</td>
+                    <td style="color:var(--text-muted);">${mix}%</td>
                 </tr>`;
             });
         }
