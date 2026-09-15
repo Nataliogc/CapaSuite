@@ -19,7 +19,7 @@
         });
     }
     const fields = ['revenue', 'rooms', 'accommodation', 'totalRevenue'];
-    const empty = name => ({ name, ...Object.fromEntries(fields.map(k => [k, Array(12).fill(0)])) });
+    const empty = name => ({ name, concepts: {}, ...Object.fromEntries(fields.map(k => [k, Array(12).fill(0)])) });
     function number(value) {
         if (value == null || String(value).trim() === '' || value === '-') return 0;
         if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -113,6 +113,12 @@
                 if (!c) return;
                 const y = years[c.year], value = number(row[i]);
                 const target = totalBlock ? (y.controls.values ||= empty('TOTAL')) : (y.segment[segment] ||= empty(segment));
+                
+                target.concepts ||= {};
+                const safeMetric = metric || 'DESCONOCIDO';
+                target.concepts[safeMetric] ||= Array(12).fill(0);
+                target.concepts[safeMetric][c.month] += value;
+
                 if (isRooms) target.rooms[c.month] += value;
                 else if (isTotal) target.totalRevenue[c.month] += value;
                 else {
@@ -165,11 +171,24 @@
             target.segmentSources ||= {};
             target.segmentCorrections ||= {};
             for (const m of Object.keys(incoming.coverage)) {
-                for (const seg of Object.values(target.segment)) for (const field of fields) if (seg[field]) seg[field][m] = 0;
+                for (const seg of Object.values(target.segment)) {
+                    for (const field of fields) if (seg[field]) seg[field][m] = 0;
+                    if (seg.concepts) {
+                        for (const concept of Object.values(seg.concepts)) concept[m] = 0;
+                    }
+                }
                 for (const [name, seg] of Object.entries(incoming.segment)) {
                     // Define own keys, including unusual names supplied by external reports.
                     if (!Object.hasOwn(target.segment, name)) Object.defineProperty(target.segment, name, { value: empty(name), writable: true, enumerable: true, configurable: true });
                     for (const field of fields) { target.segment[name][field] ||= Array(12).fill(0); target.segment[name][field][m] = seg[field][m]; }
+                    
+                    target.segment[name].concepts ||= {};
+                    if (seg.concepts) {
+                        for (const [cName, cArr] of Object.entries(seg.concepts)) {
+                            target.segment[name].concepts[cName] ||= Array(12).fill(0);
+                            target.segment[name].concepts[cName][m] = cArr[m];
+                        }
+                    }
                 }
                 target.segmentCoverage[m] = incoming.coverage[m];
                 target.segmentSources[m] = report.source;

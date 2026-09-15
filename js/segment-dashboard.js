@@ -184,6 +184,36 @@ function renderDashboard() {
         const old = previous ? SegmentAnalysis.aggregate(previous, [m]) : null;
         return `<tr><td>${MONTH_ORDER[m]}</td><td>${fmt(value.revenue)}</td><td>${fmt(old?.revenue)}</td><td>${delta(value.revenue, old?.revenue)}</td><td>${fmt(value.rooms, 'rooms')}</td><td>${fmt(value.adr, 'adr')}</td><td>${pct(hotel.revenue ? value.revenue / hotel.revenue : null)}</td></tr>`;
     }).join('');
+    
+    // CONCEPTS TABLE
+    const conceptsCard = el('concepts-card');
+    const conceptsBody = el('concepts-body');
+    if (currentSegment && data && data.segment && data.segment[currentSegment] && data.segment[currentSegment].concepts) {
+        const segConcepts = data.segment[currentSegment].concepts;
+        let cData = [];
+        let totalConcepts = 0;
+        for (const [cName, cArr] of Object.entries(segConcepts)) {
+            const sum = months.reduce((n, m) => n + (cArr[m] || 0), 0);
+            if (sum !== 0) {
+                cData.push({ name: cName, value: sum });
+                totalConcepts += sum;
+            }
+        }
+        if (cData.length > 0) {
+            cData.sort((a, b) => b.value - a.value);
+            conceptsBody.innerHTML = cData.map(c => `<tr>
+                <td style="font-weight:700;">${c.name}</td>
+                <td>${fmt(c.value)}</td>
+                <td style="color:var(--text-muted);">${pct(totalConcepts ? c.value / totalConcepts : 0)}</td>
+            </tr>`).join('');
+            conceptsCard.style.display = 'block';
+        } else {
+            conceptsCard.style.display = 'none';
+        }
+    } else {
+        conceptsCard.style.display = 'none';
+    }
+
     updateCharts(data, previous, months, rows, totals, prior, compareYear, metricName);
 }
 function updateCharts(data, previous, months, rows, totals, prior, compareYear, metricName) {
