@@ -891,14 +891,60 @@
 
             const totalLY = dataPrev ? ((dataPrev.service && dataPrev.service["TOTAL_MASTER"]) || { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0), pax: new Array(12).fill(0) }) : null;
 
+            // --- PRODUCCIÓN REAL DATE PARSING ---
+            const monthDaysRecorded = new Array(12).fill(0);
+            if (data.daily) {
+                Object.keys(data.daily).forEach(dateStr => {
+                    const parts = dateStr.split('-');
+                    if (parts.length >= 2) {
+                        const m = parseInt(parts[1]) - 1;
+                        if (m >= 0 && m < 12) monthDaysRecorded[m]++;
+                    }
+                });
+            }
+
+            const prodDateStr = (data.updates && data.updates.prod && data.updates.prod !== "N/A") 
+                ? data.updates.prod 
+                : (data.lastProdDate || "");
+
+            let prodDay = 0, prodMonth = -1, prodYear = "";
+            if (prodDateStr) {
+                let datePart = prodDateStr.split(' ')[0];
+                if (prodDateStr.includes(" al ")) {
+                    const partsAl = prodDateStr.split(" al ");
+                    if (partsAl.length >= 2) datePart = partsAl[1].split(' ')[0];
+                }
+                const parts = datePart.split(/[\/-]/);
+                if (parts.length === 3) {
+                    prodDay = parseInt(parts[0]);
+                    prodMonth = parseInt(parts[1]) - 1;
+                    prodYear = parts[2].length === 2 ? "20" + parts[2] : parts[2];
+                }
+            } else if (data.lastUpdate) {
+                const isOtbDate = data.updates && data.updates.otb && data.lastUpdate.includes(data.updates.otb.split(' ')[0]);
+                if (!isOtbDate) {
+                    let datePart = data.lastUpdate.split(' ')[0];
+                    const parts = datePart.split(/[\/-]/);
+                    if (parts.length === 3) {
+                        prodDay = parseInt(parts[0]);
+                        prodMonth = parseInt(parts[1]) - 1;
+                        prodYear = parts[2].length === 2 ? "20" + parts[2] : parts[2];
+                    }
+                }
+            }
+
+            if (prodYear === String(currentYear) && prodMonth >= 0 && prodMonth < 12) {
+                if (monthDaysRecorded[prodMonth] === 0) {
+                    monthDaysRecorded[prodMonth] = prodDay;
+                }
+            }
+
             // --- YTD CORRECTION LOGIC ---
             // We need to compare Apples to Apples (YTD TY vs YTD LY)
             let revLY_YTD = 0, rmsLY_YTD = 0, paxLY_YTD = 0;
             const monthsWithData = []; // Indices of months that have passed/have data in TY
 
             if (midx === -1) {
-                // Determine which months in TY have data (simplified heuristic: non-zero revenue OR past months)
-                // Actually, let's use the Date logic to be strict about "YTD"
                 const now = new Date();
                 const curM = now.getMonth();
                 const curY = now.getFullYear();
@@ -906,18 +952,28 @@
 
                 for (let i = 0; i < 12; i++) {
                     let hasData = false;
-                    // Logic: If past year, all months. If future, none. If current, up to last month?
-                    // Better: Check if TY has revenue > 0 OR if it's a closed month temporally
+                    let fraction = 1.0; // By default, full month
+
                     if (totalTY.revenue[i] > 0) hasData = true;
                     else if (selY < curY) hasData = true;
                     else if (selY === curY && i < curM) hasData = true;
 
                     if (hasData) {
-                        monthsWithData.push(i);
+                        monthsWithData.push({ month: i, fraction: 1.0 });
+                        
+                        // Prorating logic: Only prorate if we are looking at the current year,
+                        // and this is the month where production stops (prodMonth),
+                        // and we have a valid prodDay.
+                        if (selY === curY && i === prodMonth && prodDay > 0 && prodDay < 31) {
+                            const daysInMonth = new Date(selY, i + 1, 0).getDate();
+                            fraction = prodDay / daysInMonth;
+                            monthsWithData[monthsWithData.length - 1].fraction = fraction;
+                        }
+
                         if (totalLY) {
-                            revLY_YTD += (totalLY.revenue[i] || 0);
-                            rmsLY_YTD += (totalLY.rooms[i] || 0);
-                            paxLY_YTD += (totalLY.pax[i] || 0);
+                            revLY_YTD += (totalLY.revenue[i] || 0) * fraction;
+                            rmsLY_YTD += (totalLY.rooms[i] || 0) * fraction;
+                            paxLY_YTD += (totalLY.pax[i] || 0) * fraction;
                         }
                     }
                 }
@@ -1021,7 +1077,18 @@
             }
 
             const compTY = (getV(groupedTY.SPA, midx) + getV(groupedTY.PARKING, midx) + getV(groupedTY.MINIBAR, midx) + getV(groupedTY.VARIOS, midx) + getV(groupedTY.CAFETERIA, midx));
-            const compLY = dataPrev ? (getV(groupedLY.SPA, midx) + getV(groupedLY.PARKING, midx) + getV(groupedLY.MINIBAR, midx) + getV(groupedLY.VARIOS, midx) + getV(groupedLY.CAFETERIA, midx)) : 0; // Warning: This LY is still FULL YEAR if midx=-1, but minor KPI. Fix later if user complains.
+            let compLY = 0;
+            if (dataPrev) {
+                if (midx === -1) {
+                    monthsWithData.forEach(item => {
+                        const m = item.month;
+                        const f = item.fraction;
+                        compLY += ((groupedLY.SPA?.revenue[m] || 0) + (groupedLY.PARKING?.revenue[m] || 0) + (groupedLY.MINIBAR?.revenue[m] || 0) + (groupedLY.VARIOS?.revenue[m] || 0) + (groupedLY.CAFETERIA?.revenue[m] || 0)) * f;
+                    });
+                } else {
+                    compLY = getV(groupedLY.SPA, midx) + getV(groupedLY.PARKING, midx) + getV(groupedLY.MINIBAR, midx) + getV(groupedLY.VARIOS, midx) + getV(groupedLY.CAFETERIA, midx);
+                }
+            }
 
             const compLM = midx > 0 ? (getV(groupedTY.SPA, midx - 1) + getV(groupedTY.PARKING, midx - 1) + getV(groupedTY.MINIBAR, midx - 1) + getV(groupedTY.VARIOS, midx - 1) + getV(groupedTY.CAFETERIA, midx - 1)) : 0;
 
@@ -1032,8 +1099,8 @@
             let habRevLY = 0;
             if (midx === -1 && dataPrev) {
                 // Sum only YTD
-                monthsWithData.forEach(i => {
-                    habRevLY += (groupedLY.HABITACION.revenue[i] || 0);
+                monthsWithData.forEach(item => {
+                    habRevLY += (groupedLY.HABITACION.revenue[item.month] || 0) * item.fraction;
                 });
             } else {
                 habRevLY = dataPrev ? getV(groupedLY.HABITACION, midx) : 0;
@@ -1246,57 +1313,7 @@
             document.getElementById('kpi-revpac').innerText = revpacTY.toFixed(2).replace('.', ',') + " €";
             document.getElementById('trend-revpac').innerHTML = trend(revpacTY, revpacLY, revpacLM, 'revpac');
 
-            // Calculate elapsed days for YTD calculation strictly from PRODUCCIÓN REAL
-            const monthDaysRecorded = new Array(12).fill(0);
-            if (data.daily) {
-                Object.keys(data.daily).forEach(dateStr => {
-                    const parts = dateStr.split('-');
-                    if (parts.length >= 2) {
-                        const m = parseInt(parts[1]) - 1;
-                        if (m >= 0 && m < 12) monthDaysRecorded[m]++;
-                    }
-                });
-            }
-
-            // Obtener estrictamente la fecha de PRODUCCIÓN REAL (nunca OTB)
-            const prodDateStr = (data.updates && data.updates.prod && data.updates.prod !== "N/A") 
-                ? data.updates.prod 
-                : (data.lastProdDate || "");
-
-            let prodDay = 0, prodMonth = -1, prodYear = "";
-            if (prodDateStr) {
-                let datePart = prodDateStr.split(' ')[0];
-                if (prodDateStr.includes(" al ")) {
-                    const partsAl = prodDateStr.split(" al ");
-                    if (partsAl.length >= 2) datePart = partsAl[1].split(' ')[0];
-                }
-                const parts = datePart.split(/[\/-]/);
-                if (parts.length === 3) {
-                    prodDay = parseInt(parts[0]);
-                    prodMonth = parseInt(parts[1]) - 1;
-                    prodYear = parts[2].length === 2 ? "20" + parts[2] : parts[2];
-                }
-            } else if (data.lastUpdate) {
-                // Solo usar fallback de lastUpdate si NO fue puesto por una carga de OTB
-                const isOtbDate = data.updates && data.updates.otb && data.lastUpdate.includes(data.updates.otb.split(' ')[0]);
-                if (!isOtbDate) {
-                    let datePart = data.lastUpdate.split(' ')[0];
-                    const parts = datePart.split(/[\/-]/);
-                    if (parts.length === 3) {
-                        prodDay = parseInt(parts[0]);
-                        prodMonth = parseInt(parts[1]) - 1;
-                        prodYear = parts[2].length === 2 ? "20" + parts[2] : parts[2];
-                    }
-                }
-            }
-
-            // Sincronizar monthDaysRecorded solo con fecha de producción real si no hay daily
-            if (prodYear === String(currentYear) && prodMonth >= 0 && prodMonth < 12) {
-                if (monthDaysRecorded[prodMonth] === 0) {
-                    monthDaysRecorded[prodMonth] = prodDay;
-                }
-            }
-
+            // (The code has been moved up)
             let elapsedDays = 0;
             if (midx === -1) {
                 let dailyDaysYTD = monthDaysRecorded.reduce((a, b) => a + b, 0);
@@ -1321,7 +1338,7 @@
             }
 
             const occTY = (rmsTY / (HOTELS[currentHotel].rooms * elapsedDays) * 100);
-            const occLY = (rmsLY / (HOTELS[currentHotel].rooms * (midx === -1 ? 365 : 30)) * 100);
+            const occLY = (rmsLY / (HOTELS[currentHotel].rooms * (midx === -1 ? elapsedDays : 30)) * 100);
             const occLM = midx > 0 ? (rmsLM / (HOTELS[currentHotel].rooms * 30) * 100) : 0;
             document.getElementById('kpi-occ').innerText = occTY.toFixed(1).replace('.', ',') + " %";
             
@@ -1331,7 +1348,7 @@
             document.getElementById('trend-occ').innerHTML = trend(occTY, occLY, occLM, 'occ') + renderPickupBadge(deltaOcc, '%', true);
 
             const revparTY = habRevTY / (HOTELS[currentHotel].rooms * elapsedDays);
-            const revparLY = habRevLY / (HOTELS[currentHotel].rooms * (midx === -1 ? 365 : 30));
+            const revparLY = habRevLY / (HOTELS[currentHotel].rooms * (midx === -1 ? elapsedDays : 30));
             const revparLM = midx > 0 ? habRevLM / (HOTELS[currentHotel].rooms * 30) : 0;
             document.getElementById('kpi-revpar').innerText = revparTY.toFixed(2).replace('.', ',') + " €";
 
