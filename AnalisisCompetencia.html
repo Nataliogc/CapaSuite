@@ -755,6 +755,10 @@
             box-shadow: 0 0 8px var(--primary-glow);
         }
 
+        .price-pending {
+            color: #dc2626 !important;
+        }
+
         .sim-dot {
             color: var(--primary);
             font-size: 0.6rem;
@@ -1479,6 +1483,19 @@
         // --- ACTIONS & SIMULATION ENGINE ---
         let activeTableFilter = null;
         let manualPricesPending = false;
+        const pendingManualPrices = new Set();
+
+        function hotelOccupancyLabel(hotelName, rooms) {
+            if (rooms === null || rooms === undefined || rooms === '' || !Number.isFinite(Number(rooms))) return '';
+            const capacity = hotelName === 'Cumbria' ? 59 : hotelName === 'Guadiana' ? 108 : 0;
+            if (!capacity) return '';
+            const percentage = Math.round(Number(rooms) / capacity * 100);
+            return `<div style="font-size:0.6rem; color:#8b5cf6; font-weight:700; margin-top:2px;" title="Ocupación: ${rooms} de ${capacity} habitaciones">Hab: ${rooms} · ${percentage}% ocup.</div>`;
+        }
+
+        function pendingPriceClass(hotel) {
+            return pendingManualPrices.has(hotel) ? ' price-pending' : '';
+        }
 
         function manualPriceSaveButton() {
             return `<button class="sim-btn sim-apply-all" onclick="saveManualPrices()" ${manualPricesPending ? '' : 'disabled'} title="Guardar las tarifas de ambos hoteles, incluidas las fechas ocultas por filtros">${manualPricesPending ? '💾 Guardar cambios' : '✓ Cambios guardados'}</button>`;
@@ -1505,6 +1522,7 @@
                     return;
                 }
                 manualPricesPending = false;
+                pendingManualPrices.clear();
                 refreshActiveView();
                 alert('Cambios de tarifas guardados. Se recuperarán al volver a abrir el análisis.');
             } catch (error) {
@@ -1701,6 +1719,7 @@
             h.sold = false;
             if (num > 0) h.status = 'available';
             h.isModified = (h.price !== h.originalPrice || h.sold !== h.originalSold);
+            pendingManualPrices.add(h);
             manualPricesPending = true;
 
             refreshActiveView();
@@ -1789,6 +1808,7 @@
                 ['Cumbria', 'Guadiana'].forEach(hName => {
                     const h = d.hotels[hName];
                     if (h && h.isModified) {
+                        pendingManualPrices.add(h);
                         manualPricesPending = true;
                         h.price = h.originalPrice !== undefined ? h.originalPrice : h.price;
                         h.sold = h.originalSold !== undefined ? h.originalSold : h.sold;
@@ -1837,6 +1857,7 @@
                     h.status = 'available';
                     h.isModified = (h.price !== h.originalPrice);
                     applied++;
+                    pendingManualPrices.add(h);
                     manualPricesPending = true;
                 }
             });
@@ -3560,6 +3581,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 // Row Content
                 const dynamic = getDynamicDateHtml(d, activeHotel);
                 const currentOcc = (dynamic.occ > 0) ? dynamic.occ : dynamic.otb;
+                const occupancyLabel = hotelOccupancyLabel(activeHotel, currentOcc);
                 let alertHtml = '';
                 const capacityVal = (activeHotel === 'Cumbria' ? 59 : 108); // Manual fallback
                 const occPct2 = (currentOcc / capacityVal) * 100;
@@ -3602,12 +3624,12 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     const closedWrap = `
                         <div class="manual-price-wrap">
                             <button class="step-btn down" onclick="stepManualPrice(${d.dayIndex}, '${activeHotel}', -1, event)" title="Reabrir y bajar 1€">-</button>
-                            <span class="price-sold" onclick="openManualPriceInput(${d.dayIndex}, '${activeHotel}', this.parentElement, event)" title="Cerrado en snapshot. Click para introducir tarifa y simular apertura">CERRADO</span>
+                            <span class="price-sold${pendingPriceClass(my)}" onclick="openManualPriceInput(${d.dayIndex}, '${activeHotel}', this.parentElement, event)" title="Cerrado en snapshot. Click para introducir tarifa y simular apertura">CERRADO</span>
                             <button class="step-btn up" onclick="stepManualPrice(${d.dayIndex}, '${activeHotel}', 1, event)" title="Reabrir y subir 1€">+</button>
                         </div>
                         ${falseClosedAlert}
                     `;
-                    html += `<td>${closedWrap}</td>`;
+                    html += `<td>${closedWrap}${occupancyLabel}</td>`;
                 } else if (myStatus === 'minStay') {
                     let displayText = "M";
                     if (my && my.minStayDays) {
@@ -3617,27 +3639,27 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         if (match) displayText = `M${match[1]}`;
                     }
                     const titleText = (my && my.raw) ? my.raw : "Estancia mínima";
-                    html += `<td><span class="price-minstay" title="${titleText}">${displayText}</span></td>`;
+                    html += `<td><span class="price-minstay${pendingPriceClass(my)}" title="${titleText}">${displayText}</span>${occupancyLabel}</td>`;
                 } else if (!myP || myP === 0 || myStatus === 'noData') {
                     if (d.otbADR && d.otbADR > 0) {
                         const noDataWrap = `
                             <div class="manual-price-wrap">
                                 <button class="step-btn down" onclick="stepManualPrice(${d.dayIndex}, '${activeHotel}', -1, event)" title="Bajar 1€">▼</button>
-                                <span class="price-editable" onclick="openManualPriceInput(${d.dayIndex}, '${activeHotel}', this, event)" title="Sin tarifa en scraping. ADR OTB: ${d.otbADR.toFixed(0)}€. Click para fijar precio" style="color:#4f46e5;">
+                                <span class="price-editable${pendingPriceClass(my)}" onclick="openManualPriceInput(${d.dayIndex}, '${activeHotel}', this, event)" title="Sin tarifa en scraping. ADR OTB: ${d.otbADR.toFixed(0)}€. Click para fijar precio" style="color:#4f46e5;">
                                     ${d.otbADR.toFixed(0)}€
                                 </span>
                                 <button class="step-btn up" onclick="stepManualPrice(${d.dayIndex}, '${activeHotel}', 1, event)" title="Subir 1€">▲</button>
                             </div>
                         `;
-                        html += `<td class="price-val">${noDataWrap}</td>`;
+                        html += `<td class="price-val">${noDataWrap}${occupancyLabel}</td>`;
                     } else {
                         const emptyWrap = `
                             <div class="manual-price-wrap">
                                 <button class="step-btn up" onclick="stepManualPrice(${d.dayIndex}, '${activeHotel}', 1, event)" title="Asignar tarifa inicial">+</button>
-                                <span class="price-editable" onclick="openManualPriceInput(${d.dayIndex}, '${activeHotel}', this, event)" title="Sin datos. Click para asignar tarifa" style="color:#cbd5e1;">-</span>
+                                <span class="price-editable${pendingPriceClass(my)}" onclick="openManualPriceInput(${d.dayIndex}, '${activeHotel}', this, event)" title="Sin datos. Click para asignar tarifa" style="color:#cbd5e1;">-</span>
                             </div>
                         `;
-                        html += `<td>${emptyWrap}</td>`;
+                        html += `<td>${emptyWrap}${occupancyLabel}</td>`;
                     }
                 } else {
                     const isSimulated = !!my?.isModified;
@@ -3662,13 +3684,13 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     const priceWrap = `
                         <div class="manual-price-wrap">
                             <button class="step-btn down" onclick="stepManualPrice(${d.dayIndex}, '${activeHotel}', -1, event)" title="Bajar 1€ (Shift: 5€)">▼</button>
-                            <span class="price-editable${simClass}" onclick="openManualPriceInput(${d.dayIndex}, '${activeHotel}', this, event)" title="${simTitle}">
+                            <span class="price-editable${pendingPriceClass(my)}${simClass}" onclick="openManualPriceInput(${d.dayIndex}, '${activeHotel}', this, event)" title="${simTitle}">
                                 ${Math.round(myP)}€${changeTag}${belowMinAlert}
                             </span>
                             <button class="step-btn up" onclick="stepManualPrice(${d.dayIndex}, '${activeHotel}', 1, event)" title="Subir 1€ (Shift: 5€)">▲</button>
                         </div>
                     `;
-                    html += `<td class="price-val" style="font-size:1.05rem;">${priceWrap}</td>`;
+                    html += `<td class="price-val" style="font-size:1.05rem;">${priceWrap}${occupancyLabel}</td>`;
                 }
 
                 html += `<td style="color:var(--primary); font-weight:600;">${d.compAvg.toFixed(0)}€</td>`;
@@ -3685,7 +3707,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         const emptyWrap = `
                             <div class="manual-price-wrap">
                                 <button class="step-btn up" onclick="stepManualPrice(${d.dayIndex}, '${siblingName}', 1, event)" title="Asignar tarifa a ${siblingName}">+</button>
-                                <span class="price-editable" onclick="openManualPriceInput(${d.dayIndex}, '${siblingName}', this, event)" title="Sin datos para ${siblingName}. Click para asignar">-</span>
+                                <span class="price-editable${pendingPriceClass(hData)}" onclick="openManualPriceInput(${d.dayIndex}, '${siblingName}', this, event)" title="Sin datos para ${siblingName}. Click para asignar">-</span>
                             </div>
                         `;
                         html += `<td style="border-left:2px solid var(--border); background:var(--bg-surface); ${opacityStyle}">${emptyWrap}</td>`;
@@ -3693,7 +3715,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         const closedWrap = `
                             <div class="manual-price-wrap">
                                 <button class="step-btn down" onclick="stepManualPrice(${d.dayIndex}, '${siblingName}', -1, event)" title="Reabrir ${siblingName} y bajar 1€">-</button>
-                                <span class="price-sold" onclick="openManualPriceInput(${d.dayIndex}, '${siblingName}', this.parentElement, event)" title="${siblingName} cerrado. Click para simular reapertura">S</span>
+                                <span class="price-sold${pendingPriceClass(hData)}" onclick="openManualPriceInput(${d.dayIndex}, '${siblingName}', this.parentElement, event)" title="${siblingName} cerrado. Click para simular reapertura">S</span>
                                 <button class="step-btn up" onclick="stepManualPrice(${d.dayIndex}, '${siblingName}', 1, event)" title="Reabrir ${siblingName} y subir 1€">+</button>
                             </div>
                         `;
@@ -3707,7 +3729,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                             if (match) displayText = `M${match[1]}`;
                         }
                         const titleText = hData.raw || "Estancia mínima";
-                        html += `<td style="border-left:2px solid var(--border); background:var(--bg-surface); ${opacityStyle}"><span class="price-minstay" title="${titleText}">${displayText}</span></td>`;
+                        html += `<td style="border-left:2px solid var(--border); background:var(--bg-surface); ${opacityStyle}"><span class="price-minstay${pendingPriceClass(hData)}" title="${titleText}">${displayText}</span></td>`;
                     } else {
                         const style = (!sold && hData.price < myP) ? "color:#ef4444; font-weight:800;" : "color:var(--text-main); font-weight:700;";
                         const isSibSimulated = !!hData?.isModified;
@@ -3727,12 +3749,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         }
                         
                         // Show OTB/Occ also for Sibling
-                        let sibOccHtml = '';
-                        if (hData.otbRooms > 0) {
-                            sibOccHtml = `<div style="font-size:0.6rem; color:#8b5cf6; font-weight:800; margin-top:1px;">Hab: ${hData.otbRooms}</div>`;
-                        } else if (hData.occupancy > 0) {
-                            sibOccHtml = `<div style="font-size:0.6rem; color:#4f46e5; font-weight:700; margin-top:1px;">Hab: ${hData.occupancy}</div>`;
-                        }
+                        const sibOccHtml = hotelOccupancyLabel(siblingName, hData.otbRooms ?? hData.occupancy);
 
                         const isSibBelowMin = (sibMinP > 0 && hData.price > 0 && hData.price < sibMinP);
                         const sibBelowAlert = isSibBelowMin ? ` <span class="below-min-badge" title="⚠️ Tarifa de ${Math.round(hData.price)}€ por debajo del mínimo configurado (${sibMinP}€)">⚠️</span>` : '';
@@ -3740,7 +3757,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         const sibWrap = `
                             <div class="manual-price-wrap">
                                 <button class="step-btn down" onclick="stepManualPrice(${d.dayIndex}, '${siblingName}', -1, event)" title="Bajar 1€ a ${siblingName} (Shift: 5€)">▼</button>
-                                <span class="price-editable${sibSimClass}" onclick="openManualPriceInput(${d.dayIndex}, '${siblingName}', this, event)" title="${sibSimTitle}">
+                                <span class="price-editable${pendingPriceClass(hData)}${sibSimClass}" onclick="openManualPriceInput(${d.dayIndex}, '${siblingName}', this, event)" title="${sibSimTitle}">
                                     ${Math.round(hData.price)}€${sChangeTag}${sibBelowAlert}
                                 </span>
                                 <button class="step-btn up" onclick="stepManualPrice(${d.dayIndex}, '${siblingName}', 1, event)" title="Subir 1€ a ${siblingName} (Shift: 5€)">▲</button>

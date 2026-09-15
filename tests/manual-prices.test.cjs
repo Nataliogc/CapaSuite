@@ -31,6 +31,7 @@ test('manual edits persist for both hotels without changing source timestamp or 
     const { run, storage } = setup();
     run("setManualPrice(1, 'Guadiana', 80); setManualPrice(1, 'Cumbria', 60)");
     assert.equal(run('manualPricesPending'), true);
+    assert.equal(run('pendingPriceClass(processedData[0].hotels.Guadiana)'), ' price-pending');
     run('saveManualPrices()');
     const restored = JSON.parse(storage.revenue_data_v2);
     assert.equal(restored.data[0].hotels.Guadiana.price, 80);
@@ -38,6 +39,10 @@ test('manual edits persist for both hotels without changing source timestamp or 
     assert.equal(restored.lastUpdate, '2026-09-01T10:00:00Z');
     assert.equal(storage.revenue_history_lite, 'source history');
     assert.equal(run('manualPricesPending'), false);
+    assert.equal(run('pendingPriceClass(processedData[0].hotels.Guadiana)'), '');
+    run("setManualPrice(1, 'Guadiana', 81)");
+    assert.equal(run('pendingPriceClass(processedData[0].hotels.Guadiana)'), ' price-pending');
+    assert.equal(run('pendingPriceClass(processedData[0].hotels.Cumbria)'), '');
     run('processedData = JSON.parse(CapaStorage.getItem("revenue_data_v2")).data; resetAllManualPrices(); saveManualPrices()');
     const reset = JSON.parse(storage.revenue_data_v2).data[0].hotels;
     assert.equal(reset.Guadiana.price, 65);
@@ -50,6 +55,7 @@ test('failed storage keeps edits pending and reports failure', () => {
     run("setManualPrice(1, 'Guadiana', 90); saveManualPrices()");
     assert.equal(run('manualPricesPending'), true);
     assert.match(alerts.at(-1), /No se han podido guardar/);
+    assert.equal(run('pendingPriceClass(processedData[0].hotels.Guadiana)'), ' price-pending');
 });
 
 test('non-finite prices are rejected', () => {
