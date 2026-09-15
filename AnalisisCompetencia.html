@@ -1478,6 +1478,46 @@
 
         // --- ACTIONS & SIMULATION ENGINE ---
         let activeTableFilter = null;
+        let manualPricesPending = false;
+
+        function manualPriceSaveButton() {
+            return `<button class="sim-btn sim-apply-all" onclick="saveManualPrices()" ${manualPricesPending ? '' : 'disabled'} title="Guardar las tarifas de ambos hoteles, incluidas las fechas ocultas por filtros">${manualPricesPending ? '💾 Guardar cambios' : '✓ Cambios guardados'}</button>`;
+        }
+
+        function saveManualPrices() {
+            try {
+                const saved = CapaStorage.getItem('revenue_data_v2');
+                const previous = typeof saved === 'string' ? JSON.parse(saved) : saved;
+                if (!previous || !Array.isArray(previous.data)) throw new Error('No hay datos de origen guardados');
+                // Preserve the source timestamp and comparison history when saving edits.
+                const serialized = JSON.stringify({
+                    ...previous,
+                    data: processedData,
+                    competitors: competitorsList,
+                    months: distinctMonths,
+                    activeHotel,
+                    manualPricesSavedAt: new Date().toISOString()
+                });
+                CapaStorage.setItem('revenue_data_v2', serialized);
+                if (CapaStorage.getItem('revenue_data_v2') !== serialized) throw new Error('No se pudo verificar el guardado');
+                if (!CapaStorage.isAvailable) {
+                    alert('Tarifas conservadas en esta pestaña. El almacenamiento permanente no está disponible; no cierres la pestaña.');
+                    return;
+                }
+                manualPricesPending = false;
+                refreshActiveView();
+                alert('Cambios de tarifas guardados. Se recuperarán al volver a abrir el análisis.');
+            } catch (error) {
+                console.error('Error guardando tarifas manuales', error);
+                alert('No se han podido guardar los cambios. Mantén esta página abierta e inténtalo de nuevo.');
+            }
+        }
+
+        window.addEventListener('beforeunload', event => {
+            if (!manualPricesPending) return;
+            event.preventDefault();
+            event.returnValue = '';
+        });
 
         function calculateSmartYield(d, hotel) {
             ensureHotelStructure(d, hotel);
@@ -1655,12 +1695,13 @@
             }
 
             const num = Math.max(0, Math.round(Number(newPrice)));
-            if (isNaN(num)) return;
+            if (!Number.isFinite(num)) return;
 
             h.price = num;
             h.sold = false;
             if (num > 0) h.status = 'available';
             h.isModified = (h.price !== h.originalPrice || h.sold !== h.originalSold);
+            manualPricesPending = true;
 
             refreshActiveView();
         }
@@ -1748,6 +1789,7 @@
                 ['Cumbria', 'Guadiana'].forEach(hName => {
                     const h = d.hotels[hName];
                     if (h && h.isModified) {
+                        manualPricesPending = true;
                         h.price = h.originalPrice !== undefined ? h.originalPrice : h.price;
                         h.sold = h.originalSold !== undefined ? h.originalSold : h.sold;
                         h.status = h.originalStatus !== undefined ? h.originalStatus : h.status;
@@ -1795,6 +1837,7 @@
                     h.status = 'available';
                     h.isModified = (h.price !== h.originalPrice);
                     applied++;
+                    manualPricesPending = true;
                 }
             });
 
@@ -1827,9 +1870,10 @@
             const modCount = countModifiedPrices();
 
             let simHtml = '';
-            if (modCount > 0) {
+            if (modCount > 0 || manualPricesPending) {
                 simHtml = `
                     <span class="simulation-banner">
+                        ${manualPriceSaveButton()}
                         <span class="sim-info">💡 <b>${modCount}</b> tarifa${modCount !== 1 ? 's' : ''} simulada${modCount !== 1 ? 's' : ''}</span>
                         <button class="sim-btn sim-apply-all" onclick="applyAllVisibleRecommendations()" title="Aplicar tarifas recomendadas a las fechas visibles">⚡ Aplicar recomendados</button>
                         <button class="sim-btn sim-reset" onclick="resetAllManualPrices()" title="Restablecer precios originales del archivo">↺ Restablecer</button>
@@ -1930,9 +1974,10 @@
             if (countEl) {
                 const modCount = countModifiedPrices();
                 let simHtml = '';
-                if (modCount > 0) {
+                if (modCount > 0 || manualPricesPending) {
                     simHtml = `
                         <span class="simulation-banner">
+                            ${manualPriceSaveButton()}
                             <span class="sim-info">💡 <b>${modCount}</b> simulada${modCount !== 1 ? 's' : ''}</span>
                             <button class="sim-btn sim-apply-all" onclick="applyAllVisibleRecommendations()" title="Aplicar tarifas recomendadas a las fechas visibles">⚡ Aplicar a las ${filtered.length}</button>
                             <button class="sim-btn sim-reset" onclick="resetAllManualPrices()" title="Restablecer precios originales">↺ Restablecer</button>
@@ -3872,6 +3917,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
         // Exposed for firebase-auth.js to call after cloud download
         window.updateAll = function () {
+            if (manualPricesPending) return;
             console.log("🔄 Cloud Data Received -> Refreshing View...");
             initApp();
         };
