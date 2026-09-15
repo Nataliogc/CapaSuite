@@ -609,16 +609,17 @@
         </div>
 
         <!-- HISTORICAL CHART (NEW) -->
-        <div class="chart-container" style="margin-bottom: 25px; min-height: 380px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <div class="chart-container" style="margin-bottom: 25px; min-height: 420px; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                 <h3><span style="color: #8b5cf6;">📈</span> Evolución Histórica (Comparativa Anual)</h3>
-                <select id="histMetric" onchange="refreshAll()" style="font-size: 0.75rem; padding: 6px 12px; border-radius: 8px; background: rgba(30,41,59,0.8); color: white; border: 1px solid var(--primary); cursor:pointer; font-weight: 600;">
+                <select id="histMetric" onchange="renderHistoricalChart()" style="font-size: 0.75rem; padding: 6px 12px; border-radius: 8px; background: rgba(30,41,59,0.8); color: white; border: 1px solid var(--primary); cursor:pointer; font-weight: 600;">
                     <option value="rev">Producción (€)</option>
                     <option value="rn">Estancias (RN)</option>
                     <option value="adr">Precio Medio (ADR)</option>
                 </select>
             </div>
-            <div class="chart-wrapper">
+            <div id="histYearToggles" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px;"></div>
+            <div class="chart-wrapper" style="flex: 1;">
                 <canvas id="historicalChart"></canvas>
             </div>
         </div>
@@ -698,6 +699,7 @@
         let currentYear = "2026";
         let currentMonth = "All";
         let charts = {};
+        let activeHistYears = new Set();
         const DB_KEY = "hotel_manager_db_v2";
 
         // Auth State Listener
@@ -1032,7 +1034,18 @@
             });
         }
 
-        function renderHistoricalChart(midx) {
+        function toggleHistYear(y) {
+            if (activeHistYears.has(y)) {
+                if (activeHistYears.size > 1) activeHistYears.delete(y);
+            } else {
+                activeHistYears.add(y);
+            }
+            renderHistoricalChart();
+        }
+
+        function renderHistoricalChart(midx_arg) {
+            const midx = midx_arg !== undefined ? midx_arg : (document.getElementById('monthSelector').value === "All" ? -1 : parseInt(document.getElementById('monthSelector').value));
+            
             if (charts['historicalChart']) charts['historicalChart'].destroy();
             const ctx = document.getElementById('historicalChart').getContext('2d');
             const metric = document.getElementById('histMetric').value;
@@ -1042,16 +1055,38 @@
             
             if (years.length === 0) return;
 
+            // Initialize default active years if empty
+            if (activeHistYears.size === 0) {
+                // Default: last 3 years or all if less than 3
+                const defaultYears = years.slice(-3);
+                defaultYears.forEach(y => activeHistYears.add(y));
+            }
+
+            // Build Toggles UI
+            const togglesContainer = document.getElementById('histYearToggles');
+            if (togglesContainer) {
+                togglesContainer.innerHTML = years.map(y => {
+                    const isActive = activeHistYears.has(y);
+                    const bg = isActive ? 'var(--primary)' : 'rgba(255,255,255,0.05)';
+                    const color = isActive ? 'white' : 'var(--text-muted)';
+                    const border = isActive ? 'var(--primary)' : 'rgba(255,255,255,0.1)';
+                    return `<div onclick="toggleHistYear('${y}')" style="background: ${bg}; color: ${color}; border: 1px solid ${border}; padding: 4px 12px; border-radius: 50px; font-size: 0.75rem; font-weight: 700; cursor: pointer; transition: all 0.2s; user-select: none;">${y}</div>`;
+                }).join('');
+            }
+
             const datasets = [];
-            const colorPalette = ['#f59e0b', '#10b981', '#6366f1', '#ec4899', '#06b6d4'];
+            const colorPalette = ['#f59e0b', '#10b981', '#6366f1', '#ec4899', '#06b6d4', '#eab308', '#22c55e', '#3b82f6'];
             const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
             let labels = [];
+            let colorIndex = 0;
 
             if (midx === -1) {
                 // Multi-line chart
                 labels = months;
-                years.forEach((y, i) => {
+                years.forEach(y => {
+                    if (!activeHistYears.has(y)) return;
+                    
                     const dataObj = db[currentHotel][y]?.service?.["TOTAL_MASTER"] || {};
                     let datasetData = new Array(12).fill(null);
                     let hasData = false;
@@ -1069,27 +1104,27 @@
                         } else if (parseInt(y) > now.getFullYear()) {
                             if (rev > 0) { datasetData[m] = v; hasData = true; }
                         } else {
-                            // If past month, only push if rev > 0 or it's genuinely a 0 month (like closed)
-                            // Usually we can just push v.
                             datasetData[m] = v;
                             if (v > 0) hasData = true;
                         }
                     }
                     if (hasData) {
+                        const c = colorPalette[colorIndex % colorPalette.length];
                         datasets.push({
                             label: y,
                             data: datasetData,
-                            borderColor: colorPalette[i % colorPalette.length],
-                            backgroundColor: colorPalette[i % colorPalette.length] + '15',
+                            borderColor: c,
+                            backgroundColor: c + '15',
                             borderWidth: 3,
                             fill: true,
                             tension: 0.4,
                             pointBackgroundColor: '#1e293b',
-                            pointBorderColor: colorPalette[i % colorPalette.length],
+                            pointBorderColor: c,
                             pointBorderWidth: 2,
                             pointRadius: 4,
                             pointHoverRadius: 6
                         });
+                        colorIndex++;
                     }
                 });
 
@@ -1100,7 +1135,7 @@
                         responsive: true, maintainAspectRatio: false,
                         interaction: { mode: 'index', intersect: false },
                         plugins: {
-                            legend: { display: true, position: 'top', labels: { usePointStyle: true, padding: 20, font: {family: "'Outfit', sans-serif", weight: '600'} } },
+                            legend: { display: false },
                             tooltip: { 
                                 callbacks: { 
                                     label: function(context) {
@@ -1126,10 +1161,11 @@
                     }
                 });
             } else {
-                // Bar chart
-                labels = years;
+                // Bar chart for specific month
+                labels = Array.from(activeHistYears).sort();
                 const datasetData = [];
-                years.forEach(y => {
+                const bgColors = [];
+                labels.forEach(y => {
                     const dataObj = db[currentHotel][y]?.service?.["TOTAL_MASTER"] || {};
                     const rev = dataObj.revenue ? (dataObj.revenue[midx] || 0) : 0;
                     const rms = dataObj.rooms ? (dataObj.rooms[midx] || 0) : 0;
@@ -1138,12 +1174,16 @@
                     else if (metric === 'rn') v = rms;
                     else if (metric === 'adr') v = rms > 0 ? rev / rms : 0;
                     datasetData.push(v);
+                    
+                    const c = colorPalette[colorIndex % colorPalette.length];
+                    bgColors.push(c + 'cc');
+                    colorIndex++;
                 });
 
                 datasets.push({
                     label: months[midx],
                     data: datasetData,
-                    backgroundColor: 'rgba(99, 102, 241, 0.8)',
+                    backgroundColor: bgColors,
                     borderRadius: 6,
                     barPercentage: 0.5
                 });
