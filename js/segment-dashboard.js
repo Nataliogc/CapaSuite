@@ -19,6 +19,18 @@ function message(text, error = false) {
 function loadData() {
     try {
         segmentDB = JSON.parse(CapaStorage.getItem(STORAGE_KEY) || '{}') || {};
+        
+        let cleaned = false;
+        for (const h of Object.keys(segmentDB)) {
+            for (const y of Object.keys(segmentDB[h])) {
+                if (Number(y) > 2035) {
+                    delete segmentDB[h][y];
+                    cleaned = true;
+                }
+            }
+        }
+        if (cleaned) CapaStorage.setItem(STORAGE_KEY, JSON.stringify(segmentDB));
+
         const config = JSON.parse(CapaStorage.getItem('upload_config_db_v2') || '{}');
         for (const h of Object.keys(HOTELS)) {
             const rooms = Number(config.options?.['rooms' + h]);
