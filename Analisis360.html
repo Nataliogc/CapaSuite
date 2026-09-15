@@ -551,7 +551,7 @@
         <!-- KPI ROW -->
         <div class="kpi-row">
             <div class="kpi-card" style="animation-delay: 0.1s;">
-                <span class="label">Ingresos Totales</span>
+                <span class="label">Ingresos Habitación</span>
                 <span class="value" id="kpi-total-rev">0 €</span>
                 <div class="trend" id="kpi-rev-vs-prev" style="margin-bottom: 8px;">
                     <span style="font-size: 0.9rem;">--</span> vs Año Anterior
@@ -837,7 +837,7 @@
             const occ = (totalRms / (cap * days)) * 100;
             const revpar = habRev / (cap * days);
 
-            document.getElementById('kpi-total-rev').innerText = fmt(totalRev);
+            document.getElementById('kpi-total-rev').innerText = fmt(habRev);
             document.getElementById('kpi-total-adr').innerText = adr.toFixed(1).replace('.', ',') + " €";
             document.getElementById('kpi-total-revpar').innerText = revpar.toFixed(1).replace('.', ',') + " €";
             document.getElementById('kpi-total-occ').innerText = occ.toFixed(1) + "%";
@@ -847,11 +847,15 @@
 
             // 1. VS LAST YEAR (Real 2025)
             const prevYear = String(parseInt(currentYear) - 1);
-            if (db[hotel][prevYear] && db[hotel][prevYear].service && db[hotel][prevYear].service["TOTAL_MASTER"]) {
-                const pyMaster = db[hotel][prevYear].service["TOTAL_MASTER"];
-                const pyRev = midx === -1 ? pyMaster.revenue.reduce((a, b) => a + b, 0) : pyMaster.revenue[midx];
-                const grow = pyRev > 0 ? ((totalRev - pyRev) / pyRev * 100) : 0;
-                document.getElementById('kpi-rev-vs-prev').innerHTML = `<span style="color:${grow >= 0 ? 'var(--secondary)' : '#ef4444'}">${grow >= 0 ? '↗' : '↘'} ${Math.abs(grow).toFixed(1)}%</span> vs Año Anterior`;
+            if (db[hotel][prevYear] && db[hotel][prevYear].service) {
+                const pyRoomsGrp = Object.values(db[hotel][prevYear].service).find(s => s.name.toUpperCase().includes('HABITACION') && !s.name.toUpperCase().includes('TOTAL_MASTER'));
+                const pyRevArr = pyRoomsGrp ? pyRoomsGrp.revenue : (db[hotel][prevYear].service["TOTAL_MASTER"] ? db[hotel][prevYear].service["TOTAL_MASTER"].revenue : []);
+                
+                if (pyRevArr && pyRevArr.length > 0) {
+                    const pyRev = midx === -1 ? pyRevArr.reduce((a, b) => a + b, 0) : pyRevArr[midx];
+                    const grow = pyRev > 0 ? ((habRev - pyRev) / pyRev * 100) : 0;
+                    document.getElementById('kpi-rev-vs-prev').innerHTML = `<span style="color:${grow >= 0 ? 'var(--secondary)' : '#ef4444'}">${grow >= 0 ? '↗' : '↘'} ${Math.abs(grow).toFixed(1)}%</span> vs Año Anterior`;
+                }
             }
 
             // 2. BUDGET COMPARISON
@@ -877,11 +881,11 @@
                 const bRev = midx === -1 ? budget.rev.reduce((a, b) => a + b, 0) : budget.rev[midx];
                 const bAdr = midx === -1 ? (budget.adr.reduce((a, b) => a + b, 0) / 12) : budget.adr[midx];
                 
-                const pctRev = bRev > 0 ? Math.min(100, (totalRev / bRev * 100)) : 0;
+                const pctRev = bRev > 0 ? Math.min(100, (habRev / bRev * 100)) : 0;
                 const pctAdr = bAdr > 0 ? Math.min(100, (adr / bAdr * 100)) : 0;
                 
             document.getElementById('budget-bar-rev').style.width = pctRev + '%';
-            document.getElementById('budget-pct-rev').innerText = Math.round(totalRev / bRev * 100) + '%';
+            document.getElementById('budget-pct-rev').innerText = Math.round(habRev / bRev * 100) + '%';
             
             document.getElementById('budget-bar-adr').style.width = pctAdr + '%';
             document.getElementById('budget-pct-adr').innerText = Math.round(adr / bAdr * 100) + '%';
