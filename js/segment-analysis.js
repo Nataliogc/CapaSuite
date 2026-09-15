@@ -177,9 +177,9 @@
     const sum = (s, field, selected) => selected.reduce((n, m) => n + (Number(s?.[field]?.[m]) || 0), 0);
     function aggregate(data, selected) {
         const detailed = selected.length > 0 && selected.every(m => data?.segmentCoverage?.[m]);
-        const result = { revenue: 0, rooms: 0, accommodation: detailed ? 0 : null, days: detailed ? selected.reduce((n, m) => n + data.segmentCoverage[m].length, 0) : null };
-        for (const s of segments(data)) { result.revenue += sum(s, 'revenue', selected); result.rooms += sum(s, 'rooms', selected); if (detailed) result.accommodation += sum(s, 'accommodation', selected); }
-        result.adr = detailed && result.rooms > 0 ? result.accommodation / result.rooms : null;
+        const result = { revenue: 0, rooms: 0, accommodation: 0, days: detailed ? selected.reduce((n, m) => n + data.segmentCoverage[m].length, 0) : null };
+        for (const s of segments(data)) { result.revenue += sum(s, 'revenue', selected); result.rooms += sum(s, 'rooms', selected); result.accommodation += sum(s, 'accommodation', selected); }
+        result.adr = result.rooms > 0 ? result.accommodation / result.rooms : null;
         return result;
     }
     function comparable(a, b, selected) {

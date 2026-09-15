@@ -478,11 +478,12 @@
 
         @media (max-width: 1400px) {
             .charts-grid { grid-template-columns: 1fr 1fr; }
-            .grid-360 { grid-template-columns: 1fr; }
+            .grid-360 { grid-template-columns: 1fr 1fr; }
         }
 
         @media (max-width: 900px) {
             .charts-grid { grid-template-columns: 1fr; }
+            .grid-360 { grid-template-columns: 1fr; }
             .top-nav { padding: 0 20px; }
             .header-360 { padding: 30px 20px; flex-direction: column; align-items: flex-start; gap: 20px; }
             .main-container { padding: 0 20px 40px; }
@@ -677,7 +678,7 @@
                     <span class="tag tag-seg" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">FINANZAS</span>
                 </div>
                 <div style="max-height: 500px; overflow-y: auto;">
-                    <table id="segmentsTable">
+                    <table id="departmentsTable">
                         <thead>
                             <tr>
                                 <th>Departamento</th>
@@ -685,7 +686,27 @@
                                 <th>Mix %</th>
                             </tr>
                         </thead>
-                        <tbody id="segmentsBody"></tbody>
+                        <tbody id="departmentsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- SEGMENTS TABLE -->
+            <div class="table-card">
+                <div class="table-header">
+                    <span>Top Segmentos</span>
+                    <span class="tag tag-prod" style="background: rgba(99, 102, 241, 0.1); color: #6366f1;">COMERCIAL</span>
+                </div>
+                <div style="max-height: 500px; overflow-y: auto;">
+                    <table id="realSegmentsTable">
+                        <thead>
+                            <tr>
+                                <th>Segmento</th>
+                                <th>Producción</th>
+                                <th>ADR</th>
+                            </tr>
+                        </thead>
+                        <tbody id="realSegmentsBody"></tbody>
                     </table>
                 </div>
             </div>
@@ -1028,8 +1049,8 @@
                 </tr>`;
             });
 
-            const segBody = document.getElementById('segmentsBody');
-            segBody.innerHTML = '';
+            const deptBody = document.getElementById('departmentsBody');
+            deptBody.innerHTML = '';
 
             const deptData = [];
             Object.entries(agg.summary).forEach(([deptName, data]) => {
@@ -1040,12 +1061,51 @@
 
             deptData.sort((a, b) => b.rev - a.rev).forEach(item => {
                 const mix = agg.totalRev > 0 ? (item.rev / agg.totalRev * 100).toFixed(1) : 0;
-                segBody.innerHTML += `<tr>
+                deptBody.innerHTML += `<tr>
                     <td style="font-weight:700; color:var(--text-main);">${item.name}</td>
                     <td style="font-weight:600;">${fmt(item.rev)}</td>
                     <td style="color:var(--text-muted);">${mix}%</td>
                 </tr>`;
             });
+            
+            const realSegmentsBody = document.getElementById('realSegmentsBody');
+            realSegmentsBody.innerHTML = '';
+            const segDBRaw = CapaStorage.getItem('upload_segment_db_v2');
+            if (segDBRaw) {
+                try {
+                    const segDB = JSON.parse(segDBRaw);
+                    const hotelSegs = segDB[currentHotel]?.[currentYear];
+                    if (hotelSegs && hotelSegs.segment) {
+                        let segData = [];
+                        Object.entries(hotelSegs.segment).forEach(([segName, seg]) => {
+                            let rev = 0, acc = 0, rooms = 0;
+                            const mStart = midx === -1 ? 0 : midx;
+                            const mEnd = midx === -1 ? 11 : midx;
+                            for (let m = mStart; m <= mEnd; m++) {
+                                rev += (seg.revenue?.[m] || 0);
+                                acc += (seg.accommodation?.[m] || 0);
+                                rooms += (seg.rooms?.[m] || 0);
+                            }
+                            if (rev > 0) segData.push({ name: segName, rev, acc, rooms });
+                        });
+                        segData.sort((a, b) => b.rev - a.rev).slice(0, 8).forEach(item => {
+                            const adr = item.rooms > 0 ? (item.acc / item.rooms) : 0;
+                            realSegmentsBody.innerHTML += `<tr>
+                                <td style="font-weight:700; color:var(--text-main);">${item.name}</td>
+                                <td style="font-weight:600;">${fmt(item.rev)}</td>
+                                <td style="color:var(--text-muted);">${fmt(adr)} €</td>
+                            </tr>`;
+                        });
+                        if (segData.length === 0) {
+                            realSegmentsBody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--text-muted); padding:20px;">No hay segmentos cargados</td></tr>';
+                        }
+                    } else {
+                        realSegmentsBody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--text-muted); padding:20px;">No hay segmentos cargados</td></tr>';
+                    }
+                } catch(e) { console.error(e); }
+            } else {
+                realSegmentsBody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--text-muted); padding:20px;">No hay segmentos cargados</td></tr>';
+            }
         }
 
         function toggleHistYear(y) {
