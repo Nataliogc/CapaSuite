@@ -103,11 +103,12 @@
                 segment = totalBlock ? null : block.name;
             }
             if (!metric || (!segment && !totalBlock)) continue;
-            const isTotal = /\b(PRO|PROD|PRODUCCIO?N|REVENUE|VENTA|VTA|INGRESOS?)\b/.test(metric);
-            const isLodging = /ALOJAMIENTO|ALOJAM|SUITE|CAMA SUPLETORIA|LATE CHECK OUT|AMPLIACION|RECARGO|\b(DIA|NOCHE|INDIVIDUAL|DOBLE)\b/.test(metric);
+            const isTotal = /\b(PRO|PROD|PRODUCCIO?N|REVENUE|VENTA|VTA|INGRESOS?|TOTAL|TOTALES|NETO|IMPORTE)\b/.test(metric);
+            const isLodging = /HABITACI|ALOJAMIENTO|ALOJAM|SUITE|CAMA SUPLETORIA|LATE CHECK OUT|AMPLIACION|RECARGO|\b(DIA|NOCHE|INDIVIDUAL|DOBLE)\b/.test(metric);
             const isBreakfast = /DESAYUNO|PENSI|BUFFET/.test(metric);
+            const isNonMoney = /PAX|ADULTOS|NIÑOS|BEBES|CUNAS|OCUPACION|PORCENTAJE|%|DIAS|ESTANCIAS|EDAD/.test(metric);
             if (isLodging && !totalBlock) lodgingRows++;
-            if (!isRooms && !isTotal && !isLodging && !isBreakfast) continue;
+            if (isNonMoney) continue;
             if (isRooms && !totalBlock) roomRows++;
             columns.forEach((c, i) => {
                 if (!c) return;
