@@ -254,7 +254,7 @@
         }
 
         .kpi-card .label { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; display: block; }
-        .kpi-card .value { font-size: 2rem; font-weight: 800; color: white; display: block; margin-bottom: 8px; }
+        .kpi-card .value { font-size: 2rem; font-weight: 800; color: var(--text-main); display: block; margin-bottom: 8px; }
         .kpi-card .trend { font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 6px; }
         
         .status-ok { color: var(--secondary); }
@@ -612,7 +612,7 @@
         <div class="chart-container" style="margin-bottom: 25px; min-height: 420px; display: flex; flex-direction: column;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                 <h3><span style="color: #8b5cf6;">📈</span> Evolución Histórica (Comparativa Anual)</h3>
-                <select id="histMetric" onchange="renderHistoricalChart()" style="font-size: 0.75rem; padding: 6px 12px; border-radius: 8px; background: rgba(30,41,59,0.8); color: white; border: 1px solid var(--primary); cursor:pointer; font-weight: 600;">
+                <select id="histMetric" onchange="renderHistoricalChart()" style="font-size: 0.75rem; padding: 6px 12px; border-radius: 8px; background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--primary); cursor:pointer; font-weight: 600;">
                     <option value="rev">Producción (€)</option>
                     <option value="rn">Estancias (RN)</option>
                     <option value="adr">Precio Medio (ADR)</option>
@@ -1077,9 +1077,9 @@
             if (togglesContainer) {
                 togglesContainer.innerHTML = years.map(y => {
                     const isActive = activeHistYears.has(y);
-                    const bg = isActive ? 'var(--primary)' : 'rgba(255,255,255,0.05)';
+                    const bg = isActive ? 'var(--primary)' : 'rgba(128,128,128,0.1)';
                     const color = isActive ? 'white' : 'var(--text-muted)';
-                    const border = isActive ? 'var(--primary)' : 'rgba(255,255,255,0.1)';
+                    const border = isActive ? 'var(--primary)' : 'rgba(128,128,128,0.2)';
                     return `<div onclick="toggleHistYear('${y}')" style="background: ${bg}; color: ${color}; border: 1px solid ${border}; padding: 4px 12px; border-radius: 50px; font-size: 0.75rem; font-weight: 700; cursor: pointer; transition: all 0.2s; user-select: none;">${y}</div>`;
                 }).join('');
             }
@@ -1157,9 +1157,9 @@
                             }
                         },
                         scales: {
-                            x: { grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false } },
+                            x: { grid: { color: 'rgba(128,128,128,0.15)', drawBorder: false } },
                             y: { 
-                                grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false },
+                                grid: { color: 'rgba(128,128,128,0.15)', drawBorder: false },
                                 ticks: {
                                     callback: function(value) {
                                         if (value >= 1000) return (value/1000).toFixed(value % 1000 === 0 ? 0 : 1) + 'k';
@@ -1217,7 +1217,7 @@
                         },
                         scales: {
                             x: { grid: { display: false } },
-                            y: { grid: { color: 'rgba(255,255,255,0.05)' } }
+                            y: { grid: { color: 'rgba(128,128,128,0.15)' } }
                         }
                     }
                 });
@@ -1256,7 +1256,7 @@
                     scales: type === 'bar' ? {
                         y: { 
                             beginAtZero: true, 
-                            grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false },
+                            grid: { color: 'rgba(128,128,128,0.15)', drawBorder: false },
                             ticks: { font: { size: 10 } }
                         },
                         x: { grid: { display: false }, ticks: { font: { size: 10 } } }
