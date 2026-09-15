@@ -1691,10 +1691,47 @@
                         row += `<td style="text-align:center; vertical-align:middle; padding:4px 2px;">${cellContent}</td>`;
                     }
                 } else {
-                    row += `<td style="text-align:center;">${fmt(gRealVal)}</td>`;
+                    const isClosed = isMonthClosedRow(midx);
+                    const realVal = g.revenue[midx] || 0;
+                    
+                    let otbKey = null;
+                    const gName = g.name.toUpperCase();
+                    if (gName.includes('HABITACIÓN') || gName.includes('HABITACION')) otbKey = 'habitacion';
+                    else if (gName.includes('DESAYUNO')) otbKey = 'desayunos';
+                    else if (gName.includes('RESTAURANTE') || gName.includes('ALMUERZO') || gName.includes('CENA')) otbKey = 'restaurante';
+                    else if (gName.includes('SPA')) otbKey = 'spa';
+                    else if (gName.includes('VARIOS') || gName.includes('OTROS') || gName.includes('EXTRAS')) otbKey = 'varios';
+
+                    let groupOtbArr = (otbData && otbData.breakdown && otbKey && otbData.breakdown[otbKey]) ? otbData.breakdown[otbKey] :
+                        (otbKey === 'habitacion' && otbData && otbData.revenue ? otbData.revenue : new Array(12).fill(0));
+                    
+                    if (!Array.isArray(groupOtbArr)) groupOtbArr = new Array(12).fill(0);
+
+                    const otbVal = isClosed ? 0 : (groupOtbArr[midx] || 0);
+                    const totalCell = realVal + otbVal;
+
+                    let txt = "";
+                    if (isClosed) {
+                        txt = realVal > 0 ? fmt(realVal) : `<span style="opacity:0.3;">-</span>`;
+                    } else {
+                        if (realVal > 0 && otbVal > 0) {
+                            txt = `${fmt(totalCell)} <span style="font-size:0.6rem; color:var(--primary); font-weight:normal;">(OTB: ${fmt(otbVal)})</span>`;
+                        } else if (otbVal > 0) {
+                            txt = `<span style="color:var(--primary);">${fmt(otbVal)}</span>`;
+                        } else if (realVal > 0) {
+                            txt = fmt(realVal);
+                        } else {
+                            txt = `<span style="opacity:0.3;">-</span>`;
+                        }
+                    }
+
+                    const percGroup = hotelTotalProjected > 0 ? (totalCell / hotelTotalProjected * 100).toFixed(1) : "0.0";
+                    row += `<td style="text-align:center;">${txt}</td><td style="text-align:center; font-weight:700;">${percGroup}%</td><td style="color:var(--text-muted); font-size:0.8rem; text-align:center;">-</td></tr>`;
                 }
 
-                row += `<td style="font-weight:700; font-size:0.85rem;">${fmt(gProjectedVal)}</td><td style="color:var(--text-muted); font-size:0.8rem;">${percTotal}%</td></tr>`;
+                if (midx === -1) {
+                    row += `<td style="font-weight:700; font-size:0.85rem;">${fmt(gProjectedVal)}</td><td style="color:var(--text-muted); font-size:0.8rem;">${percTotal}%</td></tr>`;
+                }
 
                 // Add Details
                 g.details.forEach(d => {
@@ -1709,12 +1746,14 @@
                             // Detail rows: Smaller font
                             row += `<td style="text-align:center; font-size:0.7rem; padding:2px;">${txt}</td>`;
                         }
+                        const dTotal = d.revenue.reduce((a, b) => a + b, 0);
+                        row += `<td style="font-weight:600; text-align:center;">${fmt(dTotal)}</td><td></td></tr>`;
                     } else {
                         const dVal = d.revenue[midx] || 0;
-                        row += `<td style="text-align:center;">${fmt(dVal)}</td>`;
+                        const groupTotal = g.revenue[midx] || 0;
+                        const percContrib = groupTotal > 0 ? (dVal / groupTotal * 100).toFixed(1) : "0.0";
+                        row += `<td style="text-align:center;">${fmt(dVal)}</td><td style="text-align:center;"></td><td style="text-align:center; opacity:0.7;">${percContrib}%</td></tr>`;
                     }
-                    const dTotal = d.revenue.reduce((a, b) => a + b, 0);
-                    row += `<td style="opacity:0.7;">${fmt(dTotal)}</td><td></td></tr>`;
                 });
 
                 tbody.innerHTML += row;
