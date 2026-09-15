@@ -856,7 +856,7 @@
 
             // 2. BUDGET COMPARISON
             const budgetKey = `custom_budget_${currentYear}`;
-            const budget = yearData[budgetKey];
+            const budget = db[hotel][budgetKey];
             if (budget && budget.rev) {
                 const bRev = midx === -1 ? budget.rev.reduce((a, b) => a + b, 0) : budget.rev[midx];
                 const bAdr = midx === -1 ? (budget.adr.reduce((a, b) => a + b, 0) / 12) : budget.adr[midx];
@@ -874,11 +874,21 @@
 
             // ADR Yield Analysis
             let yieldLevel = "Media";
-            let yieldClass = "yield-mid";
-            if (pctAdr > 105) { yieldLevel = "Alta (Premium)"; yieldClass = "yield-high"; }
-            if (pctAdr < 95) { yieldLevel = "Baja (Agresiva)"; yieldClass = "yield-low"; }
-            document.getElementById('kpi-adr-vs-prev').innerHTML = `<span class="yield-dot ${yieldClass}"></span> Yield Level: ${yieldLevel}`;
-        }
+            let yieldCol = "var(--accent)";
+            if (pctAdr >= 100) { yieldLevel = "Alta (Óptima)"; yieldCol = "var(--secondary)"; }
+            else if (pctAdr < 90) { yieldLevel = "Baja (Alerta)"; yieldCol = "#ef4444"; }
+            
+            document.getElementById('kpi-adr-vs-prev').innerHTML = `<span style="color:${yieldCol}">⚡</span> Yield Intensity: <span style="color:${yieldCol}">${yieldLevel}</span>`;
+            document.getElementById('kpi-mix-label').innerHTML = `<span>●</span> Mix Alojamiento: ${roomsPerc.toFixed(1)}%`;
+            document.getElementById('budget-pct-revpar').innerText = pctRev.toFixed(0) + '% del ideal';
+            } else {
+                document.getElementById('budget-bar-rev').style.width = '0%';
+                document.getElementById('budget-pct-rev').innerText = '0%';
+                document.getElementById('budget-bar-adr').style.width = '0%';
+                document.getElementById('budget-pct-adr').innerText = '0%';
+                document.getElementById('budget-bar-revpar').style.width = '0%';
+                document.getElementById('budget-pct-revpar').innerText = 'N/A';
+            }
 
             // 3. PICK-UP MONITOR (Last 24h Snapshot)
             let totalPickup = 0;
