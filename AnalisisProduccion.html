@@ -503,7 +503,7 @@
                     <div class="chart-container" style="width:100%;"><canvas id="mainChart"></canvas></div>
                 </div>
                 <div class="card chart-card">
-                    <div class="kpi-label">Pace Report: Gasto Complementario por Pax</div>
+                    <div class="kpi-label">Pace Report: Evolución de RevPAR (€)</div>
                     <div class="chart-container"><canvas id="paceChart"></canvas></div>
                 </div>
                 <div class="card chart-card">
@@ -2200,33 +2200,23 @@
                     }
                 });
 
-                // 3. Pace Chart (Bar)
+                // 3. Pace Chart (Bar) - Changed to RevPAR
                 const labelsPace = midx === -1 ? SHORT_MONTHS : [MONTH_ORDER[midx]];
                 const tyPace = [], lyPace = [];
 
                 const months = midx === -1 ? [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] : [midx];
                 months.forEach(m => {
-                    const pTY = (totalTY.pax && totalTY.pax[m]) || 0;
-                    // PARKING is now inside OFICINAS, so we don't sum it separately here or we depend on where it ended up. 
-                    // Previous logic summed SPA + PARKING + MINIBAR + VARIOS.
-                    // Since PARKING is now OFICINAS, we could include OFICINAS if that was the intent, but usually Offices don't correlate to Pax.
-                    // Let's safe guard the access.
-                    const valSpa = (groupedTY.SPA && groupedTY.SPA.revenue && groupedTY.SPA.revenue[m]) || 0;
-                    const valMinibar = (groupedTY.MINIBAR && groupedTY.MINIBAR.revenue && groupedTY.MINIBAR.revenue[m]) || 0;
-                    const valVarios = (groupedTY.VARIOS && groupedTY.VARIOS.revenue && groupedTY.VARIOS.revenue[m]) || 0;
-                    // removed PARKING as it is not a top level key anymore
+                    // RevPAR approximation using average 30.42 days for consistency with other charts
+                    const capacity = HOTELS[currentHotel].rooms * 30.42;
 
-                    const cTY = valSpa + valMinibar + valVarios;
-                    tyPace.push(pTY > 0 ? (cTY / pTY).toFixed(2) : 0);
+                    // Current Year
+                    const valHab = (groupedTY && groupedTY.HABITACION && groupedTY.HABITACION.revenue && groupedTY.HABITACION.revenue[m]) || 0;
+                    tyPace.push(capacity > 0 ? (valHab / capacity).toFixed(2) : 0);
 
-                    if (totalLY && totalLY.pax) {
-                        const pLY = (totalLY.pax[m]) || 0;
-                        const valSpaLY = (groupedLY && groupedLY.SPA && groupedLY.SPA.revenue && groupedLY.SPA.revenue[m]) || 0;
-                        const valMinibarLY = (groupedLY && groupedLY.MINIBAR && groupedLY.MINIBAR.revenue && groupedLY.MINIBAR.revenue[m]) || 0;
-                        const valVariosLY = (groupedLY && groupedLY.VARIOS && groupedLY.VARIOS.revenue && groupedLY.VARIOS.revenue[m]) || 0;
-
-                        const cLY = valSpaLY + valMinibarLY + valVariosLY;
-                        lyPace.push(pLY > 0 ? (cLY / pLY).toFixed(2) : 0);
+                    // Last Year
+                    if (totalLY) {
+                        const valHabLY = (groupedLY && groupedLY.HABITACION && groupedLY.HABITACION.revenue && groupedLY.HABITACION.revenue[m]) || 0;
+                        lyPace.push(capacity > 0 ? (valHabLY / capacity).toFixed(2) : 0);
                     } else {
                         lyPace.push(0);
                     }
@@ -2238,8 +2228,8 @@
                     data: {
                         labels: labelsPace,
                         datasets: [
-                            { label: 'Current (€/pax)', data: tyPace, backgroundColor: '#4f46e5' },
-                            { label: 'LY (€/pax)', data: lyPace, backgroundColor: '#cbd5e1' }
+                            { label: 'Current (€)', data: tyPace, backgroundColor: '#4f46e5' },
+                            { label: 'LY (€)', data: lyPace, backgroundColor: '#cbd5e1' }
                         ]
                     },
                     options: { maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
