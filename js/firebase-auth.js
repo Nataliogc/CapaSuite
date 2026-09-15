@@ -78,8 +78,10 @@ function checkAuth() {
 
                 // Si acabamos de entrar, descargar datos
                 if (!window._initialDownloadDone) {
+                    const downloaded = await downloadFromCloud();
+                    if (!downloaded) { resolve(user); return; }
                     window._initialDownloadDone = true;
-                    await downloadFromCloud();
+                    startCloudListener(user.uid);
                     // Refrescar página si hay funciones de renderizado
                     const globalUpdate = window.updateAll || window.renderAll || window.render || window.init || window.initView;
                     if (typeof globalUpdate === 'function') globalUpdate();
@@ -93,106 +95,233 @@ function checkAuth() {
 // Ejecutar protección al cargar
 window.addEventListener('load', checkAuth);
 
-/**
- * Sincroniza LocalStorage -> Firebase
- */
-async function uploadToCloud() {
-    const user = cloudAuth.currentUser;
-    if (!user) return;
+// Only changes made in this tab are sent. Remote downloads never become writes.
+const syncFields = {
+    [SYNC_DB_KEY]: 'hotelData',
+    [SYNC_CONFIG_KEY]: 'configData',
+    [SYNC_COMP_KEY]: 'compData'
+};
+const originalSetItem = CapaStorage.setItem.bind(CapaStorage);
+const originalRemoveItem = CapaStorage.removeItem.bind(CapaStorage);
+const pendingChanges = new Map();
+let applyingCloud = false;
+let uploadInFlight = null;
+let cloudListener = null;
+let cloudListenerUid = null;
 
-    const data = CapaStorage.getItem(SYNC_DB_KEY);
-    const config = CapaStorage.getItem(SYNC_CONFIG_KEY);
-    const comp = CapaStorage.getItem(SYNC_COMP_KEY);
-
-    try {
-        await cloudDb.ref('users/' + user.uid).update({
-            hotelData: data,
-            configData: config,
-            compData: comp,
-            lastSync: firebase.database.ServerValue.TIMESTAMP
-        });
-        console.log("☁️ CapaSuite: Datos sincronizados con la nube (Realtime).");
-    } catch (error) {
-        console.error("❌ Error sincronizando con Firebase:", error);
+function syncStatus(message, failed = false) {
+    let status = document.getElementById('capasuiteSyncStatus');
+    const anchor = document.getElementById('userEmailNav');
+    if (!status && anchor && anchor.parentNode) {
+        status = document.createElement('span');
+        status.id = 'capasuiteSyncStatus';
+        status.style.cssText = 'font-size:11px;margin-left:8px;';
+        status.setAttribute('role', 'status');
+        anchor.parentNode.insertBefore(status, anchor.nextSibling);
+    }
+    if (status) {
+        status.textContent = message;
+        status.style.color = failed ? '#dc2626' : '#64748b';
     }
 }
 
-/**
- * Sincroniza Firebase -> LocalStorage
- */
+const sameValue = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const isRecord = v => v !== null && typeof v === 'object' && !Array.isArray(v);
+function parseSyncValue(value) {
+    if (value == null) return null;
+    return JSON.parse(value);
+}
+
+// Three-way merge: unchanged local values cannot erase newer remote values.
+function mergeSyncChanges(base, local, remote) {
+    if (sameValue(base, local)) return remote;
+    if (isRecord(local) && (isRecord(base) || base == null)) {
+        const merged = isRecord(remote) ? { ...remote } : {};
+        for (const key of new Set([...Object.keys(base || {}), ...Object.keys(local)])) {
+            if (['__proto__', 'prototype', 'constructor'].includes(key)) continue;
+            if (!Object.hasOwn(local, key)) {
+                if (base && Object.hasOwn(base, key)) delete merged[key];
+            } else {
+                const value = mergeSyncChanges(base?.[key], local[key], merged[key]);
+                if (value === undefined) delete merged[key];
+                else merged[key] = value;
+            }
+        }
+        return merged;
+    }
+    if (Array.isArray(base) && Array.isArray(local) && base.length === local.length && Array.isArray(remote) && remote.length === local.length) {
+        return local.map((value, index) => mergeSyncChanges(base[index], value, remote[index]));
+    }
+    return local;
+}
+
+function writeLocalSyncValue(key, value) {
+    if (value == null) originalRemoveItem(key);
+    else originalSetItem(key, JSON.stringify(value));
+}
+
+function applyCloudData(cloudData) {
+    applyingCloud = true;
+    try {
+        for (const [key, field] of Object.entries(syncFields)) {
+            // An absent cloud account is not permission to delete local data.
+            if (!Object.hasOwn(cloudData, field)) continue;
+            const remote = parseSyncValue(cloudData[field]);
+            const pending = pendingChanges.get(key);
+            const local = parseSyncValue(CapaStorage.getItem(key));
+            const merged = pending ? mergeSyncChanges(pending.base, local, remote) : remote;
+            writeLocalSyncValue(key, merged);
+            if (pending) pending.base = remote;
+        }
+        window.dispatchEvent(new CustomEvent('capasuite-data-synced'));
+    } finally {
+        applyingCloud = false;
+    }
+}
+
+function scheduleCloudUpload() {
+    if (window._syncTimer) clearTimeout(window._syncTimer);
+    window._syncTimer = null;
+    if (!pendingChanges.size || !cloudAuth.currentUser || !window._initialDownloadDone) return;
+    window._syncTimer = setTimeout(() => {
+        window._syncTimer = null;
+        uploadToCloud().catch(error => console.error('Error guardando cambios en la nube:', error));
+    }, 1000);
+}
+
+async function uploadToCloud() {
+    if (uploadInFlight) return uploadInFlight;
+    const user = cloudAuth.currentUser;
+    if (!user) throw new Error('Primero debes iniciar sesión.');
+    if (!window._initialDownloadDone && !(await downloadFromCloud())) throw new Error('No se ha podido descargar la versión actual de la nube.');
+    if (!pendingChanges.size) return true;
+    if (window._syncTimer) clearTimeout(window._syncTimer);
+    window._syncTimer = null;
+    const changes = [...pendingChanges].map(([key, change]) => ({ key, base: change.base, version: change.version, local: parseSyncValue(CapaStorage.getItem(key)) }));
+    syncStatus('Guardando cambios…');
+    uploadInFlight = (async () => {
+        try {
+            const result = await cloudDb.ref('users/' + user.uid).transaction(current => {
+                const next = { ...(current || {}) };
+                for (const change of changes) {
+                    const field = syncFields[change.key];
+                    const merged = mergeSyncChanges(change.base, change.local, parseSyncValue(next[field]));
+                    next[field] = merged == null ? null : JSON.stringify(merged);
+                }
+                next.lastSync = firebase.database.ServerValue.TIMESTAMP;
+                return next;
+            }, undefined, false);
+            if (!result.committed) throw new Error('El servidor no confirmó el guardado.');
+            const committed = result.snapshot.val() || {};
+            for (const change of changes) {
+                const pending = pendingChanges.get(change.key);
+                if (pending?.version === change.version) pendingChanges.delete(change.key);
+                else if (pending) pending.base = change.local;
+                // Firebase omits fields deleted with null; propagate explicit deletions locally.
+                if (!Object.hasOwn(committed, syncFields[change.key])) committed[syncFields[change.key]] = null;
+            }
+            applyCloudData(committed);
+            syncStatus('Guardado en la nube');
+            console.log('☁️ CapaSuite: cambios confirmados por Firebase.');
+            return true;
+        } catch (error) {
+            syncStatus('Error al guardar en la nube. Cambios pendientes.', true);
+            throw error;
+        } finally {
+            uploadInFlight = null;
+        }
+    })();
+    const result = await uploadInFlight;
+    if (pendingChanges.size) scheduleCloudUpload();
+    return result;
+}
+
 async function downloadFromCloud() {
     const user = cloudAuth.currentUser;
     if (!user) return false;
-
+    syncStatus('Descargando datos…');
     try {
         const snapshot = await cloudDb.ref('users/' + user.uid).once('value');
-        if (snapshot.exists()) {
-            const cloudData = snapshot.val();
-            let hasNewData = false;
-
-            if (cloudData.hotelData) {
-                CapaStorage.setItem(SYNC_DB_KEY, cloudData.hotelData);
-                hasNewData = true;
-            }
-            if (cloudData.configData) {
-                CapaStorage.setItem(SYNC_CONFIG_KEY, cloudData.configData);
-                hasNewData = true;
-            }
-            if (cloudData.compData) {
-                CapaStorage.setItem(SYNC_COMP_KEY, cloudData.compData);
-                hasNewData = true;
-            }
-
-            if (hasNewData) {
-                console.log("☁️ CapaSuite: Datos recuperados de la nube.");
-                // Disparar evento para que las páginas recarguen sus variables locales
-                window.dispatchEvent(new CustomEvent('capasuite-data-synced'));
-                return true;
-            }
-        }
+        applyCloudData(snapshot.val() || {});
+        window._initialDownloadDone = true;
+        syncStatus('Datos descargados de la nube');
+        console.log('☁️ CapaSuite: descarga de la nube completada.');
+        scheduleCloudUpload();
+        return true;
     } catch (error) {
-        console.error("❌ Error recuperando de Firebase:", error);
+        syncStatus('No se pudo descargar la nube. Mostrando copia local.', true);
+        console.error('Error recuperando datos de Firebase:', error);
+        return false;
     }
-    return false;
 }
 
-// Función global para forzar subida técnica
-window.forceCloudUpload = async function () {
-    if (!cloudAuth.currentUser) {
-        alert("Primero debes iniciar sesión.");
-        return;
-    }
-    await uploadToCloud();
-    alert("📤 Tus datos locales han sido subidos a Firebase con éxito.");
-};
+function startCloudListener(uid) {
+    if (cloudListenerUid === uid) return;
+    if (cloudListener) cloudDb.ref('users/' + cloudListenerUid).off('value', cloudListener);
+    cloudListenerUid = uid;
+    cloudListener = snapshot => {
+        if (uploadInFlight) return;
+        try {
+            applyCloudData(snapshot.val() || {});
+            syncStatus(pendingChanges.size ? 'Cambios pendientes de guardar' : 'Sincronizado con la nube');
+        } catch (error) {
+            syncStatus('No se pudo actualizar desde la nube.', true);
+            console.error(error);
+        }
+    };
+    cloudDb.ref('users/' + uid).on('value', cloudListener, error => {
+        syncStatus('Sin conexión con la nube.', true);
+        console.error(error);
+    });
+}
 
-// Interceptar CapaStorage para auto-sincronizar cuando el usuario está logueado
-const originalSetItem = CapaStorage.setItem;
-const originalRemoveItem = CapaStorage.removeItem;
+function recordSyncChange(key, before, after) {
+    if (applyingCloud || !syncFields[key] || before === after) return;
+    const existing = pendingChanges.get(key);
+    pendingChanges.set(key, { base: existing ? existing.base : parseSyncValue(before), version: (existing?.version || 0) + 1 });
+    scheduleCloudUpload();
+}
+
+function readLocalWithoutEcho(key) {
+    const previous = applyingCloud;
+    applyingCloud = true;
+    try { return CapaStorage.getItem(key); }
+    finally { applyingCloud = previous; }
+}
 
 CapaStorage.setItem = function (key, value) {
+    if (applyingCloud) { originalSetItem(key, value); return; }
+    const before = syncFields[key] ? readLocalWithoutEcho(key) : null;
     originalSetItem(key, value);
-    if (cloudAuth.currentUser && (key === SYNC_DB_KEY || key === SYNC_CONFIG_KEY || key === SYNC_COMP_KEY)) {
-        if (window._syncTimer) clearTimeout(window._syncTimer);
-        window._syncTimer = setTimeout(uploadToCloud, 1000); // 1s para cambios normales
-    }
+    recordSyncChange(key, before, value);
 };
-
 CapaStorage.removeItem = function (key) {
+    if (applyingCloud) { originalRemoveItem(key); return; }
+    const before = syncFields[key] ? readLocalWithoutEcho(key) : null;
     originalRemoveItem(key);
-    if (cloudAuth.currentUser && (key === SYNC_DB_KEY || key === SYNC_CONFIG_KEY || key === SYNC_COMP_KEY)) {
-        // Para borrar, somos más agresivos
-        if (window._syncTimer) clearTimeout(window._syncTimer);
-        uploadToCloud(); // Sincronización inmediata para borrar
+    recordSyncChange(key, before, null);
+};
+
+window.forceCloudUpload = async function () {
+    try {
+        await uploadToCloud();
+        // A fresh server read, not the local write result, supplies the confirmation.
+        const snapshot = await cloudDb.ref('users/' + cloudAuth.currentUser.uid).once('value');
+        const saved = snapshot.val() || {};
+        const hotels = parseSyncValue(saved.hotelData) || {};
+        const years = Object.keys(hotels.Guadiana || {}).filter(y => /^\d{4}$/.test(y)).sort();
+        alert('Nube verificada. Años de Guadiana guardados: ' + (years.join(', ') || 'sin datos'));
+    } catch (error) {
+        syncStatus('No se pudo verificar el guardado.', true);
+        alert('No se ha confirmado el guardado en la nube: ' + error.message);
     }
 };
 
-// Asegurar sincronización antes de cerrar la página
-window.addEventListener('beforeunload', () => {
-    if (window._syncTimer) {
-        clearTimeout(window._syncTimer);
-        uploadToCloud();
+window.addEventListener('beforeunload', event => {
+    if (pendingChanges.size || uploadInFlight) {
+        // Do not initiate an unreliable full-database write while closing a tab.
+        event.preventDefault();
+        event.returnValue = '';
     }
 });
-
 window.auth = cloudAuth;
