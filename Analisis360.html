@@ -1121,7 +1121,13 @@
                 years.forEach(y => {
                     if (!activeHistYears.has(y)) return;
                     
-                    const dataObj = db[currentHotel][y]?.service?.["TOTAL_MASTER"] || {};
+                    let dataObj = null;
+                    if (db[currentHotel][y] && db[currentHotel][y].service) {
+                        const pyRoomsGrp = Object.values(db[currentHotel][y].service).find(s => s.name && s.name.toUpperCase().includes('HABITACION') && !s.name.toUpperCase().includes('TOTAL_MASTER'));
+                        if (pyRoomsGrp) dataObj = pyRoomsGrp;
+                        else dataObj = db[currentHotel][y].service["TOTAL_MASTER"];
+                    }
+                    dataObj = dataObj || {};
                     let datasetData = new Array(12).fill(null);
                     let hasData = false;
                     for (let m = 0; m < 12; m++) {
@@ -1200,7 +1206,13 @@
                 const datasetData = [];
                 const bgColors = [];
                 labels.forEach(y => {
-                    const dataObj = db[currentHotel][y]?.service?.["TOTAL_MASTER"] || {};
+                    let dataObj = null;
+                    if (db[currentHotel][y] && db[currentHotel][y].service) {
+                        const pyRoomsGrp = Object.values(db[currentHotel][y].service).find(s => s.name && s.name.toUpperCase().includes('HABITACION') && !s.name.toUpperCase().includes('TOTAL_MASTER'));
+                        if (pyRoomsGrp) dataObj = pyRoomsGrp;
+                        else dataObj = db[currentHotel][y].service["TOTAL_MASTER"];
+                    }
+                    dataObj = dataObj || {};
                     const rev = dataObj.revenue ? (dataObj.revenue[midx] || 0) : 0;
                     const rms = dataObj.rooms ? (dataObj.rooms[midx] || 0) : 0;
                     let v = 0;
