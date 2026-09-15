@@ -103,9 +103,9 @@
                 segment = totalBlock ? null : block.name;
             }
             if (!metric || (!segment && !totalBlock)) continue;
-            const isTotal = /^(PRO|PROD|PRODUCCION|REVENUE|VENTA|VTA)$/.test(metric);
-            const isLodging = /HABITACION|ALOJAMIENTO|SUITE|CAMA SUPLETORIA|LATE CHECK OUT|AMPLIACION|RECARGO GDS|REGARGO GDS/.test(metric) || /^(DIA|NOCHE|INDIVIDUAL|DOBLE)$/.test(metric);
-            const isBreakfast = metric.includes('DESAYUNO');
+            const isTotal = /\b(PRO|PROD|PRODUCCIO?N|REVENUE|VENTA|VTA|INGRESOS?)\b/.test(metric);
+            const isLodging = /ALOJAMIENTO|ALOJAM|SUITE|CAMA SUPLETORIA|LATE CHECK OUT|AMPLIACION|RECARGO|\b(DIA|NOCHE|INDIVIDUAL|DOBLE)\b/.test(metric);
+            const isBreakfast = /DESAYUNO|PENSI|BUFFET/.test(metric);
             if (isLodging && !totalBlock) lodgingRows++;
             if (!isRooms && !isTotal && !isLodging && !isBreakfast) continue;
             if (isRooms && !totalBlock) roomRows++;
@@ -123,8 +123,22 @@
             });
         }
         if (!roomRows) throw new Error('El informe no contiene segmentos con una fila de habitaciones.');
-        if (!lodgingRows) throw new Error('Falta el desglose de alojamiento. Importa el informe detallado para calcular producción, ADR y RevPAR.');
+        
         for (const y of Object.values(years)) {
+            const processFallback = (target) => {
+                if (!target) return;
+                const revSum = target.revenue.reduce((a, b) => a + b, 0);
+                const totSum = target.totalRevenue.reduce((a, b) => a + b, 0);
+                if (revSum === 0 && totSum !== 0) {
+                    for (let i = 0; i < 12; i++) {
+                        target.revenue[i] = target.totalRevenue[i];
+                        target.accommodation[i] = target.totalRevenue[i];
+                    }
+                }
+            };
+            if (y.controls.present) processFallback(y.controls.values);
+            for (const s of Object.values(y.segment)) processFallback(s);
+            
             for (const [m, days] of Object.entries(y.coverage)) {
                 days.sort((a, b) => a - b);
                 if (y.controls.present) for (const field of fields) {
