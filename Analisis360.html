@@ -856,7 +856,23 @@
 
             // 2. BUDGET COMPARISON
             const budgetKey = `custom_budget_${currentYear}`;
-            const budget = db[hotel][budgetKey];
+            let budget = db[hotel][budgetKey];
+            
+            // Fallback to official 2026 budgets if not saved in local storage yet
+            if (!budget && currentYear === "2026") {
+                if (hotel === "Guadiana") {
+                    budget = {
+                        rev: [48728, 68308, 89982, 117837, 168341, 112215, 135720, 130172, 149670, 153014, 111277, 94975],
+                        adr: [60.00, 70.80, 80.50, 82.80, 92.00, 73.60, 78.50, 69.20, 68.60, 69.30, 66.40, 66.80]
+                    };
+                } else if (hotel === "Cumbria") {
+                    budget = {
+                        rev: [66000, 69000, 81000, 101000, 118000, 108000, 126000, 118000, 116000, 111000, 96000, 86000],
+                        adr: [70.00, 70.00, 75.00, 78.00, 87.00, 83.00, 91.00, 87.00, 86.00, 81.00, 78.00, 77.00]
+                    };
+                }
+            }
+
             if (budget && budget.rev) {
                 const bRev = midx === -1 ? budget.rev.reduce((a, b) => a + b, 0) : budget.rev[midx];
                 const bAdr = midx === -1 ? (budget.adr.reduce((a, b) => a + b, 0) / 12) : budget.adr[midx];
