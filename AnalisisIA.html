@@ -565,8 +565,25 @@
                     const rev = revenue[currentMonthIdx];
                     const rms = rooms[currentMonthIdx];
                     const adr = rms > 0 ? (rev / rms).toFixed(2) : 0;
+                    
+                    let yoyText = " Vas por buen camino.";
+                    let type = 'positive';
+                    const prevYearData = hotelData[years[1]];
+                    if (prevYearData && prevYearData.service && prevYearData.service["TOTAL_MASTER"]) {
+                         const revLY = prevYearData.service["TOTAL_MASTER"].revenue[currentMonthIdx];
+                         if (revLY > 0) {
+                             const diff = ((rev - revLY) / revLY) * 100;
+                             if (diff >= 0) {
+                                 yoyText = ` Supone un crecimiento del <b style="color:var(--success);">+${diff.toFixed(1)}%</b> respecto a ${years[1]}.`;
+                                 type = 'positive';
+                             } else {
+                                 yoyText = ` Supone una caída del <b style="color:var(--danger);">${diff.toFixed(1)}%</b> respecto a ${years[1]}.`;
+                                 type = 'warning';
+                             }
+                         }
+                    }
 
-                    addInsight('positive', '📈 Rendimiento Mensual', `En <b>${mName}</b> has generado <b>${new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(rev)}</b> con un ADR de <b>${adr}€</b>. Vas por buen camino.`, 'AnalisisProduccion.html');
+                    addInsight(type, '📈 Rendimiento Mensual', `En <b>${mName}</b> has generado <b>${new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(rev)}</b> con un ADR de <b>${adr}€</b>.${yoyText}`, 'AnalisisProduccion.html');
                 }
             }
 
@@ -746,22 +763,26 @@
 
             const years = Object.keys(hData).sort().reverse();
             const lastYear = years[0]; // 2025 or 2026
+            const prevYear = years[1];
             const yearData = hData[lastYear];
+            const prevYearData = prevYear ? hData[prevYear] : null;
 
             let context = {
                 hotel: currentHotel,
                 year: lastYear,
                 monthly_production: [],
+                historical_production: [],
                 ytd_totals: {},
                 segments_top3: [],
                 competition_alert: "No active alerts"
             };
 
+            const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
             // Production Summary
             if (yearData.service && yearData.service["TOTAL_MASTER"]) {
                 const m = yearData.service["TOTAL_MASTER"];
-                const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-
+                
                 // Only include months with data to save tokens
                 m.revenue.forEach((rev, idx) => {
                     if (rev > 0 || m.rooms[idx] > 0) {
@@ -778,6 +799,22 @@
                     total_revenue: Math.round(m.revenue.reduce((a, b) => a + b, 0)),
                     total_rooms: m.rooms.reduce((a, b) => a + b, 0)
                 };
+            }
+
+            // Historical Production Summary (Last Year)
+            if (prevYearData && prevYearData.service && prevYearData.service["TOTAL_MASTER"]) {
+                const m = prevYearData.service["TOTAL_MASTER"];
+                
+                m.revenue.forEach((rev, idx) => {
+                    if (rev > 0 || m.rooms[idx] > 0) {
+                        context.historical_production.push({
+                            month: months[idx],
+                            revenue: Math.round(rev),
+                            rooms: m.rooms[idx],
+                            adr: m.rooms[idx] > 0 ? Math.round(rev / m.rooms[idx]) : 0
+                        });
+                    }
+                });
             }
 
             // Forecast & Pick-up Summary
