@@ -129,10 +129,17 @@
                 if (!target) return;
                 const revSum = target.revenue.reduce((a, b) => a + b, 0);
                 const totSum = target.totalRevenue.reduce((a, b) => a + b, 0);
-                if (revSum === 0 && totSum !== 0) {
+                const accSum = target.accommodation.reduce((a, b) => a + b, 0);
+                
+                if (Math.abs(totSum) > Math.abs(revSum)) {
                     for (let i = 0; i < 12; i++) {
                         target.revenue[i] = target.totalRevenue[i];
-                        target.accommodation[i] = target.totalRevenue[i];
+                    }
+                }
+                
+                if (accSum === 0 && target.revenue.reduce((a, b) => a + b, 0) !== 0) {
+                    for (let i = 0; i < 12; i++) {
+                        target.accommodation[i] = target.revenue[i];
                     }
                 }
             };
