@@ -313,7 +313,10 @@ function updateCharts(data, previous, months, rows, totals, prior, compareYear, 
     const create = (key, canvas, config) => { charts[key]?.destroy(); charts[key] = new Chart(el(canvas), config); };
     const datasets = [{ label: currentYear, data: months.map(m => SegmentAnalysis.aggregate(data, [m])[currentMetric]), borderColor: '#818cf8', backgroundColor: '#818cf8', tension: 0.2 }];
     if (compareYear) datasets.push({ label: compareYear, data: months.map(m => previous ? SegmentAnalysis.aggregate(previous, [m])[currentMetric] : null), borderColor: '#94a3b8', backgroundColor: '#94a3b8', borderDash: [5, 5] });
-    create('main', 'mainChart', { type: 'line', data: { labels: months.map(m => SHORT_MONTHS[m]), datasets }, options: makeOptions() });
+    const mainOptions = makeOptions();
+    const singleMonth = months.length === 1;
+    if (singleMonth) datasets.forEach(dataset => { dataset.maxBarThickness = 90; });
+    create('main', 'mainChart', { type: singleMonth ? 'bar' : 'line', data: { labels: months.map(m => SHORT_MONTHS[m]), datasets }, options: mainOptions });
     const topOptions = makeOptions(); topOptions.plugins.legend.display = false;
     create('top', 'topChart', { type: 'bar', data: { labels: [currentYear, ...(compareYear ? [compareYear] : [])], datasets: [{ label: metricName, data: [totals[currentMetric], ...(compareYear ? [prior?.[currentMetric] ?? null] : [])], backgroundColor: ['#818cf8', '#94a3b8'] }] }, options: topOptions });
     // ADR is a rate, so compare it with bars rather than a share-of-total chart.
