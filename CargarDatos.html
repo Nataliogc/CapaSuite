@@ -2650,6 +2650,7 @@
                         if (db[hotel][yStr] && db[hotel][yStr].otb) {
                             db[hotel][yStr].otb.rooms.fill(0);
                             db[hotel][yStr].otb.revenue.fill(0);
+                            if (db[hotel][yStr].otb.breakdown && db[hotel][yStr].otb.breakdown.habitacion) db[hotel][yStr].otb.breakdown.habitacion.fill(0);
                             db[hotel][yStr].daily_otb = {};
                         }
                     });
@@ -2661,12 +2662,17 @@
                             if (db[hotel] && db[hotel][yStr]) {
                                 const targetYear = db[hotel][yStr];
                                 if (!targetYear.daily_otb[iso]) targetYear.daily_otb[iso] = { rooms: 0, revenue: 0, breakdown: {} };
+                                if (!targetYear.daily_otb[iso].breakdown) targetYear.daily_otb[iso].breakdown = {};
+                                if (!targetYear.otb.breakdown) targetYear.otb.breakdown = {};
+                                if (!targetYear.otb.breakdown.habitacion) targetYear.otb.breakdown.habitacion = new Array(12).fill(0);
                                 
                                 targetYear.daily_otb[iso].rooms += (dt.rooms || 0);
                                 targetYear.daily_otb[iso].revenue += (dt.revenue || 0);
+                                targetYear.daily_otb[iso].breakdown.habitacion = (targetYear.daily_otb[iso].breakdown.habitacion || 0) + (dt.accommodation || 0);
                                 
                                 targetYear.otb.rooms[m] += (dt.rooms || 0);
                                 targetYear.otb.revenue[m] += (dt.revenue || 0);
+                                targetYear.otb.breakdown.habitacion[m] += (dt.accommodation || 0);
                             }
                         });
                     });
