@@ -129,7 +129,47 @@ async function handleFiles(files) {
                     forecastDB = typeof forecastDB === 'string' ? JSON.parse(forecastDB) : (forecastDB || {});
                     SegmentAnalysis.mergeForecast(forecastDB, hotel, report);
                     CapaStorage.setItem('segment_forecast_v2', JSON.stringify(forecastDB));
-                    successes.push(`${file.name}: Previsión OTB importada con éxito (${Object.keys(report.segmentData).length} segmentos).`);
+                    
+                    // Integración directa con el Calendario Estratégico
+                    let revRaw = CapaStorage.getItem('revenue_data_v2');
+                    let revDB = typeof revRaw === 'string' ? JSON.parse(revRaw) : (revRaw || { data: [] });
+                    if (!revDB.data) revDB.data = [];
+                    
+                    const dailyTotals = {};
+                    for (const seg of Object.values(report.segmentData)) {
+                        for (const [iso, dt] of Object.entries(seg.days)) {
+                            dailyTotals[iso] ||= { rooms: 0, revenue: 0 };
+                            dailyTotals[iso].rooms += (dt.rooms || 0);
+                            dailyTotals[iso].revenue += (dt.revenue || 0);
+                        }
+                    }
+                    
+                    let updatedDays = 0;
+                    for (const [iso, totals] of Object.entries(dailyTotals)) {
+                        let dayEntry = revDB.data.find(d => d.dateISO === iso);
+                        if (!dayEntry) {
+                            dayEntry = { dateISO: iso, occupancyData: {} };
+                            revDB.data.push(dayEntry);
+                        }
+                        dayEntry.occupancyData ||= {};
+                        const hData = dayEntry.occupancyData[hotel] ||= { otb: 0, otb_prev: null, adr: 0, revenue: 0 };
+                        
+                        // Guardar Pick-up si hay variación
+                        if (hData.otb !== totals.rooms && hData.otb > 0) {
+                            hData.otb_prev = hData.otb;
+                        }
+                        
+                        hData.otb = totals.rooms;
+                        hData.revenue = totals.revenue;
+                        hData.adr = totals.rooms > 0 ? totals.revenue / totals.rooms : 0;
+                        updatedDays++;
+                    }
+                    
+                    if (updatedDays > 0) {
+                        CapaStorage.setItem('revenue_data_v2', JSON.stringify(revDB));
+                    }
+                    
+                    successes.push(`${file.name}: Previsión importada (${Object.keys(report.segmentData).length} segmentos). Sincronizados ${updatedDays} días en el Calendario.`);
                     currentHotel = hotel;
                 } else {
                     const next = JSON.parse(JSON.stringify(segmentDB));
