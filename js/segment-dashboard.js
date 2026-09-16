@@ -3,7 +3,8 @@ const MONTH_ORDER = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Jul
 const SHORT_MONTHS = MONTH_ORDER.map(m => m.slice(0, 3));
 const STORAGE_KEY = 'hotel_manager_db_v2';
 const HOTELS = { Guadiana: { rooms: 108 }, Cumbria: { rooms: 59 } };
-let segmentDB = {}, currentHotel = 'Guadiana', currentYear = '', currentMetric = 'revenue', charts = {};
+let historicalDB = {}, forecastDB = {}, segmentDB = {}, currentHotel = 'Guadiana', currentYear = '', currentMetric = 'revenue', charts = {};
+let currentMode = 'historical';
 let currentSegment = null;
 function selectSegment(name) { currentSegment = name; renderDashboard(); }
 const el = id => document.getElementById(id);
@@ -16,26 +17,65 @@ function message(text, error = false) {
     el('import-status').classList.toggle('error', error); 
     if(text) setTimeout(() => message(''), 8000);
 }
+function buildMonthlyFromForecast(db) {
+    const result = {};
+    for (const [hotel, hData] of Object.entries(db)) {
+        result[hotel] = {};
+        for (const [segName, segData] of Object.entries(hData.segment || {})) {
+            for (const [iso, daily] of Object.entries(segData.days || {})) {
+                const [yyyy, mm, dd] = iso.split('-');
+                const year = yyyy;
+                const monthIdx = Number(mm) - 1;
+                
+                result[hotel][year] ||= { segment: {}, coverage: {} };
+                const yData = result[hotel][year];
+                yData.coverage[monthIdx] ||= [];
+                if (!yData.coverage[monthIdx].includes(dd)) yData.coverage[monthIdx].push(dd);
+
+                const seg = yData.segment[segName] ||= { name: segName, revenue: Array(12).fill(0), rooms: Array(12).fill(0), accommodation: Array(12).fill(0), concepts: {} };
+                seg.revenue[monthIdx] += daily.revenue || 0;
+                seg.rooms[monthIdx] += daily.rooms || 0;
+                seg.accommodation[monthIdx] += daily.accommodation || 0;
+            }
+        }
+    }
+    return result;
+}
+function updateMode(triggerRender = true) {
+    const selector = el('modeSelector');
+    currentMode = selector ? selector.value : 'historical';
+    if (currentMode === 'forecast') {
+        segmentDB = buildMonthlyFromForecast(forecastDB);
+    } else {
+        segmentDB = historicalDB;
+    }
+    const years = Object.keys(segmentDB[currentHotel] || {}).sort().reverse();
+    currentYear = years[0] || '';
+    if (triggerRender) initControls();
+}
 function loadData() {
     try {
-        segmentDB = JSON.parse(CapaStorage.getItem(STORAGE_KEY) || '{}') || {};
+        historicalDB = JSON.parse(CapaStorage.getItem(STORAGE_KEY) || '{}') || {};
+        forecastDB = JSON.parse(CapaStorage.getItem('segment_forecast_v2') || '{}') || {};
         
         let cleaned = false;
-        for (const h of Object.keys(segmentDB)) {
-            for (const y of Object.keys(segmentDB[h])) {
+        for (const h of Object.keys(historicalDB)) {
+            for (const y of Object.keys(historicalDB[h])) {
                 if (Number(y) > 2035) {
-                    delete segmentDB[h][y];
+                    delete historicalDB[h][y];
                     cleaned = true;
                 }
             }
         }
-        if (cleaned) CapaStorage.setItem(STORAGE_KEY, JSON.stringify(segmentDB));
+        if (cleaned) CapaStorage.setItem(STORAGE_KEY, JSON.stringify(historicalDB));
 
         const config = JSON.parse(CapaStorage.getItem('upload_config_db_v2') || '{}');
         for (const h of Object.keys(HOTELS)) {
             const rooms = Number(config.options?.['rooms' + h]);
             if (rooms > 0) HOTELS[h].rooms = rooms;
         }
+        
+        updateMode(false);
         initControls();
     } catch (e) { message('No se han podido leer los datos guardados. ' + e.message, true); }
 }
@@ -84,13 +124,22 @@ async function handleFiles(files) {
                 const report = await SegmentReview.read(rows, file.name);
                 if (!report) { failures.push(`${file.name}: importación cancelada. No se han guardado cambios.`); continue; }
                 const hotel = /guadiana/i.test(file.name) ? 'Guadiana' : /cumbria/i.test(file.name) ? 'Cumbria' : currentHotel;
-                const next = JSON.parse(JSON.stringify(segmentDB));
-                const years = SegmentAnalysis.merge(next, hotel, report);
-                CapaStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-                segmentDB = next;
-                currentHotel = hotel; currentYear = years[0];
-                const days = report.years[currentYear].coverage;
-                successes.push(`${file.name}: ${years.join(', ')}. ${Object.values(days).reduce((n, d) => n + d.length, 0)} días en ${currentYear}. Se han sustituido los meses incluidos en el informe.`);
+                if (report.segmentData) {
+                    let forecastDB = CapaStorage.getItem('segment_forecast_v2');
+                    forecastDB = typeof forecastDB === 'string' ? JSON.parse(forecastDB) : (forecastDB || {});
+                    SegmentAnalysis.mergeForecast(forecastDB, hotel, report);
+                    CapaStorage.setItem('segment_forecast_v2', JSON.stringify(forecastDB));
+                    successes.push(`${file.name}: Previsión OTB importada con éxito (${Object.keys(report.segmentData).length} segmentos).`);
+                    currentHotel = hotel;
+                } else {
+                    const next = JSON.parse(JSON.stringify(segmentDB));
+                    const years = SegmentAnalysis.merge(next, hotel, report);
+                    CapaStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+                    segmentDB = next;
+                    currentHotel = hotel; currentYear = years[0];
+                    const days = report.years[currentYear].coverage;
+                    successes.push(`${file.name}: ${years.join(', ')}. ${Object.values(days).reduce((n, d) => n + d.length, 0)} días en ${currentYear}. Se han sustituido los meses incluidos en el informe.`);
+                }
             } catch (e) { failures.push(`${file.name}: ${e.message}`); }
         }
         el('hotelSelector').value = currentHotel;

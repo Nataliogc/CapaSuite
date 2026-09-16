@@ -476,7 +476,12 @@
                     <p>Análisis de canales y tipos de cliente</p>
                 </div>
             </div>
-            <div style="display:flex; gap:12px; align-items:center;">
+            <div style="display:flex; gap:12px; align-items:center; flex-wrap: wrap;">
+                <select aria-label="Modo de análisis" id="modeSelector" class="form-select" onchange="updateMode()"
+                    style="padding:10px; border-radius:8px; border:1px solid var(--primary); background: rgba(99, 102, 241, 0.1); color: var(--primary); font-weight: 800;">
+                    <option value="historical">🕒 Histórico</option>
+                    <option value="forecast">🔮 Previsión (OTB)</option>
+                </select>
                 <select aria-label="Año del análisis" id="yearSelector" class="form-select" onchange="updateView()"
                     style="padding:10px; border-radius:8px; border:1px solid #e2e8f0;"></select>
                 <select aria-label="Periodo del análisis" id="monthSelector" class="form-select" onchange="updateView()"

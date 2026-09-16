@@ -199,6 +199,101 @@
         }
         return Object.keys(report.years).sort().reverse();
     }
+    function parseForecast(rows, fileName = '') {
+        const yearMatches = [...fileName.matchAll(/\d{4}/g)].map(m => Number(m[0]));
+        const startYear = yearMatches.length > 0 ? yearMatches[0] : new Date().getFullYear();
+
+        let header = -1, columns = [];
+        for (let r = 0; r < Math.min(rows.length, 30); r++) {
+            const mapped = (rows[r] || []).map((v, c) => {
+                if (c < 2) return null;
+                const text = String(v ?? '').trim();
+                const shortDate = text.match(/^(\d{1,2})[/-](\d{1,2})$/);
+                if (shortDate) return { month: Number(shortDate[2]) - 1, day: Number(shortDate[1]) };
+                return null;
+            });
+            if (mapped.some(Boolean) && rows.slice(r + 1, r + 6).some(row => /^(HAB|HABI|RN|RMS|NOCHES|HABITACIONES|UNIDADES)$/.test(norm(row?.[1])))) {
+                header = r; columns = mapped; break;
+            }
+        }
+        if (header < 0) throw new Error('No se reconoce la cabecera de fechas diarias (DD/MM) en el informe.');
+
+        let currentYear = startYear;
+        let lastMonth = -1;
+        columns = columns.map(c => {
+            if (!c) return null;
+            if (lastMonth !== -1 && c.month < lastMonth) currentYear++;
+            lastMonth = c.month;
+            return { iso: `${currentYear}-${String(c.month + 1).padStart(2, '0')}-${String(c.day).padStart(2, '0')}` };
+        });
+
+        const blocks = reviewRows(rows, {});
+        const segmentData = {};
+
+        for (const block of blocks) {
+            const segment = block.name;
+            if (/^(TOTAL|TOTAL GENERAL|TOTAL MASTER|RESUMEN)$/.test(norm(segment))) continue;
+            
+            const target = segmentData[segment] ||= { name: segment, days: {} };
+            let roomRows = 0, lodgingRows = 0;
+
+            for (let r = block.row; r <= block.end; r++) {
+                const row = rows[r], metric = String(row?.[1] || '').toUpperCase();
+                if (!metric) continue;
+
+                const isRooms = /^(HAB|HABI|RN|RMS|NOCHES|HABITACIONES|UNIDADES)$/.test(norm(metric));
+                const isTotal = /\b(PRO|PROD|PRODUCCIO?N|REVENUE|VENTA|VTA|INGRESOS?|TOTAL|TOTALES|NETO|IMPORTE)\b/.test(metric);
+                const isLodging = /HABITACI|ALOJAMIENTO|ALOJAM|SUITE|CAMA SUPLETORIA|LATE CHECK OUT|AMPLIACION|RECARGO|REGARGO|\b(DIA|NOCHE|INDIVIDUAL|DOBLE)\b/.test(metric);
+                const isNonMoney = /PAX|ADULTOS|NIÑOS|BEBES|CUNAS|OCUPACION|PORCENTAJE|%|DIAS|ESTANCIAS|EDAD/.test(metric);
+
+                if (isLodging) lodgingRows++;
+                if (isNonMoney) continue;
+                if (isRooms) roomRows++;
+
+                columns.forEach((c, i) => {
+                    if (!c) return;
+                    const value = number(row[i]);
+                    if (value === 0) return;
+                    
+                    const dt = target.days[c.iso] ||= { revenue: 0, rooms: 0, accommodation: 0, totalRevenue: 0 };
+                    
+                    if (isRooms) dt.rooms += value;
+                    else if (isTotal) dt.totalRevenue += value;
+                    else {
+                        dt.revenue += value;
+                        if (isLodging) dt.accommodation += value;
+                    }
+                });
+            }
+            
+            // Fallback for each day
+            for (const dt of Object.values(target.days)) {
+                if (Math.abs(dt.totalRevenue) > Math.abs(dt.revenue)) {
+                    dt.revenue = dt.totalRevenue;
+                }
+                if (dt.accommodation === 0 && dt.revenue !== 0 && lodgingRows === 0) {
+                    dt.accommodation = dt.revenue;
+                }
+            }
+        }
+        return { segmentData, source: fileName, startYear };
+    }
+
+    function mergeForecast(db, hotel, report) {
+        db[hotel] ||= { segment: {} };
+        const target = db[hotel];
+        
+        for (const [name, incomingSeg] of Object.entries(report.segmentData)) {
+            const seg = target.segment[name] ||= { name, days: {} };
+            for (const [iso, dt] of Object.entries(incomingSeg.days)) {
+                seg.days[iso] = dt;
+            }
+        }
+        target.updatedAt = new Date().toISOString();
+        target.source = report.source;
+        return [report.startYear];
+    }
+
     const segments = data => Object.values(data?.segment || {}).filter(s => !/^(TOTAL|TOTAL_MASTER|TOTAL MASTER)$/.test(norm(s.name)));
     const availableMonths = data => Array.from({ length: 12 }, (_, i) => i).filter(i => data?.segmentCoverage?.[i] || segments(data).some(s => Number(s.revenue?.[i]) !== 0 && s.revenue?.[i] != null || Number(s.rooms?.[i]) !== 0 && s.rooms?.[i] != null));
     const sum = (s, field, selected) => selected.reduce((n, m) => n + (Number(s?.[field]?.[m]) || 0), 0);
@@ -216,7 +311,7 @@
         if (!data || !name) return data;
         return { ...data, segment: Object.fromEntries(Object.entries(data.segment || {}).filter(([, segment]) => segment.name === name)) };
     }
-    const api = { parse, merge, aggregate, comparable, availableMonths, segments, sum, number, reviewRows, validSegments, canonical, scope };
+    const api = { parse, merge, parseForecast, mergeForecast, aggregate, comparable, availableMonths, segments, sum, number, reviewRows, validSegments, canonical, scope };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.SegmentAnalysis = api;
 })(typeof window === 'undefined' ? globalThis : window);
