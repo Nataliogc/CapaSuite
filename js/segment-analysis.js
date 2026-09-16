@@ -4,7 +4,7 @@
     const norm = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[.]/g, '').trim();
     const months = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
     const aliases = { 'CORPORATI': 'CORPORATIVO LINEAL', 'DIRECTO O': 'DIRECTO OFFLINE', 'TTOO DINA': 'TTOO DINAMICA', 'D OFF LINE': 'DIRECTO OFFLINE', 'D ON LINE': 'DIRONLINE', 'OTA': 'OTA/AAVV', 'GRUPO TANTEO': 'GRTANTEO', 'TARIFAS NEGOCIADAS': 'CORPORATIVO LINEAL', 'BONO LINEAL': 'OTROS', 'BONO SPA': 'OTROS', 'GRUPO AVORIS': 'AGENCIAS' };
-    const validSegments = ['CORPORATIVO LINEAL', 'DIRECTO OFFLINE', 'DIRONLINE', 'GRTANTEO', 'GRUPOS', 'OTA/AAVV', 'OTROS', 'TTOO DINAMICA', 'PARTICULARES', 'AGENCIAS'];
+    const validSegments = ['CORPORATIVO LINEAL', 'DIRECTO OFFLINE', 'DIRONLINE', 'GRTANTEO', 'GRUPOS', 'OTA/AAVV', 'OTROS', 'TTOO DINAMICA', 'PARTICULARES', 'AGENCIAS', 'BONO ONLINE'];
     const isRoomMetric = value => /^(HAB|HABI|RN|RMS|NOCHES|HABITACIONES|UNIDADES)$/.test(norm(value));
     const canonical = value => aliases[norm(value)] || norm(value);
     const isTotalName = value => /^(TOTAL|TOTAL GENERAL|TOTAL MASTER|RESUMEN)$/.test(norm(value));

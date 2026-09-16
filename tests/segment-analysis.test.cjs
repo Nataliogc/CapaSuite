@@ -3,6 +3,19 @@ const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const fs = require('node:fs');
 const S = require('../js/segment-analysis.js');
+test('Cumbria Bono Online imports as a separate segment', () => {
+    const report = S.parse([
+        ['Seg.', '', 'Ene.25'],
+        ['Bono Online', 'Hab', 2],
+        ['', 'HABITACION DOBLE', 120],
+        ['OTROS', 'Hab', 1],
+        ['', 'HABITACION DOBLE', 50]
+    ]);
+    const db = {}; S.merge(db, 'Cumbria', report);
+    assert.equal(db.Cumbria[2025].segment['BONO ONLINE'].rooms[0], 2);
+    assert.equal(db.Cumbria[2025].segment['BONO ONLINE'].revenue[0], 120);
+    assert.equal(db.Cumbria[2025].segment.OTROS.revenue[0], 50);
+});
 test('historical day/month headers use the filename year and ignore Total and Porc.', () => {
     const rows = [['Seg.', '', '01/01', '02/01', 'Total', 'Porc.'], ['GRUPOS', 'Hab', 2, 3, 5, 100], ['', 'SUITE', 100, 200, 300, 100]];
     const report = S.parse(rows, 'Guadiana seg Estadistica desde dia 01-01-25 hasta 31-01-25.xlsx');
