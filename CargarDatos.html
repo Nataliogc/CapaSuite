@@ -2468,6 +2468,8 @@
                     try { customEvents = JSON.parse(savedEvents); } catch(e) { customEvents = []; }
                 }
 
+                let seenLabels = new Set(); // Evitar sumar bloques de resumen que repiten las mismas filas
+
                 for (let r = headerRowIndex + 1; r < data.length; r++) {
                     const row = data[r];
                     if (!row || row.length < 1) continue;
@@ -2481,6 +2483,8 @@
                         }
                     }
                     
+                    const canonLabel = rowLabel.trim().replace(/\s+/g, ' ');
+
                     // Enhanced Metric Classifier: Highly specific to separate Room Units from Currency
                     const isTotalRow = rowLabel.includes("PROD") || rowLabel.includes("TOTAL") || rowLabel.includes("GENERAL");
                     
@@ -2513,6 +2517,13 @@
                         }
                         continue;
                     }
+                    
+                    // Prevenir duplicidades (PMS que repite los segmentos al final)
+                    if (seenLabels.has(canonLabel)) {
+                        console.log(`⚠️ Fila ${r} ignorada (Duplicada / Resumen): "${canonLabel}"`);
+                        continue;
+                    }
+                    seenLabels.add(canonLabel);
 
                     for (let c = 0; c < row.length; c++) {
                         const iso = dailyCols[c];
