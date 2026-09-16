@@ -573,11 +573,11 @@
                     <h3 style="margin: 0; color: var(--primary);">Desglose de Producción por Conceptos</h3>
                 </div>
                 <div class="analysis-note" style="padding: 12px 20px; margin: 0; background: rgba(99, 102, 241, 0.05); border-bottom: 1px solid var(--border); border-left: 3px solid var(--primary);">
-                    Muestra cómo se distribuyen los ingresos del segmento seleccionado entre los distintos conceptos exportados por el PMS.
+                    Ingresos por categoría hotelera y concepto, con el mismo criterio de clasificación que Producción.
                 </div>
                 <div class="table-container" style="max-height: 400px; border-radius: 0; box-shadow: none;">
                     <table style="width: 100%; min-width: 600px;">
-                        <thead>
+                        <thead id="concepts-head">
                             <tr>
                                 <th style="background: var(--bg-glass) !important; color: var(--text-muted); padding: 12px 20px;">Concepto Facturado</th>
                                 <th style="background: var(--bg-glass) !important; color: var(--text-muted); padding: 12px 20px; text-align: right;">Importe</th>
@@ -607,7 +607,8 @@
 
     <script src="js/segment-analysis.js?v=20260916-bono-spa"></script>
     <script src="js/segment-review.js"></script>
-    <script src="js/segment-dashboard.js?v=20260916-single-month-chart"></script>
+    <script src="js/production-groups.js?v=20260916"></script>
+    <script src="js/segment-dashboard.js?v=20260916-grouped-detail"></script>
 </body>
 
 </html>
