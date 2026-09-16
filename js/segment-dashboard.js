@@ -9,8 +9,8 @@ let currentSegment = null;
 function selectSegment(name) { currentSegment = name; renderDashboard(); }
 const el = id => document.getElementById(id);
 const escapeHTML = text => String(text ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const fmt = (n, metric = 'revenue') => n == null || !Number.isFinite(n) ? '—' : new Intl.NumberFormat('es-ES', metric === 'rooms' ? { maximumFractionDigits: 0 } : { style: 'currency', currency: 'EUR', maximumFractionDigits: metric === 'adr' ? 2 : 0 }).format(n);
-const pct = n => n == null || !Number.isFinite(n) ? '—' : new Intl.NumberFormat('es-ES', { style: 'percent', maximumFractionDigits: 1 }).format(n);
+const fmt = (n, metric = 'revenue') => n == null || !Number.isFinite(n) ? '—' : new Intl.NumberFormat('es-ES', metric === 'rooms' ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+const pct = n => n == null || !Number.isFinite(n) ? '—' : new Intl.NumberFormat('es-ES', { style: 'percent', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 const delta = (a, b) => a == null || b == null ? '—' : b === 0 ? (a === 0 ? '=' : 'N/A') : `${a >= b ? '+' : ''}${pct((a - b) / Math.abs(b))}`;
 function message(text, error = false) { 
     el('import-status').textContent = text; 
@@ -246,11 +246,11 @@ function renderDashboard() {
         const mix = mixTotal ? (currentMetric === 'rooms' ? row.rooms : row.revenue) / mixTotal : null;
         const oldMix = priorMixTotal ? (currentMetric === 'rooms' ? row.before : row.oldRevenue) / priorMixTotal : null;
         const difference = row.before != null && row.value != null ? row.value - row.before : null;
-        return `<tr><td><button class="toggle-btn${row.name === currentSegment ? ' active' : ''}" data-segment="${escapeHTML(row.name)}">${escapeHTML(row.name)}</button></td><td>${fmt(row.value, currentMetric)}</td><td>${fmt(row.before, currentMetric)}</td><td class="${difference > 0 ? 'positive' : difference < 0 ? 'negative' : ''}">${difference > 0 ? '+' : ''}${fmt(difference, currentMetric)}</td><td>${delta(row.value, row.before)}</td><td>${pct(mix)}</td><td>${oldMix == null || mix == null ? '—' : new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1, signDisplay: 'always' }).format((mix - oldMix) * 100) + ' pp'}</td></tr>`;
+        return `<tr><td><button class="toggle-btn${row.name === currentSegment ? ' active' : ''}" data-segment="${escapeHTML(row.name)}">${escapeHTML(row.name)}</button></td><td>${fmt(row.value, currentMetric)}</td><td>${fmt(row.before, currentMetric)}</td><td class="${difference > 0 ? 'positive' : difference < 0 ? 'negative' : ''}">${difference > 0 ? '+' : ''}${fmt(difference, currentMetric)}</td><td>${delta(row.value, row.before)}</td><td>${pct(mix)}</td><td>${oldMix == null || mix == null ? '—' : new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2, signDisplay: 'always' }).format((mix - oldMix) * 100) + ' pp'}</td></tr>`;
     }).join('') || '<tr><td colspan="7">No hay segmentos para esta búsqueda.</td></tr>';
     el('tableBody').querySelectorAll('[data-segment]').forEach(button => { button.onclick = () => selectSegment(button.dataset.segment); });
     const totalValue = hotelTotals[currentMetric], priorValue = hotelPrior?.[currentMetric];
-    el('tableFoot').innerHTML = `<tr><td>Total del periodo</td><td>${fmt(totalValue, currentMetric)}</td><td>${fmt(priorValue, currentMetric)}</td><td>${fmt(priorValue != null && totalValue != null ? totalValue - priorValue : null, currentMetric)}</td><td>${delta(totalValue, priorValue)}</td><td>${mixTotal ? '100 %' : '—'}</td><td>—</td></tr>`;
+    el('tableFoot').innerHTML = `<tr><td>Total del periodo</td><td>${fmt(totalValue, currentMetric)}</td><td>${fmt(priorValue, currentMetric)}</td><td>${fmt(priorValue != null && totalValue != null ? totalValue - priorValue : null, currentMetric)}</td><td>${delta(totalValue, priorValue)}</td><td>${mixTotal ? pct(1) : '—'}</td><td>—</td></tr>`;
     el('table-note').textContent = `${visible.length} de ${rows.length} segmentos. La búsqueda localiza filas; selecciona el nombre para cambiar el análisis. Este total corresponde al hotel. Peso en ADR = peso de producción. pp = puntos porcentuales.`;
     const leaders = [...rows].sort((a, b) => b.revenue - a.revenue);
     const leader = leaders[0];
