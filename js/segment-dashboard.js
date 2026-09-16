@@ -9,7 +9,7 @@ let currentSegment = null;
 function selectSegment(name) { currentSegment = name; renderDashboard(); }
 const el = id => document.getElementById(id);
 const escapeHTML = text => String(text ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const fmt = (n, metric = 'revenue') => n == null || !Number.isFinite(n) ? '—' : new Intl.NumberFormat('es-ES', metric === 'rooms' ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+const fmt = (n, metric = 'revenue') => n == null || !Number.isFinite(n) ? '—' : new Intl.NumberFormat('es-ES', metric === 'rooms' ? { maximumFractionDigits: 0 } : { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 const pct = n => n == null || !Number.isFinite(n) ? '—' : new Intl.NumberFormat('es-ES', { style: 'percent', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 const delta = (a, b) => a == null || b == null ? '—' : b === 0 ? (a === 0 ? '=' : 'N/A') : `${a >= b ? '+' : ''}${pct((a - b) / Math.abs(b))}`;
 function message(text, error = false) { 
