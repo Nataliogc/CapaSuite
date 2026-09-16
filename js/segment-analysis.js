@@ -3,8 +3,8 @@
     'use strict';
     const norm = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[.]/g, '').trim();
     const months = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
-    const aliases = { CORPORATI: 'CORPORATIVO LINEAL', 'DIRECTO O': 'DIRECTO OFFLINE', 'TTOO DINA': 'TTOO DINAMICA' };
-    const validSegments = ['CORPORATIVO LINEAL', 'DIRECTO OFFLINE', 'DIRONLINE', 'GRTANTEO', 'GRUPOS', 'OTA/AAVV', 'OTROS', 'TTOO DINAMICA'];
+    const aliases = { 'CORPORATI': 'CORPORATIVO LINEAL', 'DIRECTO O': 'DIRECTO OFFLINE', 'TTOO DINA': 'TTOO DINAMICA', 'D OFF LINE': 'DIRECTO OFFLINE', 'D ON LINE': 'DIRONLINE', 'OTA': 'OTA/AAVV', 'GRUPO TANTEO': 'GRTANTEO', 'TARIFAS NEGOCIADAS': 'CORPORATIVO LINEAL', 'BONO LINEAL': 'OTROS', 'BONO SPA': 'OTROS', 'GRUPO AVORIS': 'AGENCIAS' };
+    const validSegments = ['CORPORATIVO LINEAL', 'DIRECTO OFFLINE', 'DIRONLINE', 'GRTANTEO', 'GRUPOS', 'OTA/AAVV', 'OTROS', 'TTOO DINAMICA', 'PARTICULARES', 'AGENCIAS'];
     const isRoomMetric = value => /^(HAB|HABI|RN|RMS|NOCHES|HABITACIONES|UNIDADES)$/.test(norm(value));
     const canonical = value => aliases[norm(value)] || norm(value);
     const isTotalName = value => /^(TOTAL|TOTAL GENERAL|TOTAL MASTER|RESUMEN)$/.test(norm(value));
@@ -13,8 +13,9 @@
             if (!isRoomMetric(row?.[1])) return [];
             const cell = 'A' + (index + 1), original = String(row[0] ?? '').trim();
             const value = Object.hasOwn(corrections, cell) ? corrections[cell] : original;
-            const name = canonical(value);
-            const reason = !name ? 'Falta el segmento a la izquierda de Hab.' : !validSegments.includes(name) && !isTotalName(name) ? 'Segmento no válido. Debes asignarlo a un segmento correcto.' : '';
+            let name = canonical(value);
+            if (!name && !original) name = 'TOTAL GENERAL';
+            const reason = !name ? 'Falta el segmento a la izquierda de Hab.' : !validSegments.includes(name) && !isTotalName(name) ? 'Segmento no v\u00e1lido. Debes asignarlo a un segmento correcto.' : '';
             return [{ cell, row: index + 1, original, name, reason }];
         });
     }
@@ -199,10 +200,8 @@
         }
         return Object.keys(report.years).sort().reverse();
     }
-    function parseForecast(rows, fileName = '') {
-        const yearMatches = [...fileName.matchAll(/\d{4}/g)].map(m => Number(m[0]));
-        const startYear = yearMatches.length > 0 ? yearMatches[0] : new Date().getFullYear();
-
+    function parseForecast(rows, fileName = '', corrections = {}) {
+        let startYear = Number((fileName.match(/20\d{2}/) || [new Date().getFullYear()])[0]);
         let header = -1, columns = [];
         for (let r = 0; r < Math.min(rows.length, 30); r++) {
             const mapped = (rows[r] || []).map((v, c) => {
@@ -227,17 +226,27 @@
             return { iso: `${currentYear}-${String(c.month + 1).padStart(2, '0')}-${String(c.day).padStart(2, '0')}` };
         });
 
-        const blocks = reviewRows(rows, {});
+        const blocks = reviewRows(rows, corrections);
+        if (blocks.some(b => b.reason)) {
+            const error = new Error('Revisión requerida');
+            error.code = 'SEGMENT_REVIEW';
+            error.blocks = blocks;
+            throw error;
+        }
+
+        for (let i = 0; i < blocks.length; i++) {
+            blocks[i].end = i + 1 < blocks.length ? blocks[i+1].row - 2 : rows.length - 1;
+        }
         const segmentData = {};
 
         for (const block of blocks) {
             const segment = block.name;
-            if (/^(TOTAL|TOTAL GENERAL|TOTAL MASTER|RESUMEN)$/.test(norm(segment))) continue;
+            if (/^(TOTAL|TOTAL GENERAL|TOTAL MASTER|RESUMEN)$/.test(norm(segment)) || !segment) continue;
             
             const target = segmentData[segment] ||= { name: segment, days: {} };
             let roomRows = 0, lodgingRows = 0;
 
-            for (let r = block.row; r <= block.end; r++) {
+            for (let r = block.row - 1; r <= block.end; r++) {
                 const row = rows[r], metric = String(row?.[1] || '').toUpperCase();
                 if (!metric) continue;
 

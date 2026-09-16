@@ -9,8 +9,8 @@
     <script src="js/chart.js"></script>
     <script src="js/xlsx.full.min.js"></script>
     <script src="js/storage.js"></script>
-    <script src="js/segment-analysis.js"></script>
-    <script src="js/segment-review.js"></script>
+    <script src="js/segment-analysis.js?v=3"></script>
+    <script src="js/segment-review.js?v=3"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -1792,8 +1792,19 @@
                     // 5. Evita congelar la UI usando setTimeout para permitir renderizado del loader (Fase 1)
                     setTimeout(async () => {
                         try {
-                            const reviewed = type === 'Seg' ? await SegmentReview.read(jsonData, file.name, manualDate) : null;
-                            if (type === 'Seg' && !reviewed) { document.getElementById('loader').style.display = 'none'; showToast('Importación cancelada. No se han guardado cambios.', 'info'); return; }
+                            let reviewed = null;
+                            if (type === 'Seg') {
+                                reviewed = await SegmentReview.read(jsonData, file.name, manualDate);
+                                if (!reviewed) { document.getElementById('loader').style.display = 'none'; showToast('Importación cancelada.', 'info'); return; }
+                            } else if (type === 'Otb' || type === 'Prevision') {
+                                try {
+                                    reviewed = await SegmentReview.read(jsonData, file.name, manualDate);
+                                    if (!reviewed) { document.getElementById('loader').style.display = 'none'; showToast('Importación cancelada.', 'info'); return; }
+                                } catch (e) {
+                                    console.warn("No segment structure detected or parsing failed, falling back to legacy parser.", e);
+                                    reviewed = null;
+                                }
+                            }
                             processDataForDB(jsonData, file.name, hotel, type, manualDate, reviewed);
                             finalizeUpload(type, hotel, period, year, file, manualDate, dateInfo);
                         } catch (pErr) {
@@ -2631,6 +2642,44 @@
                     }
                 });
                 
+                // OVERRIDE WITH CLEAN SEGMENT-ANALYSIS MODULE TO FIX DOUBLE COUNTING AND CAPTURE SEGMENTS
+                try {
+                    const report = reviewedReport || SegmentAnalysis.parseForecast(data, fileName);
+                    
+                    yearsToClear.forEach(yStr => {
+                        if (db[hotel][yStr] && db[hotel][yStr].otb) {
+                            db[hotel][yStr].otb.rooms.fill(0);
+                            db[hotel][yStr].otb.revenue.fill(0);
+                            db[hotel][yStr].daily_otb = {};
+                        }
+                    });
+
+                    Object.values(report.segmentData).forEach(seg => {
+                        Object.entries(seg.days).forEach(([iso, dt]) => {
+                            const [yStr, mStr] = iso.split('-');
+                            const m = parseInt(mStr, 10) - 1;
+                            if (db[hotel] && db[hotel][yStr]) {
+                                const targetYear = db[hotel][yStr];
+                                if (!targetYear.daily_otb[iso]) targetYear.daily_otb[iso] = { rooms: 0, revenue: 0, breakdown: {} };
+                                
+                                targetYear.daily_otb[iso].rooms += (dt.rooms || 0);
+                                targetYear.daily_otb[iso].revenue += (dt.revenue || 0);
+                                
+                                targetYear.otb.rooms[m] += (dt.rooms || 0);
+                                targetYear.otb.revenue[m] += (dt.revenue || 0);
+                            }
+                        });
+                    });
+                    
+                    let forecastDB = CapaStorage.getItem('segment_forecast_v2');
+                    forecastDB = typeof forecastDB === 'string' ? JSON.parse(forecastDB) : (forecastDB || {});
+                    SegmentAnalysis.mergeForecast(forecastDB, hotel, report);
+                    CapaStorage.setItem('segment_forecast_v2', JSON.stringify(forecastDB));
+                    console.log("OTB and Forecast Segments cleanly parsed and merged via SegmentAnalysis");
+                } catch (e) {
+                    console.error("Error in parseForecast override:", e);
+                }
+
                 if (customEvents.length > 0) {
                     CapaStorage.setItem('custom_events', JSON.stringify(customEvents));
                 }

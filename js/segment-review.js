@@ -49,7 +49,7 @@
                     event.preventDefault();
                     try { 
                         close(isForecast 
-                            ? SegmentAnalysis.parseForecast(rows, fileName) // No corrections supported currently for forecast
+                            ? SegmentAnalysis.parseForecast(rows, fileName, Object.fromEntries(inputs.map(([cell, input]) => [cell, input.value])))
                             : SegmentAnalysis.parse(rows, fileName, period, Object.fromEntries(inputs.map(([cell, input]) => [cell, input.value])))
                         ); 
                     }
