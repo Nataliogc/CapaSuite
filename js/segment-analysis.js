@@ -119,8 +119,12 @@
                 if (isRooms) target.rooms[c.month] += value;
                 else if (isTotal) target.totalRevenue[c.month] += value;
                 else {
-                    target.concepts ||= {};
                     const safeMetric = metric || 'DESCONOCIDO';
+                    // Si la métrica/concepto coincide con el nombre de un segmento, es un desglose del bloque de totales.
+                    // Lo ignoramos para no sumarlo como concepto ni duplicar la producción.
+                    if (validSegments.includes(canonical(safeMetric))) continue;
+
+                    target.concepts ||= {};
                     target.concepts[safeMetric] ||= Array(12).fill(0);
                     target.concepts[safeMetric][c.month] += value;
                     
@@ -269,6 +273,7 @@
                     if (isRooms) dt.rooms += value;
                     else if (isTotal) dt.totalRevenue += value;
                     else {
+                        if (validSegments.includes(canonical(metric))) return;
                         dt.revenue += value;
                         if (isLodging) dt.accommodation += value;
                     }
