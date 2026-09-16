@@ -115,14 +115,14 @@
                 const y = years[c.year], value = number(row[i]);
                 const target = totalBlock ? (y.controls.values ||= empty('TOTAL')) : (y.segment[segment] ||= empty(segment));
                 
-                target.concepts ||= {};
-                const safeMetric = metric || 'DESCONOCIDO';
-                target.concepts[safeMetric] ||= Array(12).fill(0);
-                target.concepts[safeMetric][c.month] += value;
-
                 if (isRooms) target.rooms[c.month] += value;
                 else if (isTotal) target.totalRevenue[c.month] += value;
                 else {
+                    target.concepts ||= {};
+                    const safeMetric = metric || 'DESCONOCIDO';
+                    target.concepts[safeMetric] ||= Array(12).fill(0);
+                    target.concepts[safeMetric][c.month] += value;
+                    
                     target.revenue[c.month] += value;
                     if (isLodging) target.accommodation[c.month] += value;
                 }

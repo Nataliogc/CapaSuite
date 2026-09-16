@@ -563,16 +563,20 @@
 
             <section class="card"><h3 id="monthly-title">Detalle mensual</h3><div class="table-container"><table><thead><tr><th>Mes</th><th>Producción</th><th>Año comparado</th><th>Variación</th><th>Habitaciones (RN)</th><th>ADR</th><th>Peso en el hotel</th></tr></thead><tbody id="monthly-body"></tbody></table></div></section>
             
-            <section class="card" id="concepts-card" style="display: none;">
-                <h3>Desglose de Producción por Conceptos</h3>
-                <p class="analysis-note" style="margin-bottom: 15px;">Muestra cómo se distribuyen los ingresos del segmento seleccionado entre los distintos conceptos exportados por el PMS.</p>
-                <div class="table-container">
-                    <table>
+            <section class="card" id="concepts-card" style="display: none; padding: 0; overflow: hidden; margin-top: 20px;">
+                <div style="padding: 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface);">
+                    <h3 style="margin: 0; color: var(--primary);">Desglose de Producción por Conceptos</h3>
+                </div>
+                <div class="analysis-note" style="padding: 12px 20px; margin: 0; background: rgba(99, 102, 241, 0.05); border-bottom: 1px solid var(--border); border-left: 3px solid var(--primary);">
+                    Muestra cómo se distribuyen los ingresos del segmento seleccionado entre los distintos conceptos exportados por el PMS.
+                </div>
+                <div class="table-container" style="max-height: 400px; border-radius: 0; box-shadow: none;">
+                    <table style="width: 100%; min-width: 600px;">
                         <thead>
                             <tr>
-                                <th>Concepto Facturado</th>
-                                <th>Importe</th>
-                                <th>Peso sobre el Total</th>
+                                <th style="background: var(--bg-glass) !important; color: var(--text-muted); padding: 12px 20px;">Concepto Facturado</th>
+                                <th style="background: var(--bg-glass) !important; color: var(--text-muted); padding: 12px 20px; text-align: right;">Importe</th>
+                                <th style="background: var(--bg-glass) !important; color: var(--text-muted); padding: 12px 20px; text-align: right;">Peso sobre el Total</th>
                             </tr>
                         </thead>
                         <tbody id="concepts-body"></tbody>
