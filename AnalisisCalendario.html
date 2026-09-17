@@ -1034,6 +1034,12 @@
             const rawProd = CapaStorage.getItem('hotel_manager_db_v2');
             if (rawProd) {
                 db = JSON.parse(rawProd);
+                if (db.Cumbria && db.Cumbria['2027'] && db.Cumbria['2027'].otb_prev) {
+                    const prev = db.Cumbria['2027'].otb_prev;
+                    if (prev.snapshotDate === '31-12-2027' || (prev.daily_otb && prev.daily_otb['2027-01-02'] && (prev.daily_otb['2027-01-02'].rooms >= 50 || prev.daily_otb['2027-01-02'] >= 50))) {
+                        delete db.Cumbria['2027'].otb_prev;
+                    }
+                }
             }
 
             // 3. Events
@@ -1266,8 +1272,13 @@
                                     occ = Math.round(yearData.daily[iso].rooms || yearData.daily[iso]);
                                 }
                                 if (yearData.otb_prev && yearData.otb_prev.daily_otb && yearData.otb_prev.daily_otb[iso]) {
-                                    const vPrev = yearData.otb_prev.daily_otb[iso];
-                                    otb_prev = Math.round((typeof vPrev === 'object') ? (vPrev.rooms || 0) : vPrev);
+                                    if (yearData.otb_prev.snapshotDate !== '31-12-2027') {
+                                        const vPrev = yearData.otb_prev.daily_otb[iso];
+                                        const pVal = Math.round((typeof vPrev === 'object') ? (vPrev.rooms || 0) : vPrev);
+                                        if (!(hName === 'Cumbria' && iso === '2027-01-02' && pVal >= 50)) {
+                                            otb_prev = pVal;
+                                        }
+                                    }
                                 }
 
                                 const root = revenueData[iso];
@@ -1287,11 +1298,12 @@
                                 const finalOtb = (otb >= 0) ? otb : (nested.otb || fallbackOtb);
                                 const finalOcc = (otb > 0) ? otb : ((occ > 0) ? occ : (nested.occ || finalOtb));
                                 const finalAdr = (adr > 0) ? adr : (nested.adr || fallbackAdr);
+                                const cleanNestedOtbPrev = (nested.otb_prev !== undefined && !(hName === 'Cumbria' && iso === '2027-01-02' && nested.otb_prev >= 50)) ? Math.round(nested.otb_prev) : null;
 
                                 revenueData[iso].occupancyData[hName] = { 
                                     otb: Math.round(finalOtb), 
                                     occ: Math.round(finalOcc), 
-                                    otb_prev: otb_prev !== null ? Math.round(otb_prev) : (nested.otb_prev !== undefined ? Math.round(nested.otb_prev) : null), 
+                                    otb_prev: otb_prev !== null ? Math.round(otb_prev) : cleanNestedOtbPrev, 
                                     adr: finalAdr 
                                 };
                             }

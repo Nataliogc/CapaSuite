@@ -122,7 +122,7 @@
                     const safeMetric = metric || 'DESCONOCIDO';
                     // Si la métrica/concepto coincide con el nombre de un segmento, es un desglose del bloque de totales.
                     // Lo ignoramos para no sumarlo como concepto ni duplicar la producción.
-                    if (validSegments.includes(canonical(safeMetric))) continue;
+                    if (validSegments.includes(canonical(safeMetric))) return;
 
                     target.concepts ||= {};
                     target.concepts[safeMetric] ||= Array(12).fill(0);

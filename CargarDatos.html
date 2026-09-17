@@ -1226,6 +1226,16 @@
                                 dbModified = true;
                             }
                         });
+
+                        // Limpieza de snapshot corrupto histórico de 2027
+                        if (db[hotel]['2027'] && db[hotel]['2027'].otb_prev) {
+                            const prev = db[hotel]['2027'].otb_prev;
+                            if (prev.snapshotDate === '31-12-2027' || (hotel === 'Cumbria' && prev.daily_otb && prev.daily_otb['2027-01-02'] && (prev.daily_otb['2027-01-02'].rooms >= 50 || prev.daily_otb['2027-01-02'] >= 50))) {
+                                console.warn(`🧹 Sanitizando snapshot corrupto de ${hotel} 2027`);
+                                delete db[hotel]['2027'].otb_prev;
+                                dbModified = true;
+                            }
+                        }
                     }
                 });
                 if (dbModified) {
@@ -2373,11 +2383,6 @@
                 const dbYear = db[hotel][detectedYear];
                 if (!dbYear.otb) dbYear.otb = { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0), breakdown: {} };
 
-                // RESET TOTAL (CRUSH): Always clear the OTB annual arrays to ensure the file is the single source of truth for the year
-                dbYear.otb.revenue.fill(0);
-                dbYear.otb.rooms.fill(0);
-                dbYear.otb.breakdown = {}; // Clear previous breakdown
-
                 let headerRowIndex = -1;
                 let maxDates = 0;
                 for (let r = 0; r < Math.min(data.length, 60); r++) {
@@ -2488,23 +2493,17 @@
                     const y = String(yStr);
                     if (db[hotel][y] && db[hotel][y].otb) {
                         const targetOt = db[hotel][y].otb;
-                        const hasData = targetOt.revenue.some(v => v > 0) || targetOt.rooms.some(v => v > 0);
+                        const hasData = (targetOt.revenue && targetOt.revenue.some(v => v > 0)) || 
+                                        (targetOt.rooms && targetOt.rooms.some(v => v > 0)) || 
+                                        (db[hotel][y].daily_otb && Object.keys(db[hotel][y].daily_otb).length > 0);
 
                         if (hasData) {
                             const currentUpdateDate = db[hotel][y].updates ? db[hotel][y].updates.otb : "";
-                            const todayDate = new Date().toLocaleDateString('es-ES');
-                            let isDataFromToday = false;
-                            if (currentUpdateDate && currentUpdateDate.includes(todayDate)) isDataFromToday = true;
-
-                            // CHANGE: Always save snapshot for "Instant Pickup" comparison, as requested.
-                            // This ensures that loading the same file twice shows 0 difference.
-                            if (true) { // removed isDataFromToday check
-                                // Save Snapshot (Annual + Daily)
-                                db[hotel][y].otb_prev = JSON.parse(JSON.stringify(targetOt));
-                        if (db[hotel][y].daily_otb) db[hotel][y].otb_prev.daily_otb = JSON.parse(JSON.stringify(db[hotel][y].daily_otb));
-                                db[hotel][y].otb_prev.snapshotDate = currentUpdateDate || new Date().toLocaleString();
-                                console.log(`📸 Instant OTB Snapshot taken for ${y} (Previous: ${currentUpdateDate})`);
-                            }
+                            // Save Snapshot (Annual + Daily)
+                            db[hotel][y].otb_prev = JSON.parse(JSON.stringify(targetOt));
+                            if (db[hotel][y].daily_otb) db[hotel][y].otb_prev.daily_otb = JSON.parse(JSON.stringify(db[hotel][y].daily_otb));
+                            db[hotel][y].otb_prev.snapshotDate = currentUpdateDate || new Date().toLocaleString();
+                            console.log(`📸 Instant OTB Snapshot taken for ${y} (Previous: ${currentUpdateDate})`);
                         }
                         if (targetOt.revenue) targetOt.revenue.fill(0);
                         if (targetOt.rooms) targetOt.rooms.fill(0);
