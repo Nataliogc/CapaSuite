@@ -762,7 +762,11 @@
                     const dInput = document.getElementById('manualPeriodInput');
                     if (dInput) {
                         const dateInf = extractDateFromFilename(val);
-                        if (dateInf) dInput.value = dateInf.full;
+                        if (dateInf) {
+                            dInput.value = (detected === 'Otb')
+                                ? (dateInf.startDate || (dateInf.full.includes(' al ') ? dateInf.full.split(' al ')[0].trim() : dateInf.full))
+                                : dateInf.full;
+                        }
                     }
                 } else {
                     msg.innerText = "❓ No reconozco el modelo. Asegúrate de incluir palabras como 'Produccion', 'Segmentos' o 'Previsiones'.";
@@ -1454,7 +1458,11 @@
             pendingType = finalType;
 
             const dateInfo = extractDateFromFilename(file.name);
-            const period = dateInfo ? dateInfo.full : "";
+            let period = dateInfo ? dateInfo.full : "";
+            if (finalType === 'Otb' && dateInfo) {
+                // Para OTB / Previsión, lo que se pide en el formulario es la fecha inicial desde cuándo aplica
+                period = dateInfo.startDate || (dateInfo.full.includes(' al ') ? dateInfo.full.split(' al ')[0].trim() : dateInfo.full);
+            }
             document.getElementById('manualPeriodInput').value = period;
 
             const nName = file.name.toUpperCase();
@@ -1527,6 +1535,17 @@
         function onModalTypeChange(type) {
             pendingType = type;
             updateModalTypeHelp(type);
+            const input = document.getElementById('manualPeriodInput');
+            if (input && pendingFile) {
+                const dateInfo = extractDateFromFilename(pendingFile.name);
+                if (dateInfo) {
+                    if (type === 'Otb') {
+                        input.value = dateInfo.startDate || (dateInfo.full.includes(' al ') ? dateInfo.full.split(' al ')[0].trim() : dateInfo.full);
+                    } else {
+                        input.value = dateInfo.full;
+                    }
+                }
+            }
         }
 
         function confirmHotelUpload(selectedHotel) {
@@ -1761,16 +1780,20 @@
 
                     // Use manual date if provided correctly
                     let dateInfo = extractDateFromFilename(file.name);
-                    let period = manualDate || (dateInfo ? dateInfo.full : "Periodo desconocido");
+                    let manualCleanDate = (manualDate || "").trim();
+                    if ((type === 'Otb' || type === 'Prevision') && manualCleanDate.includes(' al ')) {
+                        manualCleanDate = manualCleanDate.split(' al ')[0].trim();
+                    }
+                    let period = manualCleanDate || (dateInfo ? (type === 'Otb' ? (dateInfo.startDate || dateInfo.full) : dateInfo.full) : "Periodo desconocido");
                     let year = "2026";
 
                     // Handle ranges in manualDate (e.g. "01-01-2026 al 01-02-2027")
-                    if (manualDate) {
-                        const allY = manualDate.match(/20\d{2}/g);
+                    if (manualCleanDate) {
+                        const allY = manualCleanDate.match(/20\d{2}/g);
                         if (allY && allY.length > 0) {
                             year = allY[0];
                         } else {
-                            const parts = manualDate.split('-');
+                            const parts = manualCleanDate.split('-');
                             if (parts.length === 3) {
                                 let yPart = parts[2].trim();
                                 if (yPart.length === 2) year = "20" + yPart;
@@ -1950,14 +1973,24 @@
             const fileNameNorm = normalizeStr(fileName);
             const dateInfo = extractDateFromFilename(fileName);
 
-            let finalPeriod = manualPeriod || (dateInfo ? dateInfo.full : "Carga Masiva");
+            let cleanPeriod = (manualPeriod || "").trim();
+            if ((type === 'Otb' || type === 'Prevision') && cleanPeriod.includes(' al ')) {
+                cleanPeriod = cleanPeriod.split(' al ')[0].trim();
+            }
+
+            let finalPeriod = cleanPeriod || (dateInfo ? (type === 'Otb' ? (dateInfo.startDate || dateInfo.full) : dateInfo.full) : "Carga Masiva");
             let reportYear = "2026";
 
-            if (manualPeriod) {
-                const parts = manualPeriod.split('-');
-                if (parts.length === 3) {
-                    let yPart = parts[2].trim();
-                    reportYear = (yPart.length === 2) ? "20" + yPart : yPart;
+            if (cleanPeriod) {
+                const allY = cleanPeriod.match(/20\d{2}/g);
+                if (allY && allY.length > 0) {
+                    reportYear = allY[0];
+                } else {
+                    const parts = cleanPeriod.split('-');
+                    if (parts.length === 3) {
+                        let yPart = parts[2].trim();
+                        reportYear = (yPart.length === 2) ? "20" + yPart : yPart;
+                    }
                 }
             } else if (dateInfo) {
                 reportYear = dateInfo.year;
@@ -2302,7 +2335,7 @@
                 const SHORT_MONTHS_MAP = { "ENE": 0, "JAN": 0, "FEB": 1, "MAR": 2, "ABR": 3, "APR": 3, "MAY": 4, "JUN": 5, "JUL": 6, "AGO": 7, "AUG": 7, "SEP": 8, "OCT": 9, "NOV": 10, "DIC": 11, "DEC": 11 };
 
                 const allYearsInFile = (fileName.match(/20\d{2}/g) || [reportYear]).map(String).sort();
-                let detectedYear = allYearsInFile[allYearsInFile.length - 1] || String(reportYear);
+                let detectedYear = allYearsInFile[0] || String(reportYear);
                 const startYearFile = parseInt(allYearsInFile[0] || reportYear);
                 
                 if (!db[hotel]) db[hotel] = {};
@@ -2951,8 +2984,21 @@
                     const end = matches[matches.length - 1]; // Use first and last
                     const sY = start[3].length === 2 ? "20" + start[3] : start[3];
                     const eY = end[3].length === 2 ? "20" + end[3] : end[3];
-                    const fullRange = `${String(start[1]).padStart(2, '0')}-${String(start[2]).padStart(2, '0')}-${sY} al ${String(end[1]).padStart(2, '0')}-${String(end[2]).padStart(2, '0')}-${eY}`;
-                    return { day: parseInt(end[1]), month: parseInt(end[2]) - 1, year: eY, full: fullRange };
+                    const startDateStr = `${String(start[1]).padStart(2, '0')}-${String(start[2]).padStart(2, '0')}-${sY}`;
+                    const endDateStr = `${String(end[1]).padStart(2, '0')}-${String(end[2]).padStart(2, '0')}-${eY}`;
+                    const fullRange = `${startDateStr} al ${endDateStr}`;
+                    return { 
+                        day: parseInt(start[1]), 
+                        month: parseInt(start[2]) - 1, 
+                        year: sY, 
+                        full: fullRange, 
+                        startDate: startDateStr, 
+                        endDate: endDateStr, 
+                        endDay: parseInt(end[1]), 
+                        endMonth: parseInt(end[2]) - 1, 
+                        endYear: eY, 
+                        isRange: true 
+                    };
                 }
 
                 // Single date legacy logic
@@ -2961,8 +3007,9 @@
                 const m = parseInt(targetMatch[2]) - 1;
                 let y = targetMatch[3];
                 if (y.length === 2) y = "20" + y;
+                const dStr = `${String(d).padStart(2, '0')}-${String(m + 1).padStart(2, '0')}-${y}`;
 
-                return { day: d, month: m, year: y, full: `${String(d).padStart(2, '0')}-${String(m + 1).padStart(2, '0')}-${y}` };
+                return { day: d, month: m, year: y, full: dStr, startDate: dStr, endDate: dStr, isRange: false };
             }
 
             // Caso 3: Solo Año (ej: "Historico 2024" o "Datos 2025")
