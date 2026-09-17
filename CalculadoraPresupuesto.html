@@ -2689,7 +2689,7 @@
         auth.onAuthStateChanged(user => {
             if (user) {
                 const navEmail = document.getElementById('userEmailNav');
-                if (navEmail) navEmail.innerText = user.email;
+                if (navEmail) navEmail.innerText = window.getUserDisplayName ? window.getUserDisplayName(user) : (user.displayName || user.email);
             }
         });
         window.onload = () => {

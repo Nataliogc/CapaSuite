@@ -637,12 +637,20 @@
 
     <script>
         async function handleLogin() {
-            let email = document.getElementById('email').value;
+            let email = document.getElementById('email').value.trim();
             const pass = document.getElementById('password').value;
             const errorEl = document.getElementById('login-error');
 
-            if (email.toLowerCase() === 'admin') {
-                email = 'admin@capasuite.com';
+            const usernameMap = {
+                'admin': 'admin@capasuite.com',
+                'natalio': 'comunicaciones@hotelguadiana.es',
+                'diana': 'dianahotelguadiana@gmail.com',
+                'sergio': 'ssanchez@hotelguadiana.es',
+                'oscar': 'osanchez@hotelguadiana.es'
+            };
+            const lower = email.toLowerCase();
+            if (usernameMap[lower]) {
+                email = usernameMap[lower];
             }
 
             try {
@@ -658,7 +666,7 @@
             const mainContent = document.getElementById('dashboard-main');
             const mainHeader = document.getElementById('mainHeader');
             const mainNav = document.getElementById('mainNav');
-            const userEmailEl = document.getElementById('userEmail');
+            const userEmailEl = document.getElementById('userEmailNav') || document.getElementById('userEmail');
 
             const h = window.location.hostname;
             const isLocal = h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '' || window.location.protocol === 'file:';
@@ -673,10 +681,11 @@
                 mainHeader.style.display = 'flex';
                 mainNav.style.display = 'flex';
 
-                let displayEmail = user.email;
-                if (displayEmail === 'admin@capasuite.com') displayEmail = 'Administrador CapaSuite';
-                userEmailEl.innerText = displayEmail;
-                userEmailEl.style.color = ''; 
+                const displayName = window.getUserDisplayName ? window.getUserDisplayName(user) : (user.displayName || user.email);
+                if (userEmailEl) {
+                    userEmailEl.innerText = displayName;
+                    userEmailEl.style.color = ''; 
+                }
 
                 const hasCloudData = await downloadFromCloud();
                 if (!hasCloudData) {
@@ -693,7 +702,9 @@
                     mainHeader.style.display = 'flex';
                     mainNav.style.display = 'flex';
                     
-                    userEmailEl.innerHTML = '<span style="color:#ef4444; font-weight:800; cursor:pointer;" onclick="localStorage.setItem(\'force_login_once\', \'true\'); location.reload()">🚀 MODO LOCAL (Conectar Nube)</span>';
+                    if (userEmailEl) {
+                        userEmailEl.innerHTML = '<span style="color:#ef4444; font-weight:800; cursor:pointer;" onclick="localStorage.setItem(\'force_login_once\', \'true\'); location.reload()">🚀 MODO LOCAL (Conectar Nube)</span>';
+                    }
                     console.log("🛡️ MODO LOCAL: Acceso directo concedido.");
                 } else {
                     loginSection.style.display = 'flex';

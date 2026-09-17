@@ -2245,7 +2245,7 @@
         auth.onAuthStateChanged((user) => {
             const emailSpan = document.getElementById('userEmailNav');
             if (user) {
-                if (emailSpan) emailSpan.innerText = user.email;
+                if (emailSpan) emailSpan.innerText = window.getUserDisplayName ? window.getUserDisplayName(user) : (user.displayName || user.email);
             } else {
                 if (emailSpan) emailSpan.innerText = "Modo Local";
             }

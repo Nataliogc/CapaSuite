@@ -726,7 +726,7 @@
         auth.onAuthStateChanged((user) => {
             const emailSpan = document.getElementById('userEmailNav');
             if (user) {
-                if (emailSpan) emailSpan.innerText = user.email;
+                if (emailSpan) emailSpan.innerText = window.getUserDisplayName ? window.getUserDisplayName(user) : (user.displayName || user.email);
             } else {
                 if (emailSpan) emailSpan.innerText = "Modo Local";
             }
@@ -1362,8 +1362,9 @@
 
         auth.onAuthStateChanged(user => {
             if (user) {
-                const email = user.email === 'admin@capasuite.com' ? 'Administrador' : user.email;
-                document.getElementById('userEmailNav').innerText = email;
+                const name = window.getUserDisplayName ? window.getUserDisplayName(user) : (user.displayName || user.email);
+                const el = document.getElementById('userEmailNav');
+                if (el) el.innerText = name;
             }
         });
     </script>

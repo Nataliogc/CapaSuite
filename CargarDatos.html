@@ -1124,10 +1124,11 @@
                     const statusEl = document.getElementById('cloud-status-text');
                     const navEmail = document.getElementById('userEmailNav');
                     if (user) {
-                        statusEl.innerText = "✅ Sincronización activa para: " + user.email;
-                        if (navEmail) navEmail.innerText = user.email;
+                        const userName = window.getUserDisplayName ? window.getUserDisplayName(user) : (user.displayName || user.email);
+                        if (statusEl) statusEl.innerText = "✅ Sincronización activa para: " + userName;
+                        if (navEmail) navEmail.innerText = userName;
                     } else {
-                        statusEl.innerText = "❌ No has iniciado sesión.";
+                        if (statusEl) statusEl.innerText = "❌ No has iniciado sesión.";
                     }
                 });
             </script>

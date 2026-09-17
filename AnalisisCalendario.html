@@ -1980,7 +1980,10 @@
         }
 
         auth.onAuthStateChanged(user => {
-            if (user) document.getElementById('userEmailNav').innerText = user.email;
+            if (user) {
+                const el = document.getElementById('userEmailNav');
+                if (el) el.innerText = window.getUserDisplayName ? window.getUserDisplayName(user) : (user.displayName || user.email);
+            }
         });
     </script>
 </body>

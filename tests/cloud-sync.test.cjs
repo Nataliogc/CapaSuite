@@ -75,3 +75,12 @@ test('closing an idle tab never writes its snapshot',async()=>{
     const s=setup({Guadiana:{2025:1}}); await s.run('downloadFromCloud()');
     s.handlers.beforeunload({preventDefault(){throw Error('unexpected prompt');}}); assert.equal(s.writes(),0);
 });
+test('getUserDisplayName correctly maps all suite users and fallbacks', () => {
+    const s = setup({});
+    assert.equal(s.run("window.getUserDisplayName('dianahotelguadiana@gmail.com')"), 'Diana');
+    assert.equal(s.run("window.getUserDisplayName({ email: 'ssanchez@hotelguadiana.es' })"), 'Sergio');
+    assert.equal(s.run("window.getUserDisplayName({ email: 'osanchez@hotelguadiana.es' })"), 'Oscar');
+    assert.equal(s.run("window.getUserDisplayName({ email: 'comunicaciones@hotelguadiana.es' })"), 'Natalio');
+    assert.equal(s.run("window.getUserDisplayName({ email: 'unknown@hotel.com', displayName: 'Custom' })"), 'Custom');
+});
+

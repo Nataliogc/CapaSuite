@@ -38,6 +38,30 @@ if (_isLocalBypass) {
     window._capasuite_local_mode = true;
 }
 
+/// Nombres amigables para los usuarios de CapaSuite
+const USER_DISPLAY_NAMES = {
+    'dianahotelguadiana@gmail.com': 'Diana',
+    'ssanchez@hotelguadiana.es': 'Sergio',
+    'osanchez@hotelguadiana.es': 'Oscar',
+    'comunicaciones@hotelguadiana.es': 'Natalio',
+    'admin@capasuite.com': 'Administrador CapaSuite'
+};
+
+function getUserDisplayName(user) {
+    if (!user) return 'Usuario';
+    const email = (typeof user === 'string' ? user : (user.email || '')).toLowerCase().trim();
+    if (USER_DISPLAY_NAMES[email]) {
+        return USER_DISPLAY_NAMES[email];
+    }
+    if (typeof user === 'object' && user.displayName) {
+        return user.displayName;
+    }
+    return email || 'Usuario';
+}
+
+window.getUserDisplayName = getUserDisplayName;
+window.CAPASUITE_USERS = USER_DISPLAY_NAMES;
+
 /**
  * Función para proteger las páginas
  */
@@ -68,12 +92,10 @@ function checkAuth() {
             } else {
                 console.log("👤 CapaSuite: Usuario identificado como " + user.email);
 
-                // Actualizar email en la barra de navegación si existe el elemento
+                // Actualizar nombre de usuario en la barra de navegación si existe el elemento
                 const navEmail = document.getElementById('userEmailNav');
                 if (navEmail) {
-                    let displayEmail = user.email;
-                    if (displayEmail === 'admin@capasuite.com') displayEmail = 'Administrador CapaSuite';
-                    navEmail.innerText = displayEmail;
+                    navEmail.innerText = getUserDisplayName(user);
                 }
 
                 // Si acabamos de entrar, descargar datos
