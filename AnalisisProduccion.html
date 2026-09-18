@@ -447,11 +447,6 @@
                     <div class="kpi-progress-container" id="prog-cont-adr"><div class="kpi-progress-bar" id="prog-bar-adr" style="background:#10b981;"></div></div>
                     <div class="kpi-target-label" id="target-label-adr">Obj: --</div>
                 </div>
-                <div class="card" style="background: rgba(79, 70, 229, 0.1) !important;">
-                    <div class="kpi-label" style="color: #818cf8;">RevPAC (Total/Pax)</div>
-                    <div class="kpi-value" id="kpi-revpac" style="color: #818cf8;">0 €</div>
-                    <div class="kpi-trend" id="trend-revpac">--</div>
-                </div>
                 <div class="card">
                     <div class="kpi-label">Ocupación</div>
                     <div class="kpi-value" id="kpi-occ">0 %</div>
@@ -1290,15 +1285,6 @@
             }
             document.getElementById('trend-adr').innerHTML = trend(adrTY, adrLY, adrLM, 'adr') + renderPickupBadge(deltaAdr, '€', false, true);
 
-            const hospitalityRevTY = revTY - getV(groupedTY.OFICINAS, midx);
-            const hospitalityRevLY = revLY - (dataPrev ? getV(groupedLY.OFICINAS, midx) : 0);
-            const hospitalityRevLM = midx > 0 ? revLM - getV(groupedTY.OFICINAS, midx - 1) : 0;
-
-            const revpacTY = paxTY > 0 ? hospitalityRevTY / paxTY : 0;
-            const revpacLY = paxLY > 0 ? hospitalityRevLY / paxLY : 0;
-            const revpacLM = paxLM > 0 ? hospitalityRevLM / paxLM : 0;
-            document.getElementById('kpi-revpac').innerText = revpacTY.toFixed(2).replace('.', ',') + " €";
-            document.getElementById('trend-revpac').innerHTML = trend(revpacTY, revpacLY, revpacLM, 'revpac');
 
             // (The code has been moved up)
             let elapsedDays = 0;
