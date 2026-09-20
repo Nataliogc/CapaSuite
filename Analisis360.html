@@ -963,6 +963,96 @@
         .adr-bench-pill strong {
             color: var(--text-main);
         }
+
+        /* PRODUCTIVIDAD DE PISOS (HOUSEKEEPING) */
+        .hk-panel-card {
+            background: var(--bg-deep);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .hk-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .hk-title {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .hk-badges {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .hk-badge {
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 8px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+        }
+        .hk-badge strong {
+            color: var(--text-main);
+        }
+        .hk-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 14px;
+        }
+        .hk-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+        }
+        .hk-card-label {
+            font-size: 0.68rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+        .hk-card-value {
+            font-size: 1.45rem;
+            font-weight: 800;
+            color: var(--text-main);
+        }
+        .hk-card-sub {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+        .hk-progress-container {
+            width: 100%;
+            height: 12px;
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            margin-top: 8px;
+        }
+        .hk-progress-bar {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
     </style>
 </head>
 
@@ -1275,6 +1365,60 @@
                     </div>
                 </div>
             </div>
+
+            <!-- MÓDULO DE PRODUCTIVIDAD Y DIMENSIONAMIENTO DE PISOS (HOUSEKEEPING) -->
+            <div class="hk-panel-card">
+                <div class="hk-top">
+                    <div class="hk-title">
+                        <span>🧹</span> Dimensionamiento y Productividad de Pisos (Housekeeping)
+                    </div>
+                    <div class="hk-badges">
+                        <span class="hk-badge">Plantilla Base: <strong id="hk-badge-staff">8 pers (112 UT/día)</strong></span>
+                        <span class="hk-badge">Rendimiento: <strong id="hk-badge-ratio">14 hab/jornada</strong></span>
+                        <span class="hk-badge">Ponderación: <strong>Estancia 1,0 UT · Salida 1,5 UT</strong></span>
+                    </div>
+                </div>
+
+                <div class="hk-grid">
+                    <div class="hk-card" style="border-left: 3px solid #6366f1;">
+                        <div class="hk-card-label">Carga Total de Trabajo</div>
+                        <div class="hk-card-value" id="hk-val-total-ut" style="color: #818cf8;">0 UT</div>
+                        <div class="hk-card-sub" id="hk-sub-total-ut">0 estancias · 0 salidas</div>
+                    </div>
+
+                    <div class="hk-card" style="border-left: 3px solid #10b981;">
+                        <div class="hk-card-label">Jornadas Necesarias</div>
+                        <div class="hk-card-value" id="hk-val-shifts-needed" style="color: #10b981;">0 jor</div>
+                        <div class="hk-card-sub" id="hk-sub-shifts-needed">0,0 camareras/día promedio</div>
+                    </div>
+
+                    <div class="hk-card" style="border-left: 3px solid #64748b;">
+                        <div class="hk-card-label">Jornadas Contratadas</div>
+                        <div class="hk-card-value" id="hk-val-shifts-contracted" style="color: var(--text-main);">0 jor</div>
+                        <div class="hk-card-sub" id="hk-sub-shifts-contracted">Capacidad: 0 UT de trabajo</div>
+                    </div>
+
+                    <div class="hk-card" style="border-left: 3px solid #f59e0b;" id="hk-card-status">
+                        <div class="hk-card-label">Utilización de Plantilla</div>
+                        <div class="hk-card-value" id="hk-val-utilization" style="color: #f59e0b;">0%</div>
+                        <div class="hk-card-sub" id="hk-sub-utilization">Estado: Normal</div>
+                    </div>
+                </div>
+
+                <div>
+                    <div style="display:flex; justify-content:space-between; font-size:0.75rem; font-weight:700; margin-bottom:4px;">
+                        <span>Grado de Ocupación de la Plantilla Base de Pisos</span>
+                        <span id="hk-bar-pct-label">0% de capacidad consumida</span>
+                    </div>
+                    <div class="hk-progress-container">
+                        <div id="hk-progress-bar" class="hk-progress-bar" style="width: 0%; background: linear-gradient(90deg, #10b981, #f59e0b);"></div>
+                    </div>
+                </div>
+
+                <div class="balance-story" id="hk-summary-text">
+                    Calculando dimensionamiento de pisos...
+                </div>
+            </div>
         </div>
 
         <!-- HISTORICAL CHART (NEW) -->
@@ -1515,6 +1659,69 @@
                 </div>
             </div>
 
+            <!-- BLOQUE: PRODUCTIVIDAD DE PISOS (HOUSEKEEPING) -->
+            <div class="cost-group">
+                <div class="cost-group-title">
+                    <span style="color: #6366f1;">🧹 Plantilla de Pisos y Capacidad de Trabajo</span>
+                    <span class="cost-subtotal-badge" style="color: #6366f1; background: rgba(99, 102, 241, 0.15);" id="modalSubtotalHK">112 UT / día</span>
+                </div>
+
+                <div class="cost-row">
+                    <label>
+                        Camareras/os en plantilla base
+                        <span class="cost-range">Personal fijo diario: Guadiana (8), Cumbria (4)</span>
+                    </label>
+                    <div class="cost-input-wrapper">
+                        <input type="number" id="hk_staff_base" min="1" max="50" step="1" oninput="updateCostModalSubtotals()">
+                        <span>pers</span>
+                    </div>
+                </div>
+
+                <div class="cost-row">
+                    <label>
+                        Habitaciones estándar por jornada (14 hab)
+                        <span class="cost-range">Rendimiento medio por persona: 12 – 16 hab/día</span>
+                    </label>
+                    <div class="cost-input-wrapper">
+                        <input type="number" id="hk_rooms_per_staff" min="5" max="30" step="1" oninput="updateCostModalSubtotals()">
+                        <span>hab</span>
+                    </div>
+                </div>
+
+                <div class="cost-row">
+                    <label>
+                        Peso de Habitación de Estancia (Stayover)
+                        <span class="cost-range">Cliente continúa: 1,0 Unidad de Trabajo (UT)</span>
+                    </label>
+                    <div class="cost-input-wrapper">
+                        <input type="number" id="hk_weight_stay" min="0.5" max="2.0" step="0.1" oninput="updateCostModalSubtotals()">
+                        <span>UT</span>
+                    </div>
+                </div>
+
+                <div class="cost-row">
+                    <label>
+                        Peso de Habitación de Salida (Check-out)
+                        <span class="cost-range">Cambio integral: 1,5 Unidades de Trabajo (UT)</span>
+                    </label>
+                    <div class="cost-input-wrapper">
+                        <input type="number" id="hk_weight_departure" min="1.0" max="3.0" step="0.1" oninput="updateCostModalSubtotals()">
+                        <span>UT</span>
+                    </div>
+                </div>
+
+                <div class="cost-row">
+                    <label>
+                        Estancia Media Estimada (ALOS)
+                        <span class="cost-range">Para calcular el mix de salidas vs estancias (días): 1,2 – 3,5</span>
+                    </label>
+                    <div class="cost-input-wrapper">
+                        <input type="number" id="hk_alos" min="1.0" max="10.0" step="0.1" oninput="updateCostModalSubtotals()">
+                        <span>días</span>
+                    </div>
+                </div>
+            </div>
+
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
                 <button type="button" onclick="resetCostModalDefaults()" style="background: none; border: 1px solid var(--border); color: var(--text-muted); padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.8rem;">
                     ↺ Restaurar Valores por Defecto
@@ -1545,25 +1752,32 @@
         const DEFAULT_ROOM_COSTS = {
             "Guadiana": {
                 occupied: { cleaning: 10.0, laundry: 4.5, amenities: 1.5, utilities: 3.0, wear: 2.0 },
-                vacant: { staff: 4.0, standby: 0.8, refresh: 1.2, maintenance: 1.0 }
+                vacant: { staff: 4.0, standby: 0.8, refresh: 1.2, maintenance: 1.0 },
+                housekeeping: { staffBase: 8, roomsPerStaff: 14, weightStay: 1.0, weightDeparture: 1.5, alos: 1.8 }
             },
             "Cumbria": {
                 occupied: { cleaning: 10.0, laundry: 4.5, amenities: 1.5, utilities: 3.0, wear: 2.0 },
-                vacant: { staff: 4.0, standby: 0.8, refresh: 1.2, maintenance: 1.0 }
+                vacant: { staff: 4.0, standby: 0.8, refresh: 1.2, maintenance: 1.0 },
+                housekeeping: { staffBase: 4, roomsPerStaff: 14, weightStay: 1.0, weightDeparture: 1.5, alos: 1.8 }
             }
         };
 
         function getRoomCosts(hotel) {
+            const def = DEFAULT_ROOM_COSTS[hotel] || DEFAULT_ROOM_COSTS["Guadiana"];
             try {
                 const raw = CapaStorage.getItem(ROOM_COST_STORAGE_KEY);
                 if (raw) {
                     const parsed = JSON.parse(raw);
                     if (parsed && parsed[hotel] && parsed[hotel].occupied) {
-                        return parsed[hotel];
+                        return {
+                            occupied: Object.assign({}, def.occupied, parsed[hotel].occupied),
+                            vacant: Object.assign({}, def.vacant, parsed[hotel].vacant),
+                            housekeeping: Object.assign({}, def.housekeeping, parsed[hotel].housekeeping || {})
+                        };
                     }
                 }
             } catch(e) { console.warn("Error leyendo costes:", e); }
-            return JSON.parse(JSON.stringify(DEFAULT_ROOM_COSTS[hotel] || DEFAULT_ROOM_COSTS["Guadiana"]));
+            return JSON.parse(JSON.stringify(def));
         }
 
         function saveRoomCosts(hotel, costs) {
@@ -1600,7 +1814,8 @@
         }
 
         function loadCostModalInputs(hotel) {
-            const costs = getRoomCosts(hotel || currentHotel);
+            const h = hotel || currentHotel;
+            const costs = getRoomCosts(h);
             document.getElementById('cost_cleaning').value = (costs.occupied.cleaning ?? 10.0).toFixed(2);
             document.getElementById('cost_laundry').value = (costs.occupied.laundry ?? 4.5).toFixed(2);
             document.getElementById('cost_amenities').value = (costs.occupied.amenities ?? 1.5).toFixed(2);
@@ -1611,6 +1826,19 @@
             document.getElementById('cost_standby').value = (costs.vacant.standby ?? 0.8).toFixed(2);
             document.getElementById('cost_refresh').value = (costs.vacant.refresh ?? 1.2).toFixed(2);
             document.getElementById('cost_maintenance').value = (costs.vacant.maintenance ?? 1.0).toFixed(2);
+
+            const hk = costs.housekeeping || {};
+            const elStaff = document.getElementById('hk_staff_base');
+            if (elStaff) elStaff.value = hk.staffBase ?? (h === 'Cumbria' ? 4 : 8);
+            const elRatio = document.getElementById('hk_rooms_per_staff');
+            if (elRatio) elRatio.value = hk.roomsPerStaff ?? 14;
+            const elWStay = document.getElementById('hk_weight_stay');
+            if (elWStay) elWStay.value = (hk.weightStay ?? 1.0).toFixed(1);
+            const elWDep = document.getElementById('hk_weight_departure');
+            if (elWDep) elWDep.value = (hk.weightDeparture ?? 1.5).toFixed(1);
+            const elAlos = document.getElementById('hk_alos');
+            if (elAlos) elAlos.value = (hk.alos ?? 1.8).toFixed(1);
+
             updateCostModalSubtotals();
         }
 
@@ -1629,6 +1857,12 @@
             const cMaint = parseFloat(document.getElementById('cost_maintenance').value) || 0;
             const subVac = cStaff + cStand + cRef + cMaint;
             document.getElementById('modalSubtotalVacant').innerText = `Vacía: ${subVac.toFixed(2).replace('.', ',')} €`;
+
+            const hkStaff = parseFloat(document.getElementById('hk_staff_base').value) || 0;
+            const hkRatio = parseFloat(document.getElementById('hk_rooms_per_staff').value) || 0;
+            const subHK = Math.round(hkStaff * hkRatio);
+            const elHKSub = document.getElementById('modalSubtotalHK');
+            if (elHKSub) elHKSub.innerText = `${subHK} UT / día`;
         }
 
         function saveCostModalInputs() {
@@ -1646,6 +1880,13 @@
                     standby: parseFloat(document.getElementById('cost_standby').value) || 0,
                     refresh: parseFloat(document.getElementById('cost_refresh').value) || 0,
                     maintenance: parseFloat(document.getElementById('cost_maintenance').value) || 0
+                },
+                housekeeping: {
+                    staffBase: parseFloat(document.getElementById('hk_staff_base').value) || (targetHotel === 'Cumbria' ? 4 : 8),
+                    roomsPerStaff: parseFloat(document.getElementById('hk_rooms_per_staff').value) || 14,
+                    weightStay: parseFloat(document.getElementById('hk_weight_stay').value) || 1.0,
+                    weightDeparture: parseFloat(document.getElementById('hk_weight_departure').value) || 1.5,
+                    alos: parseFloat(document.getElementById('hk_alos').value) || 1.8
                 }
             };
             saveRoomCosts(targetHotel, newCosts);
@@ -2327,6 +2568,107 @@
 
             const stepFinalDesc = document.getElementById('adr-step-final-desc');
             if (stepFinalDesc) stepFinalDesc.innerText = `Beneficio neto final (${finalProfitPct.toFixed(1).replace('.', ',')}% s/ADR) tras cubrir costes variables y capacidad ociosa.`;
+
+            // D. Productividad y Dimensionamiento de Pisos (Housekeeping)
+            const hkConfig = roomCosts.housekeeping || (hotel === 'Cumbria' 
+                ? { staffBase: 4, roomsPerStaff: 14, weightStay: 1.0, weightDeparture: 1.5, alos: 1.8 }
+                : { staffBase: 8, roomsPerStaff: 14, weightStay: 1.0, weightDeparture: 1.5, alos: 1.8 });
+
+            const staffBase = Number(hkConfig.staffBase) || (hotel === 'Cumbria' ? 4 : 8);
+            const roomsPerStaff = Number(hkConfig.roomsPerStaff) || 14;
+            const weightStay = Number(hkConfig.weightStay) || 1.0;
+            const weightDeparture = Number(hkConfig.weightDeparture) || 1.5;
+            const alos = Math.max(1.0, Number(hkConfig.alos) || 1.8);
+
+            // Desglose de habitaciones en salidas vs estancias según estancia media (ALOS)
+            const estimatedDepartures = Math.round(occupiedRooms / alos);
+            const estimatedStayovers = Math.max(0, Math.round(occupiedRooms - estimatedDepartures));
+            const totalWorkUnits = (estimatedStayovers * weightStay) + (estimatedDepartures * weightDeparture);
+
+            const dailyCapacityUT = staffBase * roomsPerStaff;
+            const periodDaysCount = Math.max(1, Math.floor(days));
+            const totalContractedShifts = staffBase * periodDaysCount;
+            const totalContractedCapacityUT = totalContractedShifts * roomsPerStaff;
+            const totalNeededShifts = Math.round(totalWorkUnits / roomsPerStaff);
+            const avgStaffPerDay = periodDaysCount > 0 ? (totalNeededShifts / periodDaysCount) : 0;
+            const hkUtilizationPct = totalContractedShifts > 0 ? (totalNeededShifts / totalContractedShifts * 100) : 0;
+            const shiftBalance = totalContractedShifts - totalNeededShifts;
+
+            // Actualización de badges de cabecera
+            const elHkStaffBadge = document.getElementById('hk-badge-staff');
+            if (elHkStaffBadge) elHkStaffBadge.innerText = `${staffBase} pers (${dailyCapacityUT} UT/día)`;
+
+            const elHkRatioBadge = document.getElementById('hk-badge-ratio');
+            if (elHkRatioBadge) elHkRatioBadge.innerText = `${roomsPerStaff} hab/jornada`;
+
+            // Card 1: Carga Total de Trabajo
+            const elHkTotUT = document.getElementById('hk-val-total-ut');
+            if (elHkTotUT) elHkTotUT.innerText = `${Math.round(totalWorkUnits).toLocaleString('es-ES')} UT`;
+
+            const elHkSubUT = document.getElementById('hk-sub-total-ut');
+            if (elHkSubUT) elHkSubUT.innerText = `${fmtNum(estimatedDepartures)} salidas (${weightDeparture.toFixed(1).replace('.', ',')} UT) · ${fmtNum(estimatedStayovers)} estancias (${weightStay.toFixed(1).replace('.', ',')} UT)`;
+
+            // Card 2: Jornadas Necesarias
+            const elHkShiftsNeed = document.getElementById('hk-val-shifts-needed');
+            if (elHkShiftsNeed) elHkShiftsNeed.innerText = `${totalNeededShifts.toLocaleString('es-ES')} jor.`;
+
+            const elHkSubShiftsNeed = document.getElementById('hk-sub-shifts-needed');
+            if (elHkSubShiftsNeed) elHkSubShiftsNeed.innerText = `Media: ${avgStaffPerDay.toFixed(1).replace('.', ',')} camareras/día`;
+
+            // Card 3: Jornadas Contratadas
+            const elHkShiftsCont = document.getElementById('hk-val-shifts-contracted');
+            if (elHkShiftsCont) elHkShiftsCont.innerText = `${totalContractedShifts.toLocaleString('es-ES')} jor.`;
+
+            const elHkSubShiftsCont = document.getElementById('hk-sub-shifts-contracted');
+            if (elHkSubShiftsCont) elHkSubShiftsCont.innerText = `Capacidad: ${totalContractedCapacityUT.toLocaleString('es-ES')} UT (${staffBase} pers × ${periodDaysCount} d)`;
+
+            // Card 4: Utilización de Plantilla
+            const elHkUtil = document.getElementById('hk-val-utilization');
+            if (elHkUtil) elHkUtil.innerText = `${hkUtilizationPct.toFixed(1).replace('.', ',')}%`;
+
+            const elHkSubUtil = document.getElementById('hk-sub-utilization');
+            if (elHkSubUtil) {
+                if (shiftBalance > 0) {
+                    elHkSubUtil.innerText = `Holgura: +${shiftBalance.toLocaleString('es-ES')} jornadas`;
+                    elHkSubUtil.style.color = '#10b981';
+                } else if (shiftBalance < 0) {
+                    elHkSubUtil.innerText = `Sobrecarga / Refuerzo: ${Math.abs(shiftBalance).toLocaleString('es-ES')} jornadas`;
+                    elHkSubUtil.style.color = '#ef4444';
+                } else {
+                    elHkSubUtil.innerText = `Equilibrio exacto (100% ocupación)`;
+                    elHkSubUtil.style.color = '#f59e0b';
+                }
+            }
+
+            // Barra de progreso de capacidad consumida
+            const elHkBarLbl = document.getElementById('hk-bar-pct-label');
+            if (elHkBarLbl) {
+                elHkBarLbl.innerText = `${hkUtilizationPct.toFixed(1).replace('.', ',')}% de capacidad consumida (${Math.round(totalWorkUnits).toLocaleString('es-ES')} UT de ${totalContractedCapacityUT.toLocaleString('es-ES')} UT)`;
+            }
+
+            const elHkBar = document.getElementById('hk-progress-bar');
+            if (elHkBar) {
+                elHkBar.style.width = `${Math.min(100, Math.max(3, hkUtilizationPct))}%`;
+                if (hkUtilizationPct > 105) {
+                    elHkBar.style.background = 'linear-gradient(90deg, #f59e0b, #ef4444)';
+                } else if (hkUtilizationPct >= 75) {
+                    elHkBar.style.background = 'linear-gradient(90deg, #10b981, #059669)';
+                } else {
+                    elHkBar.style.background = 'linear-gradient(90deg, #3b82f6, #10b981)';
+                }
+            }
+
+            // Explicación narrativa ejecutiva
+            const elHkStory = document.getElementById('hk-summary-text');
+            if (elHkStory) {
+                const statusTone = hkUtilizationPct > 105 
+                    ? `<span style="color:#ef4444; font-weight:700;">Sobrecarga operativa (${hkUtilizationPct.toFixed(1).replace('.', ',')}%)</span>: se requieren <strong>${Math.abs(shiftBalance)} jornadas adicionales de refuerzo</strong> o redistribución de turnos para asumir los picos de salidas.`
+                    : (hkUtilizationPct < 70
+                        ? `<span style="color:#3b82f6; font-weight:700;">Capacidad ociosa (${hkUtilizationPct.toFixed(1).replace('.', ',')}%)</span>: plantilla holgada con <strong>${shiftBalance} jornadas disponibles</strong> aprovechables para limpiezas a fondo, repasos de vacías y tareas de mantenimiento.`
+                        : `<span style="color:#10b981; font-weight:700;">Rendimiento óptimo (${hkUtilizationPct.toFixed(1).replace('.', ',')}%)</span>: la plantilla base de ${staffBase} personas absorbe la carga operativa con equilibrio adecuado.`);
+
+                elHkStory.innerHTML = `Con <strong>${fmtNum(occupiedRooms)} habitaciones ocupadas</strong> en los ${periodDaysCount} días analizados, se generan <strong>${Math.round(totalWorkUnits).toLocaleString('es-ES')} Unidades de Trabajo (UT)</strong> considerando la rotación (salidas: ${fmtNum(estimatedDepartures)} hab. × ${weightDeparture.toFixed(1).replace('.', ',')} UT; estancias: ${fmtNum(estimatedStayovers)} hab. × ${weightStay.toFixed(1).replace('.', ',')} UT). A razón de ${roomsPerStaff} hab/jornada, se precisan <strong>${totalNeededShifts.toLocaleString('es-ES')} jornadas</strong> (media de ${avgStaffPerDay.toFixed(1).replace('.', ',')} camareras/día) frente a las ${totalContractedShifts.toLocaleString('es-ES')} contratadas. ${statusTone}`;
+            }
         }
 
         function renderCharts(agg, segmentDb, dailyDb, midx) {
