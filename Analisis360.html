@@ -641,9 +641,217 @@
             margin-bottom: 25px;
             display: flex;
             flex-direction: column;
-            gap: 18px;
-            animation: fadeIn 1s ease-out 0.3s both;
+            gap: 20px;
+            animation: fadeIn 0.8s ease-out 0.2s both;
         }
+        .economics-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .econ-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .btn-econ-guide {
+            background: rgba(99, 102, 241, 0.15);
+            border: 1px solid rgba(99, 102, 241, 0.4);
+            color: #a5b4fc;
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: var(--transition);
+        }
+        .btn-econ-guide:hover {
+            background: rgba(99, 102, 241, 0.25);
+            color: white;
+            border-color: var(--primary);
+            transform: translateY(-1px);
+        }
+        [data-theme="light"] .btn-econ-guide {
+            background: rgba(79, 70, 229, 0.08);
+            border-color: rgba(79, 70, 229, 0.3);
+            color: #4f46e5;
+        }
+
+        /* GUIA DIDACTICA EXPLICATIVA */
+        .econ-guide-box {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(16, 185, 129, 0.05) 100%);
+            border: 1px solid rgba(99, 102, 241, 0.25);
+            border-radius: 16px;
+            padding: 20px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            transition: var(--transition);
+        }
+        .econ-guide-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .econ-guide-top h4 {
+            margin: 0;
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .guide-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 14px;
+        }
+        .guide-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .guide-card-tag {
+            font-size: 0.68rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .guide-card-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+        .guide-card-desc {
+            font-size: 0.76rem;
+            line-height: 1.45;
+            color: var(--text-muted);
+            margin: 0;
+        }
+
+        /* INVENTORY BALANCE (OCUPADAS VS VACIAS) */
+        .room-balance-card {
+            background: var(--bg-deep);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 18px 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .room-balance-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .room-balance-title {
+            font-size: 0.9rem;
+            font-weight: 800;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .balance-pills {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .balance-pill {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: 1px solid transparent;
+        }
+        .balance-pill.capacity {
+            background: rgba(148, 163, 184, 0.12);
+            color: var(--text-main);
+            border-color: var(--border);
+        }
+        .balance-pill.occupied {
+            background: rgba(16, 185, 129, 0.12);
+            color: #10b981;
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+        .balance-pill.vacant {
+            background: rgba(245, 158, 11, 0.12);
+            color: #f59e0b;
+            border-color: rgba(245, 158, 11, 0.3);
+        }
+        .balance-bar-wrapper {
+            width: 100%;
+            height: 30px;
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 14px;
+            overflow: hidden;
+            display: flex;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        .balance-segment-occ {
+            height: 100%;
+            background: linear-gradient(90deg, #059669, #10b981);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.74rem;
+            font-weight: 800;
+            letter-spacing: 0.3px;
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+            white-space: nowrap;
+            padding: 0 8px;
+        }
+        .balance-segment-vac {
+            height: 100%;
+            background: linear-gradient(90deg, #d97706, #f59e0b);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #0f172a;
+            font-size: 0.74rem;
+            font-weight: 800;
+            letter-spacing: 0.3px;
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+            white-space: nowrap;
+            padding: 0 8px;
+        }
+        .balance-story {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+            background: var(--bg-surface);
+            padding: 10px 14px;
+            border-radius: 10px;
+            border-left: 3px solid var(--primary);
+        }
+        .balance-story strong {
+            color: var(--text-main);
+        }
+
+        /* GRID METRICS */
         .economics-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -653,7 +861,7 @@
             background: var(--bg-deep);
             border: 1px solid var(--border);
             border-radius: 12px;
-            padding: 16px;
+            padding: 16px 18px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -668,7 +876,7 @@
             margin-bottom: 6px;
         }
         .econ-metric-card .econ-value {
-            font-size: 1.4rem;
+            font-size: 1.45rem;
             font-weight: 800;
             color: var(--text-main);
         }
@@ -677,6 +885,82 @@
             color: var(--text-muted);
             margin-top: 4px;
             font-weight: 500;
+        }
+
+        /* DETALLE INGRESO MEDIO (ADR CASCADE) */
+        .adr-detail-card {
+            background: var(--bg-deep);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .adr-detail-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .adr-detail-title {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .adr-cascade-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 12px;
+        }
+        .adr-step {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            position: relative;
+        }
+        .adr-step-tag {
+            font-size: 0.65rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .adr-step-val {
+            font-size: 1.3rem;
+            font-weight: 800;
+        }
+        .adr-step-desc {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            line-height: 1.35;
+        }
+        .adr-benchmarks {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+            padding-top: 8px;
+            border-top: 1px solid var(--border);
+        }
+        .adr-bench-pill {
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 5px 12px;
+            border-radius: 8px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+        }
+        .adr-bench-pill strong {
+            color: var(--text-main);
         }
     </style>
 </head>
@@ -822,38 +1106,94 @@
             </div>
         </div>
 
-        <!-- HISTORICAL CHART (NEW) -->
-        <div class="chart-container" style="margin-bottom: 25px; min-height: 420px; display: flex; flex-direction: column;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <h3><span style="color: #8b5cf6;">📈</span> Evolución Histórica (Comparativa Anual)</h3>
-                <select id="histMetric" onchange="renderHistoricalChart()" style="font-size: 0.75rem; padding: 6px 12px; border-radius: 8px; background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--primary); cursor:pointer; font-weight: 600;">
-                    <option value="rev">Producción (€)</option>
-                    <option value="rn">Habitaciones (RN)</option>
-                    <option value="adr">Precio Medio (ADR)</option>
-                </select>
-            </div>
-            <div id="histYearToggles" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px;"></div>
-            <div class="chart-wrapper" style="flex: 1;">
-                <canvas id="historicalChart"></canvas>
-            </div>
-        </div>
-
-        <!-- RENTABILIDAD Y UNIT ECONOMICS DE HABITACIONES -->
+        <!-- RENTABILIDAD Y UNIT ECONOMICS DE HABITACIONES (ARRIBA) -->
         <div class="economics-panel">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div class="economics-header">
                 <div>
-                    <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
-                        <span>💎</span> Rentabilidad Operativa por Habitación (Unit Economics)
+                    <h3 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                        <span>💎</span> Rentabilidad Operativa y Unit Economics de Habitaciones
                     </h3>
                     <p style="margin: 4px 0 0; font-size: 0.8rem; color: var(--text-muted);" id="econ-subtitle">
-                        Análisis de Margen de Contribución: Ingresos menos costes directos de habitaciones vendidas y disponibles no vendidas.
+                        Análisis de Margen de Contribución: Ingresos netos, costes directos de estancias vendidas y absorción de habitaciones disponibles no vendidas.
                     </p>
                 </div>
-                <button type="button" onclick="openCostModal()" class="btn-cost-config">
-                    ⚙️ Ajustar Costes Variables
-                </button>
+                <div class="econ-actions">
+                    <button type="button" id="econGuideToggleBtn" onclick="toggleEconGuide()" class="btn-econ-guide" title="Mostrar u ocultar la guía didáctica para entender los Unit Economics">
+                        <span>📖</span> <span id="econGuideBtnText">Ocultar Guía</span>
+                    </button>
+                    <button type="button" onclick="openCostModal()" class="btn-cost-config" title="Ajustar los costes por estancia ocupada y habitación vacía">
+                        <span>⚙️</span> Ajustar Costes Variables
+                    </button>
+                </div>
             </div>
 
+            <!-- GUIA DIDÁCTICA EXPLICATIVA: CÓMO ENTENDERLO -->
+            <div id="econGuideBox" class="econ-guide-box">
+                <div class="econ-guide-top">
+                    <h4><span>💡</span> ¿Cómo interpretar la Rentabilidad y los Unit Economics?</h4>
+                    <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Manual de Operaciones & Revenue</span>
+                </div>
+                <div class="guide-grid">
+                    <div class="guide-card" style="border-left: 3px solid #10b981;">
+                        <span class="guide-card-tag" style="color: #10b981;">● 1. Ingreso Medio (ADR)</span>
+                        <div class="guide-card-title">Precio Medio Facturado</div>
+                        <p class="guide-card-desc">
+                            Representa los euros ingresados por cada noche ocupada. Tu tarifa debe situarse holgadamente por encima del coste CPOR para generar margen neto.
+                        </p>
+                    </div>
+
+                    <div class="guide-card" style="border-left: 3px solid #ef4444;">
+                        <span class="guide-card-tag" style="color: #ef4444;">● 2. Coste Habitación Ocupada (CPOR)</span>
+                        <div class="guide-card-title">Suelo Mínimo de Venta</div>
+                        <p class="guide-card-desc">
+                            Costes que <strong>únicamente se generan si la habitación se vende</strong> (limpieza de salida, sábanas/lavandería, amenities, luz/agua y desgaste). Vender por debajo de este suelo genera pérdidas directas.
+                        </p>
+                    </div>
+
+                    <div class="guide-card" style="border-left: 3px solid #f59e0b;">
+                        <span class="guide-card-tag" style="color: #f59e0b;">● 3. Coste de la Habitación Vacía</span>
+                        <div class="guide-card-title">El Coste Oculto del Inventario</div>
+                        <p class="guide-card-desc">
+                            Una habitación sin vender <strong>no cuesta 0 €</strong>. Soporta personal fijo de recepción, stand-by eléctrico de cuadros/termos, repasos periódicos de mucama y mantenimiento de griferías.
+                        </p>
+                    </div>
+
+                    <div class="guide-card" style="border-left: 3px solid var(--secondary);">
+                        <span class="guide-card-tag" style="color: var(--secondary);">● 4. Margen Operativo & GOPPAR</span>
+                        <div class="guide-card-title">Beneficio Real del Hotel</div>
+                        <p class="guide-card-desc">
+                            Margen neto de habitaciones = (Margen generado por habitaciones ocupadas) - (Coste asumido por las habitaciones vacías). El <strong>GOPPAR</strong> mide el beneficio neto real por cada habitación física disponible.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BALANCE DE INVENTARIO DEL PERIODO (HABITACIONES OCUPADAS VS VACÍAS) -->
+            <div class="room-balance-card">
+                <div class="room-balance-top">
+                    <div class="room-balance-title">
+                        <span>📊</span> Balance de Habitaciones del Periodo (<span id="balance-period-days">0 días</span>)
+                    </div>
+                    <div class="balance-pills">
+                        <span class="balance-pill capacity">Capacidad Total: <strong id="balance-total-rooms" style="margin-left:4px;">0 RN</strong></span>
+                        <span class="balance-pill occupied">🟢 Ocupadas: <strong id="balance-occupied-rooms" style="margin-left:4px;">0 RN</strong> (<span id="balance-occ-pct">0%</span>)</span>
+                        <span class="balance-pill vacant">🟠 Vacías: <strong id="balance-vacant-rooms" style="margin-left:4px;">0 RN</strong> (<span id="balance-vacant-pct">0%</span>)</span>
+                    </div>
+                </div>
+                <div class="balance-bar-wrapper">
+                    <div id="balance-bar-occupied" class="balance-segment-occ" style="width: 50%;">
+                        <span id="balance-bar-occ-label">Ocupadas: 0 RN (0%)</span>
+                    </div>
+                    <div id="balance-bar-vacant" class="balance-segment-vac" style="width: 50%;">
+                        <span id="balance-bar-vacant-label">Vacías: 0 RN (0%)</span>
+                    </div>
+                </div>
+                <div class="balance-story" id="balance-summary-text">
+                    Calculando balance de inventario...
+                </div>
+            </div>
+
+            <!-- METRIC CARDS GRID -->
             <div class="economics-grid">
                 <div class="econ-metric-card" style="border-left: 3px solid #10b981;">
                     <div class="econ-label">Ingreso Medio (ADR)</div>
@@ -876,7 +1216,7 @@
                 <div class="econ-metric-card" style="border-left: 3px solid #f59e0b;">
                     <div class="econ-label">Coste Hab. Vacía / Día</div>
                     <div class="econ-value" id="econ-vacant-unit" style="color: #f59e0b;">0 €</div>
-                    <div class="econ-sub" id="econ-vacant-sub">Standby, repaso y mant. prev.</div>
+                    <div class="econ-sub" id="econ-vacant-sub">Personal, standby, repaso y mant.</div>
                 </div>
 
                 <div class="econ-metric-card" style="border-left: 3px solid #8b5cf6;">
@@ -890,6 +1230,68 @@
                     <div class="econ-value" id="econ-period-margin" style="color: var(--secondary);">0 €</div>
                     <div class="econ-sub" id="econ-period-margin-sub">GOPPAR: 0 € / hab. disp.</div>
                 </div>
+            </div>
+
+            <!-- DETALLE EN PROFUNDIDAD DEL INGRESO MEDIO (ADR) -->
+            <div class="adr-detail-card">
+                <div class="adr-detail-top">
+                    <div class="adr-detail-title">
+                        <span>🔍</span> Desglose en Detalle del Ingreso Medio (ADR) y Cascada de Margen
+                    </div>
+                    <div class="adr-benchmarks">
+                        <span class="adr-bench-pill">ADR Nominal: <strong id="adr-bench-adr">0 €</strong></span>
+                        <span class="adr-bench-pill">RevPAR (s/Total Disp.): <strong id="adr-bench-revpar" style="color: #60a5fa;">0 €</strong></span>
+                        <span class="adr-bench-pill">GOPPAR (Beneficio s/Disp.): <strong id="adr-bench-goppar" style="color: var(--secondary);">0 €</strong></span>
+                    </div>
+                </div>
+
+                <div class="adr-cascade-grid">
+                    <div class="adr-step" style="border-top: 3px solid #10b981;">
+                        <span class="adr-step-tag" style="color: #10b981;">Paso 1 · Facturación Bruta</span>
+                        <div class="adr-step-val" id="adr-step-gross" style="color: #10b981;">0 €</div>
+                        <div class="adr-step-desc">Ingreso medio cobrado por cada estancia vendida (100% tarifa).</div>
+                    </div>
+
+                    <div class="adr-step" style="border-top: 3px solid #ef4444;">
+                        <span class="adr-step-tag" style="color: #ef4444;">Paso 2 · Coste Estancia (CPOR)</span>
+                        <div class="adr-step-val" id="adr-step-cpor" style="color: #ef4444;">-0 €</div>
+                        <div class="adr-step-desc" id="adr-step-cpor-desc">Limpieza, lavandería, suministros y amenities.</div>
+                    </div>
+
+                    <div class="adr-step" style="border-top: 3px solid var(--primary);">
+                        <span class="adr-step-tag" style="color: var(--primary);">Paso 3 · Margen Contribución</span>
+                        <div class="adr-step-val" id="adr-step-margin" style="color: var(--primary);">+0 €</div>
+                        <div class="adr-step-desc" id="adr-step-margin-desc">Ganancia limpia directa que aporta cada noche ocupada.</div>
+                    </div>
+
+                    <div class="adr-step" style="border-top: 3px solid #f59e0b;">
+                        <span class="adr-step-tag" style="color: #f59e0b;">Paso 4 · Lastre de Hab. Vacías</span>
+                        <div class="adr-step-val" id="adr-step-vacant-drag" style="color: #f59e0b;">-0 €</div>
+                        <div class="adr-step-desc" id="adr-step-vacant-desc">Coste de vacías soportado por cada habitación vendida.</div>
+                    </div>
+
+                    <div class="adr-step" style="border-top: 3px solid var(--secondary); background: rgba(16, 185, 129, 0.05);">
+                        <span class="adr-step-tag" style="color: var(--secondary);">Paso 5 · Excedente Neto / Noche</span>
+                        <div class="adr-step-val" id="adr-step-final-profit" style="color: var(--secondary);">+0 €</div>
+                        <div class="adr-step-desc" id="adr-step-final-desc">Beneficio operativo neto que queda en caja tras absorber el hotel.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- HISTORICAL CHART (NEW) -->
+        <div class="chart-container" style="margin-bottom: 25px; min-height: 420px; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h3><span style="color: #8b5cf6;">📈</span> Evolución Histórica (Comparativa Anual)</h3>
+                <select id="histMetric" onchange="renderHistoricalChart()" style="font-size: 0.75rem; padding: 6px 12px; border-radius: 8px; background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--primary); cursor:pointer; font-weight: 600;">
+                    <option value="rev">Producción (€)</option>
+                    <option value="rn">Habitaciones (RN)</option>
+                    <option value="adr">Precio Medio (ADR)</option>
+                </select>
+            </div>
+            <div id="histYearToggles" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px;"></div>
+            <div class="chart-wrapper" style="flex: 1;">
+                <canvas id="historicalChart"></canvas>
             </div>
         </div>
 
@@ -1188,6 +1590,15 @@
         function closeCostModal() {
             const m = document.getElementById('costConfigModal');
             if (m) m.classList.remove('open');
+        }
+
+        function toggleEconGuide() {
+            const box = document.getElementById('econGuideBox');
+            const btnText = document.getElementById('econGuideBtnText');
+            if (!box) return;
+            const isHidden = (box.style.display === 'none');
+            box.style.display = isHidden ? 'flex' : 'none';
+            if (btnText) btnText.innerText = isHidden ? 'Ocultar Guía' : 'Ver Guía Explicativa';
         }
 
         function loadCostModalInputs(hotel) {
@@ -1744,6 +2155,12 @@
             const unitMargin = adr - cpor;
             const unitMarginPct = adr > 0 ? (unitMargin / adr * 100) : 0;
 
+            const occPct = availableRooms > 0 ? (occupiedRooms / availableRooms * 100) : 0;
+            const vacantPct = availableRooms > 0 ? (vacantRooms / availableRooms * 100) : 0;
+            const vacantDrag = occupiedRooms > 0 ? (costVacantTotal / occupiedRooms) : 0;
+            const finalProfitUnit = unitMargin - vacantDrag;
+            const finalProfitPct = adr > 0 ? (finalProfitUnit / adr * 100) : 0;
+
             // KPI Card Margen
             const marginValEl = document.getElementById('kpi-total-margin');
             if (marginValEl) marginValEl.innerText = fmt(netMargin);
@@ -1760,7 +2177,44 @@
             const marginBarEl = document.getElementById('budget-bar-margin');
             if (marginBarEl) marginBarEl.style.width = Math.max(0, Math.min(100, marginPct)) + '%';
 
-            // Unit Economics Panel
+            // A. Balance de Inventario (Ocupadas vs Vacías)
+            const balDaysEl = document.getElementById('balance-period-days');
+            if (balDaysEl) balDaysEl.innerText = `${Math.floor(days)} días`;
+
+            const balTotEl = document.getElementById('balance-total-rooms');
+            if (balTotEl) balTotEl.innerText = `${fmtNum(availableRooms)} RN`;
+
+            const balOccEl = document.getElementById('balance-occupied-rooms');
+            if (balOccEl) balOccEl.innerText = `${fmtNum(occupiedRooms)} RN`;
+
+            const balOccPctEl = document.getElementById('balance-occ-pct');
+            if (balOccPctEl) balOccPctEl.innerText = `${occPct.toFixed(1).replace('.', ',')}%`;
+
+            const balVacEl = document.getElementById('balance-vacant-rooms');
+            if (balVacEl) balVacEl.innerText = `${fmtNum(vacantRooms)} RN`;
+
+            const balVacPctEl = document.getElementById('balance-vacant-pct');
+            if (balVacPctEl) balVacPctEl.innerText = `${vacantPct.toFixed(1).replace('.', ',')}%`;
+
+            const balBarOccEl = document.getElementById('balance-bar-occupied');
+            if (balBarOccEl) balBarOccEl.style.width = `${Math.max(8, Math.min(92, occPct))}%`;
+
+            const balBarOccLbl = document.getElementById('balance-bar-occ-label');
+            if (balBarOccLbl) balBarOccLbl.innerText = `Ocupadas: ${fmtNum(occupiedRooms)} RN (${occPct.toFixed(1).replace('.', ',')}%)`;
+
+            const balBarVacEl = document.getElementById('balance-bar-vacant');
+            if (balBarVacEl) balBarVacEl.style.width = `${Math.max(8, Math.min(92, vacantPct))}%`;
+
+            const balBarVacLbl = document.getElementById('balance-bar-vacant-label');
+            if (balBarVacLbl) balBarVacLbl.innerText = `Vacías: ${fmtNum(vacantRooms)} RN (${vacantPct.toFixed(1).replace('.', ',')}%)`;
+
+            const balStoryEl = document.getElementById('balance-summary-text');
+            if (balStoryEl) {
+                const modeLabel = mode === 'real' ? 'transcurridos (YTD)' : (mode === 'projected' ? 'proyectados' : 'en cartera OTB');
+                balStoryEl.innerHTML = `De las <strong>${fmtNum(availableRooms)} habitaciones disponibles</strong> en los ${Math.floor(days)} días ${modeLabel}, se han vendido <strong>${fmtNum(occupiedRooms)} estancias</strong> (${occPct.toFixed(1).replace('.', ',')}%) facturando <strong>${fmt(habRev)}</strong>. Las <strong>${fmtNum(vacantRooms)} noches no vendidas</strong> (${vacantPct.toFixed(1).replace('.', ',')}%) han asumido un coste estructural y de mantenimiento de <strong>${fmt(costVacantTotal)}</strong> (${cVacant.toFixed(2).replace('.', ',')} €/hab/día).`;
+            }
+
+            // B. Unit Economics Metrics Grid
             const econAdrEl = document.getElementById('econ-adr');
             if (econAdrEl) econAdrEl.innerText = adr.toFixed(2).replace('.', ',') + " €";
 
@@ -1800,6 +2254,45 @@
 
             const econPeriodMarginSubEl = document.getElementById('econ-period-margin-sub');
             if (econPeriodMarginSubEl) econPeriodMarginSubEl.innerText = `GOPPAR: ${goppar.toFixed(2).replace('.', ',')} € / hab. disp.`;
+
+            // C. Detalle y Cascada del Ingreso Medio (ADR)
+            const adrBenchAdr = document.getElementById('adr-bench-adr');
+            if (adrBenchAdr) adrBenchAdr.innerText = adr.toFixed(2).replace('.', ',') + " €";
+
+            const adrBenchRevpar = document.getElementById('adr-bench-revpar');
+            if (adrBenchRevpar) adrBenchRevpar.innerText = revpar.toFixed(2).replace('.', ',') + " €";
+
+            const adrBenchGoppar = document.getElementById('adr-bench-goppar');
+            if (adrBenchGoppar) adrBenchGoppar.innerText = goppar.toFixed(2).replace('.', ',') + " €";
+
+            const stepGross = document.getElementById('adr-step-gross');
+            if (stepGross) stepGross.innerText = adr.toFixed(2).replace('.', ',') + " €";
+
+            const stepCpor = document.getElementById('adr-step-cpor');
+            if (stepCpor) stepCpor.innerText = `-${cpor.toFixed(2).replace('.', ',')} €`;
+
+            const stepCporDesc = document.getElementById('adr-step-cpor-desc');
+            if (stepCporDesc) {
+                stepCporDesc.innerText = `Limp (${(roomCosts.occupied.cleaning||0).toFixed(1)}€), Lav (${(roomCosts.occupied.laundry||0).toFixed(1)}€), Sumin (${(roomCosts.occupied.utilities||0).toFixed(1)}€), Amen (${(roomCosts.occupied.amenities||0).toFixed(1)}€), Desg (${(roomCosts.occupied.wear||0).toFixed(1)}€).`;
+            }
+
+            const stepMargin = document.getElementById('adr-step-margin');
+            if (stepMargin) stepMargin.innerText = `+${unitMargin.toFixed(2).replace('.', ',')} €`;
+
+            const stepMarginDesc = document.getElementById('adr-step-margin-desc');
+            if (stepMarginDesc) stepMarginDesc.innerText = `${unitMarginPct.toFixed(1).replace('.', ',')}% de margen neto directo s/ADR por estancia vendida.`;
+
+            const stepVacDrag = document.getElementById('adr-step-vacant-drag');
+            if (stepVacDrag) stepVacDrag.innerText = `-${vacantDrag.toFixed(2).replace('.', ',')} €`;
+
+            const stepVacDragDesc = document.getElementById('adr-step-vacant-desc');
+            if (stepVacDragDesc) stepVacDragDesc.innerText = `Coste de ${fmtNum(vacantRooms)} hab. vacías (${fmt(costVacantTotal)}) absorbido entre ${fmtNum(occupiedRooms)} hab. vendidas.`;
+
+            const stepFinalProfit = document.getElementById('adr-step-final-profit');
+            if (stepFinalProfit) stepFinalProfit.innerText = `${finalProfitUnit >= 0 ? '+' : ''}${finalProfitUnit.toFixed(2).replace('.', ',')} €`;
+
+            const stepFinalDesc = document.getElementById('adr-step-final-desc');
+            if (stepFinalDesc) stepFinalDesc.innerText = `Beneficio neto final (${finalProfitPct.toFixed(1).replace('.', ',')}% s/ADR) tras cubrir costes variables y capacidad ociosa.`;
         }
 
         function renderCharts(agg, segmentDb, dailyDb, midx) {
