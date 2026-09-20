@@ -1099,6 +1099,51 @@
             border-left: 3px solid #10b981;
             font-weight: 700;
         }
+        .hk-tag-ideal {
+            font-size: 0.62rem;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 6px;
+            background: rgba(99, 102, 241, 0.16);
+            color: #818cf8;
+            border: 1px solid rgba(99, 102, 241, 0.35);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+        }
+        .hk-tag-real {
+            font-size: 0.62rem;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 6px;
+            background: rgba(16, 185, 129, 0.16);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.35);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+        }
+        .hk-info-box {
+            background: rgba(99, 102, 241, 0.05);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 12px;
+            padding: 14px 18px;
+            margin-top: 8px;
+            font-size: 0.78rem;
+            line-height: 1.5;
+            color: var(--text-main);
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+        [data-theme="light"] .hk-info-box {
+            background: rgba(99, 102, 241, 0.04);
+            border-color: rgba(99, 102, 241, 0.15);
+        }
     </style>
 </head>
 
@@ -1420,52 +1465,110 @@
                     </div>
                     <div class="hk-badges">
                         <span class="hk-badge">Hotel Activo: <strong id="hk-badge-hotel">Guadiana (108 hab)</strong></span>
-                        <span class="hk-badge">Plena Ocupación: <strong id="hk-badge-staff">8 camareras + 2 sup</strong></span>
-                        <span class="hk-badge">Rendimiento: <strong id="hk-badge-ratio">14 hab/jornada</strong></span>
-                        <span class="hk-badge">Supervisión: <strong id="hk-badge-supervision">2 pers (zonas comunes)</strong></span>
-                        <span class="hk-badge">Cobertura: <strong id="hk-badge-coverage">×1,4 (descansos/bajas)</strong></span>
+                        <span class="hk-badge"><span class="hk-tag-ideal">🎯 Ideal</span> Plena Ocupación: <strong id="hk-badge-staff">10 pers/día (8 cam + 2 sup)</strong></span>
+                        <span class="hk-badge"><span class="hk-tag-ideal">🎯 Ideal</span> Rendimiento: <strong id="hk-badge-ratio">14 hab/jornada</strong> · Cobertura: <strong id="hk-badge-coverage">×1,4 (14 pers)</strong></span>
+                        <span class="hk-badge"><span class="hk-tag-real">📊 Real</span> Ocupación: <strong id="hk-badge-real-occ">0%</strong> (<strong id="hk-badge-real-rooms">0 hab/día</strong>)</span>
+                        <button type="button" onclick="toggleHkGuide()" class="btn-econ-guide" style="padding: 4px 10px; font-size: 0.72rem; border-radius: 8px;">
+                            <span id="hkGuideBtnText">📖 Guía Ideal vs Real</span>
+                        </button>
                         <button type="button" onclick="openCostModal('housekeeping')" class="btn-econ-guide" style="padding: 4px 10px; font-size: 0.72rem; border-radius: 8px;">
                             ⚙️ Modificar Parámetros
                         </button>
+                        <!-- Hidden legacy compatibility element -->
+                        <span id="hk-badge-supervision" style="display:none;">2 pers</span>
                     </div>
                 </div>
 
-                <!-- 5 TARJETAS KPI DE OPERACIONES DE PISOS -->
-                <div class="hk-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                <!-- GUÍA DIDÁCTICA DESPLEGABLE: IDEAL VS REAL -->
+                <div id="hkGuideBox" class="hk-info-box" style="display: none;">
+                    <div style="font-size: 1.4rem;">💡</div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 800; margin-bottom: 6px; color: var(--text-main); font-size: 0.85rem;">
+                            ¿Cómo interpretar el Modelo Ideal frente a la Media Real del Periodo?
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-top: 6px;">
+                            <div style="background: rgba(99,102,241,0.08); padding: 12px 14px; border-radius: 10px; border: 1px solid rgba(99,102,241,0.25);">
+                                <strong style="color: #818cf8; font-size: 0.78rem;">🎯 MODELO IDEAL (Referencia Teórica a Plena Ocupación 100%)</strong>
+                                <p style="margin: 6px 0 0; color: var(--text-muted); font-size: 0.75rem; line-height: 1.5;">
+                                    Indica la estructura organizativa óptima cuando el hotel está completo: con <strong>14 hab/jornada</strong> por camarera, Guadiana necesita <strong>8 camareras</strong> (108/8 = 13,5 hab/pers) y Cumbria <strong>4 camareras</strong> (59/4 = 14,8 hab/pers), más <strong>2 de supervisión</strong> (gobernanta y zonas comunes) por hotel. Con el multiplicador de cobertura (<strong>×1,4</strong> para libranzas, vacaciones y bajas), la <strong>plantilla fija total contratada</strong> es de <strong>14 personas en Guadiana</strong> y <strong>8 en Cumbria</strong> (22 en todo el grupo).
+                                </p>
+                            </div>
+                            <div style="background: rgba(16,185,129,0.08); padding: 12px 14px; border-radius: 10px; border: 1px solid rgba(16,185,129,0.25);">
+                                <strong style="color: #10b981; font-size: 0.78rem;">📊 MEDIA REAL (Ejecución Real del Periodo Seleccionado)</strong>
+                                <p style="margin: 6px 0 0; color: var(--text-muted); font-size: 0.75rem; line-height: 1.5;">
+                                    Procede de las habitaciones vendidas y el calendario efectivo en CapaSuite. Si la ocupación es del 64%, no se limpian 108 habitaciones sino <strong>69 hab/día</strong>. Si las 8 camareras fijas están en servicio, su carga media real es de <strong>8,6 hab/camarera</strong> (no 14). Para lograr la máxima eficiencia a 14 hab/jornada, se precisaría un turno en servicio de <strong>6,3 camareras + 2 supervisión = 8,3 pers/día</strong>, generando <strong>51 jornadas de holgura</strong> en el mes para limpiezas a fondo o repasos.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5 TARJETAS KPI DE OPERACIONES DE PISOS (CON DISTINCIÓN IDEAL VS REAL) -->
+                <div class="hk-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));">
                     <div class="hk-card" style="border-left: 3px solid #6366f1;">
-                        <div class="hk-card-label">Personal Diario en Turno</div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                            <span class="hk-card-label" style="margin:0;">Personal Diario en Turno</span>
+                            <span class="hk-tag-real">📊 Demanda Real</span>
+                        </div>
                         <div class="hk-card-value" id="hk-val-daily-total" style="color: #818cf8;">0 pers/día</div>
-                        <div class="hk-card-sub" id="hk-sub-daily-total">0 camareras + 2 supervisión (100%: 10 pers)</div>
+                        <div class="hk-card-sub" id="hk-sub-daily-total">0 camareras + 2 supervisión</div>
+                        <div style="margin-top:6px; font-size:0.7rem; color:var(--text-muted);">
+                            <span class="hk-tag-ideal">🎯 Ideal 100%</span> <span id="hk-foot-daily-ideal">10 pers/día (8 cam + 2 sup)</span>
+                        </div>
                         <!-- Hidden legacy hooks for ID compatibility -->
                         <span id="hk-val-shifts-needed" style="display:none;">0 jor</span>
                         <span id="hk-sub-shifts-needed" style="display:none;">0</span>
                     </div>
 
                     <div class="hk-card" style="border-left: 3px solid #10b981;">
-                        <div class="hk-card-label">Plantilla Total Necesaria</div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                            <span class="hk-card-label" style="margin:0;">Plantilla Fija Contratada</span>
+                            <span class="hk-tag-ideal">🎯 Modelo Ideal</span>
+                        </div>
                         <div class="hk-card-value" id="hk-val-contracted-total" style="color: #10b981;">0 personas</div>
                         <div class="hk-card-sub" id="hk-sub-contracted-total">Cubre descansos, vacaciones y bajas (×1,4)</div>
+                        <div style="margin-top:6px; font-size:0.7rem; color:var(--text-muted);">
+                            <span class="hk-tag-ideal">🎯 Total Grupo</span> <span id="hk-foot-contracted-group">22 personas fijas (14 Guadiana + 8 Cumbria)</span>
+                        </div>
                         <!-- Hidden legacy hooks for ID compatibility -->
                         <span id="hk-val-shifts-contracted" style="display:none;">0 jor</span>
                         <span id="hk-sub-shifts-contracted" style="display:none;">0</span>
                     </div>
 
                     <div class="hk-card" style="border-left: 3px solid #f59e0b;">
-                        <div class="hk-card-label">Carga por Camarera / Día</div>
-                        <div class="hk-card-value" id="hk-val-rooms-per-hk" style="color: #f59e0b;">14,0 hab/día</div>
-                        <div class="hk-card-sub" id="hk-sub-rooms-per-hk">Capacidad: 112 UT (8 pers × 14 hab)</div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                            <span class="hk-card-label" style="margin:0;">Carga Media por Camarera</span>
+                            <span class="hk-tag-real">📊 Media Real</span>
+                        </div>
+                        <div class="hk-card-value" id="hk-val-rooms-per-hk" style="color: #f59e0b;">0 hab/día</div>
+                        <div class="hk-card-sub" id="hk-sub-rooms-per-hk">Con plantilla base en turno</div>
+                        <div style="margin-top:6px; font-size:0.7rem; color:var(--text-muted);">
+                            <span class="hk-tag-ideal">🎯 Objetivo Ideal</span> <span id="hk-foot-rooms-ideal">14,0 hab/jornada (Capacidad 112 UT)</span>
+                        </div>
                     </div>
 
                     <div class="hk-card" style="border-left: 3px solid #06b6d4;">
-                        <div class="hk-card-label">Carga Total Periodo (UT)</div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                            <span class="hk-card-label" style="margin:0;">Carga Total Periodo</span>
+                            <span class="hk-tag-real">📊 Real</span>
+                        </div>
                         <div class="hk-card-value" id="hk-val-total-ut" style="color: #06b6d4;">0 UT</div>
                         <div class="hk-card-sub" id="hk-sub-total-ut">0 salidas (1,5 UT) · 0 estancias (1,0 UT)</div>
+                        <div style="margin-top:6px; font-size:0.7rem; color:var(--text-muted);">
+                            Media diaria real: <strong id="hk-sub-daily-ut" style="color:var(--text-main);">0 UT / día</strong>
+                        </div>
                     </div>
 
                     <div class="hk-card" style="border-left: 3px solid #ec4899;" id="hk-card-status">
-                        <div class="hk-card-label">Utilización de Plantilla Base</div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                            <span class="hk-card-label" style="margin:0;">Utilización Plantilla Base</span>
+                            <span class="hk-tag-real">📊 Real vs Capacidad</span>
+                        </div>
                         <div class="hk-card-value" id="hk-val-utilization" style="color: #ec4899;">0%</div>
                         <div class="hk-card-sub" id="hk-sub-utilization">0 jor. necesarias / 0 contratadas</div>
+                        <div style="margin-top:6px; font-size:0.7rem; color:var(--text-muted);">
+                            Capacidad consumida: <strong id="hk-sub-cap-consumed" style="color:var(--text-main);">0 de 0 UT</strong>
+                        </div>
                     </div>
                 </div>
 
@@ -1480,62 +1583,83 @@
                     </div>
                 </div>
 
-                <!-- TABLA COMPARATIVA DE MODELO OPERATIVO Y CONJUNTO -->
+                <!-- TABLA COMPARATIVA DE MODELO OPERATIVO: IDEAL (100%) VS REAL -->
                 <div style="margin-top: 4px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
                         <span style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px;">
-                            📊 Modelo Operativo y Comparativa: Plena Ocupación (100%) vs Ocupación Actual
+                            📊 Cuadro Comparativo Integral: Modelo Ideal de Referencia frente a la Media Real
                         </span>
-                        <span style="font-size: 0.7rem; color: var(--text-muted);">Referencia estándar: 14 hab / persona · Cobertura: ×1,4</span>
+                        <span style="font-size: 0.7rem; color: var(--text-muted);">Ratio estándar: 14 hab/persona · Cobertura descansos/bajas: ×1,4</span>
                     </div>
                     <div class="hk-table-wrapper">
                         <table class="hk-table">
                             <thead>
+                                <tr style="border-bottom: 2px solid var(--border);">
+                                    <th colspan="2" style="background: rgba(255,255,255,0.02); text-align:center;">DATOS BASE</th>
+                                    <th colspan="4" style="background: rgba(99,102,241,0.12); color:#818cf8; text-align:center; border-left:1px solid var(--border); border-right:1px solid var(--border);">
+                                        🎯 MODELO IDEAL (PLENA OCUPACIÓN 100%)
+                                    </th>
+                                    <th colspan="4" style="background: rgba(16,185,129,0.12); color:#10b981; text-align:center;">
+                                        📊 MEDIA REAL DEL PERIODO (DATOS REALES)
+                                    </th>
+                                </tr>
                                 <tr>
                                     <th>Hotel / Ámbito</th>
                                     <th>Habitaciones</th>
-                                    <th>Camareras (100%)</th>
-                                    <th>Supervisión & Comunes</th>
-                                    <th>Personal Diario (100%)</th>
-                                    <th>Personal Diario (Ocup. Actual)</th>
-                                    <th>Plantilla Total (×1,4)</th>
-                                    <th>Habitaciones / Persona</th>
-                                    <th>Capacidad Diaria (UT)</th>
+                                    <!-- BLOQUE IDEAL -->
+                                    <th style="border-left:1px solid var(--border);">Camareras (100%)</th>
+                                    <th>Supervisión</th>
+                                    <th>Turno Diario Ideal</th>
+                                    <th style="border-right:1px solid var(--border);">Plantilla Fija (×1,4)</th>
+                                    <!-- BLOQUE REAL -->
+                                    <th>Hab. Reales / Día</th>
+                                    <th>Carga Real / Camarera</th>
+                                    <th>Turno Sugerido</th>
+                                    <th>Utilización Plantilla</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr id="hk-row-guadiana">
                                     <td><strong>Hotel Guadiana</strong></td>
                                     <td id="hk-tab-gua-rooms">108 hab</td>
-                                    <td id="hk-tab-gua-staff">8 pers</td>
+                                    <!-- IDEAL -->
+                                    <td id="hk-tab-gua-staff" style="border-left:1px solid var(--border);">8 pers</td>
                                     <td id="hk-tab-gua-sup">2 pers</td>
-                                    <td id="hk-tab-gua-day100">10 pers/día</td>
-                                    <td id="hk-tab-gua-daycurr"><strong>- pers/día</strong></td>
-                                    <td id="hk-tab-gua-total" style="font-weight:700; color:#10b981;">14 pers</td>
-                                    <td id="hk-tab-gua-ratio">13,5 hab/pers</td>
-                                    <td id="hk-tab-gua-cap">112 UT</td>
+                                    <td id="hk-tab-gua-day100"><strong>10 pers/día</strong></td>
+                                    <td id="hk-tab-gua-total" style="font-weight:700; color:#818cf8; border-right:1px solid var(--border);">14 pers</td>
+                                    <!-- REAL -->
+                                    <td id="hk-tab-gua-realrooms">69,1 hab/día</td>
+                                    <td id="hk-tab-gua-ratio" style="font-weight:700; color:#f59e0b;">8,6 hab/pers</td>
+                                    <td id="hk-tab-gua-daycurr" style="font-weight:700; color:#10b981;">8,3 pers/día</td>
+                                    <td id="hk-tab-gua-cap">78,8%</td>
                                 </tr>
                                 <tr id="hk-row-cumbria">
                                     <td><strong>Hotel Cumbria</strong></td>
                                     <td id="hk-tab-cum-rooms">59 hab</td>
-                                    <td id="hk-tab-cum-staff">4 pers</td>
+                                    <!-- IDEAL -->
+                                    <td id="hk-tab-cum-staff" style="border-left:1px solid var(--border);">4 pers</td>
                                     <td id="hk-tab-cum-sup">2 pers</td>
-                                    <td id="hk-tab-cum-day100">6 pers/día</td>
-                                    <td id="hk-tab-cum-daycurr"><strong>- pers/día</strong></td>
-                                    <td id="hk-tab-cum-total" style="font-weight:700; color:#10b981;">8 pers</td>
-                                    <td id="hk-tab-cum-ratio">14,8 hab/pers</td>
-                                    <td id="hk-tab-cum-cap">56 UT</td>
+                                    <td id="hk-tab-cum-day100"><strong>6 pers/día</strong></td>
+                                    <td id="hk-tab-cum-total" style="font-weight:700; color:#818cf8; border-right:1px solid var(--border);">8 pers</td>
+                                    <!-- REAL -->
+                                    <td id="hk-tab-cum-realrooms">37,8 hab/día</td>
+                                    <td id="hk-tab-cum-ratio" style="font-weight:700; color:#f59e0b;">9,4 hab/pers</td>
+                                    <td id="hk-tab-cum-daycurr" style="font-weight:700; color:#10b981;">5,4 pers/día</td>
+                                    <td id="hk-tab-cum-cap">78,8%</td>
                                 </tr>
                                 <tr class="total-row">
                                     <td><strong>Total Ambos Hoteles</strong></td>
                                     <td id="hk-tab-tot-rooms">167 hab</td>
-                                    <td id="hk-tab-tot-staff">12 pers</td>
+                                    <!-- IDEAL -->
+                                    <td id="hk-tab-tot-staff" style="border-left:1px solid var(--border);">12 pers</td>
                                     <td id="hk-tab-tot-sup">4 pers</td>
-                                    <td id="hk-tab-tot-day100">16 pers/día</td>
-                                    <td id="hk-tab-tot-daycurr"><strong>- pers/día</strong></td>
-                                    <td id="hk-tab-tot-total" style="font-weight:800; color:#818cf8;">22 personas</td>
-                                    <td id="hk-tab-tot-ratio">13,9 hab/pers</td>
-                                    <td id="hk-tab-tot-cap">168 UT</td>
+                                    <td id="hk-tab-tot-day100"><strong>16 pers/día</strong></td>
+                                    <td id="hk-tab-tot-total" style="font-weight:800; color:#818cf8; border-right:1px solid var(--border);">22 personas</td>
+                                    <!-- REAL -->
+                                    <td id="hk-tab-tot-realrooms">106,9 hab/día</td>
+                                    <td id="hk-tab-tot-ratio" style="font-weight:800; color:#f59e0b;">8,9 hab/pers</td>
+                                    <td id="hk-tab-tot-daycurr" style="font-weight:800; color:#10b981;">13,8 pers/día</td>
+                                    <td id="hk-tab-tot-cap">78,8%</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -1998,6 +2122,15 @@
             const isHidden = (box.style.display === 'none');
             box.style.display = isHidden ? 'flex' : 'none';
             if (btnText) btnText.innerText = isHidden ? 'Ocultar Guía' : 'Ver Guía Explicativa';
+        }
+
+        function toggleHkGuide() {
+            const box = document.getElementById('hkGuideBox');
+            const btnText = document.getElementById('hkGuideBtnText');
+            if (!box) return;
+            const isHidden = (box.style.display === 'none');
+            box.style.display = isHidden ? 'flex' : 'none';
+            if (btnText) btnText.innerText = isHidden ? 'Ocultar Guía' : '📖 Guía Ideal vs Real';
         }
 
         function loadCostModalInputs(hotel) {
@@ -2818,30 +2951,45 @@
             const hkUtilizationPct = totalContractedHousekeeperShifts > 0 ? (totalNeededShifts / totalContractedHousekeeperShifts * 100) : 0;
             const shiftBalance = totalContractedHousekeeperShifts - totalNeededShifts;
 
+            // Media real de habitaciones que hace cada camarera fija en turno
+            const realRoomsPerHousekeeper = staffBase > 0 ? (dailyOccupiedRoomsAvg / staffBase) : 0;
+            const realUTPerHousekeeper = staffBase > 0 ? ((totalWorkUnits / periodDaysCount) / staffBase) : 0;
+
             // 1. Actualización de Badges de Cabecera
             const elHkBadgeHotel = document.getElementById('hk-badge-hotel');
             if (elHkBadgeHotel) elHkBadgeHotel.innerText = `${hotel === 'Cumbria' ? 'Cumbria' : 'Guadiana'} (${totalHotelRooms} hab)`;
 
             const elHkBadgeStaff = document.getElementById('hk-badge-staff');
-            if (elHkBadgeStaff) elHkBadgeStaff.innerText = `${staffBase} cam + ${staffSupervision} sup (${dailyStaff100} pers/día a 100%)`;
+            if (elHkBadgeStaff) elHkBadgeStaff.innerText = `${dailyStaff100} pers/día (${staffBase} cam + ${staffSupervision} sup)`;
 
             const elHkRatioBadge = document.getElementById('hk-badge-ratio');
             if (elHkRatioBadge) elHkRatioBadge.innerText = `${roomsPerStaff} hab/jornada`;
 
+            const elHkBadgeCov = document.getElementById('hk-badge-coverage');
+            if (elHkBadgeCov) elHkBadgeCov.innerText = `×${coverageFactor.toFixed(1)} (${totalContractedStaff} pers)`;
+
+            const elHkRealOcc = document.getElementById('hk-badge-real-occ');
+            if (elHkRealOcc) elHkRealOcc.innerText = `${occPct.toFixed(1).replace('.', ',')}%`;
+
+            const elHkRealRooms = document.getElementById('hk-badge-real-rooms');
+            if (elHkRealRooms) elHkRealRooms.innerText = `${dailyOccupiedRoomsAvg.toFixed(1).replace('.', ',')} hab/día`;
+
             const elHkBadgeSup = document.getElementById('hk-badge-supervision');
             if (elHkBadgeSup) elHkBadgeSup.innerText = `${staffSupervision} pers (zonas comunes)`;
 
-            const elHkBadgeCov = document.getElementById('hk-badge-coverage');
-            if (elHkBadgeCov) elHkBadgeCov.innerText = `×${coverageFactor.toFixed(1)} (${totalContractedStaff} pers plantilla)`;
-
             // 2. Tarjetas KPI
-            // Card 1: Personal Diario en Turno (Periodo vs Plena Ocupación)
+            // Card 1: Personal Diario en Turno (Demanda Real s/volumen)
             const elHkDailyTot = document.getElementById('hk-val-daily-total');
             if (elHkDailyTot) elHkDailyTot.innerText = `${avgDailyTotalStaff.toFixed(1).replace('.', ',')} pers/día`;
 
             const elHkSubDailyTot = document.getElementById('hk-sub-daily-total');
             if (elHkSubDailyTot) {
-                elHkSubDailyTot.innerText = `${avgDailyHousekeepers.toFixed(1).replace('.', ',')} camareras + ${staffSupervision} supervisión (a 100%: ${dailyStaff100} pers)`;
+                elHkSubDailyTot.innerText = `${avgDailyHousekeepers.toFixed(1).replace('.', ',')} camareras + ${staffSupervision} supervisión`;
+            }
+
+            const elHkFootDailyIdeal = document.getElementById('hk-foot-daily-ideal');
+            if (elHkFootDailyIdeal) {
+                elHkFootDailyIdeal.innerText = `${dailyStaff100} pers/día (${staffBase} cam + ${staffSupervision} sup a 100%)`;
             }
 
             // Card 2: Plantilla Total Necesaria (con cobertura libranzas/vacaciones/bajas)
@@ -2850,16 +2998,21 @@
 
             const elHkSubContTot = document.getElementById('hk-sub-contracted-total');
             if (elHkSubContTot) {
-                elHkSubContTot.innerText = `Cubre descansos, vacaciones y bajas (×${coverageFactor.toFixed(1)})`;
+                elHkSubContTot.innerText = `${dailyStaff100} pers/día × ${coverageFactor.toFixed(1)} factor descansos/bajas`;
             }
 
-            // Card 3: Carga por Camarera / Día
+            // Card 3: Carga por Camarera / Día (MEDIA REAL vs OBJETIVO IDEAL)
             const elHkRoomsPerHk = document.getElementById('hk-val-rooms-per-hk');
-            if (elHkRoomsPerHk) elHkRoomsPerHk.innerText = `${roomsPerStaff.toFixed(1).replace('.', ',')} hab/día`;
+            if (elHkRoomsPerHk) elHkRoomsPerHk.innerText = `${realRoomsPerHousekeeper.toFixed(1).replace('.', ',')} hab/camarera`;
 
             const elHkSubRoomsPerHk = document.getElementById('hk-sub-rooms-per-hk');
             if (elHkSubRoomsPerHk) {
-                elHkSubRoomsPerHk.innerText = `Capacidad: ${dailyCapacityUT} UT (${staffBase} pers × ${roomsPerStaff} hab) · 100%: ${fullOccRoomsPerPerson.toFixed(1).replace('.', ',')} hab/pers`;
+                elHkSubRoomsPerHk.innerText = `Con las ${staffBase} camareras en turno (${dailyOccupiedRoomsAvg.toFixed(1).replace('.', ',')} hab/día reales)`;
+            }
+
+            const elHkFootRoomsIdeal = document.getElementById('hk-foot-rooms-ideal');
+            if (elHkFootRoomsIdeal) {
+                elHkFootRoomsIdeal.innerText = `${roomsPerStaff} hab/jornada (Capacidad: ${dailyCapacityUT} UT · 100%: ${fullOccRoomsPerPerson.toFixed(1).replace('.', ',')} hab/pers)`;
             }
 
             // Card 4: Carga Total de Trabajo en el Periodo
@@ -2868,6 +3021,9 @@
 
             const elHkSubUT = document.getElementById('hk-sub-total-ut');
             if (elHkSubUT) elHkSubUT.innerText = `${fmtNum(estimatedDepartures)} salidas (${weightDeparture.toFixed(1).replace('.', ',')} UT) · ${fmtNum(estimatedStayovers)} estancias (${weightStay.toFixed(1).replace('.', ',')} UT)`;
+
+            const elHkSubDailyUT = document.getElementById('hk-sub-daily-ut');
+            if (elHkSubDailyUT) elHkSubDailyUT.innerText = `${(totalWorkUnits / periodDaysCount).toFixed(1).replace('.', ',')} UT / día`;
 
             // Card 5: Utilización de Plantilla Base
             const elHkUtil = document.getElementById('hk-val-utilization');
@@ -2886,6 +3042,9 @@
                     elHkSubUtil.style.color = '#f59e0b';
                 }
             }
+
+            const elHkSubCapConsumed = document.getElementById('hk-sub-cap-consumed');
+            if (elHkSubCapConsumed) elHkSubCapConsumed.innerText = `${Math.round(totalWorkUnits).toLocaleString('es-ES')} de ${totalContractedCapacityUT.toLocaleString('es-ES')} UT`;
 
             // Legacy hooks support
             const elHkShiftsNeed = document.getElementById('hk-val-shifts-needed');
@@ -2915,7 +3074,7 @@
                 }
             }
 
-            // 4. Tabla Comparativa de Hoteles y Total Conjunto
+            // 4. Tabla Comparativa de Hoteles y Total Conjunto (Ideal vs Real)
             const costsGua = getRoomCosts('Guadiana');
             const hkGua = costsGua.housekeeping || { totalRooms: 108, staffBase: 8, staffSupervision: 2, roomsPerStaff: 14, coverageFactor: 1.4, alos: 1.8, weightStay: 1.0, weightDeparture: 1.5 };
             const roomsGua = Number(hkGua.totalRooms) || 108;
@@ -2924,8 +3083,7 @@
             const day100Gua = staffGua + supGua;
             const covGua = Number(hkGua.coverageFactor) || 1.4;
             const totPlantillaGua = Math.round(day100Gua * covGua);
-            const ratioGua = staffGua > 0 ? (roomsGua / staffGua) : 13.5;
-            const capUTGua = staffGua * (Number(hkGua.roomsPerStaff) || 14);
+            const ratioGuaIdeal = staffGua > 0 ? (roomsGua / staffGua) : 13.5;
 
             const costsCum = getRoomCosts('Cumbria');
             const hkCum = costsCum.housekeeping || { totalRooms: 59, staffBase: 4, staffSupervision: 2, roomsPerStaff: 14, coverageFactor: 1.4, alos: 1.8, weightStay: 1.0, weightDeparture: 1.5 };
@@ -2935,61 +3093,84 @@
             const day100Cum = staffCum + supCum;
             const covCum = Number(hkCum.coverageFactor) || 1.4;
             const totPlantillaCum = Math.round(day100Cum * covCum);
-            const ratioCum = staffCum > 0 ? (roomsCum / staffCum) : 14.75;
-            const capUTCum = staffCum * (Number(hkCum.roomsPerStaff) || 14);
+            const ratioCumIdeal = staffCum > 0 ? (roomsCum / staffCum) : 14.75;
 
-            // Estimación del personal diario en la ocupación actual para ambos hoteles
+            // Estimación de la ocupación y habitaciones reales para cada hotel
             const occRatioActual = Math.max(0.05, Math.min(1.0, (occ || 60) / 100));
-            let dayCurrGua, dayCurrCum;
+            let realRoomsGua, realRatioGua, dayCurrGua, utilGua;
+            let realRoomsCum, realRatioCum, dayCurrCum, utilCum;
+
             if (hotel === 'Guadiana') {
+                realRoomsGua = dailyOccupiedRoomsAvg;
+                realRatioGua = realRoomsPerHousekeeper;
                 dayCurrGua = avgDailyTotalStaff;
-                const cumEstHk = (roomsCum * occRatioActual * (1 + 0.5 / (hkCum.alos || 1.8))) / (hkCum.roomsPerStaff || 14);
+                utilGua = hkUtilizationPct;
+
+                realRoomsCum = roomsCum * occRatioActual;
+                realRatioCum = staffCum > 0 ? (realRoomsCum / staffCum) : 0;
+                const cumEstHk = (realRoomsCum * (1 + 0.5 / (hkCum.alos || 1.8))) / (hkCum.roomsPerStaff || 14);
                 dayCurrCum = cumEstHk + supCum;
+                utilCum = staffCum > 0 ? (cumEstHk / staffCum * 100) : 0;
             } else {
+                realRoomsCum = dailyOccupiedRoomsAvg;
+                realRatioCum = realRoomsPerHousekeeper;
                 dayCurrCum = avgDailyTotalStaff;
-                const guaEstHk = (roomsGua * occRatioActual * (1 + 0.5 / (hkGua.alos || 1.8))) / (hkGua.roomsPerStaff || 14);
-                dayCurrGua = guaEstHk + supCum;
+                utilCum = hkUtilizationPct;
+
+                realRoomsGua = roomsGua * occRatioActual;
+                realRatioGua = staffGua > 0 ? (realRoomsGua / staffGua) : 0;
+                const guaEstHk = (realRoomsGua * (1 + 0.5 / (hkGua.alos || 1.8))) / (hkGua.roomsPerStaff || 14);
+                dayCurrGua = guaEstHk + supGua;
+                utilGua = staffGua > 0 ? (guaEstHk / staffGua * 100) : 0;
             }
 
-            // Actualización de celdas Guadiana
             const setTxt = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
+
+            // Celdas Guadiana
             setTxt('hk-tab-gua-rooms', `${roomsGua} hab`);
             setTxt('hk-tab-gua-staff', `${staffGua} pers`);
             setTxt('hk-tab-gua-sup', `${supGua} pers`);
             setTxt('hk-tab-gua-day100', `${day100Gua} pers/día`);
-            setTxt('hk-tab-gua-daycurr', `${dayCurrGua.toFixed(1).replace('.', ',')} pers/día`);
             setTxt('hk-tab-gua-total', `${totPlantillaGua} pers`);
-            setTxt('hk-tab-gua-ratio', `${ratioGua.toFixed(1).replace('.', ',')} hab/pers`);
-            setTxt('hk-tab-gua-cap', `${capUTGua} UT`);
+            setTxt('hk-tab-gua-realrooms', `${realRoomsGua.toFixed(1).replace('.', ',')} hab/día`);
+            setTxt('hk-tab-gua-ratio', `${realRatioGua.toFixed(1).replace('.', ',')} hab/pers`);
+            setTxt('hk-tab-gua-daycurr', `${dayCurrGua.toFixed(1).replace('.', ',')} pers/día`);
+            setTxt('hk-tab-gua-cap', `${utilGua.toFixed(1).replace('.', ',')}%`);
 
-            // Actualización de celdas Cumbria
+            // Celdas Cumbria
             setTxt('hk-tab-cum-rooms', `${roomsCum} hab`);
             setTxt('hk-tab-cum-staff', `${staffCum} pers`);
             setTxt('hk-tab-cum-sup', `${supCum} pers`);
             setTxt('hk-tab-cum-day100', `${day100Cum} pers/día`);
-            setTxt('hk-tab-cum-daycurr', `${dayCurrCum.toFixed(1).replace('.', ',')} pers/día`);
             setTxt('hk-tab-cum-total', `${totPlantillaCum} pers`);
-            setTxt('hk-tab-cum-ratio', `${ratioCum.toFixed(1).replace('.', ',')} hab/pers`);
-            setTxt('hk-tab-cum-cap', `${capUTCum} UT`);
+            setTxt('hk-tab-cum-realrooms', `${realRoomsCum.toFixed(1).replace('.', ',')} hab/día`);
+            setTxt('hk-tab-cum-ratio', `${realRatioCum.toFixed(1).replace('.', ',')} hab/pers`);
+            setTxt('hk-tab-cum-daycurr', `${dayCurrCum.toFixed(1).replace('.', ',')} pers/día`);
+            setTxt('hk-tab-cum-cap', `${utilCum.toFixed(1).replace('.', ',')}%`);
 
-            // Actualización de celdas Total Grupo
+            // Celdas Total Grupo
             const totRoomsAll = roomsGua + roomsCum;
             const totStaffAll = staffGua + staffCum;
             const totSupAll = supGua + supCum;
             const totDay100All = day100Gua + day100Cum;
-            const totDayCurrAll = dayCurrGua + dayCurrCum;
             const totPlantillaAll = totPlantillaGua + totPlantillaCum;
-            const totRatioAll = totStaffAll > 0 ? (totRoomsAll / totStaffAll) : 13.9;
-            const totCapUTAll = capUTGua + capUTCum;
+            const totRealRoomsAll = realRoomsGua + realRoomsCum;
+            const totRealRatioAll = totStaffAll > 0 ? (totRealRoomsAll / totStaffAll) : 0;
+            const totDayCurrAll = dayCurrGua + dayCurrCum;
+            const totUtilAll = totStaffAll > 0 ? (((dayCurrGua - supGua) + (dayCurrCum - supCum)) / totStaffAll * 100) : 0;
 
             setTxt('hk-tab-tot-rooms', `${totRoomsAll} hab`);
             setTxt('hk-tab-tot-staff', `${totStaffAll} pers`);
             setTxt('hk-tab-tot-sup', `${totSupAll} pers`);
             setTxt('hk-tab-tot-day100', `${totDay100All} pers/día`);
-            setTxt('hk-tab-tot-daycurr', `${totDayCurrAll.toFixed(1).replace('.', ',')} pers/día`);
             setTxt('hk-tab-tot-total', `${totPlantillaAll} personas`);
-            setTxt('hk-tab-tot-ratio', `${totRatioAll.toFixed(1).replace('.', ',')} hab/pers`);
-            setTxt('hk-tab-tot-cap', `${totCapUTAll} UT`);
+            setTxt('hk-tab-tot-realrooms', `${totRealRoomsAll.toFixed(1).replace('.', ',')} hab/día`);
+            setTxt('hk-tab-tot-ratio', `${totRealRatioAll.toFixed(1).replace('.', ',')} hab/pers`);
+            setTxt('hk-tab-tot-daycurr', `${totDayCurrAll.toFixed(1).replace('.', ',')} pers/día`);
+            setTxt('hk-tab-tot-cap', `${totUtilAll.toFixed(1).replace('.', ',')}%`);
+
+            const elHkFootGroup = document.getElementById('hk-foot-contracted-group');
+            if (elHkFootGroup) elHkFootGroup.innerText = `${totPlantillaAll} personas fijas (${totPlantillaGua} Guadiana + ${totPlantillaCum} Cumbria)`;
 
             // Resaltado de fila activa
             const rowGua = document.getElementById('hk-row-guadiana');
@@ -2997,16 +3178,18 @@
             if (rowGua) rowGua.classList.toggle('active-hotel-row', hotel === 'Guadiana');
             if (rowCum) rowCum.classList.toggle('active-hotel-row', hotel === 'Cumbria');
 
-            // 5. Diagnóstico Narrativo Ejecutivo
+            // 5. Diagnóstico Narrativo Ejecutivo (Claridad Ideal vs Real)
             const elHkStory = document.getElementById('hk-summary-text');
             if (elHkStory) {
                 const statusTone = hkUtilizationPct > 105 
-                    ? `<span style="color:#ef4444; font-weight:700;">Sobrecarga operativa (${hkUtilizationPct.toFixed(1)}%)</span>: se requieren <strong>${Math.abs(shiftBalance)} jornadas adicionales de refuerzo</strong> o reestructuración de turnos para asumir los picos de rotación de salidas.`
+                    ? `<span style="color:#ef4444; font-weight:700;">Sobrecarga operativa (${hkUtilizationPct.toFixed(1)}%)</span>: la demanda real supera la capacidad base, requiriéndose <strong>${Math.abs(shiftBalance)} jornadas adicionales de refuerzo</strong>.`
                     : (hkUtilizationPct < 70
-                        ? `<span style="color:#3b82f6; font-weight:700;">Capacidad ociosa (${hkUtilizationPct.toFixed(1)}%)</span>: plantilla holgada con <strong>${shiftBalance} jornadas disponibles</strong> aprovechables para limpiezas de choque, mantenimiento preventivo y repasos de vacías.`
-                        : `<span style="color:#10b981; font-weight:700;">Rendimiento equilibrado (${hkUtilizationPct.toFixed(1)}%)</span>: la plantilla base en turno absorbe la carga operativa diaria con normalidad.`);
+                        ? `<span style="color:#3b82f6; font-weight:700;">Capacidad ociosa (${hkUtilizationPct.toFixed(1)}%)</span>: con <strong>${shiftBalance} jornadas disponibles</strong>, la plantilla fija tiene margen holgado para limpiezas a fondo y repasos de vacías.`
+                        : `<span style="color:#10b981; font-weight:700;">Rendimiento equilibrado (${hkUtilizationPct.toFixed(1)}%)</span>: la carga de trabajo diaria se absorbe con normalidad.`);
 
-                elHkStory.innerHTML = `<strong>${hotel === 'Cumbria' ? 'Hotel Cumbria' : 'Hotel Guadiana'} (${totalHotelRooms} hab)</strong>: A plena ocupación se requieren <strong>${staffBase} camareras/os</strong> (reparto de ${fullOccRoomsPerPerson.toFixed(1)} hab/persona) más <strong>${staffSupervision} personas de supervisión y zonas comunes</strong>, sumando un turno diario de <strong>${dailyStaff100} personas/día</strong> y una plantilla total contratada de <strong>${totalContractedStaff} personas</strong> (factor ×${coverageFactor.toFixed(1)} para descansos, vacaciones y bajas). En el periodo actual analizado (${periodDaysCount} días con ${fmtNum(occupiedRooms)} estancias vendidas y ${occPct.toFixed(1)}% ocupación), se generan <strong>${Math.round(totalWorkUnits).toLocaleString('es-ES')} UT</strong> (${fmtNum(estimatedDepartures)} salidas a 1,5 UT y ${fmtNum(estimatedStayovers)} estancias a 1,0 UT), necesitando una media en servicio de <strong>${avgDailyHousekeepers.toFixed(1).replace('.', ',')} camareras + ${staffSupervision} supervisión = ${avgDailyTotalStaff.toFixed(1).replace('.', ',')} personas/día</strong>. A nivel de ambos hoteles conjuntamente, el personal diario en este nivel de ocupación se sitúa en unas <strong>${totDayCurrAll.toFixed(0)} personas/día</strong> (frente a las ${totDay100All} a plena ocupación). ${statusTone}`;
+                elHkStory.innerHTML = `<strong>${hotel === 'Cumbria' ? 'Hotel Cumbria' : 'Hotel Guadiana'} (${totalHotelRooms} hab)</strong> · <strong>Diferencia entre Modelo Ideal y Ejecución Real:</strong><br>
+                • <strong>🎯 Modelo Ideal (Plena Ocupación 100%):</strong> Requiere <strong>${staffBase} camareras</strong> (reparto ideal de ${fullOccRoomsPerPerson.toFixed(1)} hab/persona) + <strong>${staffSupervision} de supervisión/zonas comunes</strong> = <strong>${dailyStaff100} personas/día en turno</strong>. Con factor ×${coverageFactor.toFixed(1)} (descansos, vacaciones y bajas), la plantilla total contratada debe ser de <strong>${totalContractedStaff} personas fijas</strong>.<br>
+                • <strong>📊 Media Real del Periodo (${periodDaysCount} días al ${occPct.toFixed(1)}% ocupación):</strong> Se ocupan de media <strong>${dailyOccupiedRoomsAvg.toFixed(1)} hab/día</strong> (rotación de ${fmtNum(estimatedDepartures)} salidas y ${fmtNum(estimatedStayovers)} estancias = ${Math.round(totalWorkUnits).toLocaleString('es-ES')} UT). Con las ${staffBase} camareras de plantilla base en turno, su <strong>carga media real es de ${realRoomsPerHousekeeper.toFixed(1)} hab/camarera</strong> (frente a las 14 ideales). Si se ajustara el turno diario a la máxima productividad (14 hab/jornada), bastarían <strong>${avgDailyHousekeepers.toFixed(1)} camareras + ${staffSupervision} supervisión = ${avgDailyTotalStaff.toFixed(1)} personas/día</strong>. Conjuntamente entre ambos hoteles, el turno diario real necesario es de unas <strong>${totDayCurrAll.toFixed(0)} personas/día</strong> (frente a 16 a plena ocupación). ${statusTone}`;
             }
         }
 
