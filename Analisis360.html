@@ -1067,7 +1067,18 @@
             <div class="cost-group">
                 <div class="cost-group-title">
                     <span style="color: #f59e0b;">🚪 Habitación Vacía (Costes Mantenimiento / Día)</span>
-                    <span class="cost-subtotal-badge" style="color: #f59e0b; background: rgba(245, 158, 11, 0.15);" id="modalSubtotalVacant">Vacía: 3,00 €</span>
+                    <span class="cost-subtotal-badge" style="color: #f59e0b; background: rgba(245, 158, 11, 0.15);" id="modalSubtotalVacant">Vacía: 7,00 €</span>
+                </div>
+
+                <div class="cost-row">
+                    <label>
+                        Coste de personal fijo y estructura
+                        <span class="cost-range">Recepción, pisos y mantenimiento fijo: 3 – 8 €</span>
+                    </label>
+                    <div class="cost-input-wrapper">
+                        <input type="number" id="cost_staff" min="0" max="100" step="0.5" oninput="updateCostModalSubtotals()">
+                        <span>€</span>
+                    </div>
                 </div>
 
                 <div class="cost-row">
@@ -1134,11 +1145,11 @@
         const DEFAULT_ROOM_COSTS = {
             "Guadiana": {
                 occupied: { cleaning: 10.0, laundry: 4.5, amenities: 1.5, utilities: 3.0, wear: 2.0 },
-                vacant: { standby: 0.8, refresh: 1.2, maintenance: 1.0 }
+                vacant: { staff: 4.0, standby: 0.8, refresh: 1.2, maintenance: 1.0 }
             },
             "Cumbria": {
                 occupied: { cleaning: 10.0, laundry: 4.5, amenities: 1.5, utilities: 3.0, wear: 2.0 },
-                vacant: { standby: 0.8, refresh: 1.2, maintenance: 1.0 }
+                vacant: { staff: 4.0, standby: 0.8, refresh: 1.2, maintenance: 1.0 }
             }
         };
 
@@ -1187,6 +1198,7 @@
             document.getElementById('cost_utilities').value = (costs.occupied.utilities ?? 3.0).toFixed(2);
             document.getElementById('cost_wear').value = (costs.occupied.wear ?? 2.0).toFixed(2);
 
+            document.getElementById('cost_staff').value = (costs.vacant.staff ?? 4.0).toFixed(2);
             document.getElementById('cost_standby').value = (costs.vacant.standby ?? 0.8).toFixed(2);
             document.getElementById('cost_refresh').value = (costs.vacant.refresh ?? 1.2).toFixed(2);
             document.getElementById('cost_maintenance').value = (costs.vacant.maintenance ?? 1.0).toFixed(2);
@@ -1202,10 +1214,11 @@
             const subOcc = cClean + cLaund + cAmen + cUtil + cWear;
             document.getElementById('modalSubtotalOccupied').innerText = `CPOR: ${subOcc.toFixed(2).replace('.', ',')} €`;
 
+            const cStaff = parseFloat(document.getElementById('cost_staff').value) || 0;
             const cStand = parseFloat(document.getElementById('cost_standby').value) || 0;
             const cRef = parseFloat(document.getElementById('cost_refresh').value) || 0;
             const cMaint = parseFloat(document.getElementById('cost_maintenance').value) || 0;
-            const subVac = cStand + cRef + cMaint;
+            const subVac = cStaff + cStand + cRef + cMaint;
             document.getElementById('modalSubtotalVacant').innerText = `Vacía: ${subVac.toFixed(2).replace('.', ',')} €`;
         }
 
@@ -1220,6 +1233,7 @@
                     wear: parseFloat(document.getElementById('cost_wear').value) || 0
                 },
                 vacant: {
+                    staff: parseFloat(document.getElementById('cost_staff').value) || 0,
                     standby: parseFloat(document.getElementById('cost_standby').value) || 0,
                     refresh: parseFloat(document.getElementById('cost_refresh').value) || 0,
                     maintenance: parseFloat(document.getElementById('cost_maintenance').value) || 0
@@ -1713,8 +1727,8 @@
             const cpor = (roomCosts.occupied.cleaning || 0) + (roomCosts.occupied.laundry || 0) + 
                          (roomCosts.occupied.amenities || 0) + (roomCosts.occupied.utilities || 0) + 
                          (roomCosts.occupied.wear || 0);
-            const cVacant = (roomCosts.vacant.standby || 0) + (roomCosts.vacant.refresh || 0) + 
-                            (roomCosts.vacant.maintenance || 0);
+            const cVacant = (roomCosts.vacant.staff || 0) + (roomCosts.vacant.standby || 0) + 
+                            (roomCosts.vacant.refresh || 0) + (roomCosts.vacant.maintenance || 0);
 
             const occupiedRooms = totalRms;
             const availableRooms = cap * days;
@@ -1772,7 +1786,7 @@
 
             const econVacantSubEl = document.getElementById('econ-vacant-sub');
             if (econVacantSubEl) {
-                econVacantSubEl.innerText = `Standby (${roomCosts.vacant.standby}€), Repaso (${roomCosts.vacant.refresh}€), Mant (${roomCosts.vacant.maintenance}€)`;
+                econVacantSubEl.innerText = `Personal (${roomCosts.vacant.staff || 0}€), Standby (${roomCosts.vacant.standby}€), Repaso (${roomCosts.vacant.refresh}€), Mant (${roomCosts.vacant.maintenance}€)`;
             }
 
             const econVacantTotalEl = document.getElementById('econ-vacant-total');
