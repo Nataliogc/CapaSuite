@@ -488,6 +488,196 @@
             .header-360 { padding: 30px 20px; flex-direction: column; align-items: flex-start; gap: 20px; }
             .main-container { padding: 0 20px 40px; }
         }
+
+        /* MODAL DE COSTES */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 20000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(8px);
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.open {
+            display: flex;
+        }
+        .modal-content {
+            background: var(--bg-surface);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 28px;
+            width: 95%;
+            max-width: 680px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.3s ease-out;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 14px;
+            margin-bottom: 18px;
+        }
+        .modal-header h2 {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .cost-group {
+            background: var(--bg-deep);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 16px 20px;
+            margin-bottom: 16px;
+        }
+        .cost-group-title {
+            font-size: 0.85rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .cost-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .cost-row:last-child {
+            margin-bottom: 0;
+        }
+        .cost-row label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .cost-row label span.cost-range {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+        .cost-input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .cost-input-wrapper input {
+            width: 85px;
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg-surface);
+            color: var(--text-main);
+            font-weight: 700;
+            text-align: right;
+            font-size: 0.9rem;
+            outline: none;
+            transition: var(--transition);
+        }
+        .cost-input-wrapper input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px var(--primary-glow);
+        }
+        .cost-subtotal-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            background: rgba(99, 102, 241, 0.15);
+            color: #818cf8;
+        }
+        .btn-cost-config {
+            background: rgba(99, 102, 241, 0.12);
+            border: 1px solid var(--primary);
+            color: #818cf8;
+            padding: 8px 14px;
+            border-radius: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: inherit;
+            font-size: 0.8rem;
+            transition: var(--transition);
+            white-space: nowrap;
+        }
+        .btn-cost-config:hover {
+            background: var(--primary);
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        /* UNIT ECONOMICS PANEL */
+        .economics-panel {
+            background: var(--bg-glass);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            padding: 24px 30px;
+            box-shadow: var(--shadow-premium);
+            margin-bottom: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            animation: fadeIn 1s ease-out 0.3s both;
+        }
+        .economics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+        .econ-metric-card {
+            background: var(--bg-deep);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+        }
+        .econ-metric-card .econ-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        .econ-metric-card .econ-value {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--text-main);
+        }
+        .econ-metric-card .econ-sub {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+            font-weight: 500;
+        }
     </style>
 </head>
 
@@ -527,9 +717,14 @@
     <header class="header-360">
         <div class="header-title">
             <h1>Panel 360º</h1>
-            <p>Inteligencia de Producción y Mercado</p>
+            <p id="subTitle360">Inteligencia de Producción, Previsión y Costes</p>
         </div>
-        <div class="controls">
+        <div class="controls" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+            <select id="viewModeSelector" onchange="refreshAll()" style="font-weight:700; border-color:var(--primary); color:var(--primary);" title="Modo de Vista">
+                <option value="projected">🔮 Proyección Cierre (Real + OTB)</option>
+                <option value="real">📈 Producción Real (YTD)</option>
+                <option value="otb">📋 Solo Previsión (OTB)</option>
+            </select>
             <select id="yearSelector" onchange="refreshAll()"></select>
             <select id="monthSelector" onchange="refreshAll()">
                 <option value="All">Evolución Anual</option>
@@ -546,6 +741,9 @@
                 <option value="10">Noviembre</option>
                 <option value="11">Diciembre</option>
             </select>
+            <button type="button" onclick="openCostModal()" class="btn-cost-config" title="Configurar costes variables de habitación ocupada y vacía">
+                ⚙️ Costes Habitación
+            </button>
         </div>
     </header>
 
@@ -576,7 +774,7 @@
                     <div id="budget-bar-occ" class="budget-progress-bar" style="background: linear-gradient(90deg, var(--secondary), #34d399);"></div>
                 </div>
                 <div class="budget-label">
-                    <span>vs Capacidad Física</span>
+                    <span id="kpi-occ-sublabel">vs Capacidad Física</span>
                     <span id="budget-pct-occ">0%</span>
                 </div>
             </div>
@@ -604,8 +802,22 @@
                     <div id="budget-bar-revpar" class="budget-progress-bar" style="background: linear-gradient(90deg, #60a5fa, #93c5fd);"></div>
                 </div>
                 <div class="budget-label">
-                    <span>Eficiencia de Activos</span>
+                    <span id="kpi-revpar-sublabel">Eficiencia de Activos</span>
                     <span id="budget-pct-revpar">N/A</span>
+                </div>
+            </div>
+            <div class="kpi-card" style="animation-delay: 0.5s; border-left: 4px solid var(--secondary);">
+                <span class="label">Margen Neto Habitación</span>
+                <span class="value" id="kpi-total-margin" style="color: var(--secondary);">0 €</span>
+                <div class="trend" id="kpi-margin-trend" style="margin-bottom: 8px; color: var(--secondary);">
+                    <span id="kpi-margin-pct" style="font-size: 0.9rem; font-weight:800;">0%</span> de Margen s/Ingresos
+                </div>
+                <div class="budget-progress-container">
+                    <div id="budget-bar-margin" class="budget-progress-bar" style="background: linear-gradient(90deg, var(--secondary), #34d399);"></div>
+                </div>
+                <div class="budget-label">
+                    <span id="kpi-margin-cpor-label">CPOR: 21,0 €</span>
+                    <span id="kpi-margin-vacant-label">Coste Vacías: 0 €</span>
                 </div>
             </div>
         </div>
@@ -623,6 +835,61 @@
             <div id="histYearToggles" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px;"></div>
             <div class="chart-wrapper" style="flex: 1;">
                 <canvas id="historicalChart"></canvas>
+            </div>
+        </div>
+
+        <!-- RENTABILIDAD Y UNIT ECONOMICS DE HABITACIONES -->
+        <div class="economics-panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                <div>
+                    <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                        <span>💎</span> Rentabilidad Operativa por Habitación (Unit Economics)
+                    </h3>
+                    <p style="margin: 4px 0 0; font-size: 0.8rem; color: var(--text-muted);" id="econ-subtitle">
+                        Análisis de Margen de Contribución: Ingresos menos costes directos de habitaciones vendidas y disponibles no vendidas.
+                    </p>
+                </div>
+                <button type="button" onclick="openCostModal()" class="btn-cost-config">
+                    ⚙️ Ajustar Costes Variables
+                </button>
+            </div>
+
+            <div class="economics-grid">
+                <div class="econ-metric-card" style="border-left: 3px solid #10b981;">
+                    <div class="econ-label">Ingreso Medio (ADR)</div>
+                    <div class="econ-value" id="econ-adr" style="color: #10b981;">0 €</div>
+                    <div class="econ-sub" id="econ-adr-sub">Por noche ocupada</div>
+                </div>
+
+                <div class="econ-metric-card" style="border-left: 3px solid #ef4444;">
+                    <div class="econ-label">Coste Hab. Ocupada (CPOR)</div>
+                    <div class="econ-value" id="econ-cpor" style="color: #ef4444;">0 €</div>
+                    <div class="econ-sub" id="econ-cpor-sub">Limpieza, lavand., suministros, etc.</div>
+                </div>
+
+                <div class="econ-metric-card" style="border-left: 3px solid var(--primary);">
+                    <div class="econ-label">Margen Neto Unitario</div>
+                    <div class="econ-value" id="econ-unit-margin" style="color: var(--primary);">0 €</div>
+                    <div class="econ-sub" id="econ-unit-margin-sub">0% de margen s/ADR</div>
+                </div>
+
+                <div class="econ-metric-card" style="border-left: 3px solid #f59e0b;">
+                    <div class="econ-label">Coste Hab. Vacía / Día</div>
+                    <div class="econ-value" id="econ-vacant-unit" style="color: #f59e0b;">0 €</div>
+                    <div class="econ-sub" id="econ-vacant-sub">Standby, repaso y mant. prev.</div>
+                </div>
+
+                <div class="econ-metric-card" style="border-left: 3px solid #8b5cf6;">
+                    <div class="econ-label">Coste Total Hab. Vacías</div>
+                    <div class="econ-value" id="econ-vacant-total" style="color: #8b5cf6;">0 €</div>
+                    <div class="econ-sub" id="econ-vacant-total-sub">0 habitaciones no vendidas</div>
+                </div>
+
+                <div class="econ-metric-card" style="border-left: 3px solid var(--secondary); background: rgba(16, 185, 129, 0.05);">
+                    <div class="econ-label" style="color: var(--secondary);">Margen Operativo Periodo</div>
+                    <div class="econ-value" id="econ-period-margin" style="color: var(--secondary);">0 €</div>
+                    <div class="econ-sub" id="econ-period-margin-sub">GOPPAR: 0 € / hab. disp.</div>
+                </div>
             </div>
         </div>
 
@@ -713,14 +980,342 @@
         </div>
     </main>
 
+    <!-- MODAL DE CONFIGURACIÓN DE COSTES DE HABITACIÓN -->
+    <div id="costConfigModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><span>⚙️</span> Configuración de Costes de Habitación</h2>
+                <span style="font-size: 1.5rem; cursor: pointer; color: var(--text-muted); font-weight: 700;" onclick="closeCostModal()">&times;</span>
+            </div>
+            
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: -5px; margin-bottom: 16px;">
+                Define los costes directos por estancia (habitación ocupada) y los costes mínimos de mantenimiento por habitación disponible no vendida (habitación vacía).
+            </p>
+
+            <div style="margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; background: var(--bg-deep); padding: 10px 16px; border-radius: 10px; border: 1px solid var(--border);">
+                <label style="font-size: 0.85rem; font-weight: 700;">Hotel a Configurar:</label>
+                <select id="modalHotelSelect" onchange="loadCostModalInputs(this.value)" style="padding: 6px 12px; font-size: 0.85rem; font-weight: 700;">
+                    <option value="Guadiana">Hotel Guadiana</option>
+                    <option value="Cumbria">Hotel Cumbria</option>
+                </select>
+            </div>
+
+            <!-- BLOQUE: HABITACIÓN OCUPADA -->
+            <div class="cost-group">
+                <div class="cost-group-title">
+                    <span style="color: #ef4444;">🛏️ Habitación Ocupada (Costes Variables / Estancia)</span>
+                    <span class="cost-subtotal-badge" id="modalSubtotalOccupied">CPOR: 21,00 €</span>
+                </div>
+
+                <div class="cost-row">
+                    <label>
+                        Limpieza de habitación
+                        <span class="cost-range">Rango orientativo: 8 – 12 €</span>
+                    </label>
+                    <div class="cost-input-wrapper">
+                        <input type="number" id="cost_cleaning" min="0" max="100" step="0.5" oninput="updateCostModalSubtotals()">
+                        <span>€</span>
+                    </div>
+                </div>
+
+                <div class="cost-row">
+                    <label>
+                        Lavandería (lencería, toallas)
+                        <span class="cost-range">Rango orientativo: 3 – 6 €</span>
+                    </label>
+                    <div class="cost-input-wrapper">
+                        <input type="number" id="cost_laundry" min="0" max="100" step="0.5" oninput="updateCostModalSubtotals()">
+                        <span>€</span>
+                    </div>
+                </div>
+
+                <div class="cost-row">
+                    <label>
+                        Amenities y consumibles
+                        <span class="cost-range">Rango orientativo: 1 – 2 €</span>
+                    </label>
+                    <div class="cost-input-wrapper">
+                        <input type="number" id="cost_amenities" min="0" max="100" step="0.1" oninput="updateCostModalSubtotals()">
+                        <span>€</span>
+                    </div>
+                </div>
+
+                <div class="cost-row">
+                    <label>
+                        Agua, electricidad y climatización
+                        <span class="cost-range">Rango orientativo: 2 – 4 €</span>
+                    </label>
+                    <div class="cost-input-wrapper">
+                        <input type="number" id="cost_utilities" min="0" max="100" step="0.5" oninput="updateCostModalSubtotals()">
+                        <span>€</span>
+                    </div>
+                </div>
+
+                <div class="cost-row">
+                    <label>
+                        Desgaste y reposición de material
+                        <span class="cost-range">Rango orientativo: 1 – 3 €</span>
+                    </label>
+                    <div class="cost-input-wrapper">
+                        <input type="number" id="cost_wear" min="0" max="100" step="0.5" oninput="updateCostModalSubtotals()">
+                        <span>€</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BLOQUE: HABITACIÓN VACÍA -->
+            <div class="cost-group">
+                <div class="cost-group-title">
+                    <span style="color: #f59e0b;">🚪 Habitación Vacía (Costes Mantenimiento / Día)</span>
+                    <span class="cost-subtotal-badge" style="color: #f59e0b; background: rgba(245, 158, 11, 0.15);" id="modalSubtotalVacant">Vacía: 3,00 €</span>
+                </div>
+
+                <div class="cost-row">
+                    <label>
+                        Standby y climatización mínima
+                        <span class="cost-range">Consumo eléctrico residual: 0,50 – 1,50 €</span>
+                    </label>
+                    <div class="cost-input-wrapper">
+                        <input type="number" id="cost_standby" min="0" max="100" step="0.1" oninput="updateCostModalSubtotals()">
+                        <span>€</span>
+                    </div>
+                </div>
+
+                <div class="cost-row">
+                    <label>
+                        Limpieza de repaso y ventilación
+                        <span class="cost-range">Mantenimiento de polvo y frescor: 1 – 2,50 €</span>
+                    </label>
+                    <div class="cost-input-wrapper">
+                        <input type="number" id="cost_refresh" min="0" max="100" step="0.1" oninput="updateCostModalSubtotals()">
+                        <span>€</span>
+                    </div>
+                </div>
+
+                <div class="cost-row">
+                    <label>
+                        Mantenimiento preventivo técnico
+                        <span class="cost-range">Revisión grifería, cerraduras, A/C: 0,50 – 1,50 €</span>
+                    </label>
+                    <div class="cost-input-wrapper">
+                        <input type="number" id="cost_maintenance" min="0" max="100" step="0.1" oninput="updateCostModalSubtotals()">
+                        <span>€</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+                <button type="button" onclick="resetCostModalDefaults()" style="background: none; border: 1px solid var(--border); color: var(--text-muted); padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.8rem;">
+                    ↺ Restaurar Valores por Defecto
+                </button>
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" onclick="closeCostModal()" style="background: none; border: 1px solid var(--border); color: var(--text-main); padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.85rem;">
+                        Cancelar
+                    </button>
+                    <button type="button" onclick="saveCostModalInputs()" style="background: var(--primary); border: none; color: white; padding: 8px 22px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 0.85rem; box-shadow: 0 4px 12px var(--primary-glow);">
+                        Guardar Costes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         let db = {};
-        let currentHotel = "Guadiana";
+        let currentHotel = localStorage.getItem('active_hotel_suite') || "Guadiana";
         let currentYear = "2026";
         let currentMonth = "All";
+        let currentViewMode = "projected"; // 'projected', 'real', 'otb'
         let charts = {};
         let activeHistYears = new Set();
         const DB_KEY = "hotel_manager_db_v2";
+        const ROOM_COST_STORAGE_KEY = 'capasuite_room_costs_v1';
+
+        const DEFAULT_ROOM_COSTS = {
+            "Guadiana": {
+                occupied: { cleaning: 10.0, laundry: 4.5, amenities: 1.5, utilities: 3.0, wear: 2.0 },
+                vacant: { standby: 0.8, refresh: 1.2, maintenance: 1.0 }
+            },
+            "Cumbria": {
+                occupied: { cleaning: 10.0, laundry: 4.5, amenities: 1.5, utilities: 3.0, wear: 2.0 },
+                vacant: { standby: 0.8, refresh: 1.2, maintenance: 1.0 }
+            }
+        };
+
+        function getRoomCosts(hotel) {
+            try {
+                const raw = CapaStorage.getItem(ROOM_COST_STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && parsed[hotel] && parsed[hotel].occupied) {
+                        return parsed[hotel];
+                    }
+                }
+            } catch(e) { console.warn("Error leyendo costes:", e); }
+            return JSON.parse(JSON.stringify(DEFAULT_ROOM_COSTS[hotel] || DEFAULT_ROOM_COSTS["Guadiana"]));
+        }
+
+        function saveRoomCosts(hotel, costs) {
+            try {
+                let full = {};
+                const raw = CapaStorage.getItem(ROOM_COST_STORAGE_KEY);
+                if (raw) full = JSON.parse(raw) || {};
+                full[hotel] = costs;
+                CapaStorage.setItem(ROOM_COST_STORAGE_KEY, JSON.stringify(full));
+                if (window.uploadToCloud) uploadToCloud();
+            } catch(e) { console.error("Error guardando costes:", e); }
+        }
+
+        function openCostModal() {
+            const mHotel = document.getElementById('modalHotelSelect');
+            if (mHotel) mHotel.value = currentHotel;
+            loadCostModalInputs(currentHotel);
+            const m = document.getElementById('costConfigModal');
+            if (m) m.classList.add('open');
+        }
+
+        function closeCostModal() {
+            const m = document.getElementById('costConfigModal');
+            if (m) m.classList.remove('open');
+        }
+
+        function loadCostModalInputs(hotel) {
+            const costs = getRoomCosts(hotel || currentHotel);
+            document.getElementById('cost_cleaning').value = (costs.occupied.cleaning ?? 10.0).toFixed(2);
+            document.getElementById('cost_laundry').value = (costs.occupied.laundry ?? 4.5).toFixed(2);
+            document.getElementById('cost_amenities').value = (costs.occupied.amenities ?? 1.5).toFixed(2);
+            document.getElementById('cost_utilities').value = (costs.occupied.utilities ?? 3.0).toFixed(2);
+            document.getElementById('cost_wear').value = (costs.occupied.wear ?? 2.0).toFixed(2);
+
+            document.getElementById('cost_standby').value = (costs.vacant.standby ?? 0.8).toFixed(2);
+            document.getElementById('cost_refresh').value = (costs.vacant.refresh ?? 1.2).toFixed(2);
+            document.getElementById('cost_maintenance').value = (costs.vacant.maintenance ?? 1.0).toFixed(2);
+            updateCostModalSubtotals();
+        }
+
+        function updateCostModalSubtotals() {
+            const cClean = parseFloat(document.getElementById('cost_cleaning').value) || 0;
+            const cLaund = parseFloat(document.getElementById('cost_laundry').value) || 0;
+            const cAmen = parseFloat(document.getElementById('cost_amenities').value) || 0;
+            const cUtil = parseFloat(document.getElementById('cost_utilities').value) || 0;
+            const cWear = parseFloat(document.getElementById('cost_wear').value) || 0;
+            const subOcc = cClean + cLaund + cAmen + cUtil + cWear;
+            document.getElementById('modalSubtotalOccupied').innerText = `CPOR: ${subOcc.toFixed(2).replace('.', ',')} €`;
+
+            const cStand = parseFloat(document.getElementById('cost_standby').value) || 0;
+            const cRef = parseFloat(document.getElementById('cost_refresh').value) || 0;
+            const cMaint = parseFloat(document.getElementById('cost_maintenance').value) || 0;
+            const subVac = cStand + cRef + cMaint;
+            document.getElementById('modalSubtotalVacant').innerText = `Vacía: ${subVac.toFixed(2).replace('.', ',')} €`;
+        }
+
+        function saveCostModalInputs() {
+            const targetHotel = document.getElementById('modalHotelSelect').value || currentHotel;
+            const newCosts = {
+                occupied: {
+                    cleaning: parseFloat(document.getElementById('cost_cleaning').value) || 0,
+                    laundry: parseFloat(document.getElementById('cost_laundry').value) || 0,
+                    amenities: parseFloat(document.getElementById('cost_amenities').value) || 0,
+                    utilities: parseFloat(document.getElementById('cost_utilities').value) || 0,
+                    wear: parseFloat(document.getElementById('cost_wear').value) || 0
+                },
+                vacant: {
+                    standby: parseFloat(document.getElementById('cost_standby').value) || 0,
+                    refresh: parseFloat(document.getElementById('cost_refresh').value) || 0,
+                    maintenance: parseFloat(document.getElementById('cost_maintenance').value) || 0
+                }
+            };
+            saveRoomCosts(targetHotel, newCosts);
+            closeCostModal();
+            refreshAll();
+        }
+
+        function resetCostModalDefaults() {
+            const targetHotel = document.getElementById('modalHotelSelect').value || currentHotel;
+            const def = JSON.parse(JSON.stringify(DEFAULT_ROOM_COSTS[targetHotel] || DEFAULT_ROOM_COSTS["Guadiana"]));
+            saveRoomCosts(targetHotel, def);
+            loadCostModalInputs(targetHotel);
+            refreshAll();
+        }
+
+        function switchHotel(h) {
+            currentHotel = h;
+            localStorage.setItem('active_hotel_suite', h);
+            const hSel = document.getElementById('hotelSelector');
+            if (hSel && hSel.value !== h) hSel.value = h;
+            initSelectors();
+            refreshAll();
+        }
+
+        function getElapsedDays(yearData, year, midx) {
+            const monthDaysRecorded = new Array(12).fill(0);
+            if (yearData && yearData.daily) {
+                Object.keys(yearData.daily).forEach(dateStr => {
+                    const parts = dateStr.split('-');
+                    if (parts.length >= 2) {
+                        const m = parseInt(parts[1]) - 1;
+                        if (m >= 0 && m < 12) monthDaysRecorded[m]++;
+                    }
+                });
+            }
+
+            const prodDateStr = (yearData && yearData.updates && yearData.updates.prod && yearData.updates.prod !== "N/A") 
+                ? yearData.updates.prod 
+                : (yearData ? (yearData.lastProdDate || "") : "");
+
+            let prodDay = 0, prodMonth = -1, prodYear = "";
+            if (prodDateStr) {
+                let datePart = prodDateStr.split(' ')[0];
+                if (prodDateStr.includes(" al ")) {
+                    const partsAl = prodDateStr.split(" al ");
+                    if (partsAl.length >= 2) datePart = partsAl[1].split(' ')[0];
+                }
+                const parts = datePart.split(/[\/-]/);
+                if (parts.length === 3) {
+                    prodDay = parseInt(parts[0]);
+                    prodMonth = parseInt(parts[1]) - 1;
+                    prodYear = parts[2].length === 2 ? "20" + parts[2] : parts[2];
+                }
+            } else if (yearData && yearData.lastUpdate) {
+                const isOtbDate = yearData.updates && yearData.updates.otb && yearData.lastUpdate.includes(yearData.updates.otb.split(' ')[0]);
+                if (!isOtbDate) {
+                    let datePart = yearData.lastUpdate.split(' ')[0];
+                    const parts = datePart.split(/[\/-]/);
+                    if (parts.length === 3) {
+                        prodDay = parseInt(parts[0]);
+                        prodMonth = parseInt(parts[1]) - 1;
+                        prodYear = parts[2].length === 2 ? "20" + parts[2] : parts[2];
+                    }
+                }
+            }
+
+            if (prodYear === String(year) && prodMonth >= 0 && prodMonth < 12) {
+                if (monthDaysRecorded[prodMonth] === 0) {
+                    monthDaysRecorded[prodMonth] = prodDay;
+                }
+            }
+
+            let elapsedDays = 0;
+            if (midx === -1) {
+                let dailyDaysYTD = monthDaysRecorded.reduce((a, b) => a + b, 0);
+                let updateDaysYTD = 0;
+                if (prodYear === String(year) && prodMonth >= 0) {
+                    updateDaysYTD = (prodMonth * 30.42) + prodDay;
+                }
+                const currentRealYear = new Date().getFullYear();
+                elapsedDays = (parseInt(year) < currentRealYear) ? 365 : (dailyDaysYTD > 0 ? dailyDaysYTD : (updateDaysYTD > 0 ? updateDaysYTD : 1));
+                if (elapsedDays === 0) elapsedDays = 1;
+            } else {
+                let daysInM = monthDaysRecorded[midx];
+                let updateDaysInM = 0;
+                if (prodYear === String(year) && prodMonth === midx) {
+                    updateDaysInM = prodDay;
+                }
+                elapsedDays = daysInM > 0 ? daysInM : (updateDaysInM > 0 ? updateDaysInM : 30.42);
+                if (elapsedDays === 0) elapsedDays = 30.42;
+            }
+            return { elapsedDays, prodMonth, prodDay, prodYear };
+        }
 
         // Auth State Listener
         auth.onAuthStateChanged((user) => {
@@ -746,6 +1341,13 @@
                 document.getElementById('loadingOverlay').style.opacity = '0';
                 setTimeout(() => document.getElementById('loadingOverlay').style.display = 'none', 500);
             }, 800);
+
+            const savedH = localStorage.getItem('active_hotel_suite');
+            if (savedH && (savedH === 'Guadiana' || savedH === 'Cumbria')) {
+                currentHotel = savedH;
+                const hSel = document.getElementById('hotelSelector');
+                if (hSel) hSel.value = savedH;
+            }
 
             loadInitialData();
             
@@ -783,6 +1385,7 @@
             currentHotel = document.getElementById('hotelSelector').value;
             currentYear = document.getElementById('yearSelector').value;
             currentMonth = document.getElementById('monthSelector').value;
+            currentViewMode = document.getElementById('viewModeSelector') ? document.getElementById('viewModeSelector').value : 'projected';
 
             if (!db[currentHotel] || !db[currentHotel][currentYear]) {
                 return;
@@ -790,7 +1393,7 @@
 
             const data = db[currentHotel][currentYear];
             const midx = currentMonth === "All" ? -1 : parseInt(currentMonth);
-            const agg = aggregateServices(data.service || {}, midx);
+            const agg = aggregateServices(data, midx, currentViewMode);
             
             renderKPIRow(agg, currentHotel);
             renderHistoricalChart(midx);
@@ -805,15 +1408,56 @@
             "Otros": ["LAVANDERIA", "SPA", "MASAJE", "GARAJE", "PARKING", "VARIOS", "RETENCIONES", "OFICINA"]
         };
 
-        function aggregateServices(serviceDb, midx) {
-            const result = { summary: {}, totalRev: 0, totalRms: 0, raw: [] };
-            const getVal = (arr) => midx === -1 ? (arr || []).reduce((a,b)=>a+b, 0) : (arr ? arr[midx] : 0);
+        function aggregateServices(yearData, midx, mode = 'projected') {
+            const serviceDb = (yearData && yearData.service) || {};
+            const otbData = (yearData && yearData.otb) || { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0), breakdown: {} };
+            const now = new Date();
+            const curYear = now.getFullYear();
+            const curMonth = now.getMonth();
+
+            const result = { 
+                summary: {}, 
+                totalRev: 0, 
+                totalRms: 0, 
+                raw: [],
+                realHabRev: 0,
+                realHabRms: 0,
+                projHabRev: 0,
+                projHabRms: 0,
+                otbHabRev: 0,
+                otbHabRms: 0
+            };
+
+            const isMonthClosed = (m) => {
+                if (parseInt(currentYear) < curYear) return true;
+                if (parseInt(currentYear) > curYear) return false;
+                return m < curMonth;
+            };
+
+            const getRealMonthRev = (arr, m) => (arr && arr[m]) ? arr[m] : 0;
+            const getRealMonthRms = (arr, m) => (arr && arr[m]) ? arr[m] : 0;
 
             Object.entries(serviceDb).forEach(([name, obj]) => {
                 if (name === "TOTAL_MASTER" || name.includes("TOTAL_PROD") || name.toUpperCase() === "TOTAL") return;
-                const rev = getVal(obj.revenue || []);
-                const rms = getVal(obj.rooms || []);
-                if (rev === 0 && rms === 0) return;
+                
+                let rev = 0, rms = 0;
+                for (let m = 0; m < 12; m++) {
+                    if (midx !== -1 && m !== midx) continue;
+
+                    const rRev = getRealMonthRev(obj.revenue, m);
+                    const rRms = getRealMonthRms(obj.rooms, m);
+                    
+                    if (mode === 'real') {
+                        rev += rRev;
+                        rms += rRms;
+                    } else if (mode === 'otb') {
+                        // Will be adjusted below
+                    } else {
+                        // Projected
+                        rev += rRev;
+                        rms += rRms;
+                    }
+                }
 
                 const n = name.toUpperCase();
                 let category = "Otros";
@@ -828,61 +1472,167 @@
                 if (category === "Habitaciones") result.totalRms += rms;
                 result.raw.push({ name, rev, rms, category });
             });
-            
-            // FALLBACK FOR ROOMS: If totalRms is 0 but we have TOTAL_MASTER rooms, use those
-            if (result.totalRms === 0 && serviceDb["TOTAL_MASTER"] && serviceDb["TOTAL_MASTER"].rooms) {
-                result.totalRms = getVal(serviceDb["TOTAL_MASTER"].rooms);
-                if (result.summary["Habitaciones"]) result.summary["Habitaciones"].rooms = result.totalRms;
+
+            // Calculate exact Habitaciones Real vs Projected vs OTB
+            let realHabRevTotal = 0, realHabRmsTotal = 0;
+            let projHabRevTotal = 0, projHabRmsTotal = 0;
+            let otbHabRevTotal = 0, otbHabRmsTotal = 0;
+
+            let roomServiceGroup = Object.values(serviceDb).find(s => {
+                const n = s.name.toUpperCase();
+                return n.includes('HABITACION') && !n.includes('TOTAL_MASTER') && !n.includes('TOTAL');
+            });
+            if (!roomServiceGroup && serviceDb["TOTAL_MASTER"]) roomServiceGroup = serviceDb["TOTAL_MASTER"];
+
+            const otbHabRevArr = otbData.breakdown?.habitacion || otbData.revenue || new Array(12).fill(0);
+            const otbHabRmsArr = otbData.breakdown?.habitacion_rn || otbData.rooms || new Array(12).fill(0);
+
+            for (let m = 0; m < 12; m++) {
+                const rRev = roomServiceGroup?.revenue?.[m] || 0;
+                const rRms = roomServiceGroup?.rooms?.[m] || (serviceDb["TOTAL_MASTER"]?.rooms?.[m] || 0);
+                const oRev = otbHabRevArr[m] || 0;
+                const oRms = otbHabRmsArr[m] || 0;
+                const mClosed = isMonthClosed(m);
+
+                if (midx === -1 || midx === m) {
+                    realHabRevTotal += rRev;
+                    realHabRmsTotal += rRms;
+                    otbHabRevTotal += oRev;
+                    otbHabRmsTotal += oRms;
+
+                    if (mClosed) {
+                        projHabRevTotal += rRev;
+                        projHabRmsTotal += rRms;
+                    } else {
+                        // Open/future month: Real + OTB (same as AnalisisProduccion)
+                        const fRev = rRev + oRev;
+                        const fRms = rRms + oRms;
+                        projHabRevTotal += fRev;
+                        projHabRmsTotal += fRms;
+                    }
+                }
             }
-            
-            // Add OTB data if available for future months
-            if (midx === -1 || midx >= new Date().getMonth()) {
-                const otb = serviceDb.otb || { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0) };
+
+            result.realHabRev = realHabRevTotal;
+            result.realHabRms = realHabRmsTotal;
+            result.projHabRev = projHabRevTotal;
+            result.projHabRms = projHabRmsTotal;
+            result.otbHabRev = otbHabRevTotal;
+            result.otbHabRms = otbHabRmsTotal;
+
+            if (!result.summary["Habitaciones"]) result.summary["Habitaciones"] = { revenue: 0, rooms: 0 };
+
+            if (mode === 'projected') {
+                const diffRev = projHabRevTotal - result.summary["Habitaciones"].revenue;
+                result.summary["Habitaciones"].revenue = projHabRevTotal;
+                result.summary["Habitaciones"].rooms = projHabRmsTotal;
+                result.totalRev += diffRev;
+                result.totalRms = projHabRmsTotal;
+            } else if (mode === 'real') {
+                result.summary["Habitaciones"].revenue = realHabRevTotal;
+                result.summary["Habitaciones"].rooms = realHabRmsTotal;
+                result.totalRms = realHabRmsTotal;
+            } else if (mode === 'otb') {
+                result.summary["Habitaciones"].revenue = otbHabRevTotal;
+                result.summary["Habitaciones"].rooms = otbHabRmsTotal;
+                result.totalRev = otbHabRevTotal;
+                result.totalRms = otbHabRmsTotal;
             }
-            
+
             return result;
         }
 
         function renderKPIRow(agg, hotel) {
             const yearData = db[hotel][currentYear] || {};
             const midx = currentMonth === "All" ? -1 : parseInt(currentMonth);
+            const mode = currentViewMode;
             
+            const elapsedInfo = getElapsedDays(yearData, currentYear, midx);
+            const elapsedDays = elapsedInfo.elapsedDays;
+
             const totalRev = agg.totalRev;
             const habData = agg.summary["Habitaciones"] || { revenue: 0, rooms: 0 };
             const habRev = habData.revenue;
             const totalRms = habData.rooms;
             const adr = totalRms > 0 ? (habRev / totalRms) : 0;
             const cap = (hotel === "Cumbria" ? 59 : 108);
-            const days = midx === -1 ? 365 : 30; // Approximation
+
+            let days = 365;
+            if (mode === 'real') {
+                days = elapsedDays;
+            } else {
+                if (midx === -1) {
+                    days = 365;
+                } else {
+                    const yNum = parseInt(currentYear);
+                    days = new Date(yNum, midx + 1, 0).getDate();
+                }
+            }
+            if (days <= 0) days = 1;
+
             const occ = (totalRms / (cap * days)) * 100;
             const revpar = habRev / (cap * days);
 
+            // 1. CARDS DISPLAY
             document.getElementById('kpi-total-rev').innerText = fmt(habRev);
-            document.getElementById('kpi-total-adr').innerText = adr.toFixed(1).replace('.', ',') + " €";
-            document.getElementById('kpi-total-revpar').innerText = revpar.toFixed(1).replace('.', ',') + " €";
-            document.getElementById('kpi-total-occ').innerText = occ.toFixed(1) + "%";
+            document.getElementById('kpi-total-adr').innerText = adr.toFixed(2).replace('.', ',') + " €";
+            document.getElementById('kpi-total-revpar').innerText = revpar.toFixed(2).replace('.', ',') + " €";
+            document.getElementById('kpi-total-occ').innerText = occ.toFixed(1).replace('.', ',') + "%";
             
             const roomsPerc = totalRev > 0 ? (habRev / totalRev * 100) : 0;
             document.getElementById('kpi-mix-label').innerHTML = `<span>●</span> Mix Alojamiento: ${roomsPerc.toFixed(1)}%`;
 
-            // 1. VS LAST YEAR (Real 2025)
+            // Sublabels according to Mode
+            const occSubEl = document.getElementById('kpi-occ-sublabel');
+            if (occSubEl) {
+                if (mode === 'real') occSubEl.innerText = `Día ${Math.floor(elapsedDays)} de 365 (YTD)`;
+                else if (mode === 'projected') occSubEl.innerText = `Proy. 365 días (${fmtNum(totalRms)} RN)`;
+                else occSubEl.innerText = `Cartera OTB (${fmtNum(totalRms)} RN)`;
+            }
+
+            const revparSubEl = document.getElementById('kpi-revpar-sublabel');
+            if (revparSubEl) {
+                if (mode === 'real') revparSubEl.innerText = `YTD (${fmt(habRev)})`;
+                else if (mode === 'projected') revparSubEl.innerText = `Proy. Cierre Anual`;
+                else revparSubEl.innerText = `Cartera OTB`;
+            }
+
+            // VS LAST YEAR (Real 2025)
             const prevYear = String(parseInt(currentYear) - 1);
             if (db[hotel][prevYear] && db[hotel][prevYear].service) {
                 const pyRoomsGrp = Object.values(db[hotel][prevYear].service).find(s => s.name.toUpperCase().includes('HABITACION') && !s.name.toUpperCase().includes('TOTAL_MASTER'));
                 const pyRevArr = pyRoomsGrp ? pyRoomsGrp.revenue : (db[hotel][prevYear].service["TOTAL_MASTER"] ? db[hotel][prevYear].service["TOTAL_MASTER"].revenue : []);
                 
                 if (pyRevArr && pyRevArr.length > 0) {
-                    const pyRev = midx === -1 ? pyRevArr.reduce((a, b) => a + b, 0) : pyRevArr[midx];
+                    let pyRev = 0;
+                    if (midx === -1) {
+                        if (mode === 'real') {
+                            const now = new Date();
+                            const curM = now.getMonth();
+                            for (let i = 0; i < 12; i++) {
+                                if (i < curM) pyRev += (pyRevArr[i] || 0);
+                                else if (i === curM && elapsedInfo.prodDay > 0) {
+                                    const dim = new Date(parseInt(prevYear), i + 1, 0).getDate();
+                                    pyRev += (pyRevArr[i] || 0) * (elapsedInfo.prodDay / dim);
+                                }
+                            }
+                        } else {
+                            pyRev = pyRevArr.reduce((a, b) => a + b, 0);
+                        }
+                    } else {
+                        pyRev = pyRevArr[midx] || 0;
+                    }
+
                     const grow = pyRev > 0 ? ((habRev - pyRev) / pyRev * 100) : 0;
-                    document.getElementById('kpi-rev-vs-prev').innerHTML = `<span style="color:${grow >= 0 ? 'var(--secondary)' : '#ef4444'}">${grow >= 0 ? '↗' : '↘'} ${Math.abs(grow).toFixed(1)}%</span> vs Año Anterior`;
+                    const badgeText = mode === 'real' ? 'vs Año Ant. (YTD)' : 'vs Año Anterior';
+                    document.getElementById('kpi-rev-vs-prev').innerHTML = `<span style="color:${grow >= 0 ? 'var(--secondary)' : '#ef4444'}">${grow >= 0 ? '↗' : '↘'} ${Math.abs(grow).toFixed(1)}%</span> ${badgeText}`;
                 }
             }
 
-            // 2. BUDGET COMPARISON
+            // BUDGET COMPARISON
             const budgetKey = `custom_budget_${currentYear}`;
             let budget = db[hotel][budgetKey];
             
-            // Fallback to official 2026 budgets if not saved in local storage yet
             if (!budget && currentYear === "2026") {
                 if (hotel === "Guadiana") {
                     budget = {
@@ -904,25 +1654,23 @@
                 const pctRev = bRev > 0 ? Math.min(100, (habRev / bRev * 100)) : 0;
                 const pctAdr = bAdr > 0 ? Math.min(100, (adr / bAdr * 100)) : 0;
                 
-            document.getElementById('budget-target-rev').innerText = `(Obj: ${fmt(bRev)})`;
-            document.getElementById('budget-bar-rev').style.width = pctRev + '%';
-            document.getElementById('budget-pct-rev').innerText = Math.round(habRev / bRev * 100) + '%';
-            
-            document.getElementById('budget-target-adr').innerText = `(Obj: ${bAdr.toFixed(1).replace('.', ',')} €)`;
-            document.getElementById('budget-bar-adr').style.width = pctAdr + '%';
-            document.getElementById('budget-pct-adr').innerText = Math.round(adr / bAdr * 100) + '%';
-            
-            document.getElementById('budget-bar-revpar').style.width = pctRev + '%';
+                document.getElementById('budget-target-rev').innerText = `(Obj: ${fmt(bRev)})`;
+                document.getElementById('budget-bar-rev').style.width = pctRev + '%';
+                document.getElementById('budget-pct-rev').innerText = Math.round(habRev / bRev * 100) + '%';
+                
+                document.getElementById('budget-target-adr').innerText = `(Obj: ${bAdr.toFixed(1).replace('.', ',')} €)`;
+                document.getElementById('budget-bar-adr').style.width = pctAdr + '%';
+                document.getElementById('budget-pct-adr').innerText = Math.round(adr / bAdr * 100) + '%';
+                
+                document.getElementById('budget-bar-revpar').style.width = pctRev + '%';
 
-            // ADR Yield Analysis
-            let yieldLevel = "Media";
-            let yieldCol = "var(--accent)";
-            if (pctAdr >= 100) { yieldLevel = "Alta (Óptima)"; yieldCol = "var(--secondary)"; }
-            else if (pctAdr < 90) { yieldLevel = "Baja (Alerta)"; yieldCol = "#ef4444"; }
-            
-            document.getElementById('kpi-adr-vs-prev').innerHTML = `<span style="color:${yieldCol}">⚡</span> Yield Intensity: <span style="color:${yieldCol}">${yieldLevel}</span>`;
-            document.getElementById('kpi-mix-label').innerHTML = `<span>●</span> Mix Alojamiento: ${roomsPerc.toFixed(1)}%`;
-            document.getElementById('budget-pct-revpar').innerText = pctRev.toFixed(0) + '% del ideal';
+                let yieldLevel = "Media";
+                let yieldCol = "var(--accent)";
+                if (pctAdr >= 100) { yieldLevel = "Alta (Óptima)"; yieldCol = "var(--secondary)"; }
+                else if (pctAdr < 90) { yieldLevel = "Baja (Alerta)"; yieldCol = "#ef4444"; }
+                
+                document.getElementById('kpi-adr-vs-prev').innerHTML = `<span style="color:${yieldCol}">⚡</span> Yield Intensity: <span style="color:${yieldCol}">${yieldLevel}</span>`;
+                document.getElementById('budget-pct-revpar').innerText = pctRev.toFixed(0) + '% del ideal';
             } else {
                 document.getElementById('budget-target-rev').innerText = '';
                 document.getElementById('budget-bar-rev').style.width = '0%';
@@ -934,7 +1682,7 @@
                 document.getElementById('budget-pct-revpar').innerText = 'N/A';
             }
 
-            // 3. PICK-UP MONITOR (Last 24h Snapshot)
+            // PICK-UP MONITOR (Last 24h Snapshot)
             let totalPickup = 0;
             if (yearData.otb_prev && yearData.otb_prev.daily_otb) {
                 const currOtb = yearData.daily_otb || {};
@@ -954,11 +1702,90 @@
                 document.getElementById('kpi-pickup-24h').innerHTML = `<span class="pickup-badge ${badgeClass}">${icon} Pick-up 24h: ${totalPickup > 0 ? '+' : ''}${totalPickup} rms</span>`;
             }
 
-            // 4. BUDGET OCCUPANCY (Progress Bar)
-            const occTarget = 75; // Logic target
+            // BUDGET OCCUPANCY (Progress Bar)
+            const occTarget = 75;
             const pctOcc = Math.min(100, (occ / occTarget * 100));
             document.getElementById('budget-bar-occ').style.width = pctOcc + '%';
             document.getElementById('budget-pct-occ').innerText = Math.round(occ) + '%';
+
+            // 5. CÁLCULO DE COSTES Y MARGEN NETO DE HABITACIÓN
+            const roomCosts = getRoomCosts(hotel);
+            const cpor = (roomCosts.occupied.cleaning || 0) + (roomCosts.occupied.laundry || 0) + 
+                         (roomCosts.occupied.amenities || 0) + (roomCosts.occupied.utilities || 0) + 
+                         (roomCosts.occupied.wear || 0);
+            const cVacant = (roomCosts.vacant.standby || 0) + (roomCosts.vacant.refresh || 0) + 
+                            (roomCosts.vacant.maintenance || 0);
+
+            const occupiedRooms = totalRms;
+            const availableRooms = cap * days;
+            const vacantRooms = Math.max(0, Math.round(availableRooms - occupiedRooms));
+
+            const costOccupiedTotal = occupiedRooms * cpor;
+            const costVacantTotal = vacantRooms * cVacant;
+            const totalRoomCosts = costOccupiedTotal + costVacantTotal;
+
+            const netMargin = habRev - totalRoomCosts;
+            const marginPct = habRev > 0 ? (netMargin / habRev * 100) : 0;
+            const goppar = availableRooms > 0 ? (netMargin / availableRooms) : 0;
+            const unitMargin = adr - cpor;
+            const unitMarginPct = adr > 0 ? (unitMargin / adr * 100) : 0;
+
+            // KPI Card Margen
+            const marginValEl = document.getElementById('kpi-total-margin');
+            if (marginValEl) marginValEl.innerText = fmt(netMargin);
+
+            const marginPctEl = document.getElementById('kpi-margin-pct');
+            if (marginPctEl) marginPctEl.innerText = `${marginPct.toFixed(1).replace('.', ',')}%`;
+
+            const cporLabelEl = document.getElementById('kpi-margin-cpor-label');
+            if (cporLabelEl) cporLabelEl.innerText = `CPOR: ${cpor.toFixed(1).replace('.', ',')} €`;
+
+            const vacantCostLabelEl = document.getElementById('kpi-margin-vacant-label');
+            if (vacantCostLabelEl) vacantCostLabelEl.innerText = `Coste Vacías: ${fmt(costVacantTotal)}`;
+
+            const marginBarEl = document.getElementById('budget-bar-margin');
+            if (marginBarEl) marginBarEl.style.width = Math.max(0, Math.min(100, marginPct)) + '%';
+
+            // Unit Economics Panel
+            const econAdrEl = document.getElementById('econ-adr');
+            if (econAdrEl) econAdrEl.innerText = adr.toFixed(2).replace('.', ',') + " €";
+
+            const econAdrSubEl = document.getElementById('econ-adr-sub');
+            if (econAdrSubEl) econAdrSubEl.innerText = `Margen unitario: +${unitMargin.toFixed(2).replace('.', ',')} € (${unitMarginPct.toFixed(1)}%)`;
+
+            const econCporEl = document.getElementById('econ-cpor');
+            if (econCporEl) econCporEl.innerText = cpor.toFixed(2).replace('.', ',') + " €";
+
+            const econCporSubEl = document.getElementById('econ-cpor-sub');
+            if (econCporSubEl) {
+                econCporSubEl.innerText = `Limp (${roomCosts.occupied.cleaning}€), Lav (${roomCosts.occupied.laundry}€), Sumin (${roomCosts.occupied.utilities}€)...`;
+            }
+
+            const econUnitMarginEl = document.getElementById('econ-unit-margin');
+            if (econUnitMarginEl) econUnitMarginEl.innerText = unitMargin.toFixed(2).replace('.', ',') + " €";
+
+            const econUnitMarginSubEl = document.getElementById('econ-unit-margin-sub');
+            if (econUnitMarginSubEl) econUnitMarginSubEl.innerText = `Suelo mínimo de venta: ${cpor.toFixed(2).replace('.', ',')} €`;
+
+            const econVacantUnitEl = document.getElementById('econ-vacant-unit');
+            if (econVacantUnitEl) econVacantUnitEl.innerText = cVacant.toFixed(2).replace('.', ',') + " €";
+
+            const econVacantSubEl = document.getElementById('econ-vacant-sub');
+            if (econVacantSubEl) {
+                econVacantSubEl.innerText = `Standby (${roomCosts.vacant.standby}€), Repaso (${roomCosts.vacant.refresh}€), Mant (${roomCosts.vacant.maintenance}€)`;
+            }
+
+            const econVacantTotalEl = document.getElementById('econ-vacant-total');
+            if (econVacantTotalEl) econVacantTotalEl.innerText = fmt(costVacantTotal);
+
+            const econVacantTotalSubEl = document.getElementById('econ-vacant-total-sub');
+            if (econVacantTotalSubEl) econVacantTotalSubEl.innerText = `${fmtNum(vacantRooms)} habitaciones no vendidas`;
+
+            const econPeriodMarginEl = document.getElementById('econ-period-margin');
+            if (econPeriodMarginEl) econPeriodMarginEl.innerText = fmt(netMargin);
+
+            const econPeriodMarginSubEl = document.getElementById('econ-period-margin-sub');
+            if (econPeriodMarginSubEl) econPeriodMarginSubEl.innerText = `GOPPAR: ${goppar.toFixed(2).replace('.', ',')} € / hab. disp.`;
         }
 
         function renderCharts(agg, segmentDb, dailyDb, midx) {
@@ -1358,6 +2185,10 @@
 
         function fmt(n) {
             return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
+        }
+
+        function fmtNum(n) {
+            return new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }).format(n);
         }
 
         auth.onAuthStateChanged(user => {
