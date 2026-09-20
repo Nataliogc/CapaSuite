@@ -20,6 +20,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="js/firebase-auth.js?v=20260915-sync2"></script>
     <script src="js/theme-manager.js"></script>
+    <script src="js/production-groups.js?v=20260916"></script>
 
     <style>
         :root {
@@ -1826,32 +1827,72 @@
             renderTables(agg, data.segment || {}, midx);
         }
 
-        const CATEGORIES = {
-            "Habitaciones": ["HABITACIO", "ALOJAMIENTO", "ESTANCIA", "DUI", "DOBLE", "SUPERIOR", "SUITE", "CUADRUPLE", "TRIPLE", "FAMILIAR", "LATE CHECK OUT", "AMPLIACION", "CAMA SUPLETORIA"],
-            "Restauración": ["DESAYUNO", "BUFFET", "RESTAURANTE", "CENA", "ALMUERZO", "CATERING", "CAFETERIA", "CAFETERÍA", "BAR", "MINIBAR"],
-            "Eventos": ["COFFEE BREAK", "SALON", "ALQUILER", "EVENTO", "AUDIOVISUAL"],
-            "Otros": ["LAVANDERIA", "SPA", "MASAJE", "GARAJE", "PARKING", "VARIOS", "RETENCIONES", "OFICINA"]
+        function getGroupedProduction(serviceDb) {
+            const grouped = {};
+            if (typeof PRODUCTION_GROUPS !== 'undefined') {
+                Object.keys(PRODUCTION_GROUPS).forEach(id => { 
+                    grouped[id] = { name: PRODUCTION_GROUPS[id].name, revenue: new Array(12).fill(0), rooms: new Array(12).fill(0), details: [] }; 
+                });
+            } else {
+                grouped["HABITACION"] = { name: "1. Habitación", revenue: new Array(12).fill(0), rooms: new Array(12).fill(0), details: [] };
+            }
+
+            if (!serviceDb) return grouped;
+
+            const subtotalRowsFound = {};
+            Object.values(serviceDb).forEach(s => {
+                const name = typeof normalizeStr === 'function' ? normalizeStr(s.name) : String(s.name || '').toUpperCase().trim();
+                if (name === "TOTAL" || name === "TOTAL_MASTER") return;
+                const gid = typeof getGroupID === 'function' ? getGroupID(s.name) : (name.includes('HABIT') || name.includes('ALOJA') ? 'HABITACION' : 'VARIOS');
+                if (gid && gid !== "OMIT" && (name.includes("TOTAL") || name.includes("SUBTOTAL"))) {
+                    const catName = (typeof PRODUCTION_GROUPS !== 'undefined' && PRODUCTION_GROUPS[gid]) ? normalizeStr(PRODUCTION_GROUPS[gid].name) : "";
+                    if (name.includes(catName.split('.')[1]?.trim() || "") || name.includes("ALOJAMIENTO") || name.includes("RESTAURANTE") || name.includes("DESAYUNO") || name.includes("EVENTO")) {
+                        subtotalRowsFound[gid] = s;
+                    }
+                }
+            });
+
+            Object.values(serviceDb).forEach(s => {
+                const name = typeof normalizeStr === 'function' ? normalizeStr(s.name) : String(s.name || '').toUpperCase().trim();
+                if (name === "TOTAL" || name === "TOTAL_MASTER") return;
+                const gid = typeof getGroupID === 'function' ? getGroupID(s.name) : (name.includes('HABIT') || name.includes('ALOJA') ? 'HABITACION' : 'VARIOS');
+                if (gid && gid !== "OMIT" && grouped[gid]) {
+                    const hasSubtotal = !!subtotalRowsFound[gid];
+                    const isThisTheSubtotal = subtotalRowsFound[gid] === s;
+
+                    if (!hasSubtotal || isThisTheSubtotal) {
+                        for (let i = 0; i < 12; i++) {
+                            if (s.revenue) grouped[gid].revenue[i] += (s.revenue[i] || 0);
+                            if (s.rooms) grouped[gid].rooms[i] += (s.rooms[i] || 0);
+                        }
+                    }
+                    grouped[gid].details.push(s);
+                }
+            });
+
+            return grouped;
+        }
+
+        const GROUP_TO_CATEGORY = {
+            "HABITACION": "Habitaciones",
+            "DESAYUNOS": "Restauración",
+            "RESTAURANTE": "Restauración",
+            "CAFETERIA": "Restauración",
+            "MINIBAR": "Restauración",
+            "EVENTOS": "Eventos",
+            "SPA": "Otros",
+            "VARIOS": "Otros",
+            "OFICINAS": "Otros"
         };
 
         function aggregateServices(yearData, midx, mode = 'projected') {
             const serviceDb = (yearData && yearData.service) || {};
             const otbData = (yearData && yearData.otb) || { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0), breakdown: {} };
+            const groupedTY = getGroupedProduction(serviceDb);
+
             const now = new Date();
             const curYear = now.getFullYear();
             const curMonth = now.getMonth();
-
-            const result = { 
-                summary: {}, 
-                totalRev: 0, 
-                totalRms: 0, 
-                raw: [],
-                realHabRev: 0,
-                realHabRms: 0,
-                projHabRev: 0,
-                projHabRms: 0,
-                otbHabRev: 0,
-                otbHabRms: 0
-            };
 
             const isMonthClosed = (m) => {
                 if (parseInt(currentYear) < curYear) return true;
@@ -1859,112 +1900,108 @@
                 return m < curMonth;
             };
 
-            const getRealMonthRev = (arr, m) => (arr && arr[m]) ? arr[m] : 0;
-            const getRealMonthRms = (arr, m) => (arr && arr[m]) ? arr[m] : 0;
+            const otbHabRevArr = otbData.breakdown?.habitacion || otbData.revenue || new Array(12).fill(0);
+            const otbHabRmsArr = otbData.breakdown?.habitacion_rn || otbData.rooms || new Array(12).fill(0);
 
-            Object.entries(serviceDb).forEach(([name, obj]) => {
-                if (name === "TOTAL_MASTER" || name.includes("TOTAL_PROD") || name.toUpperCase() === "TOTAL") return;
-                
-                let rev = 0, rms = 0;
-                for (let m = 0; m < 12; m++) {
-                    if (midx !== -1 && m !== midx) continue;
-
-                    const rRev = getRealMonthRev(obj.revenue, m);
-                    const rRms = getRealMonthRms(obj.rooms, m);
-                    
-                    if (mode === 'real') {
-                        rev += rRev;
-                        rms += rRms;
-                    } else if (mode === 'otb') {
-                        // Will be adjusted below
-                    } else {
-                        // Projected
-                        rev += rRev;
-                        rms += rRms;
-                    }
-                }
-
-                const n = name.toUpperCase();
-                let category = "Otros";
-                for (const [catName, keys] of Object.entries(CATEGORIES)) {
-                    if (keys.some(k => n.includes(k))) { category = catName; break; }
-                }
-
-                if (!result.summary[category]) result.summary[category] = { revenue: 0, rooms: 0 };
-                result.summary[category].revenue += rev;
-                result.summary[category].rooms += rms;
-                result.totalRev += rev;
-                if (category === "Habitaciones") result.totalRms += rms;
-                result.raw.push({ name, rev, rms, category });
-            });
-
-            // Calculate exact Habitaciones Real vs Projected vs OTB
             let realHabRevTotal = 0, realHabRmsTotal = 0;
             let projHabRevTotal = 0, projHabRmsTotal = 0;
             let otbHabRevTotal = 0, otbHabRmsTotal = 0;
 
-            let roomServiceGroup = Object.values(serviceDb).find(s => {
-                const n = s.name.toUpperCase();
-                return n.includes('HABITACION') && !n.includes('TOTAL_MASTER') && !n.includes('TOTAL');
-            });
-            if (!roomServiceGroup && serviceDb["TOTAL_MASTER"]) roomServiceGroup = serviceDb["TOTAL_MASTER"];
-
-            const otbHabRevArr = otbData.breakdown?.habitacion || otbData.revenue || new Array(12).fill(0);
-            const otbHabRmsArr = otbData.breakdown?.habitacion_rn || otbData.rooms || new Array(12).fill(0);
-
             for (let m = 0; m < 12; m++) {
-                const rRev = roomServiceGroup?.revenue?.[m] || 0;
-                const rRms = roomServiceGroup?.rooms?.[m] || (serviceDb["TOTAL_MASTER"]?.rooms?.[m] || 0);
+                if (midx !== -1 && m !== midx) continue;
+
+                const rRev = groupedTY.HABITACION?.revenue?.[m] || 0;
+                let rRms = groupedTY.HABITACION?.rooms?.[m] || 0;
+                if (rRms === 0 && serviceDb["TOTAL_MASTER"]?.rooms?.[m]) {
+                    rRms = serviceDb["TOTAL_MASTER"].rooms[m];
+                }
+
                 const oRev = otbHabRevArr[m] || 0;
                 const oRms = otbHabRmsArr[m] || 0;
                 const mClosed = isMonthClosed(m);
 
-                if (midx === -1 || midx === m) {
-                    realHabRevTotal += rRev;
-                    realHabRmsTotal += rRms;
-                    otbHabRevTotal += oRev;
-                    otbHabRmsTotal += oRms;
+                realHabRevTotal += rRev;
+                realHabRmsTotal += rRms;
+                otbHabRevTotal += oRev;
+                otbHabRmsTotal += oRms;
 
-                    if (mClosed) {
-                        projHabRevTotal += rRev;
-                        projHabRmsTotal += rRms;
-                    } else {
-                        // Open/future month: Real + OTB (same as AnalisisProduccion)
-                        const fRev = rRev + oRev;
-                        const fRms = rRms + oRms;
-                        projHabRevTotal += fRev;
-                        projHabRmsTotal += fRms;
-                    }
+                if (mClosed) {
+                    projHabRevTotal += rRev;
+                    projHabRmsTotal += rRms;
+                } else {
+                    projHabRevTotal += (rRev + oRev);
+                    projHabRmsTotal += (rRms + oRms);
                 }
             }
 
-            result.realHabRev = realHabRevTotal;
-            result.realHabRms = realHabRmsTotal;
-            result.projHabRev = projHabRevTotal;
-            result.projHabRms = projHabRmsTotal;
-            result.otbHabRev = otbHabRevTotal;
-            result.otbHabRms = otbHabRmsTotal;
+            const summary = {
+                "Habitaciones": { revenue: 0, rooms: 0 },
+                "Restauración": { revenue: 0, rooms: 0 },
+                "Eventos": { revenue: 0, rooms: 0 },
+                "Otros": { revenue: 0, rooms: 0 }
+            };
 
-            if (!result.summary["Habitaciones"]) result.summary["Habitaciones"] = { revenue: 0, rooms: 0 };
+            let totalNonHabRev = 0;
+            Object.entries(groupedTY).forEach(([gid, grp]) => {
+                if (gid === "HABITACION") return;
+                const cat = GROUP_TO_CATEGORY[gid] || "Otros";
+                let rev = 0;
+                for (let m = 0; m < 12; m++) {
+                    if (midx !== -1 && m !== midx) continue;
+                    rev += (grp.revenue[m] || 0);
+                }
+                summary[cat].revenue += rev;
+                totalNonHabRev += rev;
+            });
 
-            if (mode === 'projected') {
-                const diffRev = projHabRevTotal - result.summary["Habitaciones"].revenue;
-                result.summary["Habitaciones"].revenue = projHabRevTotal;
-                result.summary["Habitaciones"].rooms = projHabRmsTotal;
-                result.totalRev += diffRev;
-                result.totalRms = projHabRmsTotal;
-            } else if (mode === 'real') {
-                result.summary["Habitaciones"].revenue = realHabRevTotal;
-                result.summary["Habitaciones"].rooms = realHabRmsTotal;
-                result.totalRms = realHabRmsTotal;
+            let habRevChosen = 0;
+            let habRmsChosen = 0;
+            if (mode === 'real') {
+                habRevChosen = realHabRevTotal;
+                habRmsChosen = realHabRmsTotal;
             } else if (mode === 'otb') {
-                result.summary["Habitaciones"].revenue = otbHabRevTotal;
-                result.summary["Habitaciones"].rooms = otbHabRmsTotal;
-                result.totalRev = otbHabRevTotal;
-                result.totalRms = otbHabRmsTotal;
+                habRevChosen = otbHabRevTotal;
+                habRmsChosen = otbHabRmsTotal;
+            } else {
+                habRevChosen = projHabRevTotal;
+                habRmsChosen = projHabRmsTotal;
             }
 
-            return result;
+            summary["Habitaciones"].revenue = habRevChosen;
+            summary["Habitaciones"].rooms = habRmsChosen;
+
+            const totalRev = habRevChosen + totalNonHabRev;
+            const totalRms = habRmsChosen;
+
+            const raw = [];
+            Object.values(serviceDb).forEach(s => {
+                const name = typeof normalizeStr === 'function' ? normalizeStr(s.name) : String(s.name || '').toUpperCase().trim();
+                if (name === "TOTAL" || name === "TOTAL_MASTER" || name.includes("TOTAL_PROD")) return;
+                let rev = 0, rms = 0;
+                for (let m = 0; m < 12; m++) {
+                    if (midx !== -1 && m !== midx) continue;
+                    rev += (s.revenue?.[m] || 0);
+                    rms += (s.rooms?.[m] || 0);
+                }
+                const gid = typeof getGroupID === 'function' ? getGroupID(s.name) : "VARIOS";
+                const category = GROUP_TO_CATEGORY[gid] || "Otros";
+                if (rev > 0 || rms > 0) {
+                    raw.push({ name: s.name, rev, rms, category });
+                }
+            });
+
+            return {
+                summary,
+                totalRev,
+                totalRms,
+                raw,
+                realHabRev: realHabRevTotal,
+                realHabRms: realHabRmsTotal,
+                projHabRev: projHabRevTotal,
+                projHabRms: projHabRmsTotal,
+                otbHabRev: otbHabRevTotal,
+                otbHabRms: otbHabRmsTotal
+            };
         }
 
         function renderKPIRow(agg, hotel) {
@@ -2025,8 +2062,8 @@
             // VS LAST YEAR (Real 2025)
             const prevYear = String(parseInt(currentYear) - 1);
             if (db[hotel][prevYear] && db[hotel][prevYear].service) {
-                const pyRoomsGrp = Object.values(db[hotel][prevYear].service).find(s => s.name.toUpperCase().includes('HABITACION') && !s.name.toUpperCase().includes('TOTAL_MASTER'));
-                const pyRevArr = pyRoomsGrp ? pyRoomsGrp.revenue : (db[hotel][prevYear].service["TOTAL_MASTER"] ? db[hotel][prevYear].service["TOTAL_MASTER"].revenue : []);
+                const groupedLY = getGroupedProduction(db[hotel][prevYear].service);
+                const pyRevArr = groupedLY.HABITACION?.revenue || [];
                 
                 if (pyRevArr && pyRevArr.length > 0) {
                     let pyRev = 0;
@@ -2050,7 +2087,7 @@
 
                     const grow = pyRev > 0 ? ((habRev - pyRev) / pyRev * 100) : 0;
                     const badgeText = mode === 'real' ? 'vs Año Ant. (YTD)' : 'vs Año Anterior';
-                    document.getElementById('kpi-rev-vs-prev').innerHTML = `<span style="color:${grow >= 0 ? 'var(--secondary)' : '#ef4444'}">${grow >= 0 ? '↗' : '↘'} ${Math.abs(grow).toFixed(1)}%</span> ${badgeText}`;
+                    document.getElementById('kpi-rev-vs-prev').innerHTML = `<span style="color:${grow >= 0 ? 'var(--secondary)' : '#ef4444'}">${grow >= 0 ? '↗' : '↘'} ${Math.abs(grow).toFixed(1)}%</span> ${badgeText} <span style="font-size:0.75rem; color:var(--text-muted); font-weight:normal; margin-left:4px;">(Acum: ${fmt(pyRev)})</span>`;
                 }
             }
 
