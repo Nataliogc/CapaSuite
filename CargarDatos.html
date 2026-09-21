@@ -1402,6 +1402,9 @@
         // --- FILE PROCESSING ---
         function detectFileType(name) {
             const n = normalizeStr(name);
+            // Segmentos de Previsión / OTB
+            if ((n.includes("SEGMENTO") || n.includes("CANAL") || n.includes("MERCADO")) && 
+                (n.includes("PREVISION") || n.includes("OTB") || n.includes("VALORADA"))) return 'Seg';
             // Previsiones / OTB
             if (n.includes("PREVISION") || n.includes("OTB") || n.includes("VALORADA")) return 'Otb';
             // Segmentos / Canales
@@ -1986,19 +1989,113 @@
 
         function processDataForDB(data, fileName, hotel, type, manualPeriod, reviewedReport) {
             if (type === 'Seg') {
-                const report = reviewedReport || SegmentAnalysis.parse(data, fileName, manualPeriod);
-                SegmentAnalysis.merge(db, hotel, report);
-                for (const year of Object.keys(report.years)) {
-                    const target = db[hotel][year];
-                    const coverage = report.years[year].coverage;
-                    const months = Object.keys(coverage).map(Number).sort((a, b) => a - b);
-                    const first = months[0], last = months[months.length - 1];
-                    const label = `${String(coverage[first][0]).padStart(2, '0')}-${String(first + 1).padStart(2, '0')}-${year} al ${String(coverage[last].at(-1)).padStart(2, '0')}-${String(last + 1).padStart(2, '0')}-${year}`;
-                    target.updates ||= { prod: 'N/A', seg: 'N/A', otb: 'N/A' };
-                    target.updates.seg = label;
-                    target.lastSegDate = label;
+                let report = reviewedReport;
+                if (!report) {
+                    try {
+                        report = SegmentAnalysis.parse(data, fileName, manualPeriod);
+                    } catch (e) {
+                        const nUpper = fileName.toUpperCase();
+                        if (nUpper.includes('PREVISION') || nUpper.includes('OTB') || nUpper.includes('VALORADA')) {
+                            report = SegmentAnalysis.parseForecast(data, fileName);
+                        } else {
+                            throw e;
+                        }
+                    }
                 }
-                return;
+                if (report && report.segmentData) {
+                    let forecastDB = JSON.parse(CapaStorage.getItem('segment_forecast_v2') || '{}') || {};
+                    SegmentAnalysis.mergeForecast(forecastDB, hotel, report);
+                    CapaStorage.setItem('segment_forecast_v2', JSON.stringify(forecastDB));
+
+                    const allYears = new Set();
+                    Object.values(report.segmentData).forEach(seg => {
+                        Object.keys(seg.days).forEach(iso => allYears.add(iso.split('-')[0]));
+                    });
+
+                    allYears.forEach(yStr => {
+                        if (!db[hotel]) db[hotel] = {};
+                        if (!db[hotel][yStr]) {
+                            db[hotel][yStr] = {
+                                service: {},
+                                segment: {},
+                                otb: { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0), breakdown: {} },
+                                daily_otb: {},
+                                lastUpdate: ""
+                            };
+                        }
+                        const targetY = db[hotel][yStr];
+                        if (!targetY.daily_otb) targetY.daily_otb = {};
+                        if (!targetY.otb) targetY.otb = { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0), breakdown: {} };
+                        if (!targetY.otb.breakdown) targetY.otb.breakdown = {};
+                        if (!targetY.otb.breakdown.habitacion) targetY.otb.breakdown.habitacion = new Array(12).fill(0);
+                        if (!targetY.updates) targetY.updates = { prod: 'N/A', seg: 'N/A', otb: 'N/A' };
+                        targetY.updates.seg = manualPeriod || fileName;
+                        targetY.lastSegDate = manualPeriod || fileName;
+                    });
+
+                    Object.values(report.segmentData).forEach(seg => {
+                        Object.entries(seg.days).forEach(([iso, dt]) => {
+                            const [yStr, mStr] = iso.split('-');
+                            const m = parseInt(mStr, 10) - 1;
+                            const targetY = db[hotel][yStr];
+                            if (targetY) {
+                                targetY.daily_otb[iso] ||= { rooms: 0, revenue: 0, breakdown: {} };
+                                targetY.daily_otb[iso].rooms += (dt.rooms || 0);
+                                targetY.daily_otb[iso].revenue += (dt.revenue || 0);
+                                targetY.daily_otb[iso].breakdown.habitacion = (targetY.daily_otb[iso].breakdown.habitacion || 0) + (dt.accommodation || 0);
+
+                                targetY.otb.rooms[m] += (dt.rooms || 0);
+                                targetY.otb.revenue[m] += (dt.revenue || 0);
+                                targetY.otb.breakdown.habitacion[m] += (dt.accommodation || 0);
+                            }
+                        });
+                    });
+
+                    // Sync Calendario Estratégico
+                    let revRaw = CapaStorage.getItem('revenue_data_v2');
+                    let revDB = typeof revRaw === 'string' ? JSON.parse(revRaw) : (revRaw || { data: [] });
+                    if (!revDB.data) revDB.data = [];
+
+                    const dailyTotals = {};
+                    for (const seg of Object.values(report.segmentData)) {
+                        for (const [iso, dt] of Object.entries(seg.days)) {
+                            dailyTotals[iso] ||= { rooms: 0, revenue: 0 };
+                            dailyTotals[iso].rooms += (dt.rooms || 0);
+                            dailyTotals[iso].revenue += (dt.revenue || 0);
+                        }
+                    }
+
+                    for (const [iso, totals] of Object.entries(dailyTotals)) {
+                        let dayEntry = revDB.data.find(d => d.dateISO === iso);
+                        if (!dayEntry) {
+                            dayEntry = { dateISO: iso, occupancyData: {} };
+                            revDB.data.push(dayEntry);
+                        }
+                        dayEntry.occupancyData ||= {};
+                        const hData = dayEntry.occupancyData[hotel] ||= { otb: 0, otb_prev: null, adr: 0, revenue: 0 };
+                        if (hData.otb !== totals.rooms && hData.otb > 0) {
+                            hData.otb_prev = hData.otb;
+                        }
+                        hData.otb = totals.rooms;
+                        hData.revenue = totals.revenue;
+                        hData.adr = totals.rooms > 0 ? totals.revenue / totals.rooms : 0;
+                    }
+                    CapaStorage.setItem('revenue_data_v2', JSON.stringify(revDB));
+                    return;
+                } else if (report && report.years) {
+                    SegmentAnalysis.merge(db, hotel, report);
+                    for (const year of Object.keys(report.years)) {
+                        const target = db[hotel][year];
+                        const coverage = report.years[year].coverage;
+                        const months = Object.keys(coverage).map(Number).sort((a, b) => a - b);
+                        const first = months[0], last = months[months.length - 1];
+                        const label = `${String(coverage[first][0]).padStart(2, '0')}-${String(first + 1).padStart(2, '0')}-${year} al ${String(coverage[last].at(-1)).padStart(2, '0')}-${String(last + 1).padStart(2, '0')}-${year}`;
+                        target.updates ||= { prod: 'N/A', seg: 'N/A', otb: 'N/A' };
+                        target.updates.seg = label;
+                        target.lastSegDate = label;
+                    }
+                    return;
+                }
             }
             const fileNameNorm = normalizeStr(fileName);
             const dateInfo = extractDateFromFilename(fileName);
@@ -2372,14 +2469,19 @@
                 const startYearFile = parseInt(allYearsInFile[0] || reportYear);
                 
                 if (!db[hotel]) db[hotel] = {};
-                if (!db[hotel][detectedYear]) {
-                    db[hotel][detectedYear] = { 
-                        service: {}, 
-                        segment: {}, 
-                        otb: { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0), breakdown: {} }, 
-                        lastUpdate: "" 
-                    };
-                }
+                allYearsInFile.forEach(yStr => {
+                    if (!db[hotel][yStr]) {
+                        db[hotel][yStr] = { 
+                            service: {}, 
+                            segment: {}, 
+                            otb: { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0), breakdown: {} }, 
+                            daily_otb: {},
+                            lastUpdate: "" 
+                        };
+                    }
+                    if (!db[hotel][yStr].otb) db[hotel][yStr].otb = { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0), breakdown: {} };
+                    if (!db[hotel][yStr].daily_otb) db[hotel][yStr].daily_otb = {};
+                });
                 const dbYear = db[hotel][detectedYear];
                 if (!dbYear.otb) dbYear.otb = { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0), breakdown: {} };
 
@@ -2720,6 +2822,23 @@
                             if (db[hotel][yStr].otb.breakdown && db[hotel][yStr].otb.breakdown.habitacion) db[hotel][yStr].otb.breakdown.habitacion.fill(0);
                             db[hotel][yStr].daily_otb = {};
                         }
+                        if (!db[hotel]) db[hotel] = {};
+                        if (!db[hotel][yStr]) {
+                            db[hotel][yStr] = {
+                                service: {},
+                                segment: {},
+                                otb: { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0), breakdown: {} },
+                                daily_otb: {},
+                                lastUpdate: ""
+                            };
+                        }
+                        const targetY = db[hotel][yStr];
+                        if (targetY.otb) {
+                            targetY.otb.rooms.fill(0);
+                            targetY.otb.revenue.fill(0);
+                            if (targetY.otb.breakdown && targetY.otb.breakdown.habitacion) targetY.otb.breakdown.habitacion.fill(0);
+                        }
+                        targetY.daily_otb = {};
                     });
 
                     Object.values(report.segmentData).forEach(seg => {
@@ -2744,10 +2863,40 @@
                         });
                     });
                     
-                    let forecastDB = CapaStorage.getItem('segment_forecast_v2');
-                    forecastDB = typeof forecastDB === 'string' ? JSON.parse(forecastDB) : (forecastDB || {});
+                    let forecastDB = JSON.parse(CapaStorage.getItem('segment_forecast_v2') || '{}') || {};
                     SegmentAnalysis.mergeForecast(forecastDB, hotel, report);
                     CapaStorage.setItem('segment_forecast_v2', JSON.stringify(forecastDB));
+
+                    // Sync Calendario Estratégico
+                    let revRaw = CapaStorage.getItem('revenue_data_v2');
+                    let revDB = typeof revRaw === 'string' ? JSON.parse(revRaw) : (revRaw || { data: [] });
+                    if (!revDB.data) revDB.data = [];
+
+                    const dailyTotals = {};
+                    for (const seg of Object.values(report.segmentData)) {
+                        for (const [iso, dt] of Object.entries(seg.days)) {
+                            dailyTotals[iso] ||= { rooms: 0, revenue: 0 };
+                            dailyTotals[iso].rooms += (dt.rooms || 0);
+                            dailyTotals[iso].revenue += (dt.revenue || 0);
+                        }
+                    }
+
+                    for (const [iso, totals] of Object.entries(dailyTotals)) {
+                        let dayEntry = revDB.data.find(d => d.dateISO === iso);
+                        if (!dayEntry) {
+                            dayEntry = { dateISO: iso, occupancyData: {} };
+                            revDB.data.push(dayEntry);
+                        }
+                        dayEntry.occupancyData ||= {};
+                        const hData = dayEntry.occupancyData[hotel] ||= { otb: 0, otb_prev: null, adr: 0, revenue: 0 };
+                        if (hData.otb !== totals.rooms && hData.otb > 0) {
+                            hData.otb_prev = hData.otb;
+                        }
+                        hData.otb = totals.rooms;
+                        hData.revenue = totals.revenue;
+                        hData.adr = totals.rooms > 0 ? totals.revenue / totals.rooms : 0;
+                    }
+                    CapaStorage.setItem('revenue_data_v2', JSON.stringify(revDB));
                     console.log("OTB and Forecast Segments cleanly parsed and merged via SegmentAnalysis");
                 } catch (e) {
                     console.error("Error in parseForecast override:", e);

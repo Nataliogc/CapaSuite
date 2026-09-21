@@ -276,6 +276,8 @@
                         if (validSegments.includes(canonical(metric))) return;
                         dt.revenue += value;
                         if (isLodging) dt.accommodation += value;
+                        dt.concepts ||= {};
+                        dt.concepts[metric] = (dt.concepts[metric] || 0) + value;
                     }
                 });
             }

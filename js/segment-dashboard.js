@@ -26,16 +26,25 @@ function buildMonthlyFromForecast(db) {
                 const [yyyy, mm, dd] = iso.split('-');
                 const year = yyyy;
                 const monthIdx = Number(mm) - 1;
+                const dayNum = Number(dd);
                 
-                result[hotel][year] ||= { segment: {}, coverage: {} };
+                result[hotel][year] ||= { segment: {}, coverage: {}, segmentCoverage: {} };
                 const yData = result[hotel][year];
                 yData.coverage[monthIdx] ||= [];
-                if (!yData.coverage[monthIdx].includes(dd)) yData.coverage[monthIdx].push(dd);
+                if (!yData.coverage[monthIdx].includes(dayNum)) yData.coverage[monthIdx].push(dayNum);
+                yData.segmentCoverage[monthIdx] = yData.coverage[monthIdx];
 
                 const seg = yData.segment[segName] ||= { name: segName, revenue: Array(12).fill(0), rooms: Array(12).fill(0), accommodation: Array(12).fill(0), concepts: {} };
                 seg.revenue[monthIdx] += daily.revenue || 0;
                 seg.rooms[monthIdx] += daily.rooms || 0;
                 seg.accommodation[monthIdx] += daily.accommodation || 0;
+
+                if (daily.concepts) {
+                    for (const [cName, cVal] of Object.entries(daily.concepts)) {
+                        seg.concepts[cName] ||= Array(12).fill(0);
+                        seg.concepts[cName][monthIdx] += (cVal || 0);
+                    }
+                }
             }
         }
     }
@@ -45,6 +54,7 @@ function updateMode(triggerRender = true) {
     const selector = el('modeSelector');
     currentMode = selector ? selector.value : 'historical';
     if (currentMode === 'forecast') {
+        forecastDB = JSON.parse(CapaStorage.getItem('segment_forecast_v2') || '{}') || {};
         segmentDB = buildMonthlyFromForecast(forecastDB);
     } else {
         segmentDB = historicalDB;
@@ -92,8 +102,21 @@ function initControls() {
     el('upload-section').style.display = currentYear ? 'none' : 'block';
     el('dashboard').style.display = currentYear ? 'flex' : 'none';
     const previous = el('compareSelector').value;
-    el('compareSelector').innerHTML = '<option value="">Sin comparación</option>' + years.filter(y => y !== currentYear).map(y => `<option>${y}</option>`).join('');
-    el('compareSelector').value = years.includes(previous) && previous !== currentYear ? previous : (years.includes(String(Number(currentYear) - 1)) ? String(Number(currentYear) - 1) : years.find(y => y !== currentYear) || '');
+    
+    if (currentMode === 'forecast') {
+        const histYears = Object.keys(historicalDB[currentHotel] || {}).filter(y => /^20\d{2}$/.test(y) && SegmentAnalysis.segments(historicalDB[currentHotel][y]).length);
+        const forecastYears = Object.keys(segmentDB[currentHotel] || {}).filter(y => /^20\d{2}$/.test(y));
+        const allCompareYears = [...new Set([...forecastYears, ...histYears])].filter(y => y !== currentYear).sort().reverse();
+        el('compareSelector').innerHTML = '<option value="">Sin comparación</option>' + allCompareYears.map(y => {
+            const isHist = histYears.includes(y);
+            return `<option value="${y}">${y}${isHist ? ' (Histórico Real)' : ' (Previsión)'}</option>`;
+        }).join('');
+        const defaultCompare = String(Number(currentYear) - 1);
+        el('compareSelector').value = allCompareYears.includes(previous) && previous !== currentYear ? previous : (allCompareYears.includes(defaultCompare) ? defaultCompare : (allCompareYears[0] || ''));
+    } else {
+        el('compareSelector').innerHTML = '<option value="">Sin comparación</option>' + years.filter(y => y !== currentYear).map(y => `<option>${y}</option>`).join('');
+        el('compareSelector').value = years.includes(previous) && previous !== currentYear ? previous : (years.includes(String(Number(currentYear) - 1)) ? String(Number(currentYear) - 1) : years.find(y => y !== currentYear) || '');
+    }
     const savedMonth = el('monthSelector').value;
     const months = SegmentAnalysis.availableMonths(segmentDB[currentHotel]?.[currentYear]);
     el('monthSelector').innerHTML = '<option value="All">Periodo cargado</option>' + months.map(m => `<option value="${m}">${MONTH_ORDER[m]}</option>`).join('');
@@ -125,8 +148,7 @@ async function handleFiles(files) {
                 if (!report) { failures.push(`${file.name}: importación cancelada. No se han guardado cambios.`); continue; }
                 const hotel = /guadiana/i.test(file.name) ? 'Guadiana' : /cumbria/i.test(file.name) ? 'Cumbria' : currentHotel;
                 if (report.segmentData) {
-                    let forecastDB = CapaStorage.getItem('segment_forecast_v2');
-                    forecastDB = typeof forecastDB === 'string' ? JSON.parse(forecastDB) : (forecastDB || {});
+                    forecastDB = JSON.parse(CapaStorage.getItem('segment_forecast_v2') || '{}') || {};
                     SegmentAnalysis.mergeForecast(forecastDB, hotel, report);
                     CapaStorage.setItem('segment_forecast_v2', JSON.stringify(forecastDB));
                     
@@ -169,8 +191,15 @@ async function handleFiles(files) {
                         CapaStorage.setItem('revenue_data_v2', JSON.stringify(revDB));
                     }
                     
-                    successes.push(`${file.name}: Previsión importada (${Object.keys(report.segmentData).length} segmentos). Sincronizados ${updatedDays} días en el Calendario.`);
+                    // Activar automáticamente el modo previsión para visualizar los datos cargados
+                    currentMode = 'forecast';
+                    if (el('modeSelector')) el('modeSelector').value = 'forecast';
+                    segmentDB = buildMonthlyFromForecast(forecastDB);
+                    const forecastYears = Object.keys(segmentDB[hotel] || {}).sort().reverse();
                     currentHotel = hotel;
+                    currentYear = forecastYears[0] || '';
+
+                    successes.push(`${file.name}: Previsión importada (${Object.keys(report.segmentData).length} segmentos, ejercicios: ${forecastYears.join(', ')}). Sincronizados ${updatedDays} días en el Calendario.`);
                 } else {
                     const next = JSON.parse(JSON.stringify(segmentDB));
                     const years = SegmentAnalysis.merge(next, hotel, report);
@@ -192,7 +221,9 @@ function renderDashboard() {
     const hotelData = segmentDB[currentHotel]?.[currentYear];
     if (!hotelData || !currentYear) return;
     const compareYear = el('compareSelector').value;
-    const hotelPrevious = segmentDB[currentHotel]?.[compareYear];
+    const hotelPrevious = currentMode === 'forecast'
+        ? (historicalDB[currentHotel]?.[compareYear] || segmentDB[currentHotel]?.[compareYear])
+        : segmentDB[currentHotel]?.[compareYear];
     const months = el('monthSelector').value === 'All' ? SegmentAnalysis.availableMonths(hotelData) : [Number(el('monthSelector').value)];
     const segmentNames = [...new Set([...SegmentAnalysis.segments(hotelData), ...SegmentAnalysis.segments(hotelPrevious)].map(s => s.name))].sort((a, b) => a.localeCompare(b, 'es'));
     if (currentSegment === null || currentSegment && !segmentNames.includes(currentSegment)) currentSegment = SegmentAnalysis.segments(hotelData).slice().sort((a, b) => SegmentAnalysis.sum(b, 'revenue', months) - SegmentAnalysis.sum(a, 'revenue', months))[0]?.name || '';
@@ -209,6 +240,12 @@ function renderDashboard() {
     el('metric-years').textContent = `${scopeName} · ${currentYear}${compareYear ? ' vs ' + compareYear : ''} · ${totals.days == null ? 'Cobertura sin verificar' : totals.days + ' días cargados'}`;
     el('revpar-label').textContent = currentSegment ? 'Aportación al RevPAR del hotel' : 'RevPAR · solo alojamiento';
     el('period-note').textContent = `${months.map(m => MONTH_ORDER[m]).join(', ')}. Producción = Ingresos totales del segmento (todas las categorías). ADR utiliza solo alojamiento. ${compareYear && !comparable ? '(Nota: Días cargados no coinciden, comparativa puede ser inexacta).' : ''}${totals.days == null ? ' Reimporta el Excel para verificar fechas y desglosar el alojamiento.' : ''}`;
+    if (currentMode === 'forecast') {
+        const availableY = Object.keys(segmentDB[currentHotel] || {}).sort();
+        const otherYears = availableY.filter(y => y !== currentYear);
+        const yHint = otherYears.length ? ` (Tu previsión también incluye datos para ${otherYears.join(', ')}: selecciona ese año arriba para verlos).` : '';
+        el('period-note').textContent = `🔮 Modo Previsión (OTB) · Viendo previsión del ejercicio ${currentYear}${yHint}. ` + el('period-note').textContent;
+    }
     const invalidStored = SegmentAnalysis.segments(data).filter(s => !SegmentAnalysis.validSegments.includes(SegmentAnalysis.canonical(s.name)) && months.some(m => ['rooms', 'revenue', 'totalRevenue'].some(field => Number(s[field]?.[m]) !== 0 && s[field]?.[m] != null)));
     if (invalidStored.length) el('period-note').textContent += ` Atención: hay segmentos incorrectos guardados (${invalidStored.map(s => s.name).join(', ')}). Pulsa Importar Excel para revisarlos y asignar el segmento correcto antes de guardar.`;
     [['prod', totals.revenue, prior?.revenue, 'revenue'], ['rooms', totals.rooms, prior?.rooms, 'rooms'], ['adr', totals.adr, prior?.adr, 'adr'], ['revpar', revpar, priorRevpar, 'adr']].forEach(([id, value, before, metric]) => {
