@@ -478,6 +478,17 @@
         }
 
         /* Categories */
+        .expert-insight-card.overbooking-open {
+            border-left-color: #ef4444;
+            border-left-width: 5px;
+            background: linear-gradient(90deg, rgba(239, 68, 68, 0.16) 0%, var(--bg-surface) 50%);
+            animation: alertPulseCritical 2s infinite ease-in-out;
+        }
+        .expert-insight-card.closed-available {
+            border-left-color: #f59e0b;
+            border-left-width: 4px;
+            background: linear-gradient(90deg, rgba(245, 158, 11, 0.12) 0%, var(--bg-surface) 40%);
+        }
         .expert-insight-card.pickup-pos {
             border-left-color: #10b981;
             background: linear-gradient(90deg, rgba(16, 185, 129, 0.08) 0%, var(--bg-surface) 40%);
@@ -2161,7 +2172,29 @@
                 ? (processedData.reduce((a, b) => a + (b.compAvg || 0), 0) / processedData.length) 
                 : 0;
 
-            if (type === 'opp') {
+            if (type === 'overbooking_open') {
+                filterLabel = "🚨 Overbooking con Ventas Abiertas (¡CERRAR YA!)";
+                const cap = HOTEL_CAPACITY[activeHotel] || (activeHotel === 'Cumbria' ? 59 : 108);
+                filtered = baseData.filter(d => {
+                    ensureHotelStructure(d, activeHotel);
+                    const dynamic = getDynamicDateHtml(d, activeHotel);
+                    const currentOcc = (dynamic.occ > 0) ? dynamic.occ : (dynamic.otb || 0);
+                    const my = d.hotels[activeHotel];
+                    const isOpen = (my && !my.sold && my.price > 0 && my.status !== 'sold');
+                    return isOpen && currentOcc >= cap;
+                });
+            } else if (type === 'closed_available') {
+                filterLabel = "🔔 Cierre con Habitaciones Libres (¡Hay sitio!)";
+                const cap = HOTEL_CAPACITY[activeHotel] || (activeHotel === 'Cumbria' ? 59 : 108);
+                filtered = baseData.filter(d => {
+                    ensureHotelStructure(d, activeHotel);
+                    const dynamic = getDynamicDateHtml(d, activeHotel);
+                    const currentOcc = (dynamic.occ > 0) ? dynamic.occ : (dynamic.otb || 0);
+                    const my = d.hotels[activeHotel];
+                    const isSold = (my && (my.sold || my.status === 'sold'));
+                    return isSold && currentOcc < cap && !my?.isSoldOut && (cap - currentOcc >= 1);
+                });
+            } else if (type === 'opp') {
                 filterLabel = "Oportunidad (Tarifa baja)";
                 filtered = baseData.filter(d => {
                     const my = d.hotels[activeHotel];
@@ -3135,10 +3168,14 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             let occ = (hData.occupancy !== undefined) ? hData.occupancy : null;
             let otb = (hData.otbRooms !== undefined) ? hData.otbRooms : null;
             let otbChange = (hData.otbChange !== undefined) ? hData.otbChange : null;
+            if (occ === null && otb === null) {
+                if (d.occupancy !== undefined) occ = d.occupancy;
+                if (d.otbRooms !== undefined) otb = d.otbRooms;
+            }
 
             // Date Formatting Logic
-            let dayNum = meta.dNum;
-            let dayName = meta.dShort;
+            let dayNum = meta ? meta.dNum : (d.dateISO ? parseInt(d.dateISO.split('-')[2], 10) : '');
+            let dayName = meta ? meta.dShort : '';
             let monthName = "";
             let yearVal = "";
 
@@ -3510,15 +3547,35 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             let negPickup = [];
             let soldOutDays = [];
             let highOccDays = [];
+            let overbookingOpenDays = [];
+            let closedWithAvailableDays = [];
 
             const globalAvg = data.reduce((a, b) => a + (b.compAvg || 0), 0) / (data.length || 1);
-            const hotelCap = HOTEL_CAPACITY[activeHotel] || 100;
+            const hotelCap = HOTEL_CAPACITY[activeHotel] || (activeHotel === 'Cumbria' ? 59 : 108);
 
             data.forEach(d => {
                 ensureHotelStructure(d, activeHotel);
                 const my = d.hotels[activeHotel];
                 const myChange = (my.otbChange !== undefined) ? my.otbChange : 0;
                 
+                // Ocupación real y estado de ventas
+                const dynamic = getDynamicDateHtml(d, activeHotel);
+                const currentOcc = (dynamic.occ > 0) ? dynamic.occ : (dynamic.otb || 0);
+                const isOpen = (my && !my.sold && my.price > 0 && my.status !== 'sold');
+                const isSold = (my && (my.sold || my.status === 'sold'));
+
+                // ALERTA CRÍTICA: Overbooking con Ventas Abiertas (¡CERRAR YA!)
+                if (isOpen && currentOcc >= hotelCap) {
+                    const obExcess = currentOcc - hotelCap;
+                    overbookingOpenDays.push({ ...d, currentOcc, obExcess });
+                }
+
+                // ALERTA CRÍTICA: Cierre con Habitaciones Libres (¡Hay sitio!)
+                if (isSold && currentOcc < hotelCap && !my?.isSoldOut && (hotelCap - currentOcc >= 1)) {
+                    const roomGap = hotelCap - currentOcc;
+                    closedWithAvailableDays.push({ ...d, currentOcc, roomGap });
+                }
+
                 // 1. Pick-up Detection (Aceleración >= 8 habs o Caída <= -8 habs)
                 if (myChange >= 8) {
                     posPickup.push({ ...d, otbChange: myChange });
@@ -3532,8 +3589,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 }
 
                 // 3. Alta Ocupación Propia
-                const currentRooms = (my.otbRooms !== undefined) ? my.otbRooms : (my.occupancy !== undefined ? my.occupancy : 0);
-                const occPct = (currentRooms / hotelCap) * 100;
+                const occPct = (currentOcc / hotelCap) * 100;
                 if (occPct >= 75 && my && !my.sold && my.price > 0 && d.compAvg > 0 && my.price <= d.compAvg * 1.05) {
                     highOccDays.push({ ...d, occPct: occPct });
                 }
@@ -3552,6 +3608,45 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             const compression = data.filter(d => (d.compAvg || 0) > globalAvg * 1.35);
 
             let alertCount = 0;
+
+            // --- INSIGHT CRÍTICO 1: OVERBOOKING CON VENTAS ABIERTAS (¡CERRAR YA!) ---
+            if (overbookingOpenDays.length > 0) {
+                alertCount++;
+                overbookingOpenDays.sort((a, b) => b.currentOcc - a.currentOcc);
+                const chips = overbookingOpenDays.slice(0, 6).map(d => {
+                    const excessLabel = d.obExcess > 0 ? `+${d.obExcess}` : '100%';
+                    return makeDateChip(d, `${excessLabel} · CERRAR YA`, '#dc2626');
+                });
+                addExpertInsightCard({
+                    type: 'overbooking-open',
+                    icon: '🚨',
+                    title: 'OVERBOOKING · VENTAS ABIERTAS',
+                    badge: `${overbookingOpenDays.length} crítica${overbookingOpenDays.length !== 1 ? 's' : ''}`,
+                    desc: `<b>🚨 ¡CERRAR YA!</b> Ocupación completa o superior a la capacidad con ventas abiertas en canales. Riesgo crítico de sobreventa y walk-outs.`,
+                    chips: chips,
+                    filterType: 'overbooking_open',
+                    filterCount: overbookingOpenDays.length
+                });
+            }
+
+            // --- INSIGHT CRÍTICO 2: CIERRE CON HABITACIONES DISPONIBLES (¡HAY SITIO!) ---
+            if (closedWithAvailableDays.length > 0) {
+                alertCount++;
+                closedWithAvailableDays.sort((a, b) => b.roomGap - a.roomGap);
+                const chips = closedWithAvailableDays.slice(0, 6).map(d => {
+                    return makeDateChip(d, `${d.roomGap} libres`, '#d97706');
+                });
+                addExpertInsightCard({
+                    type: 'closed-available',
+                    icon: '🔔',
+                    title: 'Cierre con Habitaciones Libres',
+                    badge: `${closedWithAvailableDays.length} fecha${closedWithAvailableDays.length !== 1 ? 's' : ''}`,
+                    desc: `<b>🔔 ¡HAY SITIO!</b> El hotel está cerrado en canales pero constan habitaciones libres. Si corresponden a cupos o bloqueos garantizados, regístralos en el modal de cupos.`,
+                    chips: chips,
+                    filterType: 'closed_available',
+                    filterCount: closedWithAvailableDays.length
+                });
+            }
 
             // --- INSIGHT 1: Aceleración de Pick-up (+) ---
             if (posPickup.length > 0) {

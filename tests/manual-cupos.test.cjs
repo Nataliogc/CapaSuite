@@ -131,3 +131,57 @@ test('renderTable executes without ReferenceError or initialization errors', () 
     });
     assert.ok(tableBody.innerHTML.length > 0);
 });
+
+test('renderKPIs generates OVERBOOKING · VENTAS ABIERTAS card in expert analysis', () => {
+    const html = fs.readFileSync('AnalisisCompetencia.html', 'utf8');
+    const insightsContainer = { innerHTML: '', appendChild(el) { this.children.push(el); }, children: [] };
+    const badgeCount = { innerHTML: '', innerText: '', style: {} };
+    const elements = {
+        'insights-container': insightsContainer,
+        'expert-badge-count': badgeCount,
+        'kpi-avg': { innerText: '' },
+        'kpi-market': { innerText: '' },
+        'kpi-pos': { innerText: '', style: {} },
+        'kpi-card-pos': { style: {} },
+        'kpi-pos-text': { innerText: '' }
+    };
+
+    const ctx = {
+        document: {
+            getElementById: (id) => elements[id] || { innerHTML: '', innerText: '', style: {}, appendChild: () => {} },
+            createElement: (tag) => ({ className: '', innerHTML: '' })
+        },
+        window: { addEventListener: () => {} },
+        console: { log: () => {}, warn: () => {}, error: () => {} },
+        localStorage: { getItem: () => null, setItem: () => {} },
+        Set: Set
+    };
+
+    vm.createContext(ctx);
+    const scriptMatches = html.match(/<script(?![^>]*src=)[^>]*>([\s\S]*?)<\/script>/gi) || [];
+    for (const match of scriptMatches) {
+        const code = match.replace(/^<script[^>]*>/i, '').replace(/<\/script>$/i, '');
+        try {
+            vm.runInContext(code, ctx);
+        } catch (e) {}
+    }
+
+    ctx.activeHotel = 'Guadiana';
+    // Test data where Guadiana has 112 rooms (capacity 108) and sales open (price: 85, sold: false)
+    const testData = [{
+        dayIndex: 1,
+        dateISO: '2026-10-23',
+        label: '23 Oct',
+        compAvg: 80,
+        otbRooms: 112,
+        dateMeta: { dNum: '23', dShort: 'Vie', mShort: 'Oct' },
+        hotels: {
+            Guadiana: { price: 85, sold: false, status: 'available' },
+            Cumbria: { price: 60, sold: false, status: 'available' }
+        }
+    }];
+
+    ctx.renderKPIs(testData);
+    const hasOverbookingCard = insightsContainer.children.some(c => c.className.includes('overbooking-open') && c.innerHTML.includes('OVERBOOKING · VENTAS ABIERTAS'));
+    assert.equal(hasOverbookingCard, true);
+});
