@@ -763,6 +763,10 @@
             display: inline-block;
         }
 
+        .price-saved-custom {
+            font-weight: 700;
+        }
+
         .sim-dot {
             color: var(--primary);
             font-size: 0.6rem;
@@ -1566,6 +1570,24 @@
                 const saved = CapaStorage.getItem('revenue_data_v2');
                 const previous = typeof saved === 'string' ? JSON.parse(saved) : saved;
                 if (!previous || !Array.isArray(previous.data)) throw new Error('No hay datos de origen guardados');
+
+                // Consolidar tarifas actuales como base guardada oficial
+                processedData.forEach(d => {
+                    if (!d.hotels) return;
+                    ['Cumbria', 'Guadiana'].forEach(hName => {
+                        const h = d.hotels[hName];
+                        if (h) {
+                            if (h.originalPrice === undefined) h.originalPrice = h.price;
+                            if (h.originalSold === undefined) h.originalSold = h.sold;
+                            if (h.originalStatus === undefined) h.originalStatus = h.status;
+                            h.savedPrice = h.price;
+                            h.savedSold = h.sold;
+                            h.savedStatus = h.status;
+                            h.isModified = false;
+                        }
+                    });
+                });
+
                 // Preserve the source timestamp and comparison history when saving edits.
                 const serialized = JSON.stringify({
                     ...previous,
@@ -1589,6 +1611,26 @@
                 console.error('Error guardando tarifas manuales', error);
                 alert('No se han podido guardar los cambios. Mantén esta página abierta e inténtalo de nuevo.');
             }
+        }
+
+        function syncBaselineFromProcessedData() {
+            if (!Array.isArray(processedData)) return;
+            processedData.forEach(d => {
+                if (!d.hotels) return;
+                ['Cumbria', 'Guadiana'].forEach(hName => {
+                    const h = d.hotels[hName];
+                    if (!h) return;
+                    if (h.originalPrice === undefined) h.originalPrice = h.price;
+                    if (h.originalSold === undefined) h.originalSold = h.sold;
+                    if (h.originalStatus === undefined) h.originalStatus = h.status;
+                    h.savedPrice = h.price;
+                    h.savedSold = h.sold;
+                    h.savedStatus = h.status;
+                    h.isModified = false;
+                });
+            });
+            pendingManualPrices.clear();
+            manualPricesPending = false;
         }
 
         window.addEventListener('beforeunload', event => {
@@ -1797,6 +1839,11 @@
                 h.originalSold = h.sold;
                 h.originalStatus = h.status;
             }
+            if (h.savedPrice === undefined) {
+                h.savedPrice = h.price;
+                h.savedSold = h.sold;
+                h.savedStatus = h.status;
+            }
 
             const num = Math.max(0, Math.round(Number(newPrice)));
             if (!Number.isFinite(num)) return;
@@ -1804,9 +1851,15 @@
             h.price = num;
             h.sold = false;
             if (num > 0) h.status = 'available';
-            h.isModified = (h.price !== h.originalPrice || h.sold !== h.originalSold);
-            pendingManualPrices.add(h);
-            manualPricesPending = true;
+
+            const isUnsaved = (h.price !== h.savedPrice || h.sold !== h.savedSold);
+            h.isModified = isUnsaved;
+            if (isUnsaved) {
+                pendingManualPrices.add(h);
+            } else {
+                pendingManualPrices.delete(h);
+            }
+            manualPricesPending = (pendingManualPrices.size > 0);
 
             refreshActiveView();
         }
@@ -1882,28 +1935,75 @@
             processedData.forEach(d => {
                 if (!d.hotels) return;
                 ['Cumbria', 'Guadiana'].forEach(hName => {
-                    if (d.hotels[hName]?.isModified) count++;
+                    const h = d.hotels[hName];
+                    if (h && (h.isModified || pendingManualPrices.has(h) || (h.savedPrice !== undefined && (h.price !== h.savedPrice || h.sold !== h.savedSold)))) {
+                        count++;
+                    }
+                });
+            });
+            return count;
+        }
+
+        function countSavedManualPrices() {
+            let count = 0;
+            processedData.forEach(d => {
+                if (!d.hotels) return;
+                ['Cumbria', 'Guadiana'].forEach(hName => {
+                    const h = d.hotels[hName];
+                    if (h && h.originalPrice !== undefined && h.savedPrice !== undefined && (h.savedPrice !== h.originalPrice || h.savedSold !== h.originalSold)) {
+                        count++;
+                    }
                 });
             });
             return count;
         }
 
         function resetAllManualPrices() {
+            let revertedCount = 0;
             processedData.forEach(d => {
                 if (!d.hotels) return;
                 ['Cumbria', 'Guadiana'].forEach(hName => {
                     const h = d.hotels[hName];
-                    if (h && h.isModified) {
-                        pendingManualPrices.add(h);
-                        manualPricesPending = true;
-                        h.price = h.originalPrice !== undefined ? h.originalPrice : h.price;
+                    const isUnsaved = h && (h.isModified || pendingManualPrices.has(h) || (h.savedPrice !== undefined && (h.price !== h.savedPrice || h.sold !== h.savedSold)));
+                    if (isUnsaved) {
+                        // Restablecer SOLO al último estado guardado (no al archivo si ya se guardó)
+                        h.price = h.savedPrice !== undefined ? h.savedPrice : (h.originalPrice !== undefined ? h.originalPrice : h.price);
+                        h.sold = h.savedSold !== undefined ? h.savedSold : (h.originalSold !== undefined ? h.originalSold : h.sold);
+                        h.status = h.savedStatus !== undefined ? h.savedStatus : (h.originalStatus !== undefined ? h.originalStatus : h.status);
+                        h.isModified = false;
+                        revertedCount++;
+                    }
+                });
+            });
+            pendingManualPrices.clear();
+            manualPricesPending = false;
+            refreshActiveView();
+        }
+
+        function resetToOriginalFilePrices() {
+            const confirmed = (typeof confirm === 'function') 
+                ? confirm('¿Deseas restablecer todas las tarifas al archivo Excel original?\n\nEsta acción eliminará todas las tarifas personalizadas guardadas y volverá a los precios importados del archivo.') 
+                : true;
+            if (!confirmed) return;
+
+            processedData.forEach(d => {
+                if (!d.hotels) return;
+                ['Cumbria', 'Guadiana'].forEach(hName => {
+                    const h = d.hotels[hName];
+                    if (h && h.originalPrice !== undefined) {
+                        h.price = h.originalPrice;
                         h.sold = h.originalSold !== undefined ? h.originalSold : h.sold;
                         h.status = h.originalStatus !== undefined ? h.originalStatus : h.status;
+                        h.savedPrice = h.originalPrice;
+                        h.savedSold = h.originalSold;
+                        h.savedStatus = h.originalStatus;
                         h.isModified = false;
                     }
                 });
             });
-            refreshActiveView();
+            pendingManualPrices.clear();
+            manualPricesPending = false;
+            saveManualPrices();
         }
 
         function applyAllVisibleRecommendations() {
@@ -1938,17 +2038,58 @@
                         h.originalSold = h.sold;
                         h.originalStatus = h.status;
                     }
+                    if (h.savedPrice === undefined) {
+                        h.savedPrice = h.price;
+                        h.savedSold = h.sold;
+                        h.savedStatus = h.status;
+                    }
                     h.price = yieldInfo.targetPrice;
                     h.sold = false;
                     h.status = 'available';
-                    h.isModified = (h.price !== h.originalPrice);
-                    applied++;
-                    pendingManualPrices.add(h);
-                    manualPricesPending = true;
+                    const isUnsaved = (h.price !== h.savedPrice || h.sold !== h.savedSold);
+                    h.isModified = isUnsaved;
+                    if (isUnsaved) {
+                        applied++;
+                        pendingManualPrices.add(h);
+                    } else {
+                        pendingManualPrices.delete(h);
+                    }
                 }
             });
 
+            manualPricesPending = (pendingManualPrices.size > 0);
             refreshActiveView();
+        }
+
+        function buildSimulationBannerHtml(filteredCount = 0) {
+            const unsavedCount = countModifiedPrices();
+            const savedCount = countSavedManualPrices();
+            const applyBtnText = filteredCount > 0 ? `⚡ Aplicar a las ${filteredCount}` : '⚡ Aplicar recomendados';
+
+            if (unsavedCount > 0 || manualPricesPending) {
+                return `
+                    <span class="simulation-banner">
+                        <button class="sim-btn sim-apply-all" onclick="saveManualPrices()" style="background:#4f46e5; color:#fff; font-weight:700;" title="Guardar las tarifas de ambos hoteles, incluidas las fechas ocultas por filtros">${manualPricesPending ? '💾 Guardar cambios' : '✓ Cambios guardados'}</button>
+                        <span class="sim-info" style="color:#d97706; font-weight:700;">💡 <b>${unsavedCount}</b> tarifa${unsavedCount !== 1 ? 's' : ''} simulada${unsavedCount !== 1 ? 's' : ''} (sin guardar)</span>
+                        <button class="sim-btn sim-apply-all" onclick="applyAllVisibleRecommendations()" title="Aplicar tarifas recomendadas a las fechas visibles">${applyBtnText}</button>
+                        <button class="sim-btn sim-reset" onclick="resetAllManualPrices()" title="Restablecer solo las simulaciones no guardadas y volver a los precios guardados">↺ Restablecer</button>
+                    </span>
+                `;
+            } else if (savedCount > 0) {
+                return `
+                    <span class="simulation-banner" style="background:rgba(16, 185, 129, 0.08); border:1px solid rgba(16, 185, 129, 0.3);">
+                        <button class="sim-btn" disabled style="background:#10b981; color:#fff; font-weight:700; opacity:0.95; cursor:default;" title="Todas las modificaciones están guardadas en la base de datos">✓ Cambios guardados</button>
+                        <span class="sim-info" style="color:#059669; font-weight:700;">✓ <b>${savedCount}</b> tarifa${savedCount !== 1 ? 's' : ''} guardada${savedCount !== 1 ? 's' : ''}</span>
+                        <button class="sim-btn sim-apply-all" onclick="applyAllVisibleRecommendations()" title="Aplicar tarifas recomendadas a las fechas visibles">${applyBtnText}</button>
+                        <button class="sim-btn sim-reset" disabled style="opacity:0.35; cursor:not-allowed;" title="Solo se pueden restablecer simulaciones no guardadas. Para volver al archivo original, usa 'Restablecer archivo'.">↺ Restablecer</button>
+                        <button class="sim-btn" onclick="resetToOriginalFilePrices()" style="background:transparent; border:none; color:#94a3b8; font-size:0.68rem; text-decoration:underline; cursor:pointer; padding:2px 4px;" title="Borrar tarifas personalizadas guardadas y volver a los precios originales del archivo Excel">Restablecer archivo</button>
+                    </span>
+                `;
+            } else {
+                return `
+                    <button class="sim-btn sim-apply-all" onclick="applyAllVisibleRecommendations()" title="Aplicar tarifas recomendadas a las fechas visibles">${applyBtnText}</button>
+                `;
+            }
         }
 
         function refreshActiveView() {
@@ -1974,20 +2115,7 @@
         function updateRecordCountDisplay(count) {
             const countEl = document.getElementById('record-count');
             if (!countEl) return;
-            const modCount = countModifiedPrices();
-
-            let simHtml = '';
-            if (modCount > 0 || manualPricesPending) {
-                simHtml = `
-                    <span class="simulation-banner">
-                        ${manualPriceSaveButton()}
-                        <span class="sim-info">💡 <b>${modCount}</b> tarifa${modCount !== 1 ? 's' : ''} simulada${modCount !== 1 ? 's' : ''}</span>
-                        <button class="sim-btn sim-apply-all" onclick="applyAllVisibleRecommendations()" title="Aplicar tarifas recomendadas a las fechas visibles">⚡ Aplicar recomendados</button>
-                        <button class="sim-btn sim-reset" onclick="resetAllManualPrices()" title="Restablecer precios originales del archivo">↺ Restablecer</button>
-                    </span>
-                `;
-            }
-
+            const simHtml = buildSimulationBannerHtml(0);
             let statusHtml = `<span>${count} días analizados</span>`;
             statusHtml += `<button class="sim-btn" onclick="openMinPriceModal()" style="background:var(--bg-surface); border:1px solid var(--border); color:var(--text-main); font-size:0.75rem; padding:3px 9px; border-radius:12px; cursor:pointer;" title="Configurar tarifas mínimas para cada hotel">🏷️ Precios mín.</button>`;
             statusHtml += `<span onclick="diagnoseAllData()" style="font-size:0.6rem; color:#94a3b8; cursor:pointer; margin-left:10px; text-decoration:underline;">[Debug]</span>`;
@@ -2079,18 +2207,7 @@
             renderTable(filtered);
             const countEl = document.getElementById('record-count');
             if (countEl) {
-                const modCount = countModifiedPrices();
-                let simHtml = '';
-                if (modCount > 0 || manualPricesPending) {
-                    simHtml = `
-                        <span class="simulation-banner">
-                            ${manualPriceSaveButton()}
-                            <span class="sim-info">💡 <b>${modCount}</b> simulada${modCount !== 1 ? 's' : ''}</span>
-                            <button class="sim-btn sim-apply-all" onclick="applyAllVisibleRecommendations()" title="Aplicar tarifas recomendadas a las fechas visibles">⚡ Aplicar a las ${filtered.length}</button>
-                            <button class="sim-btn sim-reset" onclick="resetAllManualPrices()" title="Restablecer precios originales">↺ Restablecer</button>
-                        </span>
-                    `;
-                }
+                const simHtml = buildSimulationBannerHtml(filtered.length);
                 countEl.innerHTML = `
                     <div style="display:flex; align-items:center; gap:8px;">
                         ${simHtml}
@@ -2153,6 +2270,7 @@
                     const parsed = JSON.parse(saved);
                     processedData = parsed.data;
                     competitorsList = parsed.competitors;
+                    syncBaselineFromProcessedData();
 
                     // Migrate old month format to Spanish with year
                     distinctMonths = migrateMonths(parsed.months || []);
@@ -3854,15 +3972,20 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         html += `<td>${emptyWrap}${urgentOpenWarning}${occupancyLabel}</td>`;
                     }
                 } else {
-                    const isSimulated = !!my?.isModified;
-                    const simClass = isSimulated ? ' simulated' : '';
-                    const simTitle = isSimulated 
-                        ? `Tarifa simulada (Original: ${my.originalPrice !== undefined ? Math.round(my.originalPrice) : Math.round(my.price)}€). Click para editar o usa ▲/▼ (Shift: ±5€).`
-                        : 'Click para editar tarifa directamente o usa ▲/▼ (Shift: ±5€)';
+                    const isUnsaved = !!(my?.isModified || pendingManualPrices.has(my) || (my?.savedPrice !== undefined && (my?.price !== my?.savedPrice || my?.sold !== my?.savedSold)));
+                    const isSavedCustom = !isUnsaved && my?.originalPrice !== undefined && my?.savedPrice !== undefined && (my?.savedPrice !== my?.originalPrice || my?.savedSold !== my?.originalSold);
+                    const simClass = isUnsaved ? ' simulated' : (isSavedCustom ? ' price-saved-custom' : '');
+                    const simTitle = isUnsaved 
+                        ? `Tarifa simulada sin guardar (Guardada: ${my.savedPrice !== undefined ? Math.round(my.savedPrice) : Math.round(my.price)}€, Excel: ${my.originalPrice !== undefined ? Math.round(my.originalPrice) : Math.round(my.price)}€). Click para editar o usa ▲/▼ (Shift: ±5€).`
+                        : (isSavedCustom
+                            ? `Tarifa personalizada guardada (Original Excel: ${my.originalPrice !== undefined ? Math.round(my.originalPrice) : Math.round(my.price)}€). Click para editar o usa ▲/▼ (Shift: ±5€).`
+                            : 'Click para editar tarifa directamente o usa ▲/▼ (Shift: ±5€)');
 
                     let changeTag = '';
-                    if (isSimulated) {
-                        changeTag = `<span class="sim-dot" title="Tarifa simulada manualmente o por yield"></span>`;
+                    if (isUnsaved) {
+                        changeTag = `<span class="sim-dot" title="Tarifa simulada sin guardar"></span>`;
+                    } else if (isSavedCustom) {
+                        changeTag = `<span style="display:inline-block; font-size:0.6rem; color:#10b981; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); padding:0px 2px; border-radius:3px; margin-left:2px; font-weight:700;" title="Tarifa personalizada guardada">✓</span>`;
                     } else if (my.change) {
                         const dir = my.change.dir;
                         const color = dir === 'up' ? 'var(--success)' : 'var(--danger)';
@@ -3925,15 +4048,20 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         html += `<td style="border-left:2px solid var(--border); background:var(--bg-surface); ${opacityStyle}"><span class="price-minstay${pendingPriceClass(hData)}" title="${titleText}">${displayText}</span></td>`;
                     } else {
                         const style = (!sold && hData.price < myP) ? "color:#ef4444; font-weight:800;" : "color:var(--text-main); font-weight:700;";
-                        const isSibSimulated = !!hData?.isModified;
-                        const sibSimClass = isSibSimulated ? ' simulated' : '';
-                        const sibSimTitle = isSibSimulated 
-                            ? `Tarifa simulada para ${siblingName} (Original: ${hData.originalPrice !== undefined ? Math.round(hData.originalPrice) : Math.round(hData.price)}€). Click para editar o usa ▲/▼.`
-                            : `Click para editar tarifa de ${siblingName} o usa ▲/▼ (Shift: ±5€)`;
+                        const isSibUnsaved = !!(hData?.isModified || pendingManualPrices.has(hData) || (hData?.savedPrice !== undefined && (hData?.price !== hData?.savedPrice || hData?.sold !== hData?.savedSold)));
+                        const isSibSavedCustom = !isSibUnsaved && hData?.originalPrice !== undefined && hData?.savedPrice !== undefined && (hData?.savedPrice !== hData?.originalPrice || hData?.savedSold !== hData?.originalSold);
+                        const sibSimClass = isSibUnsaved ? ' simulated' : (isSibSavedCustom ? ' price-saved-custom' : '');
+                        const sibSimTitle = isSibUnsaved 
+                            ? `Tarifa simulada para ${siblingName} sin guardar (Guardada: ${hData.savedPrice !== undefined ? Math.round(hData.savedPrice) : Math.round(hData.price)}€). Click para editar o usa ▲/▼.`
+                            : (isSibSavedCustom
+                                ? `Tarifa personalizada guardada para ${siblingName} (Original: ${hData.originalPrice !== undefined ? Math.round(hData.originalPrice) : Math.round(hData.price)}€). Click para editar o usa ▲/▼.`
+                                : `Click para editar tarifa de ${siblingName} o usa ▲/▼ (Shift: ±5€)`);
 
                         let sChangeTag = '';
-                        if (isSibSimulated) {
-                            sChangeTag = `<span class="sim-dot" title="Tarifa simulada (${siblingName})"></span>`;
+                        if (isSibUnsaved) {
+                            sChangeTag = `<span class="sim-dot" title="Tarifa simulada (${siblingName}) sin guardar"></span>`;
+                        } else if (isSibSavedCustom) {
+                            sChangeTag = `<span style="display:inline-block; font-size:0.6rem; color:#10b981; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); padding:0px 2px; border-radius:3px; margin-left:2px; font-weight:700;" title="Tarifa personalizada guardada">✓</span>`;
                         } else if (hData.change) {
                             const dir = hData.change.dir;
                             const color = dir === 'up' ? 'var(--success)' : 'var(--danger)';
@@ -4117,6 +4245,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         processedData = parsed.data;
                         competitorsList = parsed.competitors || [];
                         distinctMonths = parsed.months || [];
+                        syncBaselineFromProcessedData();
                         // activeHotel = parsed.activeHotel || "Guadiana"; // Keep default or last
 
                         populateMonths();

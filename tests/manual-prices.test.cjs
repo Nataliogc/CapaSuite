@@ -17,12 +17,15 @@ function setup({ fail = false } = {}) {
         competitorsList: [], distinctMonths: [], activeHotel: 'Guadiana',
         CapaStorage: { isAvailable: true, getItem: key => storage[key], setItem: (key, value) => { if (!fail) storage[key] = value; } },
         window: { addEventListener() {} }, alert: message => alerts.push(message),
-        console: { error() {} }, refreshActiveView() {}, ensureHotelStructure() {}
+        console: { error() {} }, refreshActiveView() {}, ensureHotelStructure() {},
+        confirm: () => true
     });
     vm.runInContext(html.slice(html.indexOf('        let manualPricesPending'), html.indexOf('        function calculateSmartYield')), context);
-    for (const name of ['setManualPrice', 'resetAllManualPrices']) {
+    for (const name of ['setManualPrice', 'countModifiedPrices', 'countSavedManualPrices', 'resetAllManualPrices', 'resetToOriginalFilePrices']) {
         const start = html.indexOf(`        function ${name}(`);
-        vm.runInContext(html.slice(start, html.indexOf('\n        function ', start + 1)), context);
+        if (start !== -1) {
+            vm.runInContext(html.slice(start, html.indexOf('\n        function ', start + 1)), context);
+        }
     }
     return { context, storage, alerts, run: code => vm.runInContext(code, context) };
 }
@@ -40,10 +43,25 @@ test('manual edits persist for both hotels without changing source timestamp or 
     assert.equal(storage.revenue_history_lite, 'source history');
     assert.equal(run('manualPricesPending'), false);
     assert.equal(run('pendingPriceClass(processedData[0].hotels.Guadiana)'), '');
+    assert.equal(run('countModifiedPrices()'), 0); // After save, 0 unsaved simulations!
+    assert.equal(run('countSavedManualPrices()'), 2); // 2 custom rates saved!
+
+    // Unsaved simulation on Guadiana (80 -> 81)
     run("setManualPrice(1, 'Guadiana', 81)");
     assert.equal(run('pendingPriceClass(processedData[0].hotels.Guadiana)'), ' price-pending');
     assert.equal(run('pendingPriceClass(processedData[0].hotels.Cumbria)'), '');
-    run('processedData = JSON.parse(CapaStorage.getItem("revenue_data_v2")).data; resetAllManualPrices(); saveManualPrices()');
+    assert.equal(run('countModifiedPrices()'), 1);
+
+    // resetAllManualPrices must ONLY reset the unsaved simulation (81 -> 80), NOT wipe saved prices!
+    run('resetAllManualPrices()');
+    assert.equal(run('processedData[0].hotels.Guadiana.price'), 80);
+    assert.equal(run('processedData[0].hotels.Cumbria.price'), 60);
+    assert.equal(run('manualPricesPending'), false);
+    assert.equal(run('pendingPriceClass(processedData[0].hotels.Guadiana)'), '');
+    assert.equal(run('countModifiedPrices()'), 0);
+
+    // Full reset to original file
+    run('resetToOriginalFilePrices()');
     const reset = JSON.parse(storage.revenue_data_v2).data[0].hotels;
     assert.equal(reset.Guadiana.price, 65);
     assert.equal(reset.Cumbria.sold, true);
