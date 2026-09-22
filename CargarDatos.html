@@ -2664,7 +2664,9 @@
                                 rowLabel.includes("VENDIDAS") || rowLabel.includes("NOCHES") || 
                                 rowLabel.includes("UNIDADES") || rowLabel.includes("ROOMS") || 
                                 rowLabel.includes("ROOM") || rowLabel.includes("ESTANCIA") || 
-                                rowLabel.includes("STAY") || rowLabel.includes("OTB"));
+                                rowLabel.includes("STAY") || rowLabel.includes("OTB") ||
+                                rowLabel.includes("CUPO") || rowLabel.includes("BLOQUEO") ||
+                                rowLabel.includes("GARANT") || rowLabel.includes("ALLOTMENT"));
                     
                     const isEV = rowLabel.includes("EVENTO") || rowLabel.includes("HITO") || rowLabel.includes("COMENTARIO") || rowLabel.includes("FESTIVO") || rowLabel.includes("OBSERVAC");
 
@@ -2922,6 +2924,31 @@
                     }
                 });
 
+
+                // Re-aplicar cualquier cupo manual para que no se pierda al resubir el Excel
+                try {
+                    const rawCupos = CapaStorage.getItem('manual_cupos_v1');
+                    if (rawCupos) {
+                        const cuposDB = JSON.parse(rawCupos);
+                        if (cuposDB[hotel]) {
+                            Object.entries(cuposDB[hotel]).forEach(([iso, cInfo]) => {
+                                const y = iso.split('-')[0];
+                                if (db[hotel] && db[hotel][y]) {
+                                    if (!db[hotel][y].daily_otb) db[hotel][y].daily_otb = {};
+                                    if (!db[hotel][y].daily_otb[iso]) db[hotel][y].daily_otb[iso] = { rooms: 0, revenue: 0 };
+                                    const dEntry = db[hotel][y].daily_otb[iso];
+                                    if (typeof dEntry === 'object') {
+                                        dEntry.cupos = cInfo.cupos || 0;
+                                        dEntry.isSoldOut = !!cInfo.isSoldOut;
+                                        dEntry.cuposNote = cInfo.note || '';
+                                    }
+                                }
+                            });
+                        }
+                    }
+                } catch(err) {
+                    console.warn("Error re-aplicando manual_cupos_v1:", err);
+                }
 
                 // SAVE FIRST, THEN FEEDBACK
                 saveData();

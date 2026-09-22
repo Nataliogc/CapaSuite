@@ -1211,6 +1211,35 @@
             cursor: pointer;
         }
 
+        /* OCCUPANCY BADGE & CUPOS TRIGGER */
+        .occupancy-badge-wrap {
+            transition: all 0.2s ease;
+            cursor: pointer;
+            user-select: none;
+        }
+        .occupancy-badge-wrap:hover {
+            filter: brightness(1.2);
+            transform: scale(1.05);
+            box-shadow: 0 2px 8px rgba(139, 92, 246, 0.4);
+        }
+        .occupancy-click-trigger {
+            transition: opacity 0.2s;
+            cursor: pointer;
+            user-select: none;
+        }
+        .occupancy-click-trigger:hover {
+            opacity: 0.8;
+            text-decoration: underline;
+        }
+
+        @keyframes alertPulseCritical {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 4px rgba(239, 68, 68, 0.4); }
+            50% { transform: scale(1.03); box-shadow: 0 0 10px rgba(239, 68, 68, 0.8); }
+        }
+        .alert-pulse-critical {
+            animation: alertPulseCritical 1.8s infinite ease-in-out;
+        }
+
         /* EVENT BADGE IN TABLE DATE CELL */
         .event-badge {
             cursor: help;
@@ -1506,12 +1535,22 @@
         let manualPricesPending = false;
         const pendingManualPrices = new Set();
 
-        function hotelOccupancyLabel(hotelName, rooms) {
+        function hotelOccupancyLabel(hotelName, rooms, hData, dateISO) {
             if (rooms === null || rooms === undefined || rooms === '' || !Number.isFinite(Number(rooms))) return '';
             const capacity = hotelName === 'Cumbria' ? 59 : hotelName === 'Guadiana' ? 108 : 0;
             if (!capacity) return '';
             const percentage = Math.round(Number(rooms) / capacity * 100);
-            return `<div style="font-size:0.6rem; color:#8b5cf6; font-weight:700; margin-top:2px;" title="Ocupación: ${rooms} de ${capacity} habitaciones">Hab: ${rooms} · ${percentage}% ocup.</div>`;
+            let cuposBadge = '';
+            if (hData && (hData.cupos > 0 || hData.isSoldOut)) {
+                if (hData.isSoldOut) {
+                    cuposBadge = ` <span style="font-size:0.55rem; background:rgba(239,68,68,0.2); color:#ef4444; border:1px solid rgba(239,68,68,0.4); padding:1px 3px; border-radius:3px; font-weight:800;" title="Disponibilidad 0 en PMS">🔒 Lleno</span>`;
+                } else {
+                    cuposBadge = ` <span style="font-size:0.55rem; background:rgba(99,102,241,0.2); color:#818cf8; border:1px solid rgba(99,102,241,0.4); padding:1px 3px; border-radius:3px; font-weight:800;" title="Incluye +${hData.cupos} habs de cupos garantizados">+${hData.cupos}🔒</span>`;
+                }
+            }
+            const clickAttr = dateISO ? `onclick="openCuposModal('${hotelName}', '${dateISO}', event)"` : '';
+            const cursorClass = dateISO ? 'occupancy-click-trigger' : '';
+            return `<div class="${cursorClass}" ${clickAttr} style="font-size:0.6rem; color:#8b5cf6; font-weight:700; margin-top:2px;" title="Click para gestionar cupos o ajustar ocupación (${rooms} de ${capacity} habitaciones)">Hab: ${rooms} · ${percentage}% ocup.${cuposBadge}</div>`;
         }
 
         function pendingPriceClass(hotel) {
@@ -3025,9 +3064,17 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 `;
             }
 
-            // Compact side-by-side display for OTB and Variation (Pick-up)
+            // Compact side-by-side display for OTB, Cupos and Variation (Pick-up)
             let metricsHtml = '';
-            if (otb !== null && (otb > 0 || otbChange)) {
+            const hasCupos = (hData && (hData.cupos > 0 || hData.isSoldOut));
+            let cuposIndicator = '';
+            if (hData && hData.isSoldOut) {
+                cuposIndicator = `<span style="font-size:0.55rem; color:#ef4444; margin-left:1px;" title="Hotel completo / Disponibilidad 0 en PMS">🔒</span>`;
+            } else if (hData && hData.cupos > 0) {
+                cuposIndicator = `<span style="font-size:0.55rem; color:#818cf8; margin-left:1px;" title="Incluye +${hData.cupos} habs de cupos garantizados">+${hData.cupos}🔒</span>`;
+            }
+
+            if (otb !== null && (otb > 0 || otbChange || hasCupos)) {
                 const changePill = (otbChange !== null && otbChange !== 0) ? `
                     <span title="Variación de habitaciones (Pick-up) respecto a la última carga" style="font-size:0.6rem; font-weight:800; color:${otbChange > 0 ? '#10b981' : '#ef4444'}; background:${otbChange > 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)'}; border:1px solid ${otbChange > 0 ? '#10b981' : '#f87171'}; padding:0px 3px; border-radius:3px; line-height:1; cursor:help;">
                         ${otbChange > 0 ? '+' : ''}${otbChange}
@@ -3036,11 +3083,20 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 
                 metricsHtml = `
                     <div style="display:flex; align-items:center; gap:4px; margin-top:3px;">
-                        <div style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); padding: 1px 4px; border-radius: 4px; display: flex; align-items: center; gap: 3px;">
+                        <div class="occupancy-badge-wrap" onclick="openCuposModal('${hotel}', '${d.dateISO}', event)" style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); padding: 1px 4px; border-radius: 4px; display: flex; align-items: center; gap: 3px; cursor:pointer;" title="Click para gestionar cupos o ajustar ocupación (${otb} habs${hasCupos ? ` · ${hData.cupos || 0} en cupos` : ''})">
                             <span style="font-size:0.55rem; font-weight:800; color:#8b5cf6; opacity:0.8;">Hab.</span>
                             <span style="font-size: 0.7rem; color: #8b5cf6; font-weight: 800;">${otb}</span>
+                            ${cuposIndicator}
                         </div>
                         ${changePill}
+                    </div>
+                `;
+            } else if (d.dateISO && d.dateISO !== 'INV-DATE') {
+                metricsHtml = `
+                    <div style="display:flex; align-items:center; gap:4px; margin-top:3px;">
+                        <div class="occupancy-badge-wrap empty" onclick="openCuposModal('${hotel}', '${d.dateISO}', event)" style="background: rgba(255, 255, 255, 0.05); border: 1px dashed rgba(255, 255, 255, 0.2); padding: 1px 4px; border-radius: 4px; display: inline-flex; align-items: center; gap: 3px; cursor:pointer;" title="Click para introducir cupos o previsión manual">
+                            <span style="font-size:0.55rem; font-weight:700; color:var(--text-muted);">+ Cupos</span>
+                        </div>
                     </div>
                 `;
             }
@@ -3118,6 +3174,9 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     if (kFound) hotelKeyMap[hN] = kFound;
                 });
 
+                // Cargar base de datos de cupos manuales
+                const manualCuposDB = (typeof getManualCuposDB === 'function') ? getManualCuposDB() : {};
+
                 // 3. Process All Days
                 data.forEach(d => {
                     if (!d.dateISO) return;
@@ -3139,9 +3198,9 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         return kLow.includes(aLow) || aLow.includes(kLow);
                     });
 
+                    let otb = null, prod = null;
                     if (dbActiveKey && pDb[dbActiveKey]) {
                         const hD = pDb[dbActiveKey];
-                        let otb = null, prod = null;
                         for (const y of yearsToTry) {
                             if (hD[y]) {
                                 if (hD[y].daily_otb?.[iso] !== undefined) { otb = hD[y].daily_otb[iso]; break; }
@@ -3150,23 +3209,43 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         for (const y of yearsToTry) {
                             if (hD[y] && hD[y].daily?.[iso] !== undefined) { prod = hD[y].daily[iso]; break; }
                         }
-                        
-                        // === PUNTO 3: Separar métricas OTB (forecast) vs Occupancy (real) ===
-                        // OTB = reservas en mano (previsión)
-                        if (otb !== null) {
-                            const otbVal = (typeof otb === 'number') ? otb : (otb.rooms || 0);
-                            d.hotels[activeHotel].otbRooms = otbVal; // Siempre escribir, incluso 0
-                        }
+                    }
 
-                        // Producción = dato real histórico (distinta métrica)
-                        if (prod !== null) {
-                            const prodVal = (typeof prod === 'number') ? prod : (prod.rooms || 0);
-                            d.hotels[activeHotel].occupancy = prodVal; // Siempre escribir, incluso 0
-                        } else if (otb !== null) {
-                            // Sin producción real → copiar OTB como estimación, NUNCA al revés
-                            d.hotels[activeHotel].occupancy = d.hotels[activeHotel].otbRooms;
-                        }
+                    // Check Cupos & Allotments (manual_cupos_v1 or daily_otb)
+                    const activeManualCupo = manualCuposDB[activeHotel]?.[iso];
+                    const cuposVal = activeManualCupo?.cupos ?? (typeof otb === 'object' ? (otb?.cupos || 0) : 0);
+                    const isSoldOut = activeManualCupo?.isSoldOut ?? (typeof otb === 'object' ? (otb?.isSoldOut || false) : false);
+                    const cuposNote = activeManualCupo?.note ?? (typeof otb === 'object' ? (otb?.cuposNote || '') : '');
 
+                    const baseOtb = (typeof otb === 'number') ? otb : (otb ? (otb.rooms || 0) : 0);
+                    let effectiveOtb = baseOtb + cuposVal;
+                    const capVal = (activeHotel === 'Cumbria' ? 59 : 108);
+                    if (isSoldOut && effectiveOtb < capVal) {
+                        effectiveOtb = capVal;
+                    }
+
+                    d.hotels[activeHotel].baseOtbRooms = baseOtb;
+                    d.hotels[activeHotel].cupos = cuposVal;
+                    d.hotels[activeHotel].isSoldOut = isSoldOut;
+                    d.hotels[activeHotel].cuposNote = cuposNote;
+
+                    // === PUNTO 3: Separar métricas OTB (forecast) vs Occupancy (real) ===
+                    // OTB = reservas en mano (previsión) + cupos
+                    if (otb !== null || activeManualCupo) {
+                        d.hotels[activeHotel].otbRooms = effectiveOtb;
+                    }
+
+                    // Producción = dato real histórico (distinta métrica)
+                    if (prod !== null) {
+                        const prodVal = (typeof prod === 'number') ? prod : (prod.rooms || 0);
+                        d.hotels[activeHotel].occupancy = prodVal;
+                    } else if (otb !== null || activeManualCupo) {
+                        // Sin producción real → copiar OTB con cupos como estimación
+                        d.hotels[activeHotel].occupancy = d.hotels[activeHotel].otbRooms;
+                    }
+
+                    if (dbActiveKey && pDb[dbActiveKey]) {
+                        const hD = pDb[dbActiveKey];
                         // --- Historial de cambios (Pick-up) ---
                         let prevRooms = null;
                         d.hotels[activeHotel].otbChange = 0;
@@ -3211,12 +3290,21 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                                     break;
                                 }
                             }
-                            // 2. Forecast (OTB) — previsión
+                            // 2. Forecast (OTB) — previsión + cupos
                             for (const y of yearsToTry) {
                                 if (hD[y] && hD[y].daily_otb?.[iso] !== undefined) {
                                     const otb = hD[y].daily_otb[iso];
-                                    const val = (typeof otb === 'number') ? otb : (otb.rooms || 0);
-                                    d.hotels[hN].otbRooms = val;
+                                    const sibCupo = manualCuposDB[hN]?.[iso];
+                                    const cuposVal = sibCupo?.cupos ?? (typeof otb === 'object' ? (otb?.cupos || 0) : 0);
+                                    const isSoldOut = sibCupo?.isSoldOut ?? (typeof otb === 'object' ? (otb?.isSoldOut || false) : false);
+                                    const baseVal = (typeof otb === 'number') ? otb : (otb?.rooms || 0);
+                                    let effVal = baseVal + cuposVal;
+                                    const sCap = (hN === 'Cumbria' ? 59 : 108);
+                                    if (isSoldOut && effVal < sCap) effVal = sCap;
+                                    d.hotels[hN].baseOtbRooms = baseVal;
+                                    d.hotels[hN].cupos = cuposVal;
+                                    d.hotels[hN].isSoldOut = isSoldOut;
+                                    d.hotels[hN].otbRooms = effVal;
                                     break;
                                 }
                             }
@@ -3635,22 +3723,43 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
                 // Row Content
                 const dynamic = getDynamicDateHtml(d, activeHotel);
-                const currentOcc = (dynamic.occ > 0) ? dynamic.occ : dynamic.otb;
-                const occupancyLabel = hotelOccupancyLabel(activeHotel, currentOcc);
+                const currentOcc = (dynamic.occ > 0) ? dynamic.occ : (dynamic.otb || 0);
+                const occupancyLabel = hotelOccupancyLabel(activeHotel, currentOcc, my, d.dateISO);
                 let alertHtml = '';
                 const capacityVal = (activeHotel === 'Cumbria' ? 59 : 108); // Manual fallback
                 const occPct2 = (currentOcc / capacityVal) * 100;
 
                 // Logic for High Occupancy / Open Rows
                 const isOpen = (my && !my.sold && my.price > 0 && my.status !== 'sold');
+                const isSold = (sold || myStatus === 'sold');
 
+                // === ALERTA CRÍTICA 2: OVERBOOKING / OCUPACIÓN COMPLETA ===
                 if (currentOcc > capacityVal) {
-                    alertHtml = `<div style="margin-top:2px; background:#450a0a; border:1px solid #b91c1c; color:#fca5a5; font-size:0.65rem; font-weight:800; padding:1px 3px; border-radius:4px; text-align:center; box-shadow: 0 0 5px rgba(239, 68, 68, 0.4);">🚨 OVERBOOKING</div>`;
+                    const obExcess = currentOcc - capacityVal;
+                    if (isOpen) {
+                        alertHtml = `
+                            <div class="alert-pulse-critical" style="margin-top:2px; background:#ef4444; border:1px solid #b91c1c; color:#fff; font-size:0.62rem; font-weight:800; padding:2px 4px; border-radius:4px; text-align:center; line-height:1.2; cursor:pointer;" onclick="openCuposModal('${activeHotel}', '${d.dateISO}', event)" title="¡PELIGRO CRÍTICO! Hotel en Overbooking (+${obExcess} habs) pero mantiene VENTAS ABIERTAS. ¡Cerrar inmediatamente en canales para evitar walk-outs!">
+                                🚨 OVERBOOKING (+${obExcess})<br><span style="font-size:0.56rem; background:#7f1d1d; padding:1px 4px; border-radius:2px; display:inline-block; margin-top:1px;">🛑 VENTAS ABIERTAS</span>
+                            </div>
+                        `;
+                    } else {
+                        alertHtml = `
+                            <div style="margin-top:2px; background:#450a0a; border:1px solid #b91c1c; color:#fca5a5; font-size:0.62rem; font-weight:800; padding:2px 4px; border-radius:4px; text-align:center; box-shadow: 0 0 5px rgba(239, 68, 68, 0.4); cursor:pointer;" onclick="openCuposModal('${activeHotel}', '${d.dateISO}', event)" title="Overbooking (+${obExcess} habs sobre capacidad). Ventas cerradas.">
+                                🚨 OVERBOOKING (+${obExcess})
+                            </div>
+                        `;
+                    }
                 } else if (occPct2 >= 95) {
                     if (occPct2 >= 100 && isOpen) {
-                        alertHtml = `<div style="margin-top:2px; background:#fee2e2; border:1px solid #ef4444; color:#b91c1c; font-size:0.65rem; font-weight:800; padding:1px 3px; border-radius:4px; text-align:center;">⚠️ CERRAR?</div>`;
+                        alertHtml = `
+                            <div class="alert-pulse-critical" style="margin-top:2px; background:#ef4444; border:1px solid #b91c1c; color:#fff; font-size:0.62rem; font-weight:800; padding:2px 4px; border-radius:4px; text-align:center; line-height:1.2; cursor:pointer;" onclick="openCuposModal('${activeHotel}', '${d.dateISO}', event)" title="Hotel al 100% de ocupación pero sigue con tarifas abiertas. ¡Cerrar canales ya!">
+                                ⚠️ 100% LLENO<br><span style="font-size:0.56rem; background:#7f1d1d; padding:1px 4px; border-radius:2px; display:inline-block; margin-top:1px;">🛑 ¡CERRAR YA!</span>
+                            </div>
+                        `;
+                    } else if (isOpen) {
+                        alertHtml = `<div style="margin-top:2px; background:#fee2e2; border:1px solid #ef4444; color:#b91c1c; font-size:0.65rem; font-weight:800; padding:1px 3px; border-radius:4px; text-align:center; cursor:pointer;" onclick="openCuposModal('${activeHotel}', '${d.dateISO}', event)" title="Ocupación muy alta (${occPct2.toFixed(0)}%). Considera cerrar tarifas bajas o subir precios.">⚠️ CERRAR? (${occPct2.toFixed(0)}%)</div>`;
                     } else {
-                        alertHtml = `<div style="margin-top:2px; color:#ea580c; font-size:0.65rem; font-weight:800; text-align:center;">🔥 ${occPct2.toFixed(0)}%</div>`;
+                        alertHtml = `<div style="margin-top:2px; color:#ea580c; font-size:0.65rem; font-weight:800; text-align:center; cursor:pointer;" onclick="openCuposModal('${activeHotel}', '${d.dateISO}', event)">🔥 ${occPct2.toFixed(0)}%</div>`;
                     }
                 }
 
@@ -3669,10 +3778,38 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
                 // My Price (Active Hotel)
                 const myStatus = my?.status || 'available';
+
+                // === ALERTA CRÍTICA 1: CIERRE CON HABITACIONES DISPONIBLES (FALSO CIERRE) ===
                 let falseClosedAlert = "";
-                if ((sold || myStatus === 'sold') && currentOcc > 0 && currentOcc < capacityVal) {
+                if (isSold && currentOcc < capacityVal && !my?.isSoldOut) {
                     const roomGap = capacityVal - currentOcc;
-                    if (roomGap >= 1) falseClosedAlert = `<div title="¡HAY SITIO!" style="margin-top:4px; font-size:0.6rem; background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid rgba(239,68,68,0.3); padding:2px 4px; border-radius:4px; font-weight:800;">🔔 ¡HAY SITIO!</div>`;
+                    if (roomGap >= 1) {
+                        falseClosedAlert = `
+                            <div title="¡ATENCIÓN! Hotel CERRADO en canales pero constan ${roomGap} habitaciones disponibles (${currentOcc}/${capacityVal}). Si están en cupos garantizados, haz clic para introducirlos." 
+                                 style="margin-top:4px; font-size:0.6rem; background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid rgba(239,68,68,0.3); padding:2px 4px; border-radius:4px; font-weight:800; text-align:center; cursor:pointer;"
+                                 onclick="openCuposModal('${activeHotel}', '${d.dateISO}', event)">
+                                🔔 ¡HAY SITIO! (${roomGap} libres)
+                            </div>
+                        `;
+                    }
+                } else if (isSold && (currentOcc >= capacityVal || my?.isSoldOut)) {
+                    const obVal = Math.max(0, currentOcc - capacityVal);
+                    falseClosedAlert = `
+                        <div style="margin-top:4px; font-size:0.6rem; color:#64748b; font-weight:700; text-align:center; cursor:pointer;" onclick="openCuposModal('${activeHotel}', '${d.dateISO}', event)" title="Hotel cerrado y lleno en PMS">
+                            🔒 CERRADO ${obVal > 0 ? `(+${obVal} Overb.)` : '(Lleno)'}
+                        </div>
+                    `;
+                }
+
+                // Banner urgente en celda de precio si el hotel está abierto en sobreventa / 100% lleno
+                let urgentOpenWarning = '';
+                if (isOpen && currentOcc >= capacityVal) {
+                    const obExcess = currentOcc - capacityVal;
+                    urgentOpenWarning = `
+                        <div class="alert-pulse-critical" style="margin-top:4px; font-size:0.6rem; background:#ef4444; color:#fff; border:1px solid #b91c1c; padding:2px 4px; border-radius:4px; font-weight:800; text-align:center; box-shadow:0 0 6px rgba(239,68,68,0.5); cursor:pointer;" title="¡URGENTE! Ventas abiertas en overbooking. Click para revisar ocupación o cupos" onclick="openCuposModal('${activeHotel}', '${d.dateISO}', event)">
+                            🚨 ¡CERRAR YA! ${obExcess > 0 ? `(+${obExcess} Overb.)` : '(100% lleno)'}
+                        </div>
+                    `;
                 }
 
                 if (sold || myStatus === 'sold') {
@@ -3694,7 +3831,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         if (match) displayText = `M${match[1]}`;
                     }
                     const titleText = (my && my.raw) ? my.raw : "Estancia mínima";
-                    html += `<td><span class="price-minstay${pendingPriceClass(my)}" title="${titleText}">${displayText}</span>${occupancyLabel}</td>`;
+                    html += `<td><span class="price-minstay${pendingPriceClass(my)}" title="${titleText}">${displayText}</span>${urgentOpenWarning}${occupancyLabel}</td>`;
                 } else if (!myP || myP === 0 || myStatus === 'noData') {
                     if (d.otbADR && d.otbADR > 0) {
                         const noDataWrap = `
@@ -3706,7 +3843,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                                 <button class="step-btn up" onclick="stepManualPrice(${d.dayIndex}, '${activeHotel}', 1, event)" title="Subir 1€">▲</button>
                             </div>
                         `;
-                        html += `<td class="price-val">${noDataWrap}${occupancyLabel}</td>`;
+                        html += `<td class="price-val">${noDataWrap}${urgentOpenWarning}${occupancyLabel}</td>`;
                     } else {
                         const emptyWrap = `
                             <div class="manual-price-wrap">
@@ -3714,7 +3851,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                                 <span class="price-editable${pendingPriceClass(my)}" onclick="openManualPriceInput(${d.dayIndex}, '${activeHotel}', this, event)" title="Sin datos. Click para asignar tarifa" style="color:#cbd5e1;">-</span>
                             </div>
                         `;
-                        html += `<td>${emptyWrap}${occupancyLabel}</td>`;
+                        html += `<td>${emptyWrap}${urgentOpenWarning}${occupancyLabel}</td>`;
                     }
                 } else {
                     const isSimulated = !!my?.isModified;
@@ -3745,7 +3882,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                             <button class="step-btn up" onclick="stepManualPrice(${d.dayIndex}, '${activeHotel}', 1, event)" title="Subir 1€ (Shift: 5€)">▲</button>
                         </div>
                     `;
-                    html += `<td class="price-val" style="font-size:1.05rem;">${priceWrap}${occupancyLabel}</td>`;
+                    html += `<td class="price-val" style="font-size:1.05rem;">${priceWrap}${urgentOpenWarning}${occupancyLabel}</td>`;
                 }
 
                 html += `<td style="color:var(--primary); font-weight:600;">${d.compAvg.toFixed(0)}€</td>`;
@@ -3774,7 +3911,8 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                                 <button class="step-btn up" onclick="stepManualPrice(${d.dayIndex}, '${siblingName}', 1, event)" title="Reabrir ${siblingName} y subir 1€">+</button>
                             </div>
                         `;
-                        html += `<td style="border-left:2px solid var(--border); background:var(--bg-surface); ${opacityStyle}">${closedWrap}</td>`;
+                        const sibOccClosed = hotelOccupancyLabel(siblingName, hData.otbRooms ?? hData.occupancy, hData, d.dateISO);
+                        html += `<td style="border-left:2px solid var(--border); background:var(--bg-surface); ${opacityStyle}">${closedWrap}${sibOccClosed}</td>`;
                     } else if (hData.status === 'minStay') {
                         let displayText = "M";
                         if (hData.minStayDays) {
@@ -3804,7 +3942,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         }
                         
                         // Show OTB/Occ also for Sibling
-                        const sibOccHtml = hotelOccupancyLabel(siblingName, hData.otbRooms ?? hData.occupancy);
+                        const sibOccHtml = hotelOccupancyLabel(siblingName, hData.otbRooms ?? hData.occupancy, hData, d.dateISO);
 
                         const isSibBelowMin = (sibMinP > 0 && hData.price > 0 && hData.price < sibMinP);
                         const sibBelowAlert = isSibBelowMin ? ` <span class="below-min-badge" title="⚠️ Tarifa de ${Math.round(hData.price)}€ por debajo del mínimo configurado (${sibMinP}€)">⚠️</span>` : '';
@@ -4271,6 +4409,238 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             }
         }
 
+        // --- GESTIÓN MANUAL DE CUPOS Y BLOQUEOS ---
+        function getManualCuposDB() {
+            try {
+                const raw = CapaStorage.getItem('manual_cupos_v1');
+                return raw ? JSON.parse(raw) : {};
+            } catch(e) {
+                return {};
+            }
+        }
+
+        function saveManualCuposDB(cuposDB) {
+            try {
+                CapaStorage.setItem('manual_cupos_v1', JSON.stringify(cuposDB));
+            } catch(e) {
+                console.error('Error guardando manual_cupos_v1:', e);
+            }
+        }
+
+        function getManualCupoFor(hotelName, dateISO) {
+            if (!hotelName || !dateISO) return null;
+            const db = getManualCuposDB();
+            if (!db[hotelName]) return null;
+            return db[hotelName][dateISO] || null;
+        }
+
+        let currentCuposModalContext = null;
+
+        function openCuposModal(hotelName, dateISO, event) {
+            if (event) event.stopPropagation();
+            if (!hotelName || !dateISO) return;
+
+            const dayObj = processedData ? processedData.find(d => d.dateISO === dateISO) : null;
+            const capacity = (hotelName === 'Cumbria' ? 59 : 108);
+            const hData = dayObj?.hotels?.[hotelName];
+
+            const existingCupo = getManualCupoFor(hotelName, dateISO);
+            let baseRooms = (hData && hData.baseOtbRooms !== undefined) 
+                ? hData.baseOtbRooms 
+                : ((hData && hData.otbRooms !== undefined) ? (hData.otbRooms - (existingCupo?.cupos || 0)) : 0);
+            if (baseRooms < 0) baseRooms = 0;
+
+            currentCuposModalContext = {
+                hotelName,
+                dateISO,
+                capacity,
+                baseRooms: Math.max(0, baseRooms),
+                dayIndex: dayObj?.dayIndex
+            };
+
+            // Poblar textos
+            document.getElementById('cuposModalTitle').innerText = `Gestión de Cupos y Ocupación`;
+            document.getElementById('cuposModalSubtitle').innerText = `${hotelName} · ${dateISO}`;
+            document.getElementById('cuposModalBaseRooms').innerText = currentCuposModalContext.baseRooms;
+            document.getElementById('cuposModalCapacity').innerText = capacity;
+
+            const cuposInput = document.getElementById('cuposInput');
+            const zeroAvailCheck = document.getElementById('cuposZeroAvailable');
+            const noteInput = document.getElementById('cuposNoteInput');
+            const applyRangeCheck = document.getElementById('cuposApplyRange');
+            const rangeContainer = document.getElementById('cuposRangeContainer');
+            const endDateInput = document.getElementById('cuposEndDate');
+
+            cuposInput.value = (existingCupo && existingCupo.cupos) ? existingCupo.cupos : '';
+            zeroAvailCheck.checked = !!existingCupo?.isSoldOut;
+            noteInput.value = existingCupo?.note || '';
+            applyRangeCheck.checked = false;
+            rangeContainer.style.display = 'none';
+            endDateInput.value = dateISO;
+            endDateInput.min = dateISO;
+
+            recalcCuposModalPreview();
+            document.getElementById('cuposModal').style.display = 'flex';
+            cuposInput.focus();
+        }
+
+        function closeCuposModal() {
+            document.getElementById('cuposModal').style.display = 'none';
+            currentCuposModalContext = null;
+        }
+
+        function toggleZeroAvailable(isChecked) {
+            recalcCuposModalPreview();
+        }
+
+        function toggleRangeEndDate(isChecked) {
+            const el = document.getElementById('cuposRangeContainer');
+            if (el) el.style.display = isChecked ? 'block' : 'none';
+        }
+
+        function recalcCuposModalPreview() {
+            if (!currentCuposModalContext) return;
+            const ctx = currentCuposModalContext;
+            const cuposVal = parseInt(document.getElementById('cuposInput').value) || 0;
+            const isZeroAvail = document.getElementById('cuposZeroAvailable').checked;
+
+            let totalR = ctx.baseRooms + cuposVal;
+            if (isZeroAvail && totalR < ctx.capacity) {
+                totalR = ctx.capacity;
+            }
+
+            const pct = Math.round((totalR / ctx.capacity) * 100);
+            const freeRooms = Math.max(0, ctx.capacity - totalR);
+            const overbook = Math.max(0, totalR - ctx.capacity);
+
+            document.getElementById('cuposPreviewTotal').innerHTML = `${totalR} / ${ctx.capacity} (${pct}%)`;
+            
+            const freeEl = document.getElementById('cuposPreviewFree');
+            const alertEl = document.getElementById('cuposPreviewAlertStatus');
+
+            if (isZeroAvail || freeRooms === 0) {
+                freeEl.innerHTML = `<span style="color:#ef4444; font-weight:800;">0 (Completo)</span>`;
+            } else if (overbook > 0) {
+                freeEl.innerHTML = `<span style="color:#ef4444; font-weight:800;">Overbooking (+${overbook})</span>`;
+            } else {
+                freeEl.innerHTML = `<span style="color:#10b981; font-weight:700;">${freeRooms} disponibles</span>`;
+            }
+
+            if (totalR > ctx.capacity) {
+                alertEl.innerHTML = `<span style="color:#ef4444; font-weight:800;">🚨 OVERBOOKING (+${overbook} habs sobre la capacidad). Si las ventas están abiertas se activará aviso urgente de cierre.</span>`;
+            } else if (isZeroAvail || freeRooms === 0) {
+                alertEl.innerHTML = `<span style="color:#64748b; font-weight:700;">🔒 Hotel lleno. Se desactivará la falsa alarma '¡Hay sitio!' si los canales están cerrados.</span>`;
+            } else if (freeRooms > 0) {
+                alertEl.innerHTML = `<span style="color:#f59e0b; font-weight:700;">ℹ️ Quedan ${freeRooms} habs libres. Si el hotel está cerrado en canales, avisará '🔔 ¡Hay sitio! (${freeRooms} libres)'.</span>`;
+            } else {
+                alertEl.innerHTML = '';
+            }
+        }
+
+        function saveCuposModal() {
+            if (!currentCuposModalContext) return;
+            const ctx = currentCuposModalContext;
+            const hotel = ctx.hotelName;
+            const cuposVal = parseInt(document.getElementById('cuposInput').value) || 0;
+            const isZeroAvail = document.getElementById('cuposZeroAvailable').checked;
+            const note = document.getElementById('cuposNoteInput').value.trim();
+            const applyRange = document.getElementById('cuposApplyRange').checked;
+            const endDate = document.getElementById('cuposEndDate').value;
+
+            const cuposDB = getManualCuposDB();
+            if (!cuposDB[hotel]) cuposDB[hotel] = {};
+
+            // Determinar rango de fechas
+            const datesToUpdate = [ctx.dateISO];
+            if (applyRange && endDate && endDate > ctx.dateISO) {
+                let curr = new Date(ctx.dateISO);
+                const end = new Date(endDate);
+                curr.setDate(curr.getDate() + 1);
+                while (curr <= end) {
+                    datesToUpdate.push(curr.toISOString().split('T')[0]);
+                    curr.setDate(curr.getDate() + 1);
+                }
+            }
+
+            datesToUpdate.forEach(iso => {
+                if (cuposVal === 0 && !isZeroAvail && !note) {
+                    delete cuposDB[hotel][iso];
+                } else {
+                    cuposDB[hotel][iso] = {
+                        cupos: cuposVal,
+                        isSoldOut: isZeroAvail,
+                        note: note,
+                        updatedAt: new Date().toISOString()
+                    };
+                }
+            });
+
+            saveManualCuposDB(cuposDB);
+
+            // Sincronizar también con hotel_manager_db_v2 en CapaStorage (para que lo vean el resto de pestañas)
+            try {
+                const rawDb = CapaStorage.getItem('hotel_manager_db_v2');
+                if (rawDb) {
+                    const masterDb = typeof rawDb === 'string' ? JSON.parse(rawDb) : rawDb;
+                    const hKey = Object.keys(masterDb).find(k => k.toLowerCase().includes(hotel.toLowerCase()));
+                    if (hKey && masterDb[hKey]) {
+                        datesToUpdate.forEach(iso => {
+                            const yr = iso.split('-')[0];
+                            if (masterDb[hKey][yr]) {
+                                if (!masterDb[hKey][yr].daily_otb) masterDb[hKey][yr].daily_otb = {};
+                                if (!masterDb[hKey][yr].daily_otb[iso]) masterDb[hKey][yr].daily_otb[iso] = { rooms: ctx.baseRooms, revenue: 0 };
+                                const dayObj = masterDb[hKey][yr].daily_otb[iso];
+                                if (typeof dayObj === 'object') {
+                                    dayObj.cupos = cuposVal;
+                                    dayObj.isSoldOut = isZeroAvail;
+                                    dayObj.cuposNote = note;
+                                }
+                            }
+                        });
+                        CapaStorage.setItem('hotel_manager_db_v2', JSON.stringify(masterDb));
+                    }
+                }
+            } catch(err) {
+                console.warn('Error syncing cupos to hotel_manager_db_v2:', err);
+            }
+
+            closeCuposModal();
+            renderAll();
+            alert(`✓ Cupos guardados correctamente para ${datesToUpdate.length} fecha(s).`);
+        }
+
+        function removeCurrentCupos() {
+            if (!currentCuposModalContext) return;
+            const ctx = currentCuposModalContext;
+            const hotel = ctx.hotelName;
+            const iso = ctx.dateISO;
+
+            const cuposDB = getManualCuposDB();
+            if (cuposDB[hotel] && cuposDB[hotel][iso]) {
+                delete cuposDB[hotel][iso];
+                saveManualCuposDB(cuposDB);
+            }
+
+            try {
+                const rawDb = CapaStorage.getItem('hotel_manager_db_v2');
+                if (rawDb) {
+                    const masterDb = typeof rawDb === 'string' ? JSON.parse(rawDb) : rawDb;
+                    const hKey = Object.keys(masterDb).find(k => k.toLowerCase().includes(hotel.toLowerCase()));
+                    const yr = iso.split('-')[0];
+                    if (hKey && masterDb[hKey]?.[yr]?.daily_otb?.[iso]) {
+                        delete masterDb[hKey][yr].daily_otb[iso].cupos;
+                        delete masterDb[hKey][yr].daily_otb[iso].isSoldOut;
+                        delete masterDb[hKey][yr].daily_otb[iso].cuposNote;
+                        CapaStorage.setItem('hotel_manager_db_v2', JSON.stringify(masterDb));
+                    }
+                }
+            } catch(e) {}
+
+            closeCuposModal();
+            renderAll();
+            alert(`✓ Cupos eliminados para ${iso}`);
+        }
+
         // Run on load
         window.addEventListener('DOMContentLoaded', () => {
             logD("Sistema iniciado. Esperando archivo...");
@@ -4339,6 +4709,100 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 <div style="display:flex; gap:10px;">
                     <button type="button" class="btn" onclick="closeMinPriceModal()" style="background:var(--bg-body); border:1px solid var(--border); color:var(--text-main);">Cancelar</button>
                     <button type="button" class="btn btn-primary" onclick="saveMinPriceConfig()">Guardar y Aplicar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CUPOS & OCCUPANCY CONFIG MODAL -->
+    <div id="cuposModal" class="modal" style="z-index:999999;">
+        <div class="modal-content" style="max-width:540px; background:var(--bg-surface); color:var(--text-main); border:1px solid var(--border); border-radius:16px; padding:24px; box-shadow:0 20px 40px rgba(0,0,0,0.5);">
+            <span class="close-modal" onclick="closeCuposModal()">&times;</span>
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+                <span style="font-size:1.6rem;">🏨</span>
+                <div>
+                    <h3 id="cuposModalTitle" style="margin:0; font-size:1.2rem; color:var(--text-main);">Gestión de Cupos y Ocupación</h3>
+                    <div id="cuposModalSubtitle" style="font-size:0.78rem; color:var(--primary); font-weight:700;">Hotel Guadiana · 23-10-2026</div>
+                </div>
+            </div>
+            <p style="font-size:0.8rem; color:var(--text-light); margin-bottom:16px; line-height:1.4;">
+                Ajusta los <strong>cupos y bloqueos garantizados</strong> de grupos o touroperadores para que CapaSuite calcule con exactitud la disponibilidad real y no lance alertas erróneas.
+            </p>
+
+            <!-- Detalle de Ocupación -->
+            <div style="background:var(--bg-body); border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:14px;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; font-size:0.85rem;">
+                    <div>
+                        <span style="color:var(--text-muted); font-size:0.75rem; display:block;">Reservas individuales (PMS OTB):</span>
+                        <strong id="cuposModalBaseRooms" style="font-size:1.15rem; color:var(--text-main);">0</strong> <span style="font-size:0.75rem;">habs</span>
+                    </div>
+                    <div>
+                        <span style="color:var(--text-muted); font-size:0.75rem; display:block;">Capacidad total hotel:</span>
+                        <strong id="cuposModalCapacity" style="font-size:1.15rem; color:var(--text-main);">108</strong> <span style="font-size:0.75rem;">habs</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Campos de Edición -->
+            <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:16px;">
+                <div>
+                    <label style="display:block; font-size:0.8rem; font-weight:700; color:var(--text-main); margin-bottom:6px;">
+                        🔒 Cupos / Bloqueos Garantizados (+Habitaciones):
+                    </label>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <input type="number" id="cuposInput" min="0" max="250" placeholder="Ej: 23"
+                            style="width:110px; padding:8px 12px; background:var(--bg-surface); color:var(--text-main); border:2px solid var(--primary); border-radius:8px; font-size:1rem; font-weight:800;"
+                            oninput="recalcCuposModalPreview()">
+                        <span style="font-size:0.8rem; color:var(--text-muted);">habitaciones bloqueadas por cupo</span>
+                    </div>
+                </div>
+
+                <!-- Switch Hotel Completo / Disponibilidad 0 en PMS -->
+                <label style="display:flex; align-items:center; gap:10px; font-size:0.85rem; color:var(--text-main); cursor:pointer; background:rgba(239,68,68,0.08); padding:10px 12px; border-radius:8px; border:1px solid rgba(239,68,68,0.25);">
+                    <input type="checkbox" id="cuposZeroAvailable" style="width:18px; height:18px; accent-color:#ef4444;" onchange="toggleZeroAvailable(this.checked)">
+                    <div>
+                        <strong style="color:#ef4444;">Hotel completo / Disponibilidad 0 en PMS</strong>
+                        <div style="font-size:0.7rem; color:var(--text-muted);">Marca el día como 100% comprometido (desactiva cualquier falsa alarma de "¡Hay sitio!")</div>
+                    </div>
+                </label>
+
+                <!-- Previsualización en Vivo -->
+                <div id="cuposPreviewBox" style="background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.25); border-radius:8px; padding:12px; font-size:0.85rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                        <span>Ocupación Total Comprometida:</span>
+                        <strong id="cuposPreviewTotal" style="color:var(--primary); font-size:1.05rem;">0 / 108 (0%)</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span>Habitaciones libres vendibles:</span>
+                        <strong id="cuposPreviewFree" style="color:#10b981;">108 disponibles</strong>
+                    </div>
+                    <div id="cuposPreviewAlertStatus" style="margin-top:6px; font-size:0.75rem; font-weight:700;"></div>
+                </div>
+
+                <!-- Motivo / Nota -->
+                <div>
+                    <label style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">Nota o motivo (opcional):</label>
+                    <input type="text" id="cuposNoteInput" placeholder="Ej: Cupos garantizados touroperador / Bloqueo congreso"
+                        style="width:100%; box-sizing:border-box; padding:8px 10px; background:var(--bg-surface); color:var(--text-main); border:1px solid var(--border); border-radius:6px; font-size:0.85rem;">
+                </div>
+
+                <!-- Aplicar a Rango -->
+                <div style="border-top:1px dashed var(--border); padding-top:10px;">
+                    <label style="display:flex; align-items:center; gap:8px; font-size:0.8rem; color:var(--text-main); cursor:pointer;">
+                        <input type="checkbox" id="cuposApplyRange" style="accent-color:var(--primary);" onchange="toggleRangeEndDate(this.checked)">
+                        <span>Aplicar también hasta fecha posterior:</span>
+                    </label>
+                    <div id="cuposRangeContainer" style="display:none; margin-top:8px; margin-left:24px;">
+                        <input type="date" id="cuposEndDate" style="padding:6px 10px; background:var(--bg-surface); color:var(--text-main); border:1px solid var(--border); border-radius:6px; font-size:0.85rem;">
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border); padding-top:14px;">
+                <button type="button" class="btn" onclick="removeCurrentCupos()" style="background:transparent; border:1px solid rgba(239,68,68,0.4); color:#ef4444; font-size:0.8rem;" title="Eliminar cupo manual de este día">🗑️ Quitar Cupos</button>
+                <div style="display:flex; gap:8px;">
+                    <button type="button" class="btn" onclick="closeCuposModal()" style="background:var(--bg-body); border:1px solid var(--border); color:var(--text-main); font-size:0.85rem;">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="saveCuposModal()" style="font-size:0.85rem; font-weight:700;">💾 Guardar Cupos</button>
                 </div>
             </div>
         </div>

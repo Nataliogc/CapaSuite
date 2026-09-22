@@ -1256,6 +1256,9 @@
                         if (!revenueData[iso]) revenueData[iso] = { dateISO: iso, hotels: {}, occupancyData: {} };
                         if (!revenueData[iso].occupancyData) revenueData[iso].occupancyData = {};
 
+                        let manualCuposDB = {};
+                        try { manualCuposDB = JSON.parse(CapaStorage.getItem('manual_cupos_v1') || '{}'); } catch(e) {}
+
                         ['Guadiana', 'Cumbria'].forEach(hName => {
                             const hKey = Object.keys(db).find(k => k.toLowerCase().includes(hName.toLowerCase()));
                             if (hKey && db[hKey][yearStr]) {
@@ -1263,7 +1266,13 @@
                                 let adr = 0, otb = 0, occ = 0, otb_prev = null;
                                 if (yearData.daily_otb && yearData.daily_otb[iso]) {
                                     const v = yearData.daily_otb[iso];
-                                    otb = Math.round((typeof v === 'object') ? (v.rooms || 0) : v);
+                                    const baseR = Math.round((typeof v === 'object') ? (v.rooms || 0) : v);
+                                    let cuposVal = (typeof v === 'object' ? (v.cupos || 0) : 0);
+                                    const mC = manualCuposDB[hName]?.[iso];
+                                    if (mC && mC.cupos !== undefined) cuposVal = mC.cupos;
+                                    otb = baseR + cuposVal;
+                                    const hCap = (hName === 'Cumbria' ? 59 : 108);
+                                    if ((mC?.isSoldOut || v?.isSoldOut) && otb < hCap) otb = hCap;
                                     if (typeof v === 'object' && v.rooms > 0) {
                                         adr = (v.revenue || 0) / v.rooms;
                                     }
