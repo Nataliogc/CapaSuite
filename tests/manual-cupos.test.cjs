@@ -80,3 +80,54 @@ test('manual cupos storage persistence and retrieval format', () => {
     assert.deepEqual(reloaded['Guadiana']['2026-10-23'].isSoldOut, true);
     assert.deepEqual(reloaded['Guadiana']['2026-10-24'].cupos, 23);
 });
+
+test('renderTable executes without ReferenceError or initialization errors', () => {
+    const html = fs.readFileSync('AnalisisCompetencia.html', 'utf8');
+    const tableHeader = { innerHTML: '' };
+    const tableBody = { innerHTML: '' };
+    const ctx = {
+        document: {
+            getElementById: (id) => {
+                if (id === 'tableHeader') return tableHeader;
+                if (id === 'tableBody') return tableBody;
+                return { innerHTML: '', value: '' };
+            }
+        },
+        window: { addEventListener: () => {} },
+        console: { log: () => {}, warn: () => {}, error: () => {} },
+        localStorage: { getItem: () => null, setItem: () => {} },
+        Set: Set
+    };
+
+    vm.createContext(ctx);
+    const scriptMatches = html.match(/<script(?![^>]*src=)[^>]*>([\s\S]*?)<\/script>/gi) || [];
+    for (const match of scriptMatches) {
+        const code = match.replace(/^<script[^>]*>/i, '').replace(/<\/script>$/i, '');
+        try {
+            vm.runInContext(code, ctx);
+        } catch (e) {
+            // Browser-only DOM elements
+        }
+    }
+
+    ctx.activeHotel = 'Guadiana';
+    ctx.competitorsList = [];
+    ctx.ignoredCompetitors = new Set();
+    const testData = [{
+        dayIndex: 1,
+        dateISO: '2026-10-23',
+        label: '23 Oct',
+        compAvg: 80,
+        otbRooms: 81,
+        dateMeta: { dNum: '23', dShort: 'Vie', mShort: 'Oct' },
+        hotels: {
+            Guadiana: { price: 0, sold: true, status: 'sold' },
+            Cumbria: { price: 60, sold: false, status: 'available' }
+        }
+    }];
+
+    assert.doesNotThrow(() => {
+        ctx.renderTable(testData);
+    });
+    assert.ok(tableBody.innerHTML.length > 0);
+});

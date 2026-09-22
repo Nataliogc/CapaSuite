@@ -3812,6 +3812,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 const my = d.hotels[activeHotel];
                 const myP = (my && !my.sold) ? my.price : 0;
                 const sold = my && my.sold;
+                const myStatus = my?.status || 'available';
 
                 // Gap Badge & Smart Yield Action
                 let gapHtml = '-';
@@ -3895,8 +3896,6 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 html += `<td>${cellContent}</td>`;
 
                 // My Price (Active Hotel)
-                const myStatus = my?.status || 'available';
-
                 // === ALERTA CRÍTICA 1: CIERRE CON HABITACIONES DISPONIBLES (FALSO CIERRE) ===
                 let falseClosedAlert = "";
                 if (isSold && currentOcc < capacityVal && !my?.isSoldOut) {
