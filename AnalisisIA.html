@@ -545,58 +545,185 @@
             container.innerHTML = '';
 
             const hotelData = db[currentHotel];
-            const years = Object.keys(hotelData).sort().reverse();
+            const years = Object.keys(hotelData).filter(k => !k.startsWith('custom')).sort().reverse();
             const lastYear = years[0];
-            const yearData = hotelData[lastYear];
+            const prevYear = years[1];
+            const yearData  = hotelData[lastYear];
+            const prevYearData = prevYear ? hotelData[prevYear] : null;
 
-            // 1. ANALYSIS: Monthly Trends
-            if (yearData.service && yearData.service["TOTAL_MASTER"]) {
-                const master = yearData.service["TOTAL_MASTER"];
-                const revenue = master.revenue;
-                const rooms = master.rooms;
+            const fmtEuro = n => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
+            const fmtPct  = n => (n >= 0 ? '+' : '') + n.toFixed(1) + '%';
+            const monthNames  = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
-                // Find current month index (heuristic: last month with data)
-                let currentMonthIdx = -1;
-                for (let i = 11; i >= 0; i--) { if (revenue[i] > 0) { currentMonthIdx = i; break; } }
-
-                if (currentMonthIdx !== -1) {
-                    const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-                    const mName = monthNames[currentMonthIdx];
-                    const rev = revenue[currentMonthIdx];
-                    const rms = rooms[currentMonthIdx];
-                    const adr = rms > 0 ? (rev / rms).toFixed(2) : 0;
-                    
-                    let yoyText = " Vas por buen camino.";
-                    let type = 'positive';
-                    const prevYearData = hotelData[years[1]];
-                    if (prevYearData && prevYearData.service && prevYearData.service["TOTAL_MASTER"]) {
-                         const revLY = prevYearData.service["TOTAL_MASTER"].revenue[currentMonthIdx];
-                         if (revLY > 0) {
-                             const diff = ((rev - revLY) / revLY) * 100;
-                             if (diff >= 0) {
-                                 yoyText = ` Supone un crecimiento del <b style="color:var(--success);">+${diff.toFixed(1)}%</b> respecto a ${years[1]}.`;
-                                 type = 'positive';
-                             } else {
-                                 yoyText = ` Supone una caída del <b style="color:var(--danger);">${diff.toFixed(1)}%</b> respecto a ${years[1]}.`;
-                                 type = 'warning';
-                             }
-                         }
+            // ---- Build real production arrays (room revenue preferred) ----
+            let realRev = new Array(12).fill(0);
+            let realRN  = new Array(12).fill(0);
+            if (yearData.service) {
+                const roomNorm = s => s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase();
+                const roomKeys = ["HABITACION","ALOJAMIENTO","ESTANCIA"];
+                let found = false;
+                for (const [key, val] of Object.entries(yearData.service)) {
+                    if (roomKeys.some(rk => roomNorm(key).includes(rk))) {
+                        realRev = val.revenue || new Array(12).fill(0);
+                        realRN  = val.rooms   || new Array(12).fill(0);
+                        found = true; break;
                     }
-
-                    addInsight(type, '📈 Rendimiento Mensual', `En <b>${mName}</b> has generado <b>${new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(rev)}</b> con un ADR de <b>${adr}€</b>.${yoyText}`, 'AnalisisProduccion.html');
+                }
+                if (!found && yearData.service["TOTAL_MASTER"]) {
+                    realRev = yearData.service["TOTAL_MASTER"].revenue || new Array(12).fill(0);
+                    realRN  = yearData.service["TOTAL_MASTER"].rooms   || new Array(12).fill(0);
                 }
             }
 
-            // 2. ANALYSIS: OTB (Forecast)
-            if (yearData.otb && yearData.otb.revenue) {
-                const totalOTB = yearData.otb.revenue.reduce((a, b) => a + b, 0);
-                if (totalOTB > 0) {
-                    addInsight('ai', '🔮 Previsiones (OTB)', `Tienes una previsión de carga de <b>${new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(totalOTB)}</b> adicional para este ejercicio. Representa un potencial de crecimiento significativo.`, 'AnalisisProduccion.html');
+            // ---- Budget ----
+            const budgetKey = `custom_budget_${lastYear}`;
+            const budget    = hotelData[budgetKey];
+            const budgetRev = (budget && budget.rev && budget.rev.some(v => v > 0)) ? budget.rev : null;
+
+            // ---- OTB ----
+            let otbRev = new Array(12).fill(0);
+            let otbRN  = new Array(12).fill(0);
+            if (yearData.otb) {
+                otbRev = yearData.otb.breakdown?.habitacion    || yearData.otb.revenue || new Array(12).fill(0);
+                otbRN  = yearData.otb.breakdown?.habitacion_rn || yearData.otb.rooms   || new Array(12).fill(0);
+            }
+
+            // ---- Calendar helpers ----
+            const now      = new Date();
+            const curMonth = now.getMonth();
+            const curYear  = now.getFullYear();
+            const budgetYr = parseInt(lastYear);
+            const isClosed = i => (budgetYr < curYear) || (budgetYr === curYear && i < curMonth);
+
+            // ---- YTD totals ----
+            let ytdReal = 0, ytdRN = 0, ytdBudget = 0;
+            for (let i = 0; i < 12; i++) {
+                if (isClosed(i)) {
+                    ytdReal   += realRev[i] || 0;
+                    ytdRN     += realRN[i]  || 0;
+                    if (budgetRev) ytdBudget += budgetRev[i] || 0;
                 }
             }
 
-            // 3. ANALYSIS: Competition Gap (Heuristic)
-            // We'll simulate this since competition data is usually in revenue_data_v2
+            // ============================================================
+            // INSIGHT 1: Cumplimiento presupuesto YTD
+            // ============================================================
+            if (budgetRev && ytdBudget > 0) {
+                const cumplPct = ytdReal / ytdBudget * 100;
+                const gap      = ytdReal - ytdBudget;
+                const type     = cumplPct >= 100 ? 'positive' : (cumplPct >= 85 ? 'warning' : 'critical');
+                const statusTxt = cumplPct >= 100
+                    ? `<b style="color:var(--success);">${cumplPct.toFixed(1)}%</b> — <b>${fmtEuro(gap)}</b> por encima del objetivo. ✨`
+                    : `<b style="color:${cumplPct >= 85 ? '#d97706' : 'var(--danger)'};">${cumplPct.toFixed(1)}%</b> — Faltan <b>${fmtEuro(Math.abs(gap))}</b> para el objetivo.`;
+                addInsight(type,
+                    `🎯 Cumplimiento Presupuesto ${lastYear} (meses cerrados)`,
+                    `Real acumulado: <b>${fmtEuro(ytdReal)}</b> vs Objetivo: <b>${fmtEuro(ytdBudget)}</b> → ${statusTxt}`,
+                    'CalculadoraPresupuesto.html');
+            }
+
+            // ============================================================
+            // INSIGHT 2: Proyección de cierre anual
+            // ============================================================
+            if (budgetRev) {
+                const totalBudget = budgetRev.reduce((a, b) => a + b, 0);
+                let projection    = ytdReal;
+                for (let i = 0; i < 12; i++) {
+                    if (!isClosed(i)) {
+                        projection += otbRev[i] > 0 ? otbRev[i] : (budgetRev[i] || 0);
+                    }
+                }
+                const projGap = projection - totalBudget;
+                const projPct = totalBudget > 0 ? (projection / totalBudget * 100) : 0;
+                const type    = projPct >= 100 ? 'positive' : (projPct >= 90 ? 'warning' : 'critical');
+                const gapColor = projGap >= 0 ? 'var(--success)' : 'var(--danger)';
+                addInsight(type,
+                    `🔮 Proyección Cierre ${lastYear}`,
+                    `Estimación final del año: <b>${fmtEuro(projection)}</b> vs presupuesto <b>${fmtEuro(totalBudget)}</b> → <b style="color:${gapColor};">${projGap >= 0 ? '+' : ''}${fmtEuro(projGap)}</b> (${projPct.toFixed(1)}% del objetivo).`,
+                    'CalculadoraPresupuesto.html');
+            }
+
+            // ============================================================
+            // INSIGHT 3: Meses con mejor y peor resultado vs presupuesto
+            // ============================================================
+            if (budgetRev) {
+                const gapByMonth = [];
+                for (let i = 0; i < 12; i++) {
+                    if (isClosed(i) && budgetRev[i] > 0 && (realRev[i] || 0) > 0) {
+                        const g    = (realRev[i] || 0) - budgetRev[i];
+                        const gPct = (g / budgetRev[i]) * 100;
+                        gapByMonth.push({ i, name: monthNames[i], gap: g, pct: gPct });
+                    }
+                }
+                gapByMonth.sort((a, b) => a.gap - b.gap);
+                const worst = gapByMonth.filter(m => m.gap < 0).slice(0, 2);
+                const best  = gapByMonth.filter(m => m.gap > 0).slice(-1);
+                if (worst.length > 0) {
+                    const worstTxt = worst.map(m =>
+                        `<b>${m.name}</b>: <b style="color:var(--danger);">${fmtEuro(m.gap)}</b> (${m.pct.toFixed(1)}%)`
+                    ).join(' · ');
+                    addInsight('warning', '📉 Meses con mayor desviación negativa',
+                        `${worstTxt}. Analiza qué factores afectaron esos periodos para evitarlo en ${parseInt(lastYear)+1}.`,
+                        'AnalisisProduccion.html');
+                }
+                if (best.length > 0) {
+                    const b = best[0];
+                    addInsight('positive', `🏆 Mejor mes vs presupuesto: ${b.name}`,
+                        `<b>${b.name}</b> superó el objetivo en <b style="color:var(--success);">${fmtEuro(b.gap)}</b> (${b.pct.toFixed(1)}% por encima). Replica esa estrategia en meses similares.`,
+                        'AnalisisProduccion.html');
+                }
+            }
+
+            // ============================================================
+            // INSIGHT 4: Mes en curso vs año anterior
+            // ============================================================
+            if (prevYearData && prevYearData.service) {
+                let prevRev = new Array(12).fill(0);
+                let prevRN  = new Array(12).fill(0);
+                if (prevYearData.service["TOTAL_MASTER"]) {
+                    prevRev = prevYearData.service["TOTAL_MASTER"].revenue || prevRev;
+                    prevRN  = prevYearData.service["TOTAL_MASTER"].rooms   || prevRN;
+                }
+                const curRev  = realRev[curMonth] || 0;
+                const prevRev_m = prevRev[curMonth] || 0;
+                if (curRev > 0 && prevRev_m > 0) {
+                    const diff    = curRev - prevRev_m;
+                    const diffPct = (diff / prevRev_m) * 100;
+                    const curAdr  = realRN[curMonth] > 0 ? (curRev / realRN[curMonth]) : 0;
+                    const type    = diffPct >= 0 ? 'positive' : 'warning';
+                    const arrow   = diffPct >= 0 ? '▲' : '▼';
+                    const col     = diffPct >= 0 ? 'var(--success)' : 'var(--danger)';
+                    addInsight(type, `📅 ${monthNames[curMonth]}: seguimiento mes en curso`,
+                        `MTD: <b>${fmtEuro(curRev)}</b> ${arrow} <b style="color:${col};">${fmtPct(diffPct)}</b> vs ${prevYear}${curAdr > 0 ? ` · ADR actual: <b>${curAdr.toFixed(2)} €</b>` : ''}.`,
+                        'AnalisisProduccion.html');
+                }
+            }
+
+            // ============================================================
+            // INSIGHT 5: Pick-up con equivalencia en habitaciones
+            // ============================================================
+            if (yearData.otb && yearData.otb_prev) {
+                const currTotal  = otbRev.reduce((a, b) => a + b, 0);
+                const prevOTBRev = yearData.otb_prev.breakdown?.habitacion || yearData.otb_prev.revenue || new Array(12).fill(0);
+                const prevTotal  = prevOTBRev.reduce((a, b) => a + b, 0);
+                const pickup     = currTotal - prevTotal;
+                if (Math.abs(pickup) > 50) {
+                    const totOtbRN = otbRN.reduce((a, b) => a + b, 0);
+                    const avgAdr   = totOtbRN > 0 ? currTotal / totOtbRN : 0;
+                    const habEquiv = avgAdr > 0 ? Math.round(Math.abs(pickup) / avgAdr) : 0;
+                    const date     = yearData.otb_prev.snapshotDate || 'la última carga';
+                    const status   = pickup > 0 ? 'positive' : 'warning';
+                    const verb     = pickup > 0 ? 'ganado' : 'perdido';
+                    const habTxt   = habEquiv > 0 ? ` — equivale a aprox. <b>${habEquiv} habitaciones</b> a ADR <b>${avgAdr.toFixed(0)} €</b>` : '';
+                    addInsight(status,
+                        pickup > 0 ? '🚀 Aceleración de demanda' : '📉 Ajuste de previsión',
+                        `Desde el <b>${date}</b>, la cartera ha ${verb} <b>${fmtEuro(Math.abs(pickup))}</b>${habTxt}.`,
+                        'AnalisisProduccion.html');
+                }
+            }
+
+            // ============================================================
+            // INSIGHT 6: Días con precio bajo (con € estimado de pérdida)
+            // ============================================================
             const compDataRaw = CapaStorage.getItem('revenue_data_v2');
             if (compDataRaw) {
                 try {
@@ -607,37 +734,29 @@
                             return my && !my.sold && my.price > 0 && my.price < d.compAvg * 0.85;
                         });
                         if (lowDays.length > 0) {
-                            addInsight('warning', '💰 Oportunidad de Precio', `He detectado <b>${lowDays.length} días</b> en los próximos 30 días donde tu precio está más de un 15% por debajo del mercado. Podrías estar perdiendo revenue.`, 'AnalisisCompetencia.html');
+                            const avgRoomsDay = Math.max(10, Math.round(
+                                otbRN.reduce((a,b)=>a+b,0) / Math.max(1, otbRN.filter(r=>r>0).length) / 30
+                            ));
+                            const estLoss = lowDays.reduce((acc, d) => {
+                                const gap = (d.compAvg || 0) - (d.hotels[currentHotel]?.price || 0);
+                                return acc + gap * avgRoomsDay;
+                            }, 0);
+                            const topDays = lowDays.slice(0, 3)
+                                .map(d => `<b>${d.date || d.checkIn || '—'}</b>`).join(', ');
+                            addInsight('warning', '💰 Revenue potencial no capturado',
+                                `<b>${lowDays.length} días</b> con tarifa >15% inferior al mercado → pérdida estimada: <b style="color:var(--danger);">${fmtEuro(estLoss)}</b>. Días prioritarios: ${topDays}.`,
+                                'AnalisisCompetencia.html');
                         }
                     }
-                } catch (e) { }
-            }
-
-            // 4. ANALYSIS: PICK-UP VELOCITY (Detección de Velocidad)
-            if (yearData.otb && yearData.otb_prev) {
-                const currentOTB = yearData.otb.revenue.reduce((a, b) => a + b, 0);
-                const prevOTB = yearData.otb_prev.revenue.reduce((a, b) => a + b, 0);
-                const pickup = currentOTB - prevOTB;
-
-                if (Math.abs(pickup) > 100) {
-                    const status = pickup > 0 ? 'positive' : 'warning';
-                    const icon = pickup > 0 ? '🚀 Aceleración de Demanda' : '📉 Ajuste de Previsión';
-                    const date = yearData.otb_prev.snapshotDate || "la última carga";
-                    addInsight(status, icon, `Desde el <b>${date}</b>, la cartera ha variado en <b>${new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(pickup)}</b>.`, 'AnalisisProduccion.html');
-                }
-            }
-
-            // 5. DATA INTEGRITY CHECK
-            if (!yearData.segment || Object.keys(yearData.segment).length < 3) {
-                addInsight('critical', '🚨 Datos de Segmentos Incompletos', `Parece que falta el desglose por mercados. Te recomiendo subir el informe de segmentos para un análisis más profundo.`, 'AnalisisSegmentos.html');
+                } catch (e) {}
             }
 
             if (container.innerHTML === '') {
-                container.innerHTML = '<p style="text-align:center; color:var(--text-muted);">No he encontrado anomalías significativas hoy. ¡Buen trabajo!</p>';
+                container.innerHTML = '<p style="text-align:center; color:var(--text-muted);">No he encontrado anomalías significativas. ¡Buen trabajo!</p>';
             }
         }
 
-        function addInsight(type, title, text, linkUrl = null) {
+                function addInsight(type, title, text, linkUrl = null) {
             const container = document.getElementById('ai-insights');
             const icon = type === 'positive' ? '✅' : (type === 'warning' ? '💡' : (type === 'critical' ? '🚨' : '✨'));
             const div = document.createElement('div');
@@ -832,6 +951,30 @@
                         last_update: yearData.otb_prev.snapshotDate
                     };
                 }
+            }
+
+            // Budget Summary
+            const budgetCtxKey = `custom_budget_${lastYear}`;
+            const budgetCtx = hData[budgetCtxKey];
+            if (budgetCtx && budgetCtx.rev) {
+                const totalBudgetRev = budgetCtx.rev.reduce((a, b) => a + b, 0);
+                const now2 = new Date();
+                const curM2 = now2.getMonth();
+                const curY2 = now2.getFullYear();
+                const bYear = parseInt(lastYear);
+                let ytdBudgetCtx = 0, ytdRealCtx = 0;
+                for (let i = 0; i < 12; i++) {
+                    if ((bYear < curY2) || (bYear === curY2 && i < curM2)) {
+                        ytdBudgetCtx += budgetCtx.rev[i] || 0;
+                    }
+                }
+                context.budget = {
+                    year: lastYear,
+                    total_annual_budget: Math.round(totalBudgetRev),
+                    ytd_budget: Math.round(ytdBudgetCtx),
+                    ytd_real: Math.round(context.ytd_totals.total_revenue || 0),
+                    compliance_pct: ytdBudgetCtx > 0 ? Math.round((context.ytd_totals.total_revenue || 0) / ytdBudgetCtx * 100) : null
+                };
             }
 
             // Segments Summary (Top 5 by Revenue)
