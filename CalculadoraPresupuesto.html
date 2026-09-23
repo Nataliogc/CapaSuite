@@ -678,6 +678,12 @@
                                 <th id="th-obj-target" colspan="4"
                                     style="text-align: center; background: #eff6ff; color: #1e40af; font-size: 0.75rem; letter-spacing: 0.05em; border-right: 1px solid #dbeafe;">
                                     OBJETIVO 2026 (Presupuesto)</th>
+                                <th id="th-otb-group" colspan="3"
+                                    style="text-align: center; background: #fdf4ff; color: #7e22ce; font-size: 0.75rem; letter-spacing: 0.05em; border-right: 1px solid #e9d5ff; display: none;">
+                                    🔮 VENDIDO / OTB</th>
+                                <th id="th-cumpl-group" colspan="1"
+                                    style="text-align: center; background: #fefce8; color: #854d0e; font-size: 0.75rem; letter-spacing: 0.05em; border-right: 1px solid #fef08a; display: none;">
+                                    % CUMPL.</th>
                                 <th colspan="4"
                                     style="text-align: center; background: #f0fdf4; color: #166534; font-size: 0.75rem; letter-spacing: 0.05em;">
                                     VARIACIÓN Y KPI</th>
@@ -695,6 +701,12 @@
                                 <th style="background: #f0f7ff; color: var(--primary);">ADR Target</th>
                                 <th style="background: #f0f7ff; color: #c2410c; border-right: 1px solid #dbeafe;">RN
                                     Target</th>
+                                <!-- OTB / Vendido (solo visible para años >= 2027) -->
+                                <th id="th-otb-rev" style="color: #7e22ce; background: #faf5ff; display: none;">Rev. OTB</th>
+                                <th id="th-otb-rn"  style="color: #7e22ce; background: #faf5ff; display: none;">RN OTB</th>
+                                <th id="th-otb-gap" style="color: #7e22ce; background: #faf5ff; border-right: 1px solid #e9d5ff; display: none;">Gap vs Obj</th>
+                                <!-- Cumplimiento (solo 2026) -->
+                                <th id="th-cumpl" style="color: #854d0e; background: #fefce8; display: none;">% Cumpl.</th>
                                 <!-- KPIs -->
                                 <th style="color: #64748b;">RN %</th>
                                 <th style="color: #64748b;">ADR %</th>
@@ -703,6 +715,7 @@
                             </tr>
                         </thead>
                         <tbody id="editorBody"></tbody>
+                        <tfoot id="editorFoot" style="background:#f1f5f9; border-top:2px solid #e2e8f0; font-size:0.82rem;"></tfoot>
                     </table>
                 </div>
             </div>
@@ -2248,7 +2261,24 @@
                 }
             }
 
+            // Determine if OTB columns should be visible (only for years >= 2027 with data)
+            const showOtbCols = parseInt(currentYear) >= 2027 && h.otbData && h.otbData.some(v => v > 0);
+            const otbColDisplay = showOtbCols ? '' : 'none';
+            ['th-otb-group', 'th-otb-rev', 'th-otb-rn', 'th-otb-gap'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = otbColDisplay;
+            });
+
+            // Determine if % Cumplimiento column should be visible (only for 2026 with OTB data)
+            const showCumplCol = currentYear === '2026' && h.otbData && h.otbData.some(v => v > 0);
+            const cumplColDisplay = showCumplCol ? '' : 'none';
+            ['th-cumpl-group', 'th-cumpl'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = cumplColDisplay;
+            });
+
             let t_rev25 = 0, t_rev26 = 0, t_rn25 = 0, t_rn26 = 0, t_cap = 0;
+            let t_otbRev = 0, t_otbRN = 0;
             const disabledAttr = isBudgetLocked ? 'disabled' : '';
             const lockInputStyle = isBudgetLocked ? 'background: #f8fafc; cursor: not-allowed; opacity: 0.85;' : '';
             const lockClickAttr = isBudgetLocked ? 'onclick="promptUnlockBudget()"' : '';
@@ -2276,6 +2306,36 @@
                 const varRev = rev25 > 0 ? ((rev - rev25) / rev25 * 100) : 0;
                 const varAdr = adr25 > 0 ? ((adr - adr25) / adr25 * 100) : 0;
                 const varRn = rn25 > 0 ? ((rn - rn25) / rn25 * 100) : 0;
+
+                // OTB / Vendido para el año actual (solo visible en >= 2027)
+                const otbRev = (h.otbData && h.otbData[i]) ? h.otbData[i] : 0;
+                const otbRN  = (h.otbRN  && h.otbRN[i])  ? h.otbRN[i]  : 0;
+                t_otbRev += otbRev;
+                t_otbRN  += otbRN;
+                const otbGap = rev - otbRev;
+                const otbGapPct = rev > 0 ? (otbGap / rev * 100) : 0;
+                const otbGapColor = otbGap <= 0 ? '#16a34a' : (otbGapPct > 30 ? '#dc2626' : '#d97706');
+                const otbCellsHtml = showOtbCols ? `
+                    <td style="text-align: right; font-size: 0.78rem; font-weight: 700; color: #7e22ce; background: #faf5ff; padding: 6px 8px;">
+                        ${otbRev > 0 ? formatInt(otbRev) + ' €' : '<span style="color:#94a3b8;">&mdash;</span>'}
+                    </td>
+                    <td style="text-align: right; font-size: 0.78rem; color: #7e22ce; background: #faf5ff; padding: 6px 8px;">
+                        ${otbRN > 0 ? formatInt(otbRN) : '<span style="color:#94a3b8;">&mdash;</span>'}
+                    </td>
+                    <td style="text-align: right; font-size: 0.78rem; font-weight: 700; background: #faf5ff; border-right: 1px solid #e9d5ff; padding: 6px 8px; color: ${otbGapColor};"
+                        title="Pendiente de vender para alcanzar el objetivo">
+                        ${otbRev > 0 ? ((otbGap > 0 ? '-' : '+') + formatInt(Math.abs(otbGap)) + ' €') : '<span style="color:#94a3b8;">&mdash;</span>'}
+                    </td>` : '';
+
+                // % Cumplimiento (solo para 2026)
+                const cumplPct = rev > 0 ? (otbRev / rev * 100) : 0;
+                const cumplColor = cumplPct >= 100 ? '#16a34a' : (cumplPct >= 80 ? '#d97706' : '#dc2626');
+                const cumplBg = cumplPct >= 100 ? '#f0fdf4' : (cumplPct >= 80 ? '#fffbeb' : '#fef2f2');
+                const cumplCellHtml = showCumplCol ? `
+                    <td style="text-align: center; font-size: 0.8rem; font-weight: 700; background: ${cumplBg}; border-right: 1px solid #fef08a; padding: 6px 8px;"
+                        title="${formatNum(cumplPct)}% del objetivo de ${months[i]} cumplido">
+                        <span style="color: ${cumplColor};">${cumplPct >= 100 ? '✅' : (cumplPct >= 80 ? '🟡' : '🔴')} ${cumplPct.toFixed(1)}%</span>
+                    </td>` : '';
 
                 editorBody.innerHTML += `
                 <tr style="border-bottom: 1px solid #f1f5f9;">
@@ -2321,12 +2381,70 @@
                             onchange="updateValue('rn', ${i}, this.value)">
                     </td>
 
+                    <!-- OTB / VENDIDO (solo para >= 2027) -->
+                    ${otbCellsHtml}
+
+                    <!-- % CUMPLIMIENTO (solo para 2026) -->
+                    ${cumplCellHtml}
+
                     <!-- KPIs Y VARIACION -->
                     <td style="text-align: right; font-weight: 600; font-size: 0.8rem; color: ${varRn >= 0 ? '#10b981' : '#ef4444'}">${(varRn > 0 ? '+' : '') + varRn.toFixed(0)}%</td>
                     <td style="text-align: right; font-weight: 600; font-size: 0.8rem; color: ${varAdr >= 0 ? '#10b981' : '#ef4444'}">${(varAdr > 0 ? '+' : '') + varAdr.toFixed(0)}%</td>
                     <td style="text-align: right; font-weight: 700; font-size: 0.85rem; color: ${varRev >= 0 ? '#10b981' : '#ef4444'}">${(varRev > 0 ? '+' : '') + varRev.toFixed(1)}%</td>
                     <td style="text-align: center; padding: 0 10px;">
                         <span class="occ-badge ${occ > 100 ? 'occ-badge-danger' : (occ > 80 ? 'occ-badge-warning' : 'occ-badge-success')}" style="font-size: 0.75rem;">${occ.toFixed(1)}%</span>
+                    </td>
+                </tr>`;
+            }
+
+            // --- FOOTER TOTALS ROW ---
+            const editorFoot = document.getElementById('editorFoot');
+            if (editorFoot) {
+                const tAdr25 = t_rn25 > 0 ? t_rev25 / t_rn25 : 0;
+                const tAdr26 = t_rn26 > 0 ? t_rev26 / t_rn26 : 0;
+                const tVarRev = t_rev25 > 0 ? ((t_rev26 - t_rev25) / t_rev25 * 100) : 0;
+                const tVarAdr = tAdr25 > 0 ? ((tAdr26 - tAdr25) / tAdr25 * 100) : 0;
+                const tVarRn  = t_rn25  > 0 ? ((t_rn26  - t_rn25)  / t_rn25  * 100) : 0;
+                const tOcc    = t_cap   > 0 ? (t_rn26  / t_cap  * 100) : 0;
+                const tOtbGap = t_rev26 - t_otbRev;
+                const tOtbGapPct = t_rev26 > 0 ? (tOtbGap / t_rev26 * 100) : 0;
+                const tOtbGapColor = tOtbGap <= 0 ? '#16a34a' : (tOtbGapPct > 30 ? '#dc2626' : '#d97706');
+                const tCumplPct = t_rev26 > 0 ? (t_otbRev / t_rev26 * 100) : 0;
+                const tCumplColor = tCumplPct >= 100 ? '#16a34a' : (tCumplPct >= 80 ? '#d97706' : '#dc2626');
+                const tCumplBg = tCumplPct >= 100 ? '#f0fdf4' : (tCumplPct >= 80 ? '#fffbeb' : '#fef2f2');
+
+                const otbFootCells = showOtbCols ? `
+                    <td style="font-weight:700; color:#7e22ce; background:#faf5ff; padding:10px 8px;">${formatInt(t_otbRev)} €</td>
+                    <td style="font-weight:700; color:#7e22ce; background:#faf5ff; padding:10px 8px;">${formatInt(t_otbRN)}</td>
+                    <td style="font-weight:800; color:${tOtbGapColor}; background:#faf5ff; border-right:1px solid #e9d5ff; padding:10px 8px;">${(tOtbGap > 0 ? '-' : '+')}${formatInt(Math.abs(tOtbGap))} €</td>` : '';
+
+                const cumplFootCell = showCumplCol ? `
+                    <td style="font-weight:800; color:${tCumplColor}; background:${tCumplBg}; border-right:1px solid #fef08a; padding:10px 8px;">
+                        ${tCumplPct >= 100 ? '✅' : (tCumplPct >= 80 ? '🟡' : '🔴')} ${tCumplPct.toFixed(1)}%
+                    </td>` : '';
+
+                editorFoot.innerHTML = `
+                <tr style="font-weight:800; border-top:2px solid #e2e8f0;">
+                    <td style="text-align:left; padding:10px 15px; color:#1e293b; background:#f8fafc;">TOTAL ANUAL</td>
+                    <!-- Base -->
+                    <td style="color:#94a3b8; background:#fefafa; padding:10px 8px;">${formatInt(t_rev25)} €</td>
+                    <td style="color:#94a3b8; background:#fefafa; padding:10px 8px;">${formatInt(t_rn25)}</td>
+                    <td style="color:#94a3b8; background:#fefafa; border-right:2px solid #fee2e2; padding:10px 8px;">${tAdr25.toFixed(1)} €</td>
+                    <!-- Objetivo -->
+                    <td style="background:#f0f7ff; padding:10px 8px;">—</td>
+                    <td style="font-weight:800; color:#4f46e5; background:#e0e7ff; padding:10px 8px;">${formatInt(t_rev26)} €</td>
+                    <td style="color:#4f46e5; background:#e0e7ff; padding:10px 8px;">${tAdr26.toFixed(1)} €</td>
+                    <td style="color:#c2410c; background:#e0e7ff; border-right:1px solid #dbeafe; padding:10px 8px;">${formatInt(t_rn26)}</td>
+                    <!-- OTB -->
+                    ${otbFootCells}
+                    <!-- Cumpl -->
+                    ${cumplFootCell}
+                    <!-- KPIs -->
+                    <td style="color:${tVarRn >= 0 ? '#10b981' : '#ef4444'}; padding:10px 8px;">${(tVarRn > 0 ? '+' : '')}${tVarRn.toFixed(1)}%</td>
+                    <td style="color:${tVarAdr >= 0 ? '#10b981' : '#ef4444'}; padding:10px 8px;">${(tVarAdr > 0 ? '+' : '')}${tVarAdr.toFixed(1)}%</td>
+                    <td style="color:${tVarRev >= 0 ? '#10b981' : '#ef4444'}; padding:10px 8px;">${(tVarRev > 0 ? '+' : '')}${tVarRev.toFixed(1)}%</td>
+                    <td style="padding:10px 8px; text-align:center;">
+                        <span class="occ-badge ${tOcc > 100 ? 'occ-badge-danger' : (tOcc > 80 ? 'occ-badge-warning' : 'occ-badge-success')}" style="font-size:0.75rem;">${tOcc.toFixed(1)}%</span>
                     </td>
                 </tr>`;
             }
