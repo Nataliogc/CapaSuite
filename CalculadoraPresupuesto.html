@@ -825,12 +825,16 @@
                 // Fuente: Imagen BGT 2025 (108 habitaciones, 365 días → cap. anual: 39.420)
                 // Total: 1.369.211€ | RN: 21.726 | ADR: 63,02€ | Occ: 55%
                 // Nota: ago y oct calculados por restricción de totales (marcados con *)
+                // ── BGT 2025 — Presupuesto OFICIAL 2025 aprobado ─────────────────────────
+                // Fuente: Imagen BGT 2025 (108 habitaciones)
+                // Total: 1.369.211€ | RN: 21.726 | ADR: 63,02€ | Occ: 55%
+                // Valores derivados de acumulados exactos de la imagen ✓
                 bgt2025: {
                     capacity: [3348, 3024, 3348, 3240, 3348, 3240, 3348, 3348, 3240, 3348, 3240, 3348],
-                    //         Ene      Feb      Mar      Abr      May      Jun      Jul      Ago*     Sep      Oct*     Nov      Dic
-                    rev:  [ 43351,   63151,  122130,  186620,  133929,  141034,  141034,  132719,  114292,   98702,  107433,   84816],
-                    adr:  [ 61.93,   59.02,   53.10,   62.00,   64.70,   82.00,   67.16,   67.03,   63.85,   48.74,   62.10,   68.90],
-                    rn:   [   700,    1070,    2300,    3010,    2070,    1720,    2100,    1980,    1790,    2025,    1730,    1231]
+                    //         Ene      Feb      Mar      Abr      May      Jun      Jul      Ago      Sep      Oct      Nov      Dic
+                    rev:  [ 43351,   63742,  122130,  186620,  133929,  112504,  141034,  132707,  114292,  126654,  107433,   84815],
+                    adr:  [ 61.93,   59.02,   53.10,   62.00,   64.70,   65.60,   67.16,   67.02,   63.85,   62.70,   62.10,   68.90],
+                    rn:   [   700,    1080,    2300,    3010,    2070,    1715,    2100,    1980,    1790,    2020,    1730,    1231]
                 },
                 otbData: new Array(12).fill(0),
                 strategies: {
@@ -1018,11 +1022,11 @@
             const db = JSON.parse(CapaStorage.getItem('hotel_manager_db_v2')) || {};
             const defaults = {
                 Guadiana: {
-                    // ── REAL 2025 oficial (BGT 2025 aprobado) ─────────────────────────────
-                    //         Ene     Feb     Mar      Abr      May      Jun      Jul      Ago      Sep      Oct      Nov      Dic
-                    rev: [46629,  65367,  84793, 115352, 160450, 107417, 129720, 124567, 140798, 156106, 111396,  92671],
-                    rn:  [  783,   1110,   1398,   1739,   1984,   1591,   1838,   2141,   2350,   2637,   1785,   1532],
-                    adr: [59.55,  58.89,  60.65,  66.33,  80.87,  67.52,  70.58,  58.18,  59.91,  59.20,  62.41,  60.49]
+                    // ── BGT 2025 oficial (Presupuesto aprobado 2025, 108 hab) ──────────────
+                    //         Ene      Feb      Mar      Abr      May      Jun      Jul      Ago      Sep      Oct      Nov      Dic
+                    rev: [ 43351,   63742,  122130,  186620,  133929,  112504,  141034,  132707,  114292,  126654,  107433,   84815],
+                    rn:  [   700,    1080,    2300,    3010,    2070,    1715,    2100,    1980,    1790,    2020,    1730,    1231],
+                    adr: [ 61.93,   59.02,   53.10,   62.00,   64.70,   65.60,   67.16,   67.02,   63.85,   62.70,   62.10,   68.90]
                 },
                 Cumbria: {
                     rev: [58500, 63750, 73500, 93750, 111000, 101250, 116250, 108750, 105000, 101250, 86250, 73500],
@@ -1939,11 +1943,12 @@
             // Para 2026: siempre usar el real2025 oficial (BGT 2025 aprobado), sin mezcla con histórico.
             // Para otros años: usar el motor dinámico de blending habitual.
             if (currentYear === '2026') {
-                const official2025 = hotelData[currentHotel].real2025;
+                // BASE 2025 = Presupuesto oficial 2025 (bgt2025), no la producción real
+                const base2025 = hotelData[currentHotel].bgt2025 || hotelData[currentHotel].real2025;
                 h.referenceBase = {
-                    rev: [...official2025.rev],
-                    rn:  [...official2025.rn],
-                    adr: [...official2025.adr]
+                    rev: [...base2025.rev],
+                    rn:  [...base2025.rn],
+                    adr: [...base2025.adr]
                 };
             } else {
                 h.referenceBase = buildReferenceBaseline(currentHotel, currentYear, blendWeight);
