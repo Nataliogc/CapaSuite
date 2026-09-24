@@ -288,19 +288,27 @@
         }
 
         #editorTable {
-            min-width: unset;
-            max-width: 1000px;
+            min-width: 1050px;
+            width: 100%;
             margin: 0 auto;
         }
 
         #editorTable th,
         #editorTable td {
-            text-align: center !important;
-            padding: 12px 15px;
+            padding: 8px 10px;
+            white-space: nowrap;
         }
 
         #editorTable .text-left {
             text-align: left !important;
+        }
+
+        #editorTable .text-right {
+            text-align: right !important;
+        }
+
+        #editorTable .text-center {
+            text-align: center !important;
         }
 
         thead th {
@@ -690,28 +698,25 @@
                             </tr>
                             <tr style="background: #fff; font-size: 0.65rem;">
                                 <!-- Historico -->
-                                <th style="color: #64748b; background: #fef9f9;">Revenue</th>
-                                <th style="color: #64748b; background: #fef9f9;">RN</th>
-                                <th style="color: #64748b; background: #fef9f9; border-right: 2px solid #fee2e2;">ADR
-                                </th>
+                                <th style="color: #64748b; background: #fef9f9; min-width: 105px; text-align: right; padding-right: 10px;">Revenue</th>
+                                <th style="color: #64748b; background: #fef9f9; min-width: 65px; text-align: right; padding-right: 10px;">RN</th>
+                                <th style="color: #64748b; background: #fef9f9; border-right: 2px solid #fee2e2; min-width: 75px; text-align: right; padding-right: 10px;">ADR</th>
                                 <!-- Objetivo -->
-                                <th style="background: #f0f7ff; color: #1e40af; width: 80px;">% Subida</th>
-                                <th style="background: #f0f7ff; color: var(--primary); border-left: 1px solid #dbeafe;">
-                                    Rev Target</th>
-                                <th style="background: #f0f7ff; color: var(--primary);">ADR Target</th>
-                                <th style="background: #f0f7ff; color: #c2410c; border-right: 1px solid #dbeafe;">RN
-                                    Target</th>
+                                <th style="background: #f0f7ff; color: #1e40af; width: 75px; min-width: 75px; text-align: center;">% Subida</th>
+                                <th style="background: #f0f7ff; color: var(--primary); border-left: 1px solid #dbeafe; min-width: 120px; text-align: right; padding-right: 10px;">Rev Target</th>
+                                <th style="background: #f0f7ff; color: var(--primary); min-width: 95px; text-align: right; padding-right: 10px;">ADR Target</th>
+                                <th style="background: #f0f7ff; color: #c2410c; border-right: 1px solid #dbeafe; min-width: 75px; text-align: right; padding-right: 10px;">RN Target</th>
                                 <!-- OTB / Vendido (solo visible para años >= 2027) -->
-                                <th id="th-otb-rev" style="color: #7e22ce; background: #faf5ff; display: none;">Rev. OTB</th>
-                                <th id="th-otb-rn"  style="color: #7e22ce; background: #faf5ff; display: none;">RN OTB</th>
-                                <th id="th-otb-gap" style="color: #7e22ce; background: #faf5ff; border-right: 1px solid #e9d5ff; display: none;">Gap vs Obj</th>
+                                <th id="th-otb-rev" style="color: #7e22ce; background: #faf5ff; min-width: 100px; text-align: right; padding-right: 10px; display: none;">Rev. OTB</th>
+                                <th id="th-otb-rn"  style="color: #7e22ce; background: #faf5ff; min-width: 65px; text-align: right; padding-right: 10px; display: none;">RN OTB</th>
+                                <th id="th-otb-gap" style="color: #7e22ce; background: #faf5ff; border-right: 1px solid #e9d5ff; min-width: 100px; text-align: right; padding-right: 10px; display: none;">Gap vs Obj</th>
                                 <!-- Cumplimiento (solo 2026) -->
-                                <th id="th-cumpl" style="color: #854d0e; background: #fefce8; display: none;">% Cumpl.</th>
+                                <th id="th-cumpl" style="color: #854d0e; background: #fefce8; min-width: 85px; text-align: center; display: none;">% Cumpl.</th>
                                 <!-- KPIs -->
-                                <th style="color: #64748b;">RN %</th>
-                                <th style="color: #64748b;">ADR %</th>
-                                <th style="color: #64748b;">RRev %</th>
-                                <th style="color: #64748b;">Ocup %</th>
+                                <th style="color: #64748b; min-width: 65px; text-align: right; padding-right: 8px;">RN %</th>
+                                <th style="color: #64748b; min-width: 65px; text-align: right; padding-right: 8px;">ADR %</th>
+                                <th style="color: #64748b; min-width: 70px; text-align: right; padding-right: 8px;">RRev %</th>
+                                <th style="color: #64748b; min-width: 75px; text-align: center;">Ocup %</th>
                             </tr>
                         </thead>
                         <tbody id="editorBody"></tbody>
@@ -2379,42 +2384,42 @@
 
                 editorBody.innerHTML += `
                 <tr style="border-bottom: 1px solid #f1f5f9;">
-                    <td class="text-left font-bold" style="padding: 12px 15px; color:#1e293b; background: #fdfdfd;">${months[i]}</td>
+                    <td class="text-left font-bold" style="padding: 10px 15px; color:#1e293b; background: #fdfdfd; white-space: nowrap;">${months[i]}</td>
                     
                     <!-- HISTORICO BASE (Referencia) -->
-                    <td style="text-align: right; color:#94a3b8; font-size: 0.75rem; background: #fefafa;">${formatInt(rev25)} €</td>
-                    <td style="text-align: right; color:#94a3b8; font-size: 0.75rem; background: #fefafa;">
+                    <td style="text-align: right; white-space: nowrap; color:#94a3b8; font-size: 0.75rem; background: #fefafa; padding: 8px 10px;">${formatInt(rev25)} €</td>
+                    <td style="text-align: right; white-space: nowrap; color:#94a3b8; font-size: 0.75rem; background: #fefafa; padding: 8px 10px;">
                         ${(rn25 === 0 && rev25 > 0) ? '<span title="Falta dato de Habitaciones" style="cursor:help;">⚠️ 0</span>' : rn25}
                     </td>
-                    <td style="text-align: right; color:#94a3b8; font-size: 0.75rem; background: #fefafa; border-right: 2px solid #fee2e2;">
+                    <td style="text-align: right; white-space: nowrap; color:#94a3b8; font-size: 0.75rem; background: #fefafa; border-right: 2px solid #fee2e2; padding: 8px 10px;">
                         ${(adr25 === 0 && rev25 > 0) ? '<span title="Calculado sin Habitaciones" style="cursor:help; color:#f59e0b;">0.0 €</span>' : adr25.toFixed(1) + ' €'}
                     </td>
                     
                     <!-- OBJETIVO TARGET -->
-                    <td style="text-align: center; background: #f0f7ff;">
+                    <td style="text-align: center; white-space: nowrap; background: #f0f7ff; padding: 6px 4px;">
                         <input type="number" step="0.5" value="${varRev.toFixed(1)}" ${disabledAttr} ${lockClickAttr}
                             style="width: 65px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px; text-align: center; font-weight: 700; color: ${varRev >= 0 ? '#1e40af' : '#ef4444'}; ${lockInputStyle}"
                             onchange="applyMonthIncrease(${i}, this.value)">
                     </td>
-                    <td style="padding: 8px 5px; border-left: 1px solid #dbeafe; background: #f8fafc;">
+                    <td style="text-align: right; white-space: nowrap; padding: 6px 6px; border-left: 1px solid #dbeafe; background: #f8fafc;">
                         <input type="text" class="editable" ${disabledAttr} ${lockClickAttr}
-                            style="width: 110px; text-align: right; background: #fff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 5px 10px; font-weight:700; color:#4f46e5; ${lockInputStyle}"
+                            style="width: 110px; text-align: right; background: #fff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 5px 8px; font-weight:700; color:#4f46e5; ${lockInputStyle}"
                             value="${formatInt(rev)} €" 
                             onfocus="this.value = this.value.replace(/\\./g, '').replace(' €', '')"
                             onblur="this.value = formatInt(this.value) + ' €'"
                             onchange="updateValue('rev', ${i}, this.value)">
                     </td>
-                    <td style="padding: 8px 5px; background: #f8fafc;">
+                    <td style="text-align: right; white-space: nowrap; padding: 6px 6px; background: #f8fafc;">
                         <input type="text" class="editable" ${disabledAttr} ${lockClickAttr}
-                            style="width: 85px; text-align: right; background: #fff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 5px 10px; font-weight:700; color:#4f46e5; ${lockInputStyle}"
+                            style="width: 85px; text-align: right; background: #fff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 5px 8px; font-weight:700; color:#4f46e5; ${lockInputStyle}"
                             value="${formatNum(adr)} €" 
                             onfocus="this.value = this.value.replace(/\\./g, '').replace(',', '.').replace(' €', '')"
                             onblur="const v = parseFloat(this.value.replace(',', '.')); if(!isNaN(v)) this.value = formatNum(v) + ' €'"
                             onchange="updateValue('adr', ${i}, this.value)">
                     </td>
-                    <td style="padding: 8px 5px; border-right: 1px solid #dbeafe; background: #f8fafc;">
+                    <td style="text-align: right; white-space: nowrap; padding: 6px 6px; border-right: 1px solid #dbeafe; background: #f8fafc;">
                         <input type="text" class="editable" ${disabledAttr} ${lockClickAttr}
-                            style="width: 65px; text-align: right; background: #fff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 5px 10px; font-weight:700; color:#c2410c; ${lockInputStyle}"
+                            style="width: 65px; text-align: right; background: #fff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 5px 8px; font-weight:700; color:#c2410c; ${lockInputStyle}"
                             value="${formatInt(rn)}" 
                             onfocus="this.value = this.value.replace(/\\./g, '')"
                             onblur="this.value = formatInt(this.value)"
@@ -2428,10 +2433,10 @@
                     ${cumplCellHtml}
 
                     <!-- KPIs Y VARIACION -->
-                    <td style="text-align: right; font-weight: 600; font-size: 0.8rem; color: ${varRn >= 0 ? '#10b981' : '#ef4444'}">${(varRn > 0 ? '+' : '') + varRn.toFixed(0)}%</td>
-                    <td style="text-align: right; font-weight: 600; font-size: 0.8rem; color: ${varAdr >= 0 ? '#10b981' : '#ef4444'}">${(varAdr > 0 ? '+' : '') + varAdr.toFixed(0)}%</td>
-                    <td style="text-align: right; font-weight: 700; font-size: 0.85rem; color: ${varRev >= 0 ? '#10b981' : '#ef4444'}">${(varRev > 0 ? '+' : '') + varRev.toFixed(1)}%</td>
-                    <td style="text-align: center; padding: 0 10px;">
+                    <td style="text-align: right; white-space: nowrap; font-weight: 600; font-size: 0.8rem; padding: 8px 8px; color: ${varRn >= 0 ? '#10b981' : '#ef4444'}">${(varRn > 0 ? '+' : '') + varRn.toFixed(0)}%</td>
+                    <td style="text-align: right; white-space: nowrap; font-weight: 600; font-size: 0.8rem; padding: 8px 8px; color: ${varAdr >= 0 ? '#10b981' : '#ef4444'}">${(varAdr > 0 ? '+' : '') + varAdr.toFixed(0)}%</td>
+                    <td style="text-align: right; white-space: nowrap; font-weight: 700; font-size: 0.85rem; padding: 8px 8px; color: ${varRev >= 0 ? '#10b981' : '#ef4444'}">${(varRev > 0 ? '+' : '') + varRev.toFixed(1)}%</td>
+                    <td style="text-align: center; white-space: nowrap; padding: 8px 8px;">
                         <span class="occ-badge ${occ > 100 ? 'occ-badge-danger' : (occ > 80 ? 'occ-badge-warning' : 'occ-badge-success')}" style="font-size: 0.75rem;">${occ.toFixed(1)}%</span>
                     </td>
                 </tr>`;
@@ -2454,37 +2459,37 @@
                 const tCumplBg = tCumplPct >= 100 ? '#f0fdf4' : (tCumplPct >= 80 ? '#fffbeb' : '#fef2f2');
 
                 const otbFootCells = showOtbCols ? `
-                    <td style="font-weight:700; color:#7e22ce; background:#faf5ff; padding:10px 8px;">${formatInt(t_otbRev)} €</td>
-                    <td style="font-weight:700; color:#7e22ce; background:#faf5ff; padding:10px 8px;">${formatInt(t_otbRN)}</td>
-                    <td style="font-weight:800; color:${tOtbGapColor}; background:#faf5ff; border-right:1px solid #e9d5ff; padding:10px 8px;">${(tOtbGap > 0 ? '-' : '+')}${formatInt(Math.abs(tOtbGap))} €</td>` : '';
+                    <td style="text-align: right; white-space: nowrap; font-weight: 700; color: #7e22ce; background: #faf5ff; padding: 10px 10px;">${formatInt(t_otbRev)} €</td>
+                    <td style="text-align: right; white-space: nowrap; font-weight: 700; color: #7e22ce; background: #faf5ff; padding: 10px 10px;">${formatInt(t_otbRN)}</td>
+                    <td style="text-align: right; white-space: nowrap; font-weight: 800; color: ${tOtbGapColor}; background: #faf5ff; border-right: 1px solid #e9d5ff; padding: 10px 10px;">${(tOtbGap > 0 ? '-' : '+')}${formatInt(Math.abs(tOtbGap))} €</td>` : '';
 
                 const cumplFootCell = showCumplCol ? `
-                    <td style="font-weight:800; color:${tCumplColor}; background:${tCumplBg}; border-right:1px solid #fef08a; padding:10px 8px;">
+                    <td style="text-align: center; white-space: nowrap; font-weight: 800; color: ${tCumplColor}; background: ${tCumplBg}; border-right: 1px solid #fef08a; padding: 10px 8px;">
                         ${tCumplPct >= 100 ? '✅' : (tCumplPct >= 80 ? '🟡' : '🔴')} ${tCumplPct.toFixed(1)}%
                     </td>` : '';
 
                 editorFoot.innerHTML = `
-                <tr style="font-weight:800; border-top:2px solid #e2e8f0;">
-                    <td style="text-align:left; padding:10px 15px; color:#1e293b; background:#f8fafc;">TOTAL ANUAL</td>
+                <tr style="font-weight: 800; border-top: 2px solid #cbd5e1;">
+                    <td style="text-align: left; white-space: nowrap; padding: 10px 15px; color: #1e293b; background: #f8fafc;">TOTAL ANUAL</td>
                     <!-- Base -->
-                    <td style="color:#94a3b8; background:#fefafa; padding:10px 8px;">${formatInt(t_rev25)} €</td>
-                    <td style="color:#94a3b8; background:#fefafa; padding:10px 8px;">${formatInt(t_rn25)}</td>
-                    <td style="color:#94a3b8; background:#fefafa; border-right:2px solid #fee2e2; padding:10px 8px;">${tAdr25.toFixed(1)} €</td>
+                    <td style="text-align: right; white-space: nowrap; color: #64748b; background: #fefafa; padding: 10px 10px;">${formatInt(t_rev25)} €</td>
+                    <td style="text-align: right; white-space: nowrap; color: #64748b; background: #fefafa; padding: 10px 10px;">${formatInt(t_rn25)}</td>
+                    <td style="text-align: right; white-space: nowrap; color: #64748b; background: #fefafa; border-right: 2px solid #fee2e2; padding: 10px 10px;">${tAdr25.toFixed(1)} €</td>
                     <!-- Objetivo -->
-                    <td style="background:#f0f7ff; padding:10px 8px;">—</td>
-                    <td style="font-weight:800; color:#4f46e5; background:#e0e7ff; padding:10px 8px;">${formatInt(t_rev26)} €</td>
-                    <td style="color:#4f46e5; background:#e0e7ff; padding:10px 8px;">${tAdr26.toFixed(1)} €</td>
-                    <td style="color:#c2410c; background:#e0e7ff; border-right:1px solid #dbeafe; padding:10px 8px;">${formatInt(t_rn26)}</td>
+                    <td style="text-align: center; white-space: nowrap; background: #f0f7ff; padding: 10px 4px; color: #64748b;">—</td>
+                    <td style="text-align: right; white-space: nowrap; font-weight: 800; color: #4338ca; background: #e0e7ff; padding: 10px 10px; border-left: 1px solid #dbeafe;">${formatInt(t_rev26)} €</td>
+                    <td style="text-align: right; white-space: nowrap; font-weight: 700; color: #4338ca; background: #e0e7ff; padding: 10px 10px;">${tAdr26.toFixed(1)} €</td>
+                    <td style="text-align: right; white-space: nowrap; font-weight: 700; color: #c2410c; background: #e0e7ff; border-right: 1px solid #dbeafe; padding: 10px 10px;">${formatInt(t_rn26)}</td>
                     <!-- OTB -->
                     ${otbFootCells}
                     <!-- Cumpl -->
                     ${cumplFootCell}
                     <!-- KPIs -->
-                    <td style="color:${tVarRn >= 0 ? '#10b981' : '#ef4444'}; padding:10px 8px;">${(tVarRn > 0 ? '+' : '')}${tVarRn.toFixed(1)}%</td>
-                    <td style="color:${tVarAdr >= 0 ? '#10b981' : '#ef4444'}; padding:10px 8px;">${(tVarAdr > 0 ? '+' : '')}${tVarAdr.toFixed(1)}%</td>
-                    <td style="color:${tVarRev >= 0 ? '#10b981' : '#ef4444'}; padding:10px 8px;">${(tVarRev > 0 ? '+' : '')}${tVarRev.toFixed(1)}%</td>
-                    <td style="padding:10px 8px; text-align:center;">
-                        <span class="occ-badge ${tOcc > 100 ? 'occ-badge-danger' : (tOcc > 80 ? 'occ-badge-warning' : 'occ-badge-success')}" style="font-size:0.75rem;">${tOcc.toFixed(1)}%</span>
+                    <td style="text-align: right; white-space: nowrap; color: ${tVarRn >= 0 ? '#10b981' : '#ef4444'}; padding: 10px 8px;">${(tVarRn > 0 ? '+' : '')}${tVarRn.toFixed(1)}%</td>
+                    <td style="text-align: right; white-space: nowrap; color: ${tVarAdr >= 0 ? '#10b981' : '#ef4444'}; padding: 10px 8px;">${(tVarAdr > 0 ? '+' : '')}${tVarAdr.toFixed(1)}%</td>
+                    <td style="text-align: right; white-space: nowrap; color: ${tVarRev >= 0 ? '#10b981' : '#ef4444'}; padding: 10px 8px;">${(tVarRev > 0 ? '+' : '')}${tVarRev.toFixed(1)}%</td>
+                    <td style="padding: 10px 8px; text-align: center; white-space: nowrap;">
+                        <span class="occ-badge ${tOcc > 100 ? 'occ-badge-danger' : (tOcc > 80 ? 'occ-badge-warning' : 'occ-badge-success')}" style="font-size: 0.75rem;">${tOcc.toFixed(1)}%</span>
                     </td>
                 </tr>`;
             }
