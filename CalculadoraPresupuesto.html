@@ -778,30 +778,26 @@
                 <table class="bonus-table">
                     <thead>
                         <tr>
-                            <th class="text-left" style="width: 150px;">MES</th>
-                            <th>OBJETIVO (TARGET)</th>
-                            <th>VENDIDO / habs (REAL)</th>
-                            <th style="min-width:140px;">HAB (Habitaciones)</th>
-                            <th>DESVIACIÓN</th>
-                            <th>SUPERÁVIT (€)</th>
-                            <th style="background-color: var(--primary); color: white; border-bottom: none;">BONUS 4%
-                                (€)</th>
+                            <th class="text-left" style="width: 130px; padding: 12px 15px;">MES</th>
+                            <th style="text-align: right; padding: 12px 10px;">OBJETIVO (TARGET)</th>
+                            <th style="text-align: right; padding: 12px 10px;">VENDIDO / habs (REAL)</th>
+                            <th style="text-align: center; padding: 12px 10px; min-width: 130px;">HAB (Habitaciones)</th>
+                            <th style="text-align: right; padding: 12px 10px;">DESVIACIÓN</th>
+                            <th style="text-align: right; padding: 12px 10px;">SUPERÁVIT (€)</th>
+                            <th style="text-align: right; padding: 12px 15px; background-color: var(--primary); color: white; border-bottom: none;">BONUS 4% (€)</th>
                         </tr>
                     </thead>
                     <tbody id="bonusBody"></tbody>
                     <tfoot>
-                        <tr>
-                            <td class="text-left" style="font-weight: 800; background: #eef2ff;">TOTAL ANUAL</td>
-                            <td id="t2_target" style="font-weight: 700; background: #eef2ff;">0 €</td>
-                            <td id="t2_sold" style="font-weight: 700; background: #eef2ff;">0 €</td>
-                            <td id="t2_rn" style="font-weight: 700; background: #eef2ff;">0</td>
-                            <td id="t2_gap" style="font-weight: 700; background: #eef2ff;">0 €</td>
-                            <td id="t2_surplus" style="font-weight: 700; background: #eef2ff;">0 €</td>
-                            <td id="t2_bonus"
-                                style="background-color: var(--primary); color: white; font-size: 1.3rem; font-weight: 800; border-top: none;">
-                                0 €</td>
+                        <tr style="border-top: 2px solid #c7d2fe; background: #eef2ff;">
+                            <td class="text-left" style="font-weight: 800; padding: 12px 15px; color: #1e293b; font-size: 0.9rem; white-space: nowrap;">TOTAL ANUAL</td>
+                            <td id="t2_target" style="font-weight: 700; text-align: right; padding: 12px 10px; color: #1e293b;">0 €</td>
+                            <td id="t2_sold"   style="font-weight: 700; text-align: right; padding: 12px 10px; color: #0f172a;">0 €</td>
+                            <td id="t2_rn"     style="font-weight: 700; text-align: center; padding: 12px 10px; color: #475569;">0</td>
+                            <td id="t2_gap"    style="font-weight: 700; text-align: right; padding: 12px 10px;">0 €</td>
+                            <td id="t2_surplus" style="font-weight: 700; text-align: right; padding: 12px 10px; color: #475569;">0 €</td>
+                            <td id="t2_bonus"  style="background-color: var(--primary); color: white; font-size: 1.2rem; font-weight: 800; text-align: right; padding: 12px 15px;">0 €</td>
                         </tr>
-                    </tfoot>
                     </tfoot>
                 </table>
             </div>
@@ -816,12 +812,25 @@
                 logo: 'Imagen/logo-guadiana.svg',
                 // Capacidad mensual (habitaciones disponibles = habitaciones × días del mes)
                 capacity: [3162, 2856, 3162, 3060, 3162, 3060, 3162, 3162, 3060, 3162, 3060, 3162],
-                // ── REAL 2025 (Datos oficiales BGT 2025) ─────────────────────────────────
+                // ── REAL 2025 — Producción REAL del año (actuals) ────────────────────────
+                // Fuente: datos de producción real. Usado como BASE para comparativas del BGT 2026
+                // Total: 1.335.266€ | RN: 20.888 | Occ: 56,02%
                 real2025: {
-                    //         Ene     Feb     Mar     Abr      May      Jun      Jul      Ago      Sep      Oct      Nov      Dic
+                    //         Ene     Feb     Mar      Abr      May      Jun      Jul      Ago      Sep      Oct      Nov      Dic
                     rev:  [46629,  65367,  84793, 115352, 160450, 107417, 129720, 124567, 140798, 156106, 111396,  92671],
                     adr:  [59.55,  58.89,  60.65,  66.33,  80.87,  67.52,  70.58,  58.18,  59.91,  59.20,  62.41,  60.49],
-                    rn:   [783,   1110,   1398,   1739,   1984,   1591,   1838,   2141,   2350,   2637,   1785,   1532]
+                    rn:   [  783,   1110,   1398,   1739,   1984,   1591,   1838,   2141,   2350,   2637,   1785,   1532]
+                },
+                // ── BGT 2025 — Presupuesto OFICIAL 2025 aprobado ─────────────────────────
+                // Fuente: Imagen BGT 2025 (108 habitaciones, 365 días → cap. anual: 39.420)
+                // Total: 1.369.211€ | RN: 21.726 | ADR: 63,02€ | Occ: 55%
+                // Nota: ago y oct calculados por restricción de totales (marcados con *)
+                bgt2025: {
+                    capacity: [3348, 3024, 3348, 3240, 3348, 3240, 3348, 3348, 3240, 3348, 3240, 3348],
+                    //         Ene      Feb      Mar      Abr      May      Jun      Jul      Ago*     Sep      Oct*     Nov      Dic
+                    rev:  [ 43351,   63151,  122130,  186620,  133929,  141034,  141034,  132719,  114292,   98702,  107433,   84816],
+                    adr:  [ 61.93,   59.02,   53.10,   62.00,   64.70,   82.00,   67.16,   67.03,   63.85,   48.74,   62.10,   68.90],
+                    rn:   [   700,    1070,    2300,    3010,    2070,    1720,    2100,    1980,    1790,    2025,    1730,    1231]
                 },
                 otbData: new Array(12).fill(0),
                 strategies: {
@@ -1926,8 +1935,19 @@
 
             console.log(`🔍 Construyendo Base de Referencia para ${currentYear} (basada en ${prevYear} e histórico) para ${currentHotel}...`);
 
-            // Build dynamic blended reference baseline
-            h.referenceBase = buildReferenceBaseline(currentHotel, currentYear, blendWeight);
+            // Build reference baseline:
+            // Para 2026: siempre usar el real2025 oficial (BGT 2025 aprobado), sin mezcla con histórico.
+            // Para otros años: usar el motor dinámico de blending habitual.
+            if (currentYear === '2026') {
+                const official2025 = hotelData[currentHotel].real2025;
+                h.referenceBase = {
+                    rev: [...official2025.rev],
+                    rn:  [...official2025.rn],
+                    adr: [...official2025.adr]
+                };
+            } else {
+                h.referenceBase = buildReferenceBaseline(currentHotel, currentYear, blendWeight);
+            }
             h.real2025 = h.referenceBase; // Backward compatibility with all existing formulas
 
             h.otbData = new Array(12).fill(0);
@@ -1949,12 +1969,17 @@
 
             const thHistRef = document.getElementById('th-hist-ref');
             if (thHistRef) {
-                const histPct = Math.round(blendWeight * 100);
-                const prevPct = 100 - histPct;
-                const blendSub = histPct > 0 
-                    ? `<br><span style="font-size:0.65rem; font-weight:normal; opacity:0.85;">(${prevPct}% ${prevYear} + ${histPct}% Histórico)</span>`
-                    : `<br><span style="font-size:0.65rem; font-weight:normal; opacity:0.85;">(100% ${prevYear})</span>`;
-                thHistRef.innerHTML = `BASE ${prevYear} (Referencia)${blendSub}`;
+                if (currentYear === '2026') {
+                    // Para 2026: BASE 2025 es el BGT 2025 oficial exacto, sin blend
+                    thHistRef.innerHTML = `BASE ${prevYear} (Referencia)<br><span style="font-size:0.65rem; font-weight:normal; opacity:0.85;">(BGT ${prevYear} Oficial)</span>`;
+                } else {
+                    const histPct = Math.round(blendWeight * 100);
+                    const prevPct = 100 - histPct;
+                    const blendSub = histPct > 0 
+                        ? `<br><span style="font-size:0.65rem; font-weight:normal; opacity:0.85;">(${prevPct}% ${prevYear} + ${histPct}% Histórico)</span>`
+                        : `<br><span style="font-size:0.65rem; font-weight:normal; opacity:0.85;">(100% ${prevYear})</span>`;
+                    thHistRef.innerHTML = `BASE ${prevYear} (Referencia)${blendSub}`;
+                }
             }
 
             const thObjTarget = document.getElementById('th-obj-target');
@@ -2769,21 +2794,21 @@
                 }
 
                 tbody.innerHTML += `<tr class="${rowClass}">
-                <td class="text-left font-bold" style="color: #1e293b;">${months[i]} ${statusIcon}</td>
-                <td style="color: #64748b;">${formatMoney(target)}</td>
-                <td style="font-weight: 600; color: #0f172a;">${formatMoney(sold)}</td>
-                <td>
+                <td class="text-left font-bold" style="color: #1e293b; padding: 10px 15px;">${months[i]} ${statusIcon}</td>
+                <td style="color: #64748b; text-align: right; padding: 10px 10px;">${formatMoney(target)}</td>
+                <td style="font-weight: 600; color: #0f172a; text-align: right; padding: 10px 10px;">${formatMoney(sold)}</td>
+                <td style="text-align: center; padding: 10px 10px;">
                     <div class="otb-badge-mini" title="Rooms On-The-Books">
                         <span style="font-size:0.6rem; opacity:0.7;">habs</span>
                         <span>${rnSold}</span>
                     </div>
                     ${pickupHTML}
                 </td>
-                <td style="font-weight: 600;" class="${diff >= 0 ? 'text-success' : 'text-danger'}">
+                <td style="font-weight: 600; text-align: right; padding: 10px 10px;" class="${diff >= 0 ? 'text-success' : 'text-danger'}">
                     ${diff > 0 ? '+' : (diff < 0 ? '' : '')}${formatMoney(diff).replace('0,00 €', '0 €')}
                 </td>
-                <td style="color: #475569;">${surplus > 0 ? formatMoney(surplus) : '-'}</td>
-                <td style="font-weight: 700; color: var(--primary-dark); background-color: ${isMet ? 'rgba(79, 70, 229, 0.03)' : 'transparent'};">
+                <td style="color: #475569; text-align: right; padding: 10px 10px;">${surplus > 0 ? formatMoney(surplus) : '-'}</td>
+                <td style="font-weight: 700; color: var(--primary-dark); text-align: right; padding: 10px 15px; background-color: ${isMet ? 'rgba(79, 70, 229, 0.03)' : 'transparent'};">
                     ${bonus > 0 ? formatMoney(bonus) : '-'}
                 </td>
             </tr>`;
