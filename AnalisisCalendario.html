@@ -872,11 +872,7 @@
             <div style="width:1px; height:24px; background:var(--border); margin:0 8px;"></div>
             
             <select id="yearSelector" onchange="onFilterChange()">
-                <!-- Rellenado dinámicamente -->
-                <option value="2025">2025</option>
-                <option value="2026" selected>2026</option>
-                <option value="2027">2027</option>
-                <option value="2028">2028</option>
+                <!-- Rellenado dinámicamente con año actual y próximo -->
             </select>
             <select id="metricSelector" onchange="renderCalendar()" style="min-width: 250px;">
                 <option value="market_avg">🌐 Ver Media Mercado (Todos los Hoteles)</option>
@@ -1070,34 +1066,16 @@
 
         function populateYearSelector() {
             const selector = document.getElementById('yearSelector');
-            const yearsSet = new Set(['2025', '2026', '2027']);
-            
-            Object.values(db).forEach(hotelData => {
-                if(hotelData && typeof hotelData === 'object') {
-                    Object.keys(hotelData).forEach(k => {
-                        if (k.length === 4 && !isNaN(k)) yearsSet.add(k);
-                    });
-                }
-            });
+            const curY = new Date().getFullYear();
+            const nextY = curY + 1;
+            const allowedYears = [String(curY), String(nextY)];
 
-            if (Array.isArray(rawEvents)) {
-                rawEvents.forEach(e => {
-                    if (e.start) {
-                        const y = e.start.split('-')[0];
-                        if (y && y.length === 4 && !isNaN(y)) yearsSet.add(y);
-                    }
-                });
+            let currentSelected = selector.value;
+            if (!allowedYears.includes(currentSelected)) {
+                currentSelected = String(curY);
             }
 
-            Object.keys(revenueData).forEach(iso => {
-                const y = iso.split('-')[0];
-                if (y && y.length === 4 && !isNaN(y)) yearsSet.add(y);
-            });
-            
-            const currentSelected = selector.value || new Date().getFullYear().toString();
-            const sortedYears = Array.from(yearsSet).sort();
-            
-            selector.innerHTML = sortedYears.map(y => {
+            selector.innerHTML = allowedYears.map(y => {
                 return `<option value="${y}" ${y === currentSelected ? 'selected' : ''}>${y}</option>`;
             }).join('');
         }
@@ -1234,17 +1212,9 @@
         }
 
         function enrichRevenueData() {
-            const yearsToEnrich = new Set(['2025', '2026', '2027']);
-            const selY = document.getElementById('yearSelector')?.value;
-            if (selY) yearsToEnrich.add(selY);
-
-            Object.values(db).forEach(hotelData => {
-                if (hotelData && typeof hotelData === 'object') {
-                    Object.keys(hotelData).forEach(k => {
-                        if (k.length === 4 && !isNaN(k)) yearsToEnrich.add(k);
-                    });
-                }
-            });
+            const curY = new Date().getFullYear();
+            const nextY = curY + 1;
+            const yearsToEnrich = new Set([String(curY), String(nextY)]);
 
             let manualCuposDB = {};
             try { manualCuposDB = JSON.parse(CapaStorage.getItem('manual_cupos_v1') || '{}'); } catch(e) {}
