@@ -846,7 +846,7 @@
         </div>
     </nav>
 
-    <div id="syncToast" class="sync-toast">✨ Sincronizando...</div>
+    <div id="syncToast" class="sync-toast" style="display: none;">✨ Sincronizando...</div>
 
     <header class="page-header">
         <div class="header-title">
@@ -951,8 +951,9 @@
 
             window.addEventListener('capasuite-data-synced', () => {
                 const toast = document.getElementById('syncToast');
-                toast.style.display = 'block';
-                setTimeout(() => { loadAllData(); toast.style.display = 'none'; }, 2000);
+                if (toast) toast.style.display = 'block';
+                loadAllData();
+                setTimeout(() => { if (toast) toast.style.display = 'none'; }, 800);
             });
 
             function syncThemeIcon() {
@@ -1245,22 +1246,28 @@
                 }
             });
 
+            let manualCuposDB = {};
+            try { manualCuposDB = JSON.parse(CapaStorage.getItem('manual_cupos_v1') || '{}'); } catch(e) {}
+
+            const hotelKeys = {
+                Guadiana: Object.keys(db).find(k => k.toLowerCase().includes('guadiana')),
+                Cumbria: Object.keys(db).find(k => k.toLowerCase().includes('cumbria'))
+            };
+
             yearsToEnrich.forEach(yearStr => {
                 const year = parseInt(yearStr);
                 if (isNaN(year)) return;
 
                 for (let m = 0; m < 12; m++) {
                     const daysInM = new Date(year, m + 1, 0).getDate();
+                    const monthPadded = String(m + 1).padStart(2, '0');
                     for (let d = 1; d <= daysInM; d++) {
-                        const iso = `${year}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                        const iso = `${year}-${monthPadded}-${String(d).padStart(2, '0')}`;
                         if (!revenueData[iso]) revenueData[iso] = { dateISO: iso, hotels: {}, occupancyData: {} };
                         if (!revenueData[iso].occupancyData) revenueData[iso].occupancyData = {};
 
-                        let manualCuposDB = {};
-                        try { manualCuposDB = JSON.parse(CapaStorage.getItem('manual_cupos_v1') || '{}'); } catch(e) {}
-
                         ['Guadiana', 'Cumbria'].forEach(hName => {
-                            const hKey = Object.keys(db).find(k => k.toLowerCase().includes(hName.toLowerCase()));
+                            const hKey = hotelKeys[hName];
                             if (hKey && db[hKey][yearStr]) {
                                 const yearData = db[hKey][yearStr];
                                 let adr = 0, otb = 0, occ = 0, otb_prev = null;
