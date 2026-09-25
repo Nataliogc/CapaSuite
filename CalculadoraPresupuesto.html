@@ -3111,6 +3111,91 @@
             const recOccRemaining = (daysRemaining > 0 && hotelRooms > 0) ? ((recDailyRN / hotelRooms) * 100) : 0;
             const recFinalOcc = totalCap > 0 ? ((soldRN + recRN) / totalCap * 100) : 0;
 
+            // -------------------------------------------------------------
+            // DÍA A DÍA REAL: DISPONIBILIDAD FÍSICA Y REPARTO ADAPTATIVO
+            // -------------------------------------------------------------
+            const dailyBreakdown = [];
+            let totalFreeRoomsInRemainingDays = 0;
+            let totalBookedInRemainingDays = 0;
+
+            if (isCurrent || isFuture) {
+                const startDay = isCurrent ? daysElapsed + 1 : 1;
+                const manualCuposDB = JSON.parse(CapaStorage.getItem('manual_cupos_v1')) || {};
+
+                for (let d = startDay; d <= daysInMonth; d++) {
+                    const iso = `${currentYear}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                    const dateObj = new Date(parseInt(currentYear), m, d);
+                    const dayOfWeek = dateObj.toLocaleDateString('es-ES', { weekday: 'short' });
+                    const capDay = hotelRooms;
+                    
+                    let dayOtbRooms = 0;
+                    let dayOtbRev = 0;
+
+                    if (cyData && cyData.daily_otb && cyData.daily_otb[iso] !== undefined) {
+                        const v = cyData.daily_otb[iso];
+                        dayOtbRooms = Math.round(typeof v === 'object' ? (v.rooms || 0) : (parseFloat(v) || 0));
+                        dayOtbRev = typeof v === 'object' ? (v.revenue || 0) : 0;
+                    } else if (cyData && cyData.daily && cyData.daily[iso] !== undefined) {
+                        const v = cyData.daily[iso];
+                        dayOtbRooms = Math.round(typeof v === 'object' ? (v.rooms || 0) : (parseFloat(v) || 0));
+                        dayOtbRev = typeof v === 'object' ? (v.revenue || 0) : 0;
+                    }
+
+                    const mCupos = manualCuposDB[currentHotel]?.[iso];
+                    if (mCupos && mCupos.cupos !== undefined) {
+                        dayOtbRooms += mCupos.cupos;
+                    }
+                    if (mCupos?.isSoldOut) {
+                        dayOtbRooms = capDay;
+                    }
+
+                    const booked = Math.min(capDay, Math.max(0, dayOtbRooms));
+                    const free = Math.max(0, capDay - booked);
+                    const occPct = capDay > 0 ? (booked / capDay * 100) : 0;
+
+                    totalBookedInRemainingDays += booked;
+                    totalFreeRoomsInRemainingDays += free;
+
+                    dailyBreakdown.push({
+                        dayNum: d,
+                        iso,
+                        dayOfWeek: dayOfWeek.charAt(0).toUpperCase() + dayOfWeek.slice(1),
+                        booked,
+                        free,
+                        occPct,
+                        capDay,
+                        dayOtbRev
+                    });
+                }
+            }
+
+            // Reparto adaptativo con tope de capacidad por día
+            if (totalFreeRoomsInRemainingDays > 0) {
+                dailyBreakdown.forEach(d => {
+                    d.suggestedPickup = Math.min(d.free, Math.round((d.free / totalFreeRoomsInRemainingDays) * rnNeeded1));
+                });
+                let distributedSum = dailyBreakdown.reduce((sum, d) => sum + d.suggestedPickup, 0);
+                let diffRn = rnNeeded1 - distributedSum;
+                if (diffRn !== 0) {
+                    for (let d of dailyBreakdown) {
+                        if (diffRn === 0) break;
+                        if (diffRn > 0 && d.suggestedPickup < d.free) {
+                            d.suggestedPickup++;
+                            diffRn--;
+                        } else if (diffRn < 0 && d.suggestedPickup > 0) {
+                            d.suggestedPickup--;
+                            diffRn++;
+                        }
+                    }
+                }
+            } else {
+                dailyBreakdown.forEach(d => { d.suggestedPickup = 0; });
+            }
+
+            const freeInventoryConversionPct = totalFreeRoomsInRemainingDays > 0 ? (rnNeeded1 / totalFreeRoomsInRemainingDays * 100) : 0;
+            const currentRemainingDaysOcc = (capRemaining > 0) ? (totalBookedInRemainingDays / capRemaining * 100) : 0;
+            const finalRemainingDaysOcc = (capRemaining > 0) ? ((totalBookedInRemainingDays + Math.min(rnNeeded1, totalFreeRoomsInRemainingDays)) / capRemaining * 100) : 0;
+
             // Store in global state for simulator
             currentPacingData = {
                 monthIdx: m,
@@ -3153,7 +3238,13 @@
                 recRN,
                 recDailyRN,
                 recOccRemaining,
-                recFinalOcc
+                recFinalOcc,
+                totalFreeRoomsInRemainingDays,
+                totalBookedInRemainingDays,
+                freeInventoryConversionPct,
+                currentRemainingDaysOcc,
+                finalRemainingDaysOcc,
+                dailyBreakdown
             };
 
             // Render Month Selector Pills
@@ -3229,7 +3320,7 @@
                                     <span>🎯</span> Indicaciones Clave: ¿Qué necesito hasta final de mes?
                                 </h3>
                                 <p style="margin: 3px 0 0 0; font-size: 0.8rem; color: #64748b;">
-                                    Metas requeridas por día en los <b>${daysRemaining} días restantes</b> para facturar los <b>${formatMoney(gapRev)}</b> pendientes.
+                                    Metas requeridas en los <b>${daysRemaining} días restantes</b> para facturar los <b>${formatMoney(gapRev)}</b> pendientes.
                                 </p>
                             </div>
                             <span style="background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; font-size: 0.8rem; font-weight: 800; padding: 4px 10px; border-radius: 20px;">
@@ -3251,29 +3342,29 @@
                                 </div>
                             </div>
 
-                            <!-- Habitaciones por día -->
+                            <!-- Habitaciones totales a vender -->
                             <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
                                 <div style="font-size: 0.72rem; text-transform: uppercase; color: #64748b; font-weight: 700; display: flex; align-items: center; gap: 5px;">
-                                    <span>🏨</span> Habitaciones / Día (al ADR Obj.)
+                                    <span>🏨</span> Hab. Adicionales (Pick-up)
                                 </div>
                                 <div style="font-size: 1.45rem; font-weight: 800; color: #c2410c; margin: 4px 0 2px 0;">
-                                    ${dailyRN1.toFixed(1)} <span style="font-size: 0.9rem; font-weight: 600;">habs/día</span>
+                                    +${rnNeeded1} <span style="font-size: 0.9rem; font-weight: 600;">habs total</span>
                                 </div>
                                 <div style="font-size: 0.75rem; color: #64748b;">
-                                    Total a vender: <b>${rnNeeded1} habs</b> (a ${targetAdr.toFixed(1)}€)
+                                    Representa el <b>${freeInventoryConversionPct.toFixed(1)}%</b> de las <b>${totalFreeRoomsInRemainingDays} libres</b>
                                 </div>
                             </div>
 
-                            <!-- % Ocupación diaria requerida -->
+                            <!-- % Ocupación en días restantes -->
                             <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
                                 <div style="font-size: 0.72rem; text-transform: uppercase; color: #64748b; font-weight: 700; display: flex; align-items: center; gap: 5px;">
-                                    <span>📊</span> % Ocupación Necesaria
+                                    <span>📊</span> % Ocup. Días Restantes
                                 </div>
-                                <div style="font-size: 1.45rem; font-weight: 800; color: ${occRemaining1 > 100 ? '#ef4444' : (occRemaining1 > 80 ? '#d97706' : '#10b981')}; margin: 4px 0 2px 0;">
-                                    ${occRemaining1.toFixed(1)}% <span style="font-size: 0.8rem; font-weight: 600;">en días rest.</span>
+                                <div style="font-size: 1.45rem; font-weight: 800; color: ${finalRemainingDaysOcc > 100 ? '#ef4444' : (finalRemainingDaysOcc > 85 ? '#d97706' : '#10b981')}; margin: 4px 0 2px 0;">
+                                    ${finalRemainingDaysOcc.toFixed(1)}% <span style="font-size: 0.8rem; font-weight: 600;">proyectada</span>
                                 </div>
                                 <div style="font-size: 0.75rem; color: #64748b;">
-                                    Ocup. final resultante: <b>${finalOcc1.toFixed(1)}%</b>
+                                    Actual en libros: <b>${currentRemainingDaysOcc.toFixed(1)}%</b> (${totalBookedInRemainingDays} habs)
                                 </div>
                             </div>
 
@@ -3290,12 +3381,111 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Availability Reality Callout -->
+                        <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 12px 16px; margin-top: 12px; font-size: 0.82rem; color: #92400e; display: flex; align-items: flex-start; gap: 10px;">
+                            <span style="font-size: 1.2rem; line-height: 1;">💡</span>
+                            <div style="line-height: 1.45;">
+                                <b>Realidad de Capacidad Física:</b> En días de alta ocupación no se pueden vender 20 habs (p. ej. si solo quedan 6 o 12 libres). 
+                                El objetivo se consigue captando volumen en los días abiertos (<b>Domingos y Lunes</b>) y <b>subiendo la tarifa media (ADR alto)</b> en los días casi llenos para generar más ingresos con menor número de habitaciones.
+                            </div>
+                        </div>
                     </div>`;
+            }
+
+            // Daily Breakdown Table HTML
+            let dailyTableHtml = '';
+            if (dailyBreakdown.length > 0 && gapRev > 0) {
+                const rowsHtml = dailyBreakdown.map(d => {
+                    const finalOcc = d.capDay > 0 ? ((d.booked + d.suggestedPickup) / d.capDay * 100) : 0;
+                    let statusBadge = '';
+                    let tacticText = '';
+                    if (d.free <= 10) {
+                        statusBadge = `<span style="background:#fee2e2; color:#dc2626; font-size:0.7rem; font-weight:800; padding:2px 6px; border-radius:4px;">🔴 Casi Completo</span>`;
+                        tacticText = `<span style="color:#b91c1c; font-weight:700;">💎 Tarifa Alta / Últimas ${d.free} habs a precio premium (ADR > 110€)</span>`;
+                    } else if (d.free <= 20) {
+                        statusBadge = `<span style="background:#fef3c7; color:#d97706; font-size:0.7rem; font-weight:800; padding:2px 6px; border-radius:4px;">🟡 Alta Ocup.</span>`;
+                        tacticText = `<span style="color:#b45309;">💎 Yielding activo / Proteger tarifa</span>`;
+                    } else {
+                        statusBadge = `<span style="background:#dcfce7; color:#15803d; font-size:0.7rem; font-weight:800; padding:2px 6px; border-radius:4px;">🟢 Disponible</span>`;
+                        tacticText = `<span style="color:#15803d; font-weight:700;">🏷️ Concentrar volumen (${d.free} habs libres)</span>`;
+                    }
+
+                    return `
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 8px 10px; font-weight: 700; color: #1e293b; white-space: nowrap;">
+                                ${d.dayNum} ${d.dayOfWeek}
+                            </td>
+                            <td style="padding: 8px 10px; text-align: center;">
+                                <span style="font-weight:700; color:#475569;">${d.booked}</span><span style="font-size:0.7rem; color:#94a3b8;">/${d.capDay}</span>
+                                <span style="font-size:0.72rem; color:#64748b; margin-left:4px;">(${d.occPct.toFixed(0)}%)</span>
+                            </td>
+                            <td style="padding: 8px 10px; text-align: center; font-weight: 800; color: ${d.free <= 10 ? '#dc2626' : (d.free <= 20 ? '#d97706' : '#15803d')}; background: ${d.free <= 10 ? '#fef2f2' : (d.free <= 20 ? '#fffbeb' : '#f0fdf4')};">
+                                ${d.free} libres
+                            </td>
+                            <td style="padding: 8px 10px; text-align: center; font-weight: 800; color: #4338ca; background: #eef2ff;">
+                                +${d.suggestedPickup} habs
+                            </td>
+                            <td style="padding: 8px 10px; text-align: center; font-weight: 700; color: ${finalOcc > 95 ? '#dc2626' : (finalOcc > 80 ? '#d97706' : '#15803d')};">
+                                ${finalOcc.toFixed(1)}% (${d.booked + d.suggestedPickup}/${d.capDay})
+                            </td>
+                            <td style="padding: 8px 10px; font-size: 0.78rem;">
+                                ${tacticText}
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+                dailyTableHtml = `
+                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px; margin-top: 14px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                            <div>
+                                <h4 style="margin: 0; font-size: 1rem; color: #0f172a; font-weight: 800; display: flex; align-items: center; gap: 6px;">
+                                    <span>📅</span> Disponibilidad Real y Reparto Diario de Pick-up (Día a Día)
+                                </h4>
+                                <p style="margin: 2px 0 0 0; font-size: 0.8rem; color: #64748b;">
+                                    El hotel dispone de <b>${totalFreeRoomsInRemainingDays} habitaciones libres reales</b> en total. El reparto adapta las ventas a los días con inventario abierto.
+                                </p>
+                            </div>
+                            <div style="font-size: 0.8rem; background: #f1f5f9; padding: 4px 10px; border-radius: 8px; color: #475569; font-weight: 700;">
+                                Total Libres: <b>${totalFreeRoomsInRemainingDays} habs</b> • Objetivo Pick-up: <b>${rnNeeded1} habs</b> (${freeInventoryConversionPct.toFixed(1)}% de las libres)
+                            </div>
+                        </div>
+                        
+                        <div style="overflow-x: auto;">
+                            <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem;">
+                                <thead>
+                                    <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; color: #64748b; font-size: 0.72rem; text-transform: uppercase;">
+                                        <th style="padding: 8px 10px; text-align: left;">Fecha</th>
+                                        <th style="padding: 8px 10px; text-align: center;">OTB Actual</th>
+                                        <th style="padding: 8px 10px; text-align: center;">Hab. Libres</th>
+                                        <th style="padding: 8px 10px; text-align: center; background: #e0e7ff; color: #4338ca;">Venta Sugerida</th>
+                                        <th style="padding: 8px 10px; text-align: center;">Ocup. Proyectada</th>
+                                        <th style="padding: 8px 10px; text-align: left;">Táctica Revenue Sugerida</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${rowsHtml}
+                                </tbody>
+                                <tfoot style="background: #f8fafc; font-weight: 800; border-top: 2px solid #cbd5e1; font-size: 0.82rem;">
+                                    <tr>
+                                        <td style="padding: 8px 10px; text-align: left;">TOTAL ${daysRemaining} DÍAS</td>
+                                        <td style="padding: 8px 10px; text-align: center; color: #475569;">${totalBookedInRemainingDays}/${capRemaining} (${currentRemainingDaysOcc.toFixed(1)}%)</td>
+                                        <td style="padding: 8px 10px; text-align: center; color: #15803d;">${totalFreeRoomsInRemainingDays} libres</td>
+                                        <td style="padding: 8px 10px; text-align: center; color: #4338ca; background: #e0e7ff;">+${rnNeeded1} habs</td>
+                                        <td style="padding: 8px 10px; text-align: center; color: #4338ca;">${finalRemainingDaysOcc.toFixed(1)}% (${totalBookedInRemainingDays + Math.min(rnNeeded1, totalFreeRoomsInRemainingDays)}/${capRemaining})</td>
+                                        <td style="padding: 8px 10px; font-size: 0.75rem; color: #64748b;">${rnNeeded1 <= totalFreeRoomsInRemainingDays ? '✅ 100% viable con inventario físico real' : '🔴 Excede habitaciones libres (subir ADR)'}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                `;
             }
 
             // Strategic Levers Grid HTML
             const leversSectionHtml = `
-                <div>
+                <div style="margin-top: 14px;">
                     <h4 style="margin: 0 0 10px 0; font-size: 1rem; color: #1e293b; font-weight: 800; display: flex; align-items: center; gap: 6px;">
                         <span>⚖️</span> 3 Estrategias Tácticas para Alcanzar el Objetivo
                     </h4>
@@ -3308,16 +3498,16 @@
                                     <span style="background: #eef2ff; color: #4338ca; font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 6px;">ADR Fijo: ${targetAdr.toFixed(1)}€</span>
                                 </div>
                                 <p style="margin: 0 0 10px 0; font-size: 0.8rem; color: #64748b; line-height: 1.35;">
-                                    Mantener el precio medio de presupuesto y concentrar esfuerzos en volumen de habitaciones.
+                                    Mantener el precio medio de presupuesto y concentrar esfuerzos en volumen de habitaciones en los días con inventario libre.
                                 </p>
                                 <ul style="margin: 0; padding-left: 18px; font-size: 0.82rem; color: #334155; line-height: 1.6;">
-                                    <li>Habitaciones necesarias: <b>${rnNeeded1} habs</b> (${dailyRN1.toFixed(1)}/día)</li>
-                                    <li>Ocupación en días restantes: <b>${occRemaining1.toFixed(1)}%</b></li>
-                                    <li>Ocupación final del mes: <b>${finalOcc1.toFixed(1)}%</b></li>
+                                    <li>Habitaciones a vender: <b>+${rnNeeded1} habs</b> (${freeInventoryConversionPct.toFixed(1)}% de las libres)</li>
+                                    <li>Ocupación media en estos ${daysRemaining} días: <b>${finalRemainingDaysOcc.toFixed(1)}%</b></li>
+                                    <li>Ocupación final del mes completo: <b>${finalOcc1.toFixed(1)}%</b></li>
                                 </ul>
                             </div>
-                            <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid #f1f5f9; font-size: 0.78rem; font-weight: 700; color: ${feasible1 ? '#10b981' : '#ef4444'};">
-                                ${feasible1 ? '🟢 Físicamente factible' : '🔴 Inviable (>100% capacidad hotel)'}
+                            <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid #f1f5f9; font-size: 0.78rem; font-weight: 700; color: ${rnNeeded1 <= totalFreeRoomsInRemainingDays ? '#10b981' : '#ef4444'};">
+                                ${rnNeeded1 <= totalFreeRoomsInRemainingDays ? `🟢 Físicamente factible (${totalFreeRoomsInRemainingDays - rnNeeded1} habs libres sobrantes)` : '🔴 Inviable: Faltan habs físicas libres (subir ADR)'}
                             </div>
                         </div>
 
@@ -3329,11 +3519,11 @@
                                     <span style="background: #f0f9ff; color: #0284c7; font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 6px;">Volumen Fijo</span>
                                 </div>
                                 <p style="margin: 0 0 10px 0; font-size: 0.8rem; color: #64748b; line-height: 1.35;">
-                                    Vender solo las <b>${rnNeeded2} habitaciones</b> presupuestadas que faltan, elevando el ADR.
+                                    Vender solo las <b>${rnNeeded2} habitaciones</b> presupuestadas que faltan, elevando el ADR medio.
                                 </p>
                                 <ul style="margin: 0; padding-left: 18px; font-size: 0.82rem; color: #334155; line-height: 1.6;">
                                     <li>Precio necesario (ADR): <b>${adrNeeded2.toFixed(2)} €</b></li>
-                                    <li>Habitaciones a vender: <b>${rnNeeded2} habs</b> (${dailyRN2.toFixed(1)}/día)</li>
+                                    <li>Habitaciones a vender: <b>+${rnNeeded2} habs</b></li>
                                     <li>ADR medio final del mes: <b>${finalAdr2.toFixed(2)} €</b></li>
                                 </ul>
                             </div>
@@ -3354,8 +3544,8 @@
                                 </p>
                                 <ul style="margin: 0; padding-left: 18px; font-size: 0.82rem; color: #334155; line-height: 1.6;">
                                     <li>Tarifa sugerida: <b>${recAdr.toFixed(2)} € ADR</b></li>
-                                    <li>Habitaciones sugeridas: <b>${recRN} habs</b> (${recDailyRN.toFixed(1)}/día)</li>
-                                    <li>Ocupación diaria requerida: <b>${recOccRemaining.toFixed(1)}%</b></li>
+                                    <li>Habitaciones sugeridas: <b>+${recRN} habs</b></li>
+                                    <li>Ocupación en días restantes: <b>${recFinalOcc.toFixed(1)}%</b></li>
                                 </ul>
                             </div>
                             <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid #f1f5f9; font-size: 0.78rem; font-weight: 700; color: #10b981;">
@@ -3520,6 +3710,9 @@
                     <!-- Hero Box with Key Indications -->
                     ${heroSectionHtml}
 
+                    <!-- Daily Availability & Adaptive Distribution Table -->
+                    ${dailyTableHtml}
+
                     <!-- 3 Strategy Levers -->
                     ${leversSectionHtml}
 
@@ -3639,6 +3832,13 @@
         function copyPacingActionPlan() {
             if (!currentPacingData) return;
             const d = currentPacingData;
+            let dailyPlanText = "";
+            if (d.dailyBreakdown && d.dailyBreakdown.length > 0) {
+                dailyPlanText = "\n\n📅 DISPONIBILIDAD Y REPARTO REAL DÍA A DÍA:\n" + d.dailyBreakdown.map(day => 
+                    `- ${day.dayNum} ${day.dayOfWeek}: OTB ${day.booked}/${day.capDay} (${day.occPct.toFixed(0)}%) | ${day.free} libres | Venta sugerida: +${day.suggestedPickup} habs`
+                ).join("\n");
+            }
+
             const text = `📊 PLAN TÁCTICO DE CONSECUCIÓN DE PRESUPUESTO - ${d.fullMonth.toUpperCase()} ${currentYear}
 Hotel: ${currentHotel} (${d.hotelRooms} habs)
 
@@ -3655,12 +3855,13 @@ Hotel: ${currentHotel} (${d.hotelRooms} habs)
 
 ⚡ METAS NECESARIAS (${d.daysRemaining} DÍAS RESTANTES HASTA FIN DE MES):
 - Producción Necesaria / Día: ${formatMoney(d.dailyRevNeeded)} / día
-- Habitaciones Necesarias / Día (al ADR Objetivo): ${d.dailyRN1.toFixed(1)} habs/día (Total: ${d.rnNeeded1} habs)
-- % Ocupación Diaria Requerida: ${d.occRemaining1.toFixed(1)}% (Ocupación final mes: ${d.finalOcc1.toFixed(1)}%)
-- Precio Medio Necesario (ADR si vendes habs presupuestadas): ${d.adrNeeded2.toFixed(2)} € ADR
+- Hab. Libres Reales Totales: ${d.totalFreeRoomsInRemainingDays} habitaciones libres
+- Hab. a Vender (Pick-up): +${d.rnNeeded1} habs (${d.freeInventoryConversionPct.toFixed(1)}% de las libres)
+- % Ocupación en días restantes: ${d.finalRemainingDaysOcc.toFixed(1)}% (Ocupación final mes: ${d.finalOcc1.toFixed(1)}%)
+- Precio Medio Necesario (ADR si vendes habs presupuestadas): ${d.adrNeeded2.toFixed(2)} € ADR${dailyPlanText}
 
 💡 RECOMENDACIÓN REVENUE MANAGEMENT:
-Tarifa sugerida: ${d.recAdr.toFixed(2)} € ADR • Venta diaria: ${d.recDailyRN.toFixed(1)} habs/día (${d.recOccRemaining.toFixed(1)}% Ocup. diaria).
+Tarifa sugerida: ${d.recAdr.toFixed(2)} € ADR • Venta sugerida: +${d.recRN} habs (${d.recOccRemaining.toFixed(1)}% Ocupación en días restantes).
 Generado con CapaSuite Presupuestos.`;
 
             if (navigator.clipboard && navigator.clipboard.writeText) {
