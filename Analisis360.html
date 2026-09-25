@@ -1219,12 +1219,12 @@
                 <div class="trend" id="kpi-rev-vs-prev" style="margin-bottom: 8px;">
                     <span style="font-size: 0.9rem;">--</span> vs Año Anterior
                 </div>
-                <div class="budget-progress-container">
+                <div class="budget-progress-container" style="cursor: pointer;" onclick="const m = typeof currentMonth !== 'undefined' ? currentMonth : -1; window.location.href='CalculadoraPresupuesto.html?openPacing=true&pacingMonth=' + m;" title="💡 Clic para ver habitaciones y precio medio necesarios para conseguir el objetivo">
                     <div id="budget-bar-rev" class="budget-progress-bar"></div>
                 </div>
-                <div class="budget-label">
+                <div class="budget-label" style="cursor: pointer;" onclick="const m = typeof currentMonth !== 'undefined' ? currentMonth : -1; window.location.href='CalculadoraPresupuesto.html?openPacing=true&pacingMonth=' + m;" title="💡 Clic para ver habitaciones y precio medio necesarios para conseguir el objetivo">
                     <span>Progreso Objetivo <span id="budget-target-rev" style="font-weight:500; font-size:0.65rem; opacity:0.8; margin-left:3px;"></span></span>
-                    <span id="budget-pct-rev">0%</span>
+                    <span id="budget-pct-rev" style="font-weight:700;">0%</span>
                 </div>
             </div>
             <div class="kpi-card" style="animation-delay: 0.2s;">

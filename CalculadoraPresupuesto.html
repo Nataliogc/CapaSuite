@@ -506,6 +506,76 @@
         .pickup-mini.neg { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); }
         .pickup-mini.neu { background: rgba(148, 163, 184, 0.1); color: #64748b; border: 1px solid rgba(148, 163, 184, 0.2); }
 
+        /* Pacing Indicators & Badges */
+        .pacing-clickable-badge {
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.03);
+            border: 1px solid transparent;
+            user-select: none;
+        }
+        .pacing-clickable-badge:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+            border-color: rgba(99, 102, 241, 0.4);
+            background: #ffffff;
+        }
+        .pacing-clickable-pill {
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 6px;
+            border-radius: 6px;
+            user-select: none;
+        }
+        .pacing-clickable-pill:hover {
+            transform: translateY(-1px);
+            background: rgba(126, 34, 206, 0.12);
+            box-shadow: 0 2px 8px rgba(126, 34, 206, 0.15);
+        }
+        .month-pill-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 5px 12px;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .month-pill-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: var(--text-main);
+        }
+        .month-pill-btn.active {
+            background: var(--primary);
+            color: #ffffff;
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px var(--primary-glow);
+        }
+        [data-theme="light"] .month-pill-btn {
+            background: #f1f5f9;
+            color: #475569;
+            border-color: #cbd5e1;
+        }
+        [data-theme="light"] .month-pill-btn:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+        [data-theme="light"] .month-pill-btn.active {
+            background: #4f46e5;
+            color: #ffffff;
+            border-color: #4f46e5;
+        }
+
     </style>
 </head>
 
@@ -1300,6 +1370,7 @@
                 closeUnlockModal();
                 closeScenarioDetailModal();
                 closeScenariosMatrixModal();
+                closeBudgetPacingModal();
             }
         });
 
@@ -2367,9 +2438,9 @@
                     <td style="text-align: right; font-size: 0.78rem; color: #7e22ce; background: #faf5ff; padding: 6px 8px;">
                         ${otbRN > 0 ? formatInt(otbRN) : '<span style="color:#94a3b8;">&mdash;</span>'}
                     </td>
-                    <td style="text-align: right; font-size: 0.78rem; font-weight: 700; background: #faf5ff; border-right: 1px solid #e9d5ff; padding: 6px 8px; color: ${otbGapColor};"
-                        title="Pendiente de vender para alcanzar el objetivo">
-                        ${otbRev > 0 ? ((otbGap > 0 ? '-' : '+') + formatInt(Math.abs(otbGap)) + ' €') : '<span style="color:#94a3b8;">&mdash;</span>'}
+                    <td onclick="openBudgetPacingModal(${i})" style="text-align: right; font-size: 0.78rem; font-weight: 700; background: #faf5ff; border-right: 1px solid #e9d5ff; padding: 6px 8px; color: ${otbGapColor}; cursor: pointer;"
+                        title="💡 Clic para ver habitaciones y precio medio necesarios para cumplir el presupuesto de ${months[i]}">
+                        <span class="pacing-clickable-pill">${otbRev > 0 ? ((otbGap > 0 ? '-' : '+') + formatInt(Math.abs(otbGap)) + ' €') : '<span style="color:#94a3b8;">&mdash;</span>'} 🔍</span>
                     </td>` : '';
 
                 // % Cumplimiento (solo para 2026)
@@ -2377,9 +2448,9 @@
                 const cumplColor = cumplPct >= 100 ? '#16a34a' : (cumplPct >= 80 ? '#d97706' : '#dc2626');
                 const cumplBg = cumplPct >= 100 ? '#f0fdf4' : (cumplPct >= 80 ? '#fffbeb' : '#fef2f2');
                 const cumplCellHtml = showCumplCol ? `
-                    <td style="text-align: center; font-size: 0.8rem; font-weight: 700; background: ${cumplBg}; border-right: 1px solid #fef08a; padding: 6px 8px;"
-                        title="${formatNum(cumplPct)}% del objetivo de ${months[i]} cumplido">
-                        <span style="color: ${cumplColor};">${cumplPct >= 100 ? '✅' : (cumplPct >= 80 ? '🟡' : '🔴')} ${cumplPct.toFixed(1)}%</span>
+                    <td onclick="openBudgetPacingModal(${i})" style="text-align: center; font-size: 0.8rem; font-weight: 700; background: ${cumplBg}; border-right: 1px solid #fef08a; padding: 6px 8px; cursor: pointer;"
+                        title="💡 Clic para ver habitaciones y precio medio necesarios para cumplir el presupuesto de ${months[i]}">
+                        <span class="pacing-clickable-badge" style="color: ${cumplColor};">${cumplPct >= 100 ? '✅' : (cumplPct >= 80 ? '🟡' : '🔴')} ${cumplPct.toFixed(1)}%</span>
                     </td>` : '';
 
                 editorBody.innerHTML += `
@@ -2461,11 +2532,15 @@
                 const otbFootCells = showOtbCols ? `
                     <td style="text-align: right; white-space: nowrap; font-weight: 700; color: #7e22ce; background: #faf5ff; padding: 10px 10px;">${formatInt(t_otbRev)} €</td>
                     <td style="text-align: right; white-space: nowrap; font-weight: 700; color: #7e22ce; background: #faf5ff; padding: 10px 10px;">${formatInt(t_otbRN)}</td>
-                    <td style="text-align: right; white-space: nowrap; font-weight: 800; color: ${tOtbGapColor}; background: #faf5ff; border-right: 1px solid #e9d5ff; padding: 10px 10px;">${(tOtbGap > 0 ? '-' : '+')}${formatInt(Math.abs(tOtbGap))} €</td>` : '';
+                    <td onclick="openBudgetPacingModal(-1)" style="text-align: right; white-space: nowrap; font-weight: 800; color: ${tOtbGapColor}; background: #faf5ff; border-right: 1px solid #e9d5ff; padding: 10px 10px; cursor: pointer;"
+                        title="💡 Clic para analizar el cumplimiento del presupuesto anual">
+                        <span class="pacing-clickable-pill">${(tOtbGap > 0 ? '-' : '+')}${formatInt(Math.abs(tOtbGap))} € 🔍</span>
+                    </td>` : '';
 
                 const cumplFootCell = showCumplCol ? `
-                    <td style="text-align: center; white-space: nowrap; font-weight: 800; color: ${tCumplColor}; background: ${tCumplBg}; border-right: 1px solid #fef08a; padding: 10px 8px;">
-                        ${tCumplPct >= 100 ? '✅' : (tCumplPct >= 80 ? '🟡' : '🔴')} ${tCumplPct.toFixed(1)}%
+                    <td onclick="openBudgetPacingModal(-1)" style="text-align: center; white-space: nowrap; font-weight: 800; color: ${tCumplColor}; background: ${tCumplBg}; border-right: 1px solid #fef08a; padding: 10px 8px; cursor: pointer;"
+                        title="💡 Clic para analizar el cumplimiento del presupuesto anual">
+                        <span class="pacing-clickable-badge" style="color: ${tCumplColor};">${tCumplPct >= 100 ? '✅' : (tCumplPct >= 80 ? '🟡' : '🔴')} ${tCumplPct.toFixed(1)}%</span>
                     </td>` : '';
 
                 editorFoot.innerHTML = `
@@ -2814,8 +2889,8 @@
                     </div>
                     ${pickupHTML}
                 </td>
-                <td style="font-weight: 600; text-align: right; padding: 10px 10px;" class="${diff >= 0 ? 'text-success' : 'text-danger'}">
-                    ${diff > 0 ? '+' : (diff < 0 ? '' : '')}${formatMoney(diff).replace('0,00 €', '0 €')}
+                <td onclick="openBudgetPacingModal(${i})" style="font-weight: 600; text-align: right; padding: 10px 10px; cursor: pointer;" class="${diff >= 0 ? 'text-success' : 'text-danger'}" title="💡 Clic para ver habitaciones y precio medio necesarios para cumplir el presupuesto de ${months[i]}">
+                    <span class="pacing-clickable-pill">${diff > 0 ? '+' : (diff < 0 ? '' : '')}${formatMoney(diff).replace('0,00 €', '0 €')} 🔍</span>
                 </td>
                 <td style="color: #475569; text-align: right; padding: 10px 10px;">${surplus > 0 ? formatMoney(surplus) : '-'}</td>
                 <td style="font-weight: 700; color: var(--primary-dark); text-align: right; padding: 10px 15px; background-color: ${isMet ? 'rgba(79, 70, 229, 0.03)' : 'transparent'};">
@@ -2827,7 +2902,11 @@
             document.getElementById('t2_target').innerText = formatMoney(t_target);
             document.getElementById('t2_sold').innerText = formatMoney(t_sold);
             document.getElementById('t2_rn').innerText = formatInt(t_rn);
-            document.getElementById('t2_gap').innerText = formatMoney(t_sold - t_target).replace('0,00 €', '0 €');
+            const t2GapEl = document.getElementById('t2_gap');
+            t2GapEl.innerText = formatMoney(t_sold - t_target).replace('0,00 €', '0 €');
+            t2GapEl.style.cursor = 'pointer';
+            t2GapEl.title = '💡 Clic para analizar consecución del presupuesto anual';
+            t2GapEl.onclick = () => openBudgetPacingModal(-1);
             document.getElementById('t2_surplus').innerText = formatMoney(t_surplus).replace('0,00 €', '0 €');
             document.getElementById('t2_bonus').innerText = formatMoney(t_bonus).replace('0,00 €', '0 €');
         }
@@ -2849,12 +2928,765 @@
             if (n === 0 || n === null || n === undefined) return "0";
             return Math.round(n).toLocaleString('es-ES');
         };
+
+        // =========================================================================
+        // BUDGET PACING & ACTION PLAN MODAL (CUMPLIMIENTO DE PRESUPUESTO)
+        // =========================================================================
+        let activePacingMonth = 0;
+        let currentPacingData = null;
+
+        function getHotelRoomsCount(hotel) {
+            return (hotel === 'Cumbria') ? 59 : 108;
+        }
+
+        function getCutoffInfo(hotel, yearStr) {
+            const db = JSON.parse(CapaStorage.getItem('hotel_manager_db_v2')) || {};
+            const yData = (db[hotel] && db[hotel][yearStr]) ? db[hotel][yearStr] : null;
+            const now = new Date();
+            
+            let cutoffDay = now.getDate();
+            let cutoffMonth = now.getMonth(); // 0-indexed
+            let cutoffYear = now.getFullYear();
+
+            if (yData) {
+                const prodDateStr = (yData.updates && yData.updates.prod) ? yData.updates.prod : (yData.lastProdDate || "");
+                if (prodDateStr && prodDateStr.includes('-')) {
+                    const parts = prodDateStr.split(' ')[0].split('-');
+                    if (parts.length === 3) {
+                        const d = parseInt(parts[0], 10);
+                        const m = parseInt(parts[1], 10) - 1;
+                        const y = parseInt(parts[2].length === 2 ? "20" + parts[2] : parts[2], 10);
+                        if (!isNaN(d) && !isNaN(m) && !isNaN(y)) {
+                            cutoffDay = d;
+                            cutoffMonth = m;
+                            cutoffYear = y;
+                        }
+                    }
+                }
+            }
+            return { cutoffDay, cutoffMonth, cutoffYear, now };
+        }
+
+        function openBudgetPacingModal(monthIdx) {
+            const cutoff = getCutoffInfo(currentHotel, currentYear);
+            if (monthIdx === undefined || monthIdx === null || monthIdx === -1) {
+                if (parseInt(currentYear) === cutoff.cutoffYear) {
+                    activePacingMonth = cutoff.cutoffMonth;
+                } else {
+                    activePacingMonth = 0;
+                }
+            } else {
+                activePacingMonth = Math.max(0, Math.min(11, monthIdx));
+            }
+            renderBudgetPacingContent(activePacingMonth);
+            const modal = document.getElementById('budgetPacingModal');
+            if (modal) modal.style.display = 'flex';
+        }
+
+        function closeBudgetPacingModal() {
+            const modal = document.getElementById('budgetPacingModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function renderBudgetPacingContent(mIdx) {
+            activePacingMonth = mIdx;
+            const m = mIdx;
+            const fullMonthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+            const monthName = months[m];
+            const fullMonth = fullMonthNames[m];
+            const h = hotelData[currentHotel];
+            const hotelRooms = getHotelRoomsCount(currentHotel);
+            const daysInMonth = new Date(parseInt(currentYear), m + 1, 0).getDate();
+            const totalCap = hotelRooms * daysInMonth;
+            const cutoff = getCutoffInfo(currentHotel, currentYear);
+
+            // Determine timing of the month
+            const yearInt = parseInt(currentYear);
+            let isClosed = false;
+            let isCurrent = false;
+            let isFuture = false;
+            let daysElapsed = 0;
+            let daysRemaining = daysInMonth;
+
+            if (yearInt < cutoff.cutoffYear || (yearInt === cutoff.cutoffYear && m < cutoff.cutoffMonth)) {
+                isClosed = true;
+                daysElapsed = daysInMonth;
+                daysRemaining = 0;
+            } else if (yearInt === cutoff.cutoffYear && m === cutoff.cutoffMonth) {
+                isCurrent = true;
+                daysElapsed = Math.min(daysInMonth, Math.max(1, cutoff.cutoffDay));
+                daysRemaining = Math.max(0, daysInMonth - daysElapsed);
+            } else {
+                isFuture = true;
+                daysElapsed = 0;
+                daysRemaining = daysInMonth;
+            }
+
+            // Target Budget for month
+            const targetRev = currentRev[m] || 0;
+            const targetAdr = currentAdr[m] || 0;
+            const targetRN = targetAdr > 0 ? Math.round(targetRev / targetAdr) : 0;
+            const targetOcc = totalCap > 0 ? (targetRN / totalCap * 100) : 0;
+
+            // Database production / OTB
+            const db = JSON.parse(CapaStorage.getItem('hotel_manager_db_v2')) || {};
+            const cyData = (db[currentHotel] && db[currentHotel][currentYear]) ? db[currentHotel][currentYear] : null;
+
+            let realRev = 0, realRN = 0;
+            if (cyData && cyData.service) {
+                const resolved = resolveRoomData(cyData.service);
+                realRev = resolved.rev[m] || 0;
+                realRN = resolved.rn[m] || 0;
+            }
+
+            let otbRev = 0, otbRN = 0;
+            if (cyData && cyData.otb) {
+                const oRev = cyData.otb.breakdown?.habitacion || cyData.otb.revenue || [];
+                const oRN = cyData.otb.breakdown?.habitacion_rn || cyData.otb.rooms || [];
+                otbRev = oRev[m] || 0;
+                otbRN = oRN[m] || 0;
+            }
+
+            // Consolidated Sold Figures
+            let soldRev = 0, soldRN = 0;
+            if (isClosed) {
+                soldRev = realRev > 0 ? realRev : (h.otbData[m] || 0);
+                soldRN = realRN > 0 ? realRN : (h.otbRN[m] || 0);
+            } else if (isCurrent) {
+                soldRev = Math.max(realRev + otbRev, h.otbData[m] || 0);
+                soldRN = Math.max(realRN + otbRN, h.otbRN[m] || 0);
+            } else {
+                soldRev = Math.max(otbRev, h.otbData[m] || 0);
+                soldRN = Math.max(otbRN, h.otbRN[m] || 0);
+            }
+
+            const soldAdr = soldRN > 0 ? (soldRev / soldRN) : 0;
+            const soldOcc = totalCap > 0 ? (soldRN / totalCap * 100) : 0;
+
+            const gapRev = targetRev - soldRev;
+            const gapRN = Math.max(0, targetRN - soldRN);
+            const cumplPct = targetRev > 0 ? (soldRev / targetRev * 100) : 0;
+            const gapPct = targetRev > 0 ? ((gapRev / targetRev) * 100) : 0;
+
+            // Capacity details
+            const capElapsed = hotelRooms * daysElapsed;
+            const capRemaining = hotelRooms * daysRemaining;
+            const capFreeRemaining = Math.max(0, capRemaining - (isCurrent ? otbRN : 0));
+
+            // Calculations for what is needed
+            const dailyRevNeeded = daysRemaining > 0 ? (gapRev / daysRemaining) : gapRev;
+
+            // Option 1: Keeping Target ADR (Selling via Occupancy)
+            const rnNeeded1 = targetAdr > 0 ? Math.ceil(gapRev / targetAdr) : 0;
+            const dailyRN1 = daysRemaining > 0 ? (rnNeeded1 / daysRemaining) : rnNeeded1;
+            const occRemaining1 = (daysRemaining > 0 && hotelRooms > 0) ? ((dailyRN1 / hotelRooms) * 100) : 0;
+            const finalOcc1 = totalCap > 0 ? ((soldRN + rnNeeded1) / totalCap * 100) : 0;
+            const feasible1 = rnNeeded1 <= capRemaining;
+
+            // Option 2: Keeping Budgeted Room Volume (Selling via ADR)
+            const rnNeeded2 = Math.max(1, targetRN - soldRN);
+            const adrNeeded2 = rnNeeded2 > 0 ? (gapRev / rnNeeded2) : 0;
+            const dailyRN2 = daysRemaining > 0 ? (rnNeeded2 / daysRemaining) : rnNeeded2;
+            const occRemaining2 = (daysRemaining > 0 && hotelRooms > 0) ? ((dailyRN2 / hotelRooms) * 100) : 0;
+            const finalAdr2 = (soldRN + rnNeeded2) > 0 ? ((soldRev + gapRev) / (soldRN + rnNeeded2)) : 0;
+
+            // Option 3: Recommended Smart Revenue Mix
+            let recAdr = targetAdr;
+            let recStrategyReason = "";
+            if (occRemaining1 > 90) {
+                recAdr = Math.round(targetAdr * 1.12);
+                recStrategyReason = "La ocupación necesaria al precio objetivo supera el 90%. Recomendamos aplicar yield alcista (+12% ADR) para capturar el objetivo sin depender de rozar el 100% de ocupación.";
+            } else if (occRemaining1 > 75) {
+                recAdr = Math.round(targetAdr * 1.06);
+                recStrategyReason = "Ocupación requerida exigente (>75%). Recomendamos optimizar la tarifa media (+6% ADR) en días punta y fines de semana para conseguir el presupuesto con menor estrés de volumen.";
+            } else if (occRemaining1 < 45 && daysRemaining > 10) {
+                recAdr = Math.max(45, Math.round(targetAdr * 0.95));
+                recStrategyReason = "Ocupación requerida moderada (<45%). Mantén la tarifa competitiva e impulsa paquetes de valor añadido o venta directa para acelerar el ritmo de pick-up.";
+            } else {
+                recAdr = targetAdr;
+                recStrategyReason = "Equilibrio idóneo de mercado. Mantén la tarifa media de presupuesto y asegura un ritmo de captación constante de habitaciones por día.";
+            }
+            const recRN = recAdr > 0 ? Math.ceil(gapRev / recAdr) : 0;
+            const recDailyRN = daysRemaining > 0 ? (recRN / daysRemaining) : recRN;
+            const recOccRemaining = (daysRemaining > 0 && hotelRooms > 0) ? ((recDailyRN / hotelRooms) * 100) : 0;
+            const recFinalOcc = totalCap > 0 ? ((soldRN + recRN) / totalCap * 100) : 0;
+
+            // Store in global state for simulator
+            currentPacingData = {
+                monthIdx: m,
+                monthName,
+                fullMonth,
+                hotelRooms,
+                daysInMonth,
+                daysElapsed,
+                daysRemaining,
+                totalCap,
+                targetRev,
+                targetAdr,
+                targetRN,
+                targetOcc,
+                realRev,
+                realRN,
+                otbRev,
+                otbRN,
+                soldRev,
+                soldRN,
+                soldAdr,
+                soldOcc,
+                gapRev,
+                gapRN,
+                cumplPct,
+                gapPct,
+                isClosed,
+                isCurrent,
+                isFuture,
+                dailyRevNeeded,
+                rnNeeded1,
+                dailyRN1,
+                occRemaining1,
+                finalOcc1,
+                rnNeeded2,
+                adrNeeded2,
+                dailyRN2,
+                occRemaining2,
+                recAdr,
+                recRN,
+                recDailyRN,
+                recOccRemaining,
+                recFinalOcc
+            };
+
+            // Render Month Selector Pills
+            const monthPillsHtml = months.map((mName, idx) => {
+                const isActive = idx === m;
+                return `<button class="month-pill-btn ${isActive ? 'active' : ''}" onclick="renderBudgetPacingContent(${idx})">${mName}</button>`;
+            }).join('');
+
+            // Status Banner HTML
+            let statusBannerHtml = '';
+            if (isClosed) {
+                statusBannerHtml = `
+                    <div style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 12px; padding: 10px 16px; font-size: 0.85rem; color: #475569; display: flex; align-items: center; gap: 8px;">
+                        <span>📉</span> <span><b>Mes Cerrado:</b> Datos históricos de producción real consolidados (${daysInMonth} días).</span>
+                    </div>`;
+            } else if (isCurrent) {
+                statusBannerHtml = `
+                    <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 12px; padding: 12px 16px; font-size: 0.85rem; color: var(--primary); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span>⚡</span> <span><b>Mes en Curso:</b> Producción real cerrada hasta el día <b>${daysElapsed}</b> (${realRev > 0 ? formatInt(realRev) + ' €' : 'MTD'}) + Cartera OTB futura (${otbRev > 0 ? formatInt(otbRev) + ' €' : '0 €'}).</span>
+                        </div>
+                        <span style="background: var(--primary); color: #fff; padding: 4px 10px; border-radius: 8px; font-weight: 700; font-size: 0.8rem;">
+                            ⏳ Quedan ${daysRemaining} días hasta fin de mes
+                        </span>
+                    </div>`;
+            } else {
+                statusBannerHtml = `
+                    <div style="background: rgba(14, 165, 233, 0.08); border: 1px solid rgba(14, 165, 233, 0.25); border-radius: 12px; padding: 10px 16px; font-size: 0.85rem; color: #0284c7; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span>🔮</span> <span><b>Mes Futuro:</b> Cartera de Reservas OTB en libros vs Presupuesto Objetivo (${daysInMonth} días completos).</span>
+                        </div>
+                        <span style="background: #0284c7; color: #fff; padding: 4px 10px; border-radius: 8px; font-weight: 700; font-size: 0.8rem;">
+                            📅 ${daysInMonth} días por delante
+                        </span>
+                    </div>`;
+            }
+
+            // Highlight Hero Box: What is needed until end of month?
+            let heroSectionHtml = '';
+            if (gapRev <= 0) {
+                heroSectionHtml = `
+                    <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(5, 150, 105, 0.05)); border: 2px solid #10b981; border-radius: 16px; padding: 20px; text-align: center;">
+                        <div style="font-size: 2.2rem; margin-bottom: 6px;">🎉</div>
+                        <h3 style="margin: 0 0 6px 0; color: #065f46; font-size: 1.25rem; font-weight: 800;">¡Objetivo de Presupuesto Conseguido!</h3>
+                        <p style="margin: 0 0 14px 0; color: #047857; font-size: 0.9rem;">
+                            El hotel ya ha alcanzado <b>${formatMoney(soldRev)}</b> superando el objetivo de <b>${formatMoney(targetRev)}</b> con un superávit de <b>+${formatMoney(Math.abs(gapRev))}</b> (${cumplPct.toFixed(1)}% cumplimiento).
+                        </p>
+                        <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+                            <div style="background: #fff; padding: 10px 16px; border-radius: 10px; border: 1px solid #a7f3d0; text-align: center;">
+                                <div style="font-size: 0.7rem; color: #065f46; font-weight: 700; text-transform: uppercase;">ADR Actual</div>
+                                <div style="font-size: 1.1rem; font-weight: 800; color: #047857;">${soldAdr.toFixed(2)} €</div>
+                            </div>
+                            <div style="background: #fff; padding: 10px 16px; border-radius: 10px; border: 1px solid #a7f3d0; text-align: center;">
+                                <div style="font-size: 0.7rem; color: #065f46; font-weight: 700; text-transform: uppercase;">Habitaciones Vendidas</div>
+                                <div style="font-size: 1.1rem; font-weight: 800; color: #047857;">${formatInt(soldRN)} habs</div>
+                            </div>
+                            <div style="background: #fff; padding: 10px 16px; border-radius: 10px; border: 1px solid #a7f3d0; text-align: center;">
+                                <div style="font-size: 0.7rem; color: #065f46; font-weight: 700; text-transform: uppercase;">Ocupación Total</div>
+                                <div style="font-size: 1.1rem; font-weight: 800; color: #047857;">${soldOcc.toFixed(1)}%</div>
+                            </div>
+                            <div style="background: #fff; padding: 10px 16px; border-radius: 10px; border: 1px solid #a7f3d0; text-align: center;">
+                                <div style="font-size: 0.7rem; color: #065f46; font-weight: 700; text-transform: uppercase;">RevPAR Conseguido</div>
+                                <div style="font-size: 1.1rem; font-weight: 800; color: #047857;">${(totalCap > 0 ? (soldRev / totalCap) : 0).toFixed(2)} €</div>
+                            </div>
+                        </div>
+                    </div>`;
+            } else {
+                heroSectionHtml = `
+                    <div style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(244, 63, 94, 0.05) 100%); border: 2px solid rgba(99, 102, 241, 0.3); border-radius: 18px; padding: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+                            <div>
+                                <h3 style="margin: 0; font-size: 1.15rem; color: #1e293b; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                                    <span>🎯</span> Indicaciones Clave: ¿Qué necesito hasta final de mes?
+                                </h3>
+                                <p style="margin: 3px 0 0 0; font-size: 0.8rem; color: #64748b;">
+                                    Metas requeridas por día en los <b>${daysRemaining} días restantes</b> para facturar los <b>${formatMoney(gapRev)}</b> pendientes.
+                                </p>
+                            </div>
+                            <span style="background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; font-size: 0.8rem; font-weight: 800; padding: 4px 10px; border-radius: 20px;">
+                                🔴 Falta ${gapPct.toFixed(1)}% del Objetivo
+                            </span>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                            <!-- Producción por día -->
+                            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+                                <div style="font-size: 0.72rem; text-transform: uppercase; color: #64748b; font-weight: 700; display: flex; align-items: center; gap: 5px;">
+                                    <span>⚡</span> Producción Hab. / Día
+                                </div>
+                                <div style="font-size: 1.45rem; font-weight: 800; color: #4338ca; margin: 4px 0 2px 0;">
+                                    ${formatMoney(dailyRevNeeded)}
+                                </div>
+                                <div style="font-size: 0.75rem; color: #64748b;">
+                                    Total pendiente: <b>${formatMoney(gapRev)}</b>
+                                </div>
+                            </div>
+
+                            <!-- Habitaciones por día -->
+                            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+                                <div style="font-size: 0.72rem; text-transform: uppercase; color: #64748b; font-weight: 700; display: flex; align-items: center; gap: 5px;">
+                                    <span>🏨</span> Habitaciones / Día (al ADR Obj.)
+                                </div>
+                                <div style="font-size: 1.45rem; font-weight: 800; color: #c2410c; margin: 4px 0 2px 0;">
+                                    ${dailyRN1.toFixed(1)} <span style="font-size: 0.9rem; font-weight: 600;">habs/día</span>
+                                </div>
+                                <div style="font-size: 0.75rem; color: #64748b;">
+                                    Total a vender: <b>${rnNeeded1} habs</b> (a ${targetAdr.toFixed(1)}€)
+                                </div>
+                            </div>
+
+                            <!-- % Ocupación diaria requerida -->
+                            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+                                <div style="font-size: 0.72rem; text-transform: uppercase; color: #64748b; font-weight: 700; display: flex; align-items: center; gap: 5px;">
+                                    <span>📊</span> % Ocupación Necesaria
+                                </div>
+                                <div style="font-size: 1.45rem; font-weight: 800; color: ${occRemaining1 > 100 ? '#ef4444' : (occRemaining1 > 80 ? '#d97706' : '#10b981')}; margin: 4px 0 2px 0;">
+                                    ${occRemaining1.toFixed(1)}% <span style="font-size: 0.8rem; font-weight: 600;">en días rest.</span>
+                                </div>
+                                <div style="font-size: 0.75rem; color: #64748b;">
+                                    Ocup. final resultante: <b>${finalOcc1.toFixed(1)}%</b>
+                                </div>
+                            </div>
+
+                            <!-- Precio Medio necesario -->
+                            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+                                <div style="font-size: 0.72rem; text-transform: uppercase; color: #64748b; font-weight: 700; display: flex; align-items: center; gap: 5px;">
+                                    <span>💰</span> Precio Medio Requerido (ADR)
+                                </div>
+                                <div style="font-size: 1.45rem; font-weight: 800; color: #0284c7; margin: 4px 0 2px 0;">
+                                    ${adrNeeded2.toFixed(2)} €
+                                </div>
+                                <div style="font-size: 0.75rem; color: #64748b;">
+                                    Si vendes las <b>${rnNeeded2} habs</b> que faltan
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+            }
+
+            // Strategic Levers Grid HTML
+            const leversSectionHtml = `
+                <div>
+                    <h4 style="margin: 0 0 10px 0; font-size: 1rem; color: #1e293b; font-weight: 800; display: flex; align-items: center; gap: 6px;">
+                        <span>⚖️</span> 3 Estrategias Tácticas para Alcanzar el Objetivo
+                    </h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px;">
+                        <!-- Palanca 1: Mantener ADR -->
+                        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-top: 4px solid #6366f1; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between;">
+                            <div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-weight: 800; color: #4338ca; font-size: 0.9rem;">Vía Ocupación</span>
+                                    <span style="background: #eef2ff; color: #4338ca; font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 6px;">ADR Fijo: ${targetAdr.toFixed(1)}€</span>
+                                </div>
+                                <p style="margin: 0 0 10px 0; font-size: 0.8rem; color: #64748b; line-height: 1.35;">
+                                    Mantener el precio medio de presupuesto y concentrar esfuerzos en volumen de habitaciones.
+                                </p>
+                                <ul style="margin: 0; padding-left: 18px; font-size: 0.82rem; color: #334155; line-height: 1.6;">
+                                    <li>Habitaciones necesarias: <b>${rnNeeded1} habs</b> (${dailyRN1.toFixed(1)}/día)</li>
+                                    <li>Ocupación en días restantes: <b>${occRemaining1.toFixed(1)}%</b></li>
+                                    <li>Ocupación final del mes: <b>${finalOcc1.toFixed(1)}%</b></li>
+                                </ul>
+                            </div>
+                            <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid #f1f5f9; font-size: 0.78rem; font-weight: 700; color: ${feasible1 ? '#10b981' : '#ef4444'};">
+                                ${feasible1 ? '🟢 Físicamente factible' : '🔴 Inviable (>100% capacidad hotel)'}
+                            </div>
+                        </div>
+
+                        <!-- Palanca 2: Mantener RN Presupuestadas -->
+                        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-top: 4px solid #0284c7; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between;">
+                            <div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-weight: 800; color: #0369a1; font-size: 0.9rem;">Vía Tarifa / ADR</span>
+                                    <span style="background: #f0f9ff; color: #0284c7; font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 6px;">Volumen Fijo</span>
+                                </div>
+                                <p style="margin: 0 0 10px 0; font-size: 0.8rem; color: #64748b; line-height: 1.35;">
+                                    Vender solo las <b>${rnNeeded2} habitaciones</b> presupuestadas que faltan, elevando el ADR.
+                                </p>
+                                <ul style="margin: 0; padding-left: 18px; font-size: 0.82rem; color: #334155; line-height: 1.6;">
+                                    <li>Precio necesario (ADR): <b>${adrNeeded2.toFixed(2)} €</b></li>
+                                    <li>Habitaciones a vender: <b>${rnNeeded2} habs</b> (${dailyRN2.toFixed(1)}/día)</li>
+                                    <li>ADR medio final del mes: <b>${finalAdr2.toFixed(2)} €</b></li>
+                                </ul>
+                            </div>
+                            <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid #f1f5f9; font-size: 0.78rem; font-weight: 700; color: #0284c7;">
+                                💡 Requiere subir ADR +${Math.max(0, adrNeeded2 - targetAdr).toFixed(1)}€
+                            </div>
+                        </div>
+
+                        <!-- Palanca 3: Smart Revenue Mix -->
+                        <div style="background: #ffffff; border: 1px solid #6366f1; border-top: 4px solid #10b981; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.08);">
+                            <div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-weight: 800; color: #065f46; font-size: 0.9rem;">⭐ Mix Recomendado</span>
+                                    <span style="background: #ecfdf5; color: #059669; font-size: 0.7rem; font-weight: 800; padding: 2px 8px; border-radius: 6px;">Óptimo</span>
+                                </div>
+                                <p style="margin: 0 0 10px 0; font-size: 0.8rem; color: #64748b; line-height: 1.35;">
+                                    ${recStrategyReason}
+                                </p>
+                                <ul style="margin: 0; padding-left: 18px; font-size: 0.82rem; color: #334155; line-height: 1.6;">
+                                    <li>Tarifa sugerida: <b>${recAdr.toFixed(2)} € ADR</b></li>
+                                    <li>Habitaciones sugeridas: <b>${recRN} habs</b> (${recDailyRN.toFixed(1)}/día)</li>
+                                    <li>Ocupación diaria requerida: <b>${recOccRemaining.toFixed(1)}%</b></li>
+                                </ul>
+                            </div>
+                            <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid #f1f5f9; font-size: 0.78rem; font-weight: 700; color: #10b981;">
+                                🚀 Máxima rentabilidad y menor riesgo
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+
+            // Interactive Live Simulator HTML
+            const simDefaultAdr = Math.round(targetAdr > 0 ? targetAdr : 65);
+            const simDefaultDailyRN = Math.round((dailyRN1 > 0 ? dailyRN1 : (hotelRooms * 0.6)) * 10) / 10;
+
+            const simulatorHtml = `
+                <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 18px; padding: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+                        <div>
+                            <h4 style="margin: 0; font-size: 1.1rem; color: #0f172a; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                                <span>🎛️</span> Simulador Táctico Interactivo: ¿Qué pasa si...?
+                            </h4>
+                            <p style="margin: 2px 0 0 0; font-size: 0.8rem; color: #64748b;">
+                                Ajusta la tarifa media y el ritmo diario de habitaciones para ver en tiempo real si cubres el presupuesto restante.
+                            </p>
+                        </div>
+                        <button onclick="resetSimulatorDefaults()" class="btn" style="background: #ffffff; border: 1px solid #cbd5e1; color: #475569; font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 6px; cursor: pointer;">
+                            🔄 Restablecer a Objetivo
+                        </button>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; align-items: center;">
+                        <!-- Controles de entrada -->
+                        <div style="display: flex; flex-direction: column; gap: 16px;">
+                            <!-- Slider 1: ADR de venta -->
+                            <div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.82rem; font-weight: 700; margin-bottom: 6px; color: #334155;">
+                                    <span>Precio Medio (ADR) para días restantes:</span>
+                                    <span style="display: inline-flex; align-items: center; gap: 4px;">
+                                        <input type="number" id="simAdrInput" value="${simDefaultAdr}" min="30" max="250" step="1"
+                                            style="width: 70px; text-align: right; padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 700; font-size: 0.85rem; color: #4338ca;"
+                                            oninput="recalcBudgetSimulator(false)"> €
+                                    </span>
+                                </div>
+                                <input type="range" id="simAdrSlider" min="30" max="250" step="1" value="${simDefaultAdr}"
+                                    style="width: 100%; cursor: pointer;"
+                                    oninput="recalcBudgetSimulator(true)">
+                                <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: #94a3b8;">
+                                    <span>30 €</span>
+                                    <span>Obj: ${targetAdr.toFixed(1)} €</span>
+                                    <span>250 €</span>
+                                </div>
+                            </div>
+
+                            <!-- Slider 2: Habitaciones / día -->
+                            <div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.82rem; font-weight: 700; margin-bottom: 6px; color: #334155;">
+                                    <span>Habitaciones a vender por día:</span>
+                                    <span style="display: inline-flex; align-items: center; gap: 4px;">
+                                        <input type="number" id="simDailyRNInput" value="${simDefaultDailyRN}" min="0" max="${hotelRooms}" step="0.5"
+                                            style="width: 65px; text-align: right; padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 700; font-size: 0.85rem; color: #c2410c;"
+                                            oninput="recalcBudgetSimulator(false)"> habs
+                                    </span>
+                                </div>
+                                <input type="range" id="simDailyRNSlider" min="0" max="${hotelRooms}" step="0.5" value="${simDefaultDailyRN}"
+                                    style="width: 100%; cursor: pointer;"
+                                    oninput="recalcBudgetSimulator(true)">
+                                <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: #94a3b8;">
+                                    <span>0 habs</span>
+                                    <span>Capacidad máx: ${hotelRooms} habs/día</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Resultados de la simulación -->
+                        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Facturación Total Proyectada</span>
+                                <span id="simFinalRevBadge" style="font-size: 1.15rem; font-weight: 800; color: #4338ca;">0 €</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 0.8rem; color: #64748b;">Balance vs Presupuesto:</span>
+                                <span id="simBalanceBadge" style="font-size: 0.95rem; font-weight: 800;">0 €</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 8px 0; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; font-size: 0.78rem;">
+                                <div>Ocup. Diaria: <b id="simDailyOcc">0%</b></div>
+                                <div>Ocup. Mes: <b id="simFinalOcc">0%</b></div>
+                                <div>ADR Final Mes: <b id="simFinalAdr">0 €</b></div>
+                                <div>RevPAR Final: <b id="simFinalRevPAR">0 €</b></div>
+                            </div>
+                            <div id="simFeasibilityBox" style="padding: 8px 12px; border-radius: 8px; font-size: 0.8rem; font-weight: 700; text-align: center;">
+                                <!-- Updated by recalcBudgetSimulator -->
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+
+            // Insert into Modal Container
+            const container = document.getElementById('budgetPacingModalContent');
+            if (container) {
+                container.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #e2e8f0; padding-bottom: 14px;">
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                <h2 style="margin: 0; font-size: 1.4rem; color: #0f172a; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                                    <span>🎯</span> Plan Táctico de Consecución de Presupuesto
+                                </h2>
+                                <span style="background: rgba(99, 102, 241, 0.1); color: var(--primary); font-size: 0.8rem; font-weight: 800; padding: 2px 10px; border-radius: 6px;">
+                                    ${currentHotel} • ${currentYear}
+                                </span>
+                            </div>
+                            <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #64748b;">
+                                Análisis de producción vendida (Real + OTB) y palancas para conseguir el presupuesto de <b style="color:#0f172a;">${fullMonth}</b>.
+                            </p>
+                        </div>
+                        <button onclick="closeBudgetPacingModal()" style="background: none; border: none; font-size: 1.8rem; color: #94a3b8; cursor: pointer; padding: 0 5px; line-height: 1;" title="Cerrar (Esc)">&times;</button>
+                    </div>
+
+                    <!-- Month navigation pills -->
+                    <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px;">
+                        ${monthPillsHtml}
+                    </div>
+
+                    <!-- Status Notification Banner -->
+                    ${statusBannerHtml}
+
+                    <!-- 4 Top KPI Cards Row -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px;">
+                        <!-- Objetivo Card -->
+                        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 14px; padding: 14px;">
+                            <div style="font-size: 0.72rem; font-weight: 700; color: #1e40af; text-transform: uppercase;">Objetivo Presupuesto</div>
+                            <div style="font-size: 1.35rem; font-weight: 800; color: #1e3a8a; margin: 4px 0 2px 0;">${formatMoney(targetRev)}</div>
+                            <div style="font-size: 0.75rem; color: #3b82f6;">${formatInt(targetRN)} habs • ${targetAdr.toFixed(2)}€ • ${targetOcc.toFixed(1)}% occ</div>
+                        </div>
+
+                        <!-- Vendido Card -->
+                        <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 14px; padding: 14px;">
+                            <div style="font-size: 0.72rem; font-weight: 700; color: #7e22ce; text-transform: uppercase;">Vendido Actual (Real+OTB)</div>
+                            <div style="font-size: 1.35rem; font-weight: 800; color: #581c87; margin: 4px 0 2px 0;">${formatMoney(soldRev)}</div>
+                            <div style="font-size: 0.75rem; color: #9333ea;">${cumplPct.toFixed(1)}% cumplido • ${formatInt(soldRN)} habs</div>
+                        </div>
+
+                        <!-- Falta / Gap Card -->
+                        <div style="background: ${gapRev <= 0 ? '#f0fdf4' : '#fef2f2'}; border: 1px solid ${gapRev <= 0 ? '#bbf7d0' : '#fecaca'}; border-radius: 14px; padding: 14px;">
+                            <div style="font-size: 0.72rem; font-weight: 700; color: ${gapRev <= 0 ? '#166534' : '#991b1b'}; text-transform: uppercase;">
+                                ${gapRev <= 0 ? 'Superávit Actual' : 'Falta por Facturar (Gap)'}
+                            </div>
+                            <div style="font-size: 1.35rem; font-weight: 800; color: ${gapRev <= 0 ? '#15803d' : '#b91c1c'}; margin: 4px 0 2px 0;">
+                                ${gapRev <= 0 ? '+' : '-'}${formatMoney(Math.abs(gapRev))}
+                            </div>
+                            <div style="font-size: 0.75rem; color: ${gapRev <= 0 ? '#16a34a' : '#dc2626'};">
+                                ${gapRev <= 0 ? 'Objetivo asegurado' : `Faltan ${gapRN} habs (${gapPct.toFixed(1)}%)`}
+                            </div>
+                        </div>
+
+                        <!-- Tiempo y Capacidad Card -->
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px;">
+                            <div style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Tiempo y Capacidad</div>
+                            <div style="font-size: 1.35rem; font-weight: 800; color: #334155; margin: 4px 0 2px 0;">${daysRemaining} días rest.</div>
+                            <div style="font-size: 0.75rem; color: #64748b;">Libres: ${formatInt(capFreeRemaining)} habs • Total: ${formatInt(totalCap)}</div>
+                        </div>
+                    </div>
+
+                    <!-- Hero Box with Key Indications -->
+                    ${heroSectionHtml}
+
+                    <!-- 3 Strategy Levers -->
+                    ${leversSectionHtml}
+
+                    <!-- Interactive Real-time Simulator -->
+                    ${simulatorHtml}
+
+                    <!-- Modal Actions Footer -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e2e8f0; padding-top: 14px; flex-wrap: wrap; gap: 10px;">
+                        <button onclick="closeBudgetPacingModal()" class="btn" style="background: #f1f5f9; color: #475569; padding: 8px 18px; border-radius: 8px; font-weight: 600;">
+                            Cerrar
+                        </button>
+                        <div style="display: flex; gap: 10px;">
+                            <button onclick="copyPacingActionPlan()" class="btn" style="background: #e0e7ff; color: #4338ca; border: 1px solid #6366f1; padding: 8px 16px; border-radius: 8px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                                📋 Copiar Plan de Acción
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                // Run initial recalculation of the simulator
+                recalcBudgetSimulator(false);
+            }
+        }
+
+        function recalcBudgetSimulator(isFromSlider = false) {
+            if (!currentPacingData) return;
+            const d = currentPacingData;
+
+            let adrInputEl = document.getElementById('simAdrInput');
+            let adrSliderEl = document.getElementById('simAdrSlider');
+            let dailyRNInputEl = document.getElementById('simDailyRNInput');
+            let dailyRNSliderEl = document.getElementById('simDailyRNSlider');
+
+            if (!adrInputEl || !adrSliderEl || !dailyRNInputEl || !dailyRNSliderEl) return;
+
+            let adrVal = isFromSlider ? parseFloat(adrSliderEl.value) : parseFloat(adrInputEl.value);
+            let dailyRNVal = isFromSlider ? parseFloat(dailyRNSliderEl.value) : parseFloat(dailyRNInputEl.value);
+
+            if (isNaN(adrVal) || adrVal < 0) adrVal = 0;
+            if (isNaN(dailyRNVal) || dailyRNVal < 0) dailyRNVal = 0;
+
+            if (isFromSlider) {
+                adrInputEl.value = Math.round(adrVal);
+                dailyRNInputEl.value = dailyRNVal;
+            } else {
+                adrSliderEl.value = adrVal;
+                dailyRNSliderEl.value = dailyRNVal;
+            }
+
+            const days = d.daysRemaining > 0 ? d.daysRemaining : 1;
+            const simAdditionalRN = Math.round(dailyRNVal * days);
+            const simAdditionalRev = Math.round(simAdditionalRN * adrVal);
+
+            const simTotalFinalRev = d.soldRev + simAdditionalRev;
+            const simTotalFinalRN = d.soldRN + simAdditionalRN;
+            const balanceRev = simTotalFinalRev - d.targetRev;
+
+            const simDailyOcc = (d.hotelRooms > 0) ? ((dailyRNVal / d.hotelRooms) * 100) : 0;
+            const simFinalOcc = (d.totalCap > 0) ? ((simTotalFinalRN / d.totalCap) * 100) : 0;
+            const simFinalAdr = (simTotalFinalRN > 0) ? (simTotalFinalRev / simTotalFinalRN) : 0;
+            const simFinalRevPAR = (d.totalCap > 0) ? (simTotalFinalRev / d.totalCap) : 0;
+
+            // Update UI elements in simulator
+            const finalRevBadge = document.getElementById('simFinalRevBadge');
+            if (finalRevBadge) finalRevBadge.innerText = formatMoney(simTotalFinalRev);
+
+            const balanceBadge = document.getElementById('simBalanceBadge');
+            if (balanceBadge) {
+                const isMet = balanceRev >= 0;
+                balanceBadge.style.color = isMet ? '#10b981' : '#ef4444';
+                balanceBadge.innerText = (isMet ? '+' : '') + formatMoney(balanceRev).replace('0,00 €', '0 €') + (isMet ? ' (Superávit ✅)' : ' (Déficit 🔴)');
+            }
+
+            const dailyOccEl = document.getElementById('simDailyOcc');
+            if (dailyOccEl) dailyOccEl.innerText = simDailyOcc.toFixed(1) + '%';
+
+            const finalOccEl = document.getElementById('simFinalOcc');
+            if (finalOccEl) finalOccEl.innerText = simFinalOcc.toFixed(1) + '%';
+
+            const finalAdrEl = document.getElementById('simFinalAdr');
+            if (finalAdrEl) finalAdrEl.innerText = simFinalAdr.toFixed(2) + ' €';
+
+            const finalRevPAREl = document.getElementById('simFinalRevPAR');
+            if (finalRevPAREl) finalRevPAREl.innerText = simFinalRevPAR.toFixed(2) + ' €';
+
+            const feasBox = document.getElementById('simFeasibilityBox');
+            if (feasBox) {
+                if (simDailyOcc > 100) {
+                    feasBox.style.background = '#fef2f2';
+                    feasBox.style.color = '#dc2626';
+                    feasBox.style.border = '1px solid #fecaca';
+                    feasBox.innerText = `🔴 Inviable: Requiere ${simDailyOcc.toFixed(1)}% de ocupación (>100% capacidad hotel). Sube el ADR.`;
+                } else if (simDailyOcc > 80) {
+                    feasBox.style.background = '#fffbeb';
+                    feasBox.style.color = '#d97706';
+                    feasBox.style.border = '1px solid #fde68a';
+                    feasBox.innerText = `🟡 Ocupación exigente (${simDailyOcc.toFixed(1)}%). Viable optimizando ADR en días punta.`;
+                } else {
+                    feasBox.style.background = '#f0fdf4';
+                    feasBox.style.color = '#16a34a';
+                    feasBox.style.border = '1px solid #bbf7d0';
+                    feasBox.innerText = `🟢 Factible y equilibrado (${simDailyOcc.toFixed(1)}% ocupación diaria requerida).`;
+                }
+            }
+        }
+
+        function resetSimulatorDefaults() {
+            if (!currentPacingData) return;
+            const d = currentPacingData;
+            const adrInputEl = document.getElementById('simAdrInput');
+            const dailyRNInputEl = document.getElementById('simDailyRNInput');
+            if (adrInputEl) adrInputEl.value = Math.round(d.targetAdr);
+            if (dailyRNInputEl) dailyRNInputEl.value = Math.round(d.dailyRN1 * 10) / 10;
+            recalcBudgetSimulator(false);
+        }
+
+        function copyPacingActionPlan() {
+            if (!currentPacingData) return;
+            const d = currentPacingData;
+            const text = `📊 PLAN TÁCTICO DE CONSECUCIÓN DE PRESUPUESTO - ${d.fullMonth.toUpperCase()} ${currentYear}
+Hotel: ${currentHotel} (${d.hotelRooms} habs)
+
+🎯 OBJETIVOS DE PRESUPUESTO:
+- Facturación Objetivo: ${formatMoney(d.targetRev)}
+- Precio Medio (ADR): ${d.targetAdr.toFixed(2)} €
+- Habitaciones a Vender: ${d.targetRN} habs (${d.targetOcc.toFixed(1)}% Ocupación)
+
+📈 ESTADO ACTUAL (VENDIDO REAL + OTB):
+- Facturación Asegurada: ${formatMoney(d.soldRev)} (${d.cumplPct.toFixed(1)}% del Objetivo)
+- Habitaciones Vendidas: ${d.soldRN} habs (${d.soldOcc.toFixed(1)}% Ocupación)
+- ADR Actual: ${d.soldAdr.toFixed(2)} €
+- ${d.gapRev > 0 ? `Falta por Facturar: ${formatMoney(d.gapRev)} (${d.gapPct.toFixed(1)}% pendiente)` : `Superávit Conseguido: +${formatMoney(Math.abs(d.gapRev))}`}
+
+⚡ METAS NECESARIAS (${d.daysRemaining} DÍAS RESTANTES HASTA FIN DE MES):
+- Producción Necesaria / Día: ${formatMoney(d.dailyRevNeeded)} / día
+- Habitaciones Necesarias / Día (al ADR Objetivo): ${d.dailyRN1.toFixed(1)} habs/día (Total: ${d.rnNeeded1} habs)
+- % Ocupación Diaria Requerida: ${d.occRemaining1.toFixed(1)}% (Ocupación final mes: ${d.finalOcc1.toFixed(1)}%)
+- Precio Medio Necesario (ADR si vendes habs presupuestadas): ${d.adrNeeded2.toFixed(2)} € ADR
+
+💡 RECOMENDACIÓN REVENUE MANAGEMENT:
+Tarifa sugerida: ${d.recAdr.toFixed(2)} € ADR • Venta diaria: ${d.recDailyRN.toFixed(1)} habs/día (${d.recOccRemaining.toFixed(1)}% Ocup. diaria).
+Generado con CapaSuite Presupuestos.`;
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showNotification("📋 Plan de acción copiado al portapapeles con éxito.");
+                }).catch(() => {
+                    showNotification("Plan generado pero no se pudo copiar automáticamente.", "error");
+                });
+            } else {
+                const ta = document.createElement("textarea");
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand("copy");
+                document.body.removeChild(ta);
+                showNotification("📋 Plan de acción copiado al portapapeles.");
+            }
+        }
+
         auth.onAuthStateChanged(user => {
             if (user) {
                 const navEmail = document.getElementById('userEmailNav');
                 if (navEmail) navEmail.innerText = window.getUserDisplayName ? window.getUserDisplayName(user) : (user.displayName || user.email);
             }
         });
+
         window.onload = () => {
             init();
             
@@ -2867,6 +3699,16 @@
             const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
             const themeBtn = document.getElementById('themeToggleBtn');
             if (themeBtn) themeBtn.innerHTML = isDark ? '🌙' : '☀️';
+
+            // Auto-open pacing modal if URL param is present
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('openPacing') === 'true' || params.has('pacingMonth')) {
+                const mParam = parseInt(params.get('pacingMonth'));
+                const targetM = !isNaN(mParam) ? mParam : -1;
+                setTimeout(() => {
+                    openBudgetPacingModal(targetM);
+                }, 300);
+            }
         };
 
     </script>
@@ -3052,6 +3894,13 @@
                     Cerrar Matriz
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- Budget Pacing & Action Plan Modal -->
+    <div id="budgetPacingModal" class="modal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background:rgba(15,23,42,0.7); backdrop-filter:blur(5px); align-items:center; justify-content:center; padding: 20px; box-sizing: border-box;" onclick="if(event.target === this) closeBudgetPacingModal();">
+        <div id="budgetPacingModalContent" style="background:#ffffff; border-radius:22px; padding:26px; width:100%; max-width:960px; max-height:92vh; overflow-y:auto; box-shadow:0 25px 50px -12px rgba(0,0,0,0.3); display: flex; flex-direction: column; gap: 16px; border: 1px solid rgba(255,255,255,0.2);">
+            <!-- Content filled dynamically by renderBudgetPacingContent -->
         </div>
     </div>
 
