@@ -32,10 +32,14 @@
 
     function getStoredHotelMappings(hotel) {
         try {
-            const storage = (typeof CapaStorage !== 'undefined') ? CapaStorage : ((typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null);
-            if (!storage) return {};
             const h = (hotel && typeof hotel === 'string') ? hotel : 'Guadiana';
-            const raw = storage.getItem('segment_mappings_' + h);
+            let raw = null;
+            if (typeof CapaStorage !== 'undefined' && CapaStorage.getItem) {
+                raw = CapaStorage.getItem('segment_mappings_' + h);
+            }
+            if (!raw && typeof window !== 'undefined' && window.localStorage) {
+                raw = window.localStorage.getItem('segment_mappings_' + h);
+            }
             return raw ? JSON.parse(raw) : {};
         } catch (e) {
             return {};
@@ -44,12 +48,17 @@
 
     function saveStoredHotelMappings(hotel, mappings) {
         try {
-            const storage = (typeof CapaStorage !== 'undefined') ? CapaStorage : ((typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null);
-            if (!storage) return mappings;
             const h = (hotel && typeof hotel === 'string') ? hotel : 'Guadiana';
             const existing = getStoredHotelMappings(h);
             const merged = { ...existing, ...mappings };
-            storage.setItem('segment_mappings_' + h, JSON.stringify(merged));
+            const json = JSON.stringify(merged);
+
+            if (typeof CapaStorage !== 'undefined' && CapaStorage.setItem) {
+                CapaStorage.setItem('segment_mappings_' + h, json);
+            }
+            if (typeof window !== 'undefined' && window.localStorage) {
+                window.localStorage.setItem('segment_mappings_' + h, json);
+            }
             return merged;
         } catch (e) {
             console.error('Error guardando mapeos de hotel:', e);
@@ -68,12 +77,23 @@
         return habRows.map((item, idx) => {
             const cell = 'A' + item.row;
             const rawNorm = norm(item.original);
-            let value = Object.hasOwn(corrections, cell) ? corrections[cell] 
-                      : (hotelMappings[rawNorm] || hotelMappings[cell] || aliases[rawNorm] || item.original);
-            let name = canonical(value);
+            let value = '';
+            if (Object.hasOwn(corrections, cell)) {
+                value = corrections[cell];
+            } else if (hotelMappings && hotelMappings[rawNorm]) {
+                value = hotelMappings[rawNorm];
+            } else if (hotelMappings && hotelMappings[cell]) {
+                value = hotelMappings[cell];
+            } else if (aliases[rawNorm]) {
+                value = aliases[rawNorm];
+            } else {
+                value = item.original;
+            }
+
+            let name = (hotelMappings && hotelMappings[rawNorm]) ? hotelMappings[rawNorm] : canonical(value);
             const isLastHab = (idx === habRows.length - 1);
             if (!name && !item.original) {
-                name = hotelMappings[cell] || (isLastHab ? 'TOTAL GENERAL' : 'OTROS');
+                name = (hotelMappings && hotelMappings[cell]) || (isLastHab ? 'TOTAL GENERAL' : 'OTROS');
             }
             const reason = !name ? 'Falta el segmento a la izquierda de Hab.' : !validSegments.includes(name) && !isTotalName(name) ? 'Segmento no válido. Debes asignarlo a un segmento correcto.' : '';
             return { cell, row: item.row, original: item.original, name, reason };
