@@ -437,6 +437,39 @@
         #table-note { padding: 0 16px; }
         @media (max-width: 1100px) { .top-nav { height: auto; flex-wrap: wrap; padding: 10px 15px; gap: 12px; } .nav-links { overflow-x: auto; max-width: 100%; } .charts-row { grid-template-columns: 1fr; height: auto; } .charts-row .card { height: 360px; } }
         @media (max-width: 640px) { .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .card { padding: 16px; } .title h1 { font-size: 1.4rem; } .nav-user, .user-chip { max-width: 100%; flex-wrap: wrap; } .metric-years { font-size: .8rem; } .container { width: 100%; } }
+    
+        .toast {
+            background: var(--bg-surface);
+            color: var(--text-main);
+            padding: 14px 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+            border-left: 5px solid var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            pointer-events: auto;
+            animation: slideInRight 0.3s ease forwards;
+            max-width: 420px;
+            transition: all 0.3s ease;
+            border: 1px solid var(--border);
+        }
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes modalPop {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .upload-area.dragging {
+            border-color: var(--primary) !important;
+            background: rgba(99, 102, 241, 0.12) !important;
+            transform: scale(1.01);
+        }
+
     </style>
     <script src="js/theme-manager.js"></script>
 </head>
@@ -501,11 +534,10 @@
             </script>
         </header>
 
-        <div id="upload-section" class="upload-area" onclick="document.getElementById('fileInput').click()">
-            <div style="font-size: 3rem; margin-bottom: 15px;">👥</div>
-            <h2>Importar Datos de Segmentación</h2>
-            <p>Selecciona un informe con fechas o meses y filas Hab. Los años se detectan en la cabecera. Cada carga sustituye los meses incluidos.</p>
-            
+        <div id="upload-section" class="upload-area" onclick="document.getElementById('fileInput').click()" style="border: 2px dashed rgba(99, 102, 241, 0.4); background: linear-gradient(135deg, rgba(99, 102, 241, 0.03) 0%, rgba(16, 185, 129, 0.03) 100%);">
+            <div style="font-size: 3rem; margin-bottom: 10px;">🚀</div>
+            <h2 style="color: var(--primary); margin: 0 0 8px 0; font-size: 1.3rem;">Importar Segmentación (Producción Real o Previsión OTB)</h2>
+            <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted);">Arrastra aquí tu Excel o haz clic para seleccionarlo. El sistema identificará automáticamente el <b>Hotel</b>, el <b>Tipo</b> (Real/Previsión) y el <b>Periodo</b>.</p>
         </div>
 
         <input type="file" id="fileInput" multiple accept=".xlsx,.xls" hidden onchange="handleFiles(this.files)">
@@ -517,7 +549,7 @@
             <p id="period-note" class="analysis-note"></p>
             <div class="kpi-grid">
                 <div class="card" style="border-left: 4px solid var(--primary);">
-                    <div class="kpi-label">Producción total</div>
+                    <div class="kpi-label">Prod. Habitación</div>
                     <div class="kpi-value" id="kpi-prod">0 €</div>
                     <div id="kpi-prod-diff" class="kpi-diff">—</div>
                 </div>
@@ -542,7 +574,7 @@
             <div class="metric-indicator" style="justify-content: space-between;">
                 <div class="metric-toggles">
                     <button class="toggle-btn active" id="btn-revenue" onclick="selectMetric('revenue')">
-                        💶 Producción
+                        💶 Prod. Habitación
                     </button>
                     <button class="toggle-btn" id="btn-rooms" onclick="selectMetric('rooms')">
                         🛏️ Habitaciones
@@ -612,6 +644,81 @@
     <script src="js/segment-review.js"></script>
     <script src="js/production-groups.js?v=20260916"></script>
     <script src="js/segment-dashboard.js?v=20260916-grouped-detail"></script>
+
+    <!-- MODAL CONFIRMAR SUBIDA DE SEGMENTACIÓN -->
+    <div id="segmentConfirmModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(8px); z-index: 99999; justify-content: center; align-items: center;">
+        <div
+            style="background: var(--bg-surface, #ffffff); border: 1px solid var(--border); border-radius: 20px; width: 90%; max-width: 520px; padding: 30px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35); text-align: center; animation: modalPop 0.3s ease-out; color: var(--text-main);">
+            
+            <div style="font-size: 2.5rem; margin-bottom: 8px;">📊</div>
+            <h3 style="color: var(--primary); margin-bottom: 8px; font-size: 1.35rem; font-weight: 700;">
+                Confirmar Importación de Segmentación
+            </h3>
+
+            <!-- SMART DETECTION INFO -->
+            <div
+                style="margin-bottom: 18px; padding: 14px; background: rgba(99, 102, 241, 0.06); border-radius: 12px; border: 1.5px solid rgba(99, 102, 241, 0.2); text-align: left; font-size: 0.85rem;">
+                <div id="detectSegFileName"
+                    style="font-weight: 800; color: var(--primary); margin-bottom: 8px; word-break: break-all; font-size: 0.75rem; font-family: monospace;">
+                    Archivo: -</div>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <div>
+                        <label style="font-size: 0.7rem; font-weight: 800; color: var(--primary); text-transform: uppercase; display: block; margin-bottom: 4px;">
+                            Tipo de Informe de Segmentación:
+                        </label>
+                        <select id="segModalTypeSelector" onchange="onSegModalTypeChange(this.value)"
+                            style="width: 100%; padding: 8px 10px; border-radius: 8px; border: 1.5px solid var(--border); font-weight: 700; color: var(--text-main); background: var(--bg-surface); font-size: 0.85rem; cursor: pointer;">
+                            <option value="historical">📈 Producción Real (Histórico de Segmentación)</option>
+                            <option value="forecast">🔮 Previsión / OTB (Listado de Valoradas Futuras)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PERIODO DETECTADO -->
+            <div
+                style="margin-top: 10px; padding: 12px; background: rgba(0, 0, 0, 0.02); border-radius: 12px; border: 1.5px solid var(--border); text-align: left; margin-bottom: 20px;">
+                <label id="segPeriodLabel"
+                    style="font-size: 0.7rem; font-weight: 800; color: var(--primary); display: block; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    📅 Periodo Detectado (Puedes ajustarlo si lo deseas):
+                </label>
+                <input type="text" id="segManualPeriodInput" placeholder="DD-MM-YYYY o DD-MM-YYYY al DD-MM-YYYY"
+                    style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; font-weight: 600; color: var(--text-main); background: var(--bg-surface);">
+                <small id="segPeriodHelp" style="color: var(--text-muted); font-size: 0.7rem; margin-top: 4px; display: block;">
+                    Rango o fecha de corte detectada automáticamente desde el archivo.
+                </small>
+            </div>
+
+            <p style="color: var(--text-muted); margin-bottom: 15px; font-size: 0.9rem;">
+                ¿Para qué hotel deseas cargar esta segmentación?
+            </p>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                <button id="btnSegGuadiana" class="btn" onclick="confirmSegUpload('Guadiana')"
+                    style="padding: 15px 10px; height: auto; flex-direction: column; gap: 10px; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; background: #4f46e5;">
+                    <img src="Imagen/logo-guadiana.svg" style="height: 35px; filter: brightness(0) invert(1);"
+                        alt="Guadiana">
+                    <span style="font-size: 0.85rem; font-weight: 700;">Hotel Guadiana</span>
+                </button>
+                <button id="btnSegCumbria" class="btn" onclick="confirmSegUpload('Cumbria')"
+                    style="padding: 15px 10px; height: auto; flex-direction: column; gap: 10px; display: flex; align-items: center; justify-content: center; background: #6366f1; transition: all 0.3s ease;">
+                    <img src="Imagen/logo-cumbria.svg" style="height: 35px; filter: brightness(0) invert(1);"
+                        alt="Cumbria">
+                    <span style="font-size: 0.85rem; font-weight: 700;">Hotel Cumbria</span>
+                </button>
+            </div>
+
+            <button class="btn" onclick="closeSegModal()"
+                style="background: transparent; color: var(--text-muted); border: 1px solid var(--border); width: 100%; padding: 10px; font-weight: 500;">
+                Cancelar
+            </button>
+        </div>
+    </div>
+
+    <!-- TOAST CONTAINER -->
+    <div id="toastContainer" style="position: fixed; bottom: 25px; right: 25px; z-index: 100000; display: flex; flex-direction: column; gap: 10px; pointer-events: none;"></div>
+
 </body>
 
 </html>

@@ -3,20 +3,28 @@
     'use strict';
     const norm = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[.]/g, '').trim();
     const months = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
-    const aliases = { 'CORPORATI': 'CORPORATIVO LINEAL', 'DIRECTO O': 'DIRECTO OFFLINE', 'TTOO DINA': 'TTOO DINAMICA', 'D OFF LINE': 'DIRECTO OFFLINE', 'D ON LINE': 'DIRONLINE', 'OTA': 'OTA/AAVV', 'GRUPO TANTEO': 'GRTANTEO', 'TARIFAS NEGOCIADAS': 'CORPORATIVO LINEAL', 'BONO LINE': 'BONO ONLINE', 'BONO LINEAL': 'OTROS', 'GRUPO AVORIS': 'AGENCIAS' };
+    const aliases = { 'CORPORATI': 'CORPORATIVO LINEAL', 'DIRECTO O': 'DIRECTO OFFLINE', 'TTOO DINA': 'TTOO DINAMICA', 'D OFF LINE': 'DIRECTO OFFLINE', 'D ON LINE': 'DIRONLINE', 'OTA': 'OTA/AAVV', 'GRUPO TANTEO': 'GRTANTEO', 'TARIFAS NEGOCIADAS': 'CORPORATIVO LINEAL', 'TARIFAS N': 'CORPORATIVO LINEAL', 'TARIFAS NEG': 'CORPORATIVO LINEAL', 'TARIFAS NEGOCI': 'CORPORATIVO LINEAL', 'BONO LINE': 'BONO ONLINE', 'BONO LINEAL': 'OTROS', 'GRUPO AVORIS': 'AGENCIAS' };
     const validSegments = ['CORPORATIVO LINEAL', 'DIRECTO OFFLINE', 'DIRONLINE', 'GRTANTEO', 'GRUPOS', 'OTA/AAVV', 'OTROS', 'TTOO DINAMICA', 'PARTICULARES', 'AGENCIAS', 'BONO ONLINE', 'BONO SPA'];
     const isRoomMetric = value => /^(HAB|HABI|RN|RMS|NOCHES|HABITACIONES|UNIDADES)$/.test(norm(value));
     const canonical = value => aliases[norm(value)] || norm(value);
     const isTotalName = value => /^(TOTAL|TOTAL GENERAL|TOTAL MASTER|RESUMEN)$/.test(norm(value));
     function reviewRows(rows, corrections = {}) {
-        return rows.flatMap((row, index) => {
-            if (!isRoomMetric(row?.[1])) return [];
-            const cell = 'A' + (index + 1), original = String(row[0] ?? '').trim();
-            const value = Object.hasOwn(corrections, cell) ? corrections[cell] : original;
+        const habRows = [];
+        rows.forEach((row, index) => {
+            if (isRoomMetric(row?.[1])) {
+                habRows.push({ row: index + 1, index, original: String(row[0] ?? '').trim() });
+            }
+        });
+        return habRows.map((item, idx) => {
+            const cell = 'A' + item.row;
+            const value = Object.hasOwn(corrections, cell) ? corrections[cell] : item.original;
             let name = canonical(value);
-            if (!name && !original) name = 'TOTAL GENERAL';
-            const reason = !name ? 'Falta el segmento a la izquierda de Hab.' : !validSegments.includes(name) && !isTotalName(name) ? 'Segmento no v\u00e1lido. Debes asignarlo a un segmento correcto.' : '';
-            return [{ cell, row: index + 1, original, name, reason }];
+            const isLastHab = (idx === habRows.length - 1);
+            if (!name && !item.original) {
+                name = isLastHab ? 'TOTAL GENERAL' : 'OTROS';
+            }
+            const reason = !name ? 'Falta el segmento a la izquierda de Hab.' : !validSegments.includes(name) && !isTotalName(name) ? 'Segmento no válido. Debes asignarlo a un segmento correcto.' : '';
+            return { cell, row: item.row, original: item.original, name, reason };
         });
     }
     const fields = ['revenue', 'rooms', 'accommodation', 'totalRevenue'];
@@ -204,8 +212,8 @@
         }
         return Object.keys(report.years).sort().reverse();
     }
-    function parseForecast(rows, fileName = '', corrections = {}) {
-        let startYear = Number((fileName.match(/20\d{2}/) || [new Date().getFullYear()])[0]);
+    function parseForecast(rows, fileName = '', corrections = {}, hintPeriod) {
+        let startYear = Number((String(hintPeriod || fileName).match(/20\d{2}/) || [new Date().getFullYear()])[0]);
         let header = -1, columns = [];
         for (let r = 0; r < Math.min(rows.length, 30); r++) {
             const mapped = (rows[r] || []).map((v, c) => {

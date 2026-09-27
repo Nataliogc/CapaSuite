@@ -2,13 +2,13 @@
 (function () {
     let active = false;
     window.SegmentReview = {
-        async read(rows, fileName, period) {
+        async read(rows, fileName, period, forceType) {
             if (active) throw new Error('Termina primero la revisión de segmentos abierta.');
             let initial;
-            const isForecast = fileName.toLowerCase().includes('prevision');
+            const isForecast = forceType ? (forceType === 'forecast' || forceType === 'Otb' || forceType === 'Prevision') : (fileName.toLowerCase().includes('prevision') || fileName.toLowerCase().includes('otb') || fileName.toLowerCase().includes('valorada'));
             try { 
                 return isForecast 
-                    ? SegmentAnalysis.parseForecast(rows, fileName)
+                    ? SegmentAnalysis.parseForecast(rows, fileName, {}, period)
                     : SegmentAnalysis.parse(rows, fileName, period); 
             }
             catch (error) { if (error.code !== 'SEGMENT_REVIEW') throw error; initial = error; }
@@ -49,7 +49,7 @@
                     event.preventDefault();
                     try { 
                         close(isForecast 
-                            ? SegmentAnalysis.parseForecast(rows, fileName, Object.fromEntries(inputs.map(([cell, input]) => [cell, input.value])))
+                            ? SegmentAnalysis.parseForecast(rows, fileName, Object.fromEntries(inputs.map(([cell, input]) => [cell, input.value])), period)
                             : SegmentAnalysis.parse(rows, fileName, period, Object.fromEntries(inputs.map(([cell, input]) => [cell, input.value])))
                         ); 
                     }

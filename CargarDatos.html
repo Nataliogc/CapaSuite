@@ -715,7 +715,7 @@
                 style="height: 55px; width: auto; object-fit: contain;">
             <div style="text-align: left;">
                 <h1>Carga de Datos</h1>
-                <p>Sube los informes de Producción y Segmentos para actualizar el análisis.</p>
+                <p>Sube los informes de Producción y Previsión para actualizar el análisis.</p>
             </div>
         </header>
 
@@ -773,7 +773,7 @@
                         }
                     }
                 } else {
-                    msg.innerText = "❓ No reconozco el modelo. Asegúrate de incluir palabras como 'Produccion', 'Segmentos' o 'Previsiones'.";
+                    msg.innerText = "❓ No reconozco el modelo. Asegúrate de incluir palabras como 'Produccion', 'Historico' o 'Previsiones'.";
                     msg.style.color = '#ef4444';
                 }
             }
@@ -848,7 +848,7 @@
                 <div>
                     <div id="histStatus" class="status-badge status-pending">Pendiente</div>
                     <h2 style="font-size: 1.2rem; color: #6366f1;">2. Histórico</h2>
-                    <p style="font-size: 0.8rem; color: var(--text-muted);">Prod. o Segmentos de años anteriores.</p>
+                    <p style="font-size: 0.8rem; color: var(--text-muted);">Prod. de años anteriores.</p>
                 </div>
 
                 <div class="upload-zone" id="dropZoneHist" onclick="document.getElementById('fileHist').click()">
@@ -857,37 +857,16 @@
                     <input type="file" id="fileHist" hidden accept=".xlsx, .xls">
                 </div>
 
-                <div id="histInfo" class="file-info" style="font-size: 0.75rem;">Detecta auto: <b
-                        id="histStateText">Prod / Seg</b></div>
+                <div id="histInfo" class="file-info" style="font-size: 0.75rem;">Detecta auto: <b id="histStateText">Producción</b></div>
                 <button class="btn" style="margin-top: 10px; padding: 8px; background: #6366f1;"
                     onclick="document.getElementById('fileHist').click()">Seleccionar</button>
-            </div>
-
-            <!-- SEGMENTOS CARD -->
-            <div class="card">
-                <div>
-                    <div id="segStatus" class="status-badge status-pending">Pendiente</div>
-                    <h2 style="font-size: 1.2rem; color: var(--secondary);">3. Segmentos (Actual)</h2>
-                    <p style="font-size: 0.8rem; color: var(--text-muted);">Desglose por mercados año en curso.</p>
-                </div>
-
-                <div class="upload-zone" id="dropZoneSeg" onclick="document.getElementById('fileSeg').click()">
-                    <i>📁</i>
-                    <p>Subir Excel</p>
-                    <input type="file" id="fileSeg" hidden accept=".xlsx, .xls">
-                </div>
-
-                <div id="segInfo" class="file-info" style="font-size: 0.75rem;">Siguiente: <b id="nextDateSeg">-</b>
-                </div>
-                <button class="btn" style="margin-top: 10px; padding: 8px; background: var(--secondary);"
-                    onclick="document.getElementById('fileSeg').click()">Seleccionar</button>
             </div>
 
             <!-- OTB CARD -->
             <div class="card">
                 <div>
                     <div id="otbStatus" class="status-badge status-pending">Pendiente</div>
-                    <h2 style="font-size: 1.2rem; color: #8b5cf6;">4. Previsión (OTB)</h2>
+                    <h2 style="font-size: 1.2rem; color: #8b5cf6;">3. Previsión (OTB)</h2>
                     <p style="font-size: 0.8rem; color: var(--text-muted);">Listado de valoradas.</p>
                 </div>
 
@@ -1359,25 +1338,25 @@
             const lastSeg = config[hotel]?.lastSegDate || "01-01-26";
             const lastOtb = config[hotel]?.lastOtbDate || "Pendiente";
 
-            document.getElementById('nextDateProd').innerText = calculateNextDay(lastProd);
-            document.getElementById('nextDateSeg').innerText = calculateNextDay(lastSeg);
-            document.getElementById('otbStateText').innerText = lastOtb;
-            document.getElementById('histStateText').innerText = lastHist;
+            if (document.getElementById('nextDateProd')) document.getElementById('nextDateProd').innerText = calculateNextDay(lastProd);
+            if (document.getElementById('nextDateSeg')) document.getElementById('nextDateSeg').innerText = calculateNextDay(lastSeg);
+            if (document.getElementById('otbStateText')) document.getElementById('otbStateText').innerText = lastOtb;
+            if (document.getElementById('histStateText')) document.getElementById('histStateText').innerText = lastHist;
 
 
-            if (config[hotel]?.lastProdDate) {
+            if (config[hotel]?.lastProdDate && document.getElementById('prodStatus')) {
                 document.getElementById('prodStatus').innerText = "Actualizado hasta " + lastProd;
                 document.getElementById('prodStatus').className = "status-badge status-up";
             }
-            if (config[hotel]?.lastHistDate) {
+            if (config[hotel]?.lastHistDate && document.getElementById('histStatus')) {
                 document.getElementById('histStatus').innerText = "Cargado";
                 document.getElementById('histStatus').className = "status-badge status-up";
             }
-            if (config[hotel]?.lastSegDate) {
+            if (config[hotel]?.lastSegDate && document.getElementById('segStatus')) {
                 document.getElementById('segStatus').innerText = "Actualizado hasta " + lastSeg;
                 document.getElementById('segStatus').className = "status-badge status-up";
             }
-            if (config[hotel]?.lastOtbDate) {
+            if (config[hotel]?.lastOtbDate && document.getElementById('otbStatus')) {
                 document.getElementById('otbStatus').innerText = "Actualizado hasta " + lastOtb;
                 document.getElementById('otbStatus').className = "status-badge status-up";
             }
@@ -1431,7 +1410,7 @@
                 };
             }
 
-            ['Prod', 'Hist', 'Seg', 'Otb'].forEach(type => {
+            ['Prod', 'Hist', 'Otb'].forEach(type => {
                 const zone = document.getElementById('dropZone' + type);
                 const input = document.getElementById('file' + type);
 
