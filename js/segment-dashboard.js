@@ -5,7 +5,7 @@ const STORAGE_KEY = 'hotel_manager_db_v2';
 const HOTELS = { Guadiana: { rooms: 108 }, Cumbria: { rooms: 59 } };
 let historicalDB = {}, forecastDB = {}, segmentDB = {}, currentHotel = 'Guadiana', currentYear = '', currentMetric = 'revenue', charts = {};
 let currentMode = 'historical';
-let currentSegment = null;
+let currentSegment = '';
 function selectSegment(name) { currentSegment = name; renderDashboard(); }
 const el = id => document.getElementById(id);
 const escapeHTML = text => String(text ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -90,7 +90,7 @@ function loadData() {
     } catch (e) { message('No se han podido leer los datos guardados. ' + e.message, true); }
 }
 function switchHotel(hotel) {
-    currentHotel = hotel; currentYear = ''; currentSegment = null;
+    currentHotel = hotel; currentYear = ''; currentSegment = '';
     el('hotelLogo').src = hotel === 'Guadiana' ? 'Imagen/logo-guadiana.svg' : 'Imagen/logo-cumbria.svg';
     initControls();
 }
@@ -405,7 +405,7 @@ function renderDashboard() {
         : segmentDB[currentHotel]?.[compareYear];
     const months = el('monthSelector').value === 'All' ? SegmentAnalysis.availableMonths(hotelData) : [Number(el('monthSelector').value)];
     const segmentNames = [...new Set([...SegmentAnalysis.segments(hotelData), ...SegmentAnalysis.segments(hotelPrevious)].map(s => s.name))].sort((a, b) => a.localeCompare(b, 'es'));
-    if (currentSegment === null || currentSegment && !segmentNames.includes(currentSegment)) currentSegment = SegmentAnalysis.segments(hotelData).slice().sort((a, b) => SegmentAnalysis.sum(b, 'revenue', months) - SegmentAnalysis.sum(a, 'revenue', months))[0]?.name || '';
+    if (currentSegment && !segmentNames.includes(currentSegment)) currentSegment = '';
     el('segmentSelector').replaceChildren(new Option('Todos los segmentos', ''), ...segmentNames.map(name => new Option(name, name)));
     el('segmentSelector').value = currentSegment;
     const scopeName = currentSegment || 'Todos los segmentos';
