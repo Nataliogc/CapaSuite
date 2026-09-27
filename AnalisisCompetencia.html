@@ -2106,12 +2106,15 @@
         function refreshActiveView() {
             activeHotel = document.getElementById('hotelSelector').value;
             const selectedMonth = document.getElementById('monthSelector').value;
+            
+            // Recalcular promedios de mercado sobre todo el dataset para que cualquier cambio de precio se propague
+            recalcMarketAverages(processedData);
+
             let data = [...processedData];
             if (selectedMonth !== 'all') {
                 data = data.filter(d => d.month === selectedMonth);
             }
 
-            recalcMarketAverages(data);
             renderKPIs(data);
             renderChart(data);
 
@@ -2207,7 +2210,17 @@
                     return my && !my.sold && my.price > 0 && d.compAvg > 0 && my.price > d.compAvg * 1.25;
                 });
             } else if (type === 'compression') {
-                filterLabel = "Demanda Pico";
+                filterLabel = "Demanda Pico (Pendientes de Blindar)";
+                filtered = baseData.filter(d => {
+                    const my = d.hotels[activeHotel];
+                    return (d.compAvg > globalAvg * 1.35) && my && !my.sold && my.price > 0 && my.price < d.compAvg;
+                });
+                if (filtered.length === 0) {
+                    filtered = baseData.filter(d => d.compAvg > globalAvg * 1.35);
+                    filterLabel = "Demanda Pico (Mercado)";
+                }
+            } else if (type === 'compression_all') {
+                filterLabel = "Demanda Pico (Todas)";
                 filtered = baseData.filter(d => d.compAvg > globalAvg * 1.35);
             } else if (type === 'pickup_pos') {
                 filterLabel = "Aceleración Pick-up (+)";
@@ -3689,21 +3702,49 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             }
 
             // --- INSIGHT 3: Demanda Pico de Mercado (Compresión) ---
-            if (compression.length > 0) {
+            const allCompression = data.filter(d => (d.compAvg || 0) > globalAvg * 1.35);
+            const unshieldedCompression = allCompression.filter(d => {
+                const my = d.hotels[activeHotel];
+                return my && !my.sold && my.price > 0 && my.price < d.compAvg;
+            });
+            const shieldedCompression = allCompression.filter(d => {
+                const my = d.hotels[activeHotel];
+                return my && !my.sold && my.price > 0 && my.price >= d.compAvg;
+            });
+
+            if (unshieldedCompression.length > 0) {
                 alertCount++;
-                compression.sort((a, b) => (b.compAvg || 0) - (a.compAvg || 0));
-                const chips = compression.slice(0, 4).map(d => 
-                    makeDateChip(d, `${Math.round(d.compAvg)}€`, '#f97316')
-                );
+                unshieldedCompression.sort((a, b) => (b.compAvg || 0) - (a.compAvg || 0));
+                const chips = unshieldedCompression.slice(0, 4).map(d => {
+                    const myP = Math.round(d.hotels[activeHotel]?.price || 0);
+                    const compP = Math.round(d.compAvg || 0);
+                    return makeDateChip(d, `${myP}€ < ${compP}€`, '#f97316');
+                });
                 addExpertInsightCard({
                     type: 'compression',
                     icon: '🔥',
                     title: 'Demanda Pico de Mercado',
-                    badge: `${compression.length} fecha${compression.length !== 1 ? 's' : ''}`,
-                    desc: `Tarifas de mercado >35% sobre la media. Fechas de alta compresión ideales para blindar precio y exigir estancias mínimas.`,
+                    badge: `${unshieldedCompression.length} pendiente${unshieldedCompression.length !== 1 ? 's' : ''}`,
+                    desc: `Tarifas de mercado >35% sobre la media (${Math.round(globalAvg * 1.35)}€). Tu tarifa actual está por debajo del pico de mercado (${shieldedCompression.length} ya blindada${shieldedCompression.length !== 1 ? 's' : ''}); momento ideal para blindar precio y exigir estancias mínimas.`,
                     chips: chips,
                     filterType: 'compression',
-                    filterCount: compression.length
+                    filterCount: unshieldedCompression.length
+                });
+            } else if (allCompression.length > 0 && shieldedCompression.length > 0) {
+                allCompression.sort((a, b) => (b.compAvg || 0) - (a.compAvg || 0));
+                const chips = allCompression.slice(0, 4).map(d => {
+                    const myP = Math.round(d.hotels[activeHotel]?.price || 0);
+                    return makeDateChip(d, `${myP}€ ✓`, '#10b981');
+                });
+                addExpertInsightCard({
+                    type: 'pickup-pos',
+                    icon: '🛡️',
+                    title: 'Demanda Pico Blindada',
+                    badge: `${allCompression.length} protegidas`,
+                    desc: `Todas las fechas con alta compresión de mercado tienen tus tarifas correctamente blindadas y alineadas con el pico de demanda.`,
+                    chips: chips,
+                    filterType: 'compression_all',
+                    filterCount: allCompression.length
                 });
             }
 
