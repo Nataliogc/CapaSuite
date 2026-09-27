@@ -1824,11 +1824,11 @@
                         try {
                             let reviewed = null;
                             if (type === 'Seg') {
-                                reviewed = await SegmentReview.read(jsonData, file.name, manualDate);
+                                reviewed = await SegmentReview.read(jsonData, file.name, manualDate, null, hotel);
                                 if (!reviewed) { document.getElementById('loader').style.display = 'none'; showToast('Importación cancelada.', 'info'); return; }
                             } else if (type === 'Otb' || type === 'Prevision') {
                                 try {
-                                    reviewed = await SegmentReview.read(jsonData, file.name, manualDate);
+                                    reviewed = await SegmentReview.read(jsonData, file.name, manualDate, null, hotel);
                                     if (!reviewed) { document.getElementById('loader').style.display = 'none'; showToast('Importación cancelada.', 'info'); return; }
                                 } catch (e) {
                                     console.warn("No segment structure detected or parsing failed, falling back to legacy parser.", e);

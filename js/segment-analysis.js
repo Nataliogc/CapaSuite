@@ -3,12 +3,62 @@
     'use strict';
     const norm = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[.]/g, '').trim();
     const months = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
-    const aliases = { 'CORPORATI': 'CORPORATIVO LINEAL', 'DIRECTO O': 'DIRECTO OFFLINE', 'TTOO DINA': 'TTOO DINAMICA', 'D OFF LINE': 'DIRECTO OFFLINE', 'D ON LINE': 'DIRONLINE', 'OTA': 'OTA/AAVV', 'GRUPO TANTEO': 'GRTANTEO', 'TARIFAS NEGOCIADAS': 'CORPORATIVO LINEAL', 'TARIFAS N': 'CORPORATIVO LINEAL', 'TARIFAS NEG': 'CORPORATIVO LINEAL', 'TARIFAS NEGOCI': 'CORPORATIVO LINEAL', 'EMPRESAS': 'CORPORATIVO LINEAL', 'EMPRESA': 'CORPORATIVO LINEAL', 'PARTICULA': 'PARTICULARES', 'SERCOTEL': 'DIRONLINE', 'BONO LINE': 'BONO ONLINE', 'BONO LINEAL': 'OTROS', 'GRUPO AVORIS': 'AGENCIAS' };
+    const aliases = { 
+        'CORPORATI': 'CORPORATIVO LINEAL', 
+        'DIRECTO O': 'DIRECTO OFFLINE', 
+        'TTOO DINA': 'TTOO DINAMICA', 
+        'D OFF LINE': 'DIRECTO OFFLINE', 
+        'D ON LINE': 'DIRONLINE', 
+        'OTA': 'OTA/AAVV', 
+        'GRUPO TANTEO': 'GRTANTEO', 
+        'GRUPO TAN': 'GRTANTEO',
+        'TARIFAS NEGOCIADAS': 'CORPORATIVO LINEAL', 
+        'TARIFAS N': 'CORPORATIVO LINEAL', 
+        'TARIFAS NEG': 'CORPORATIVO LINEAL', 
+        'TARIFAS NEGOCI': 'CORPORATIVO LINEAL', 
+        'EMPRESAS': 'CORPORATIVO LINEAL', 
+        'EMPRESA': 'CORPORATIVO LINEAL', 
+        'PARTICULA': 'PARTICULARES', 
+        'SERCOTEL': 'DIRONLINE', 
+        'BONO LINE': 'BONO ONLINE', 
+        'BONO LINEAL': 'OTROS', 
+        'GRUPO AVORIS': 'AGENCIAS',
+        'GRUPO AVO': 'OTA/AAVV'
+    };
     const validSegments = ['CORPORATIVO LINEAL', 'DIRECTO OFFLINE', 'DIRONLINE', 'GRTANTEO', 'GRUPOS', 'OTA/AAVV', 'OTROS', 'TTOO DINAMICA', 'PARTICULARES', 'AGENCIAS', 'BONO ONLINE', 'BONO SPA'];
     const isRoomMetric = value => /^(HAB|HABI|RN|RMS|NOCHES|HABITACIONES|UNIDADES)$/.test(norm(value));
     const canonical = value => aliases[norm(value)] || norm(value);
     const isTotalName = value => /^(TOTAL|TOTAL GENERAL|TOTAL MASTER|RESUMEN)$/.test(norm(value));
-    function reviewRows(rows, corrections = {}) {
+
+    function getStoredHotelMappings(hotel) {
+        try {
+            const storage = (typeof CapaStorage !== 'undefined') ? CapaStorage : ((typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null);
+            if (!storage) return {};
+            const h = (hotel && typeof hotel === 'string') ? hotel : 'Guadiana';
+            const raw = storage.getItem('segment_mappings_' + h);
+            return raw ? JSON.parse(raw) : {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function saveStoredHotelMappings(hotel, mappings) {
+        try {
+            const storage = (typeof CapaStorage !== 'undefined') ? CapaStorage : ((typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null);
+            if (!storage) return mappings;
+            const h = (hotel && typeof hotel === 'string') ? hotel : 'Guadiana';
+            const existing = getStoredHotelMappings(h);
+            const merged = { ...existing, ...mappings };
+            storage.setItem('segment_mappings_' + h, JSON.stringify(merged));
+            return merged;
+        } catch (e) {
+            console.error('Error guardando mapeos de hotel:', e);
+            return mappings;
+        }
+    }
+
+    function reviewRows(rows, corrections = {}, hotel = '') {
+        const hotelMappings = (typeof hotel === 'object' && hotel !== null) ? hotel : getStoredHotelMappings(hotel);
         const habRows = [];
         rows.forEach((row, index) => {
             if (isRoomMetric(row?.[1])) {
@@ -17,11 +67,13 @@
         });
         return habRows.map((item, idx) => {
             const cell = 'A' + item.row;
-            const value = Object.hasOwn(corrections, cell) ? corrections[cell] : item.original;
+            const rawNorm = norm(item.original);
+            let value = Object.hasOwn(corrections, cell) ? corrections[cell] 
+                      : (hotelMappings[rawNorm] || hotelMappings[cell] || aliases[rawNorm] || item.original);
             let name = canonical(value);
             const isLastHab = (idx === habRows.length - 1);
             if (!name && !item.original) {
-                name = isLastHab ? 'TOTAL GENERAL' : 'OTROS';
+                name = hotelMappings[cell] || (isLastHab ? 'TOTAL GENERAL' : 'OTROS');
             }
             const reason = !name ? 'Falta el segmento a la izquierda de Hab.' : !validSegments.includes(name) && !isTotalName(name) ? 'Segmento no válido. Debes asignarlo a un segmento correcto.' : '';
             return { cell, row: item.row, original: item.original, name, reason };
@@ -69,7 +121,8 @@
         }
         return null; // Period totals and percentage columns are deliberately excluded.
     }
-    function parse(rows, fileName = '', hintYear, corrections = {}) {
+    function parse(rows, fileName = '', hintYear, corrections = {}, hotel = '') {
+        const detectedHotel = hotel || (fileName.toLowerCase().includes('cumbria') ? 'Cumbria' : 'Guadiana');
         const dateYears = [...fileName.matchAll(/\d{1,2}[-/]\d{1,2}[-/](\d{4}|\d{2})(?!\d)/g)].map(m => m[1].length === 2 ? (Number(m[1]) > 50 ? '19' : '20') + m[1] : m[1]);
         const periodYears = String(hintYear || '').match(/\b20\d{2}\b/g) || [];
         const uniqueYears = [...new Set(periodYears.length ? periodYears : dateYears)];
@@ -82,10 +135,10 @@
             }
         }
         if (header < 0) throw new Error('No se reconoce la cabecera de fechas y habitaciones del informe.');
-        const blocks = reviewRows(rows, corrections), issues = blocks.filter(block => block.reason);
+        const blocks = reviewRows(rows, corrections, detectedHotel), issues = blocks.filter(block => block.reason);
         if (issues.length) {
             const error = new Error('Revisa los segmentos: ' + issues.map(b => `${b.cell}: ${b.reason}`).join(' '));
-            error.code = 'SEGMENT_REVIEW'; error.issues = issues; error.blocks = blocks;
+            error.code = 'SEGMENT_REVIEW'; error.issues = issues; error.blocks = blocks; error.hotel = detectedHotel;
             throw error;
         }
         // Prefer daily columns if the report also contains monthly summaries.
@@ -212,7 +265,8 @@
         }
         return Object.keys(report.years).sort().reverse();
     }
-    function parseForecast(rows, fileName = '', corrections = {}, hintPeriod) {
+    function parseForecast(rows, fileName = '', corrections = {}, hintPeriod, hotel = '') {
+        const detectedHotel = hotel || (fileName.toLowerCase().includes('cumbria') ? 'Cumbria' : 'Guadiana');
         let startYear = Number((String(hintPeriod || fileName).match(/20\d{2}/) || [new Date().getFullYear()])[0]);
         let header = -1, columns = [];
         for (let r = 0; r < Math.min(rows.length, 30); r++) {
@@ -238,11 +292,13 @@
             return { iso: `${currentYear}-${String(c.month + 1).padStart(2, '0')}-${String(c.day).padStart(2, '0')}` };
         });
 
-        const blocks = reviewRows(rows, corrections);
+        const blocks = reviewRows(rows, corrections, detectedHotel);
         if (blocks.some(b => b.reason)) {
             const error = new Error('Revisión requerida');
             error.code = 'SEGMENT_REVIEW';
+            error.issues = blocks.filter(b => b.reason);
             error.blocks = blocks;
+            error.hotel = detectedHotel;
             throw error;
         }
 
@@ -335,7 +391,7 @@
         if (!data || !name) return data;
         return { ...data, segment: Object.fromEntries(Object.entries(data.segment || {}).filter(([, segment]) => segment.name === name)) };
     }
-    const api = { parse, merge, parseForecast, mergeForecast, aggregate, comparable, availableMonths, segments, sum, number, reviewRows, validSegments, canonical, scope };
+    const api = { parse, merge, parseForecast, mergeForecast, aggregate, comparable, availableMonths, segments, sum, number, reviewRows, validSegments, canonical, scope, getHotelMappings: getStoredHotelMappings, saveHotelMappings: saveStoredHotelMappings };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.SegmentAnalysis = api;
 })(typeof window === 'undefined' ? globalThis : window);

@@ -297,13 +297,12 @@ async function confirmSegUpload(targetHotel) {
         const book = XLSX.read(await file.arrayBuffer(), { type: 'array' });
         const rows = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { header: 1, defval: null, range: 0, blankrows: true });
         
-        const report = await SegmentReview.read(rows, file.name, manualPeriod, selectedType);
+        const hotel = targetHotel || detectHotel(file.name);
+        const report = await SegmentReview.read(rows, file.name, manualPeriod, selectedType, hotel);
         if (!report) {
             showToast('Importación cancelada por el usuario.', 'warning');
             return;
         }
-
-        const hotel = targetHotel || detectHotel(file.name);
 
         if (selectedType === 'forecast' || report.segmentData) {
             forecastDB = JSON.parse(CapaStorage.getItem('segment_forecast_v2') || '{}') || {};
