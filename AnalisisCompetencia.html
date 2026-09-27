@@ -335,17 +335,31 @@
         .panel-heading.collapsible {
             cursor: pointer;
             user-select: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 14px;
+            font-weight: 700;
+            font-size: 0.88rem;
+            transition: all 0.2s ease;
+            border-radius: 12px 12px 0 0;
+        }
+
+        .card.collapsed .panel-heading.collapsible {
+            border-radius: 12px;
         }
 
         .panel-heading.collapsible:hover {
-            background: #f1f5f9;
+            background: rgba(99, 102, 241, 0.08);
+            color: var(--primary);
         }
 
         .panel-heading.collapsible::after {
             content: '▼';
-            font-size: 0.7rem;
-            color: var(--text-light);
-            transition: transform 0.2s;
+            font-size: 0.75rem;
+            color: var(--text-muted, #64748b);
+            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-left: 8px;
         }
 
         .card.collapsed .panel-heading.collapsible::after {
@@ -353,7 +367,7 @@
         }
 
         .card.collapsed .panel-body {
-            display: none;
+            display: none !important;
         }
 
         .sidebar-collapsed .kpi-wrapper>*:not(#sidebarToggle) {
@@ -1354,41 +1368,52 @@
         <aside class="kpi-wrapper">
 
             <!-- SIDEBAR TOGGLE -->
-            <div onclick="toggleSidebar()" id="sidebarToggle" title="Contraer/Expandir Panel"
-                style="background:var(--primary); color:white; padding:8px; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow-sm); transition:all 0.2s;">
-                <span id="sidebar-toggle-icon">◀ Contraer</span>
+            <div onclick="toggleSidebar()" id="sidebarToggle" title="Contraer/Expandir Panel Lateral"
+                style="background:var(--primary); color:white; padding:8px 12px; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow-sm); transition:all 0.2s; font-weight:700; font-size:0.85rem;">
+                <span id="sidebar-toggle-icon">◀ Contraer Panel</span>
             </div>
 
-            <!-- CHART TRIGGER MINI-BUTTON (COMPACT) -->
-            <div onclick="openChartModal()" title="Ver Gráfico de Evolución"
-                style="background:var(--bg-surface); padding:8px; border-radius:8px; border:1px solid var(--border); cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow-sm); transition:all 0.2s;"
-                onmouseover="this.style.borderColor='var(--primary)'; this.style.transform='translateY(-2px)'"
-                onmouseout="this.style.borderColor='var(--border)'; this.style.transform='none'">
-                <span style="font-size:1.4rem;">📈</span>
+            <!-- BLOQUE 1: KPIs & RESUMEN DE MERCADO (CONTRAÍBLE) -->
+            <div class="card" id="kpisBlockCard" style="margin-bottom:0;">
+                <div class="panel-heading collapsible" onclick="toggleKpisBlock()" title="Haz clic para contraer/expandir las métricas de tarifas">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span>📊 Resumen de Mercado</span>
+                    </div>
+                </div>
+                <div class="panel-body" style="padding:10px; display:flex; flex-direction:column; gap:8px;">
+                    <!-- CHART TRIGGER BUTTON -->
+                    <div onclick="openChartModal()" title="Ver Gráfico de Evolución de Tarifas"
+                        style="background:var(--bg-surface); padding:8px 12px; border-radius:8px; border:1px solid var(--border); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:var(--shadow-sm); transition:all 0.2s; font-weight:600; font-size:0.85rem;"
+                        onmouseover="this.style.borderColor='var(--primary)'; this.style.transform='translateY(-1px)'"
+                        onmouseout="this.style.borderColor='var(--border)'; this.style.transform='none'">
+                        <span style="font-size:1.1rem;">📈</span>
+                        <span style="color:var(--text-main);">Ver Gráfico Evolución</span>
+                    </div>
+
+                    <!-- KPI CARD 1 -->
+                    <div class="kpi-item">
+                        <div class="kpi-label">Tu Tarifa Promedio (BAR)</div>
+                        <div class="kpi-value" id="kpi-avg">0€</div>
+                    </div>
+
+                    <!-- KPI CARD 2 -->
+                    <div class="kpi-item" style="border-left: 4px solid #64748b;">
+                        <div class="kpi-label">Tarifa Media Mercado</div>
+                        <div class="kpi-value" id="kpi-market">0€</div>
+                    </div>
+
+                    <!-- KPI CARD 3 -->
+                    <div class="kpi-item" id="kpi-card-pos">
+                        <div class="kpi-label">Índice Competitivo (Gap)</div>
+                        <div class="kpi-value" id="kpi-pos">0%</div>
+                        <div class="kpi-sub" id="kpi-pos-text">En línea con el mercado</div>
+                    </div>
+                </div>
             </div>
 
-            <!-- KPI CARD 1 -->
-            <div class="kpi-item">
-                <div class="kpi-label">Tu Tarifa Promedio (BAR)</div>
-                <div class="kpi-value" id="kpi-avg">0€</div>
-            </div>
-
-            <!-- KPI CARD 2 -->
-            <div class="kpi-item" style="border-left: 4px solid #64748b;"> <!-- Neutral Color -->
-                <div class="kpi-label">Tarifa Media Mercado</div>
-                <div class="kpi-value" id="kpi-market">0€</div>
-            </div>
-
-            <!-- KPI CARD 3 -->
-            <div class="kpi-item" id="kpi-card-pos">
-                <div class="kpi-label">Índice Competitivo (Gap)</div>
-                <div class="kpi-value" id="kpi-pos">0%</div>
-                <div class="kpi-sub" id="kpi-pos-text">En línea con el mercado</div>
-            </div>
-
-            <!-- INSIGHTS -->
-            <div class="card" id="expertAnalysisCard">
-                <div class="panel-heading collapsible" onclick="toggleExpertAnalysis()">
+            <!-- BLOQUE 2: ANÁLISIS EXPERTO (CONTRAÍBLE) -->
+            <div class="card" id="expertAnalysisCard" style="margin-bottom:0;">
+                <div class="panel-heading collapsible" onclick="toggleExpertAnalysis()" title="Haz clic para contraer/expandir el Análisis Experto">
                     <div style="display:flex; align-items:center; gap:8px;">
                         <span>⚡ Análisis Experto</span>
                         <span id="expert-badge-count" class="expert-badge-pill" style="display:none;">0 alertas</span>
@@ -1540,9 +1565,33 @@
             }
         }
 
+        function toggleKpisBlock() {
+            const card = document.getElementById('kpisBlockCard');
+            if (!card) return;
+            const isCollapsed = card.classList.toggle('collapsed');
+            try {
+                localStorage.setItem('capa_kpis_collapsed', isCollapsed ? '1' : '0');
+            } catch (e) {}
+        }
+
         function toggleExpertAnalysis() {
             const card = document.getElementById('expertAnalysisCard');
-            card.classList.toggle('collapsed');
+            if (!card) return;
+            const isCollapsed = card.classList.toggle('collapsed');
+            try {
+                localStorage.setItem('capa_expert_collapsed', isCollapsed ? '1' : '0');
+            } catch (e) {}
+        }
+
+        function initSidebarBlockStates() {
+            try {
+                if (localStorage.getItem('capa_kpis_collapsed') === '1') {
+                    document.getElementById('kpisBlockCard')?.classList.add('collapsed');
+                }
+                if (localStorage.getItem('capa_expert_collapsed') === '1') {
+                    document.getElementById('expertAnalysisCard')?.classList.add('collapsed');
+                }
+            } catch (e) {}
         }
 
         // --- ACTIONS & SIMULATION ENGINE ---
@@ -4908,6 +4957,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
         // Run on load
         window.addEventListener('DOMContentLoaded', () => {
             logD("Sistema iniciado. Esperando archivo...");
+            initSidebarBlockStates();
             initApp();
         });
     </script>
