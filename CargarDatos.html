@@ -1824,11 +1824,11 @@
                         try {
                             let reviewed = null;
                             if (type === 'Seg') {
-                                reviewed = await SegmentReview.read(jsonData, file.name, manualDate, null, hotel);
+                                reviewed = await SegmentReview.read(jsonData, file.name, manualDate, type, hotel);
                                 if (!reviewed) { document.getElementById('loader').style.display = 'none'; showToast('Importación cancelada.', 'info'); return; }
                             } else if (type === 'Otb' || type === 'Prevision') {
                                 try {
-                                    reviewed = await SegmentReview.read(jsonData, file.name, manualDate, null, hotel);
+                                    reviewed = await SegmentReview.read(jsonData, file.name, manualDate, type, hotel);
                                     if (!reviewed) { document.getElementById('loader').style.display = 'none'; showToast('Importación cancelada.', 'info'); return; }
                                 } catch (e) {
                                     console.warn("No segment structure detected or parsing failed, falling back to legacy parser.", e);
@@ -2633,6 +2633,10 @@
                                 rowLabel.includes("REVENUE") || rowLabel.includes("FORECAST") || 
                                 rowLabel.includes("VALORADO") || rowLabel.includes("INGRES") || 
                                 rowLabel.includes("ADR") || rowLabel.includes("PRECIO") ||
+                                rowLabel.includes("DESAYUN") || rowLabel.includes("RESTAURAN") ||
+                                rowLabel.includes("ALMUERZO") || rowLabel.includes("CENA") ||
+                                rowLabel.includes("SPA") || rowLabel.includes("VARIOS") ||
+                                rowLabel.includes("CAFETERIA") || rowLabel.includes("MINIBAR") ||
                                 (rowLabel.includes("HABITACION") && !rowLabel.includes("HABITACIONES")); 
                     
                     // isRMS = Only room units
@@ -2794,7 +2798,9 @@
                 
                 // OVERRIDE WITH CLEAN SEGMENT-ANALYSIS MODULE TO FIX DOUBLE COUNTING AND CAPTURE SEGMENTS
                 try {
-                    const report = reviewedReport || SegmentAnalysis.parseForecast(data, fileName);
+                    const hasSegments = reviewedReport || (typeof SegmentAnalysis !== 'undefined' && SegmentAnalysis.reviewRows(data, {}, hotel).length > 0);
+                    const report = hasSegments ? (reviewedReport || SegmentAnalysis.parseForecast(data, fileName)) : null;
+                    if (report && report.segmentData) {
                     
                     yearsToClear.forEach(yStr => {
                         if (db[hotel][yStr] && db[hotel][yStr].otb) {
@@ -2879,6 +2885,7 @@
                     }
                     CapaStorage.setItem('revenue_data_v2', JSON.stringify(revDB));
                     console.log("OTB and Forecast Segments cleanly parsed and merged via SegmentAnalysis");
+                    }
                 } catch (e) {
                     console.error("Error in parseForecast override:", e);
                 }

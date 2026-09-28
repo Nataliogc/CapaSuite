@@ -8,6 +8,12 @@
             const isForecast = forceType ? (forceType === 'forecast' || forceType === 'Otb' || forceType === 'Prevision') : (fileName.toLowerCase().includes('prevision') || fileName.toLowerCase().includes('otb') || fileName.toLowerCase().includes('valorada'));
             
             const blocks = SegmentAnalysis.reviewRows(rows, {}, detectedHotel);
+            if (!blocks.length) {
+                if (isForecast) {
+                    throw new Error('No se detectó estructura de segmentos en el archivo de previsión.');
+                }
+                throw new Error('El informe no contiene bloques de segmentos con fila de habitaciones.');
+            }
             const issues = blocks.filter(b => b.reason);
             
             active = true;
