@@ -2793,6 +2793,16 @@
             renderSegmentPickupAnalysis(hotel, year, midx);
         }
 
+        function normalizeSegmentDisplayName(name) {
+            if (!name) return '';
+            const clean = String(name).trim();
+            const upper = clean.toUpperCase();
+            if (upper === 'DIRONLINE' || upper === 'DIR ONLINE' || upper === 'DIR_ONLINE' || upper === 'D ON LINE' || upper === 'DIRECTO ONLINE' || upper === 'DIRECTO ON') {
+                return 'DIRECTO ONLINE';
+            }
+            return clean;
+        }
+
         /* ==========================================================================
            PICK-UP Y RENDIMIENTO POR SEGMENTO (VS AÑO ANTERIOR)
            ========================================================================== */
@@ -2829,12 +2839,6 @@
                 segPrevTY = db[hotel][year]?.segment_prev || {};
             }
 
-            const allSegKeys = new Set([...Object.keys(segDataTY), ...Object.keys(segDataLY)]);
-            if (allSegKeys.size === 0) {
-                segTbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:24px; color:var(--text-muted);">No hay informes de segmentos cargados para este hotel y año</td></tr>';
-                return;
-            }
-
             const getSegmentValues = (segObj) => {
                 if (!segObj) return { rooms: 0, rev: 0 };
                 const mStart = midx === -1 ? 0 : midx;
@@ -2856,19 +2860,40 @@
                 return { rooms, rev };
             };
 
+            // Agrupar y consolidar por nombre canónico (ej. DIRONLINE -> DIRECTO ONLINE)
+            const groupedMap = {};
+            const addToGroup = (srcObj, key) => {
+                if (!srcObj) return;
+                Object.keys(srcObj).forEach(rawName => {
+                    const canonical = normalizeSegmentDisplayName(rawName);
+                    if (!groupedMap[canonical]) {
+                        groupedMap[canonical] = { cur: { rooms: 0, rev: 0 }, ly: { rooms: 0, rev: 0 }, prev: { rooms: 0, rev: 0 } };
+                    }
+                    const vals = getSegmentValues(srcObj[rawName]);
+                    groupedMap[canonical][key].rooms += vals.rooms;
+                    groupedMap[canonical][key].rev += vals.rev;
+                });
+            };
+
+            addToGroup(segDataTY, 'cur');
+            addToGroup(segDataLY, 'ly');
+            addToGroup(segPrevTY, 'prev');
+
+            const allCanonicalKeys = Object.keys(groupedMap);
+            if (allCanonicalKeys.length === 0) {
+                segTbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:24px; color:var(--text-muted);">No hay informes de segmentos cargados para este hotel y año</td></tr>';
+                return;
+            }
+
             const rows = [];
             let totRmsTY = 0, totRevTY = 0;
             let totRmsLY = 0, totRevLY = 0;
             let totPickupRms = 0, totPickupRev = 0;
 
-            allSegKeys.forEach(segName => {
-                const segTY = segDataTY[segName];
-                const segLY = segDataLY[segName];
-                const segPrev = segPrevTY[segName];
-
-                const cur = getSegmentValues(segTY);
-                const ly = getSegmentValues(segLY);
-                const prev = getSegmentValues(segPrev);
+            allCanonicalKeys.forEach(segName => {
+                const cur = groupedMap[segName].cur;
+                const ly = groupedMap[segName].ly;
+                const prev = groupedMap[segName].prev;
 
                 if (cur.rev === 0 && ly.rev === 0 && cur.rooms === 0 && ly.rooms === 0) return;
 
@@ -3692,7 +3717,7 @@
             // 2. Channel Chart (Grouped Segments)
             const getVal = (arr) => midx === -1 ? arr.reduce((a, b) => a + b, 0) : arr[midx];
             const channelGroups = {
-                "Directo": ["DIRONLINE", "DIRECTO OFFLINE"],
+                "Directo": ["DIRECTO ONLINE", "DIRONLINE", "DIRECTO OFFLINE"],
                 "OTA / AAVV": ["OTA/AAVV", "TTOO DINAMICA"],
                 "Grupos": ["GRUPOS", "GRTANTEO"],
                 "Corporativo": ["CORPORATIVO LINEAL"],
@@ -3797,8 +3822,9 @@
                     const segDB = JSON.parse(segDBRaw);
                     const hotelSegs = segDB[currentHotel]?.[currentYear];
                     if (hotelSegs && hotelSegs.segment) {
-                        let segData = [];
-                        Object.entries(hotelSegs.segment).forEach(([segName, seg]) => {
+                        const consolidatedMap = {};
+                        Object.entries(hotelSegs.segment).forEach(([rawName, seg]) => {
+                            const canonical = normalizeSegmentDisplayName(rawName);
                             const roomRevenue = segmentRoomRevenue(seg);
                             if (!roomRevenue) return;
                             let rev = 0, acc = 0, rooms = 0;
@@ -3809,8 +3835,14 @@
                                 acc += (roomRevenue[m] || 0);
                                 rooms += (seg.rooms?.[m] || 0);
                             }
-                            if (rev > 0) segData.push({ name: segName, rev, acc, rooms });
+                            if (!consolidatedMap[canonical]) {
+                                consolidatedMap[canonical] = { name: canonical, rev: 0, acc: 0, rooms: 0 };
+                            }
+                            consolidatedMap[canonical].rev += rev;
+                            consolidatedMap[canonical].acc += acc;
+                            consolidatedMap[canonical].rooms += rooms;
                         });
+                        const segData = Object.values(consolidatedMap).filter(s => s.rev > 0);
                         segData.sort((a, b) => b.rev - a.rev).slice(0, 8).forEach(item => {
                             const adr = item.rooms > 0 ? (item.acc / item.rooms) : 0;
                             realSegmentsBody.innerHTML += `<tr>

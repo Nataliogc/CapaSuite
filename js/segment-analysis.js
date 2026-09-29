@@ -8,7 +8,10 @@
         'DIRECTO O': 'DIRECTO OFFLINE', 
         'TTOO DINA': 'TTOO DINAMICA', 
         'D OFF LINE': 'DIRECTO OFFLINE', 
-        'D ON LINE': 'DIRONLINE', 
+        'D ON LINE': 'DIRECTO ONLINE', 
+        'DIRONLINE': 'DIRECTO ONLINE',
+        'DIR ONLINE': 'DIRECTO ONLINE',
+        'DIRECTO ON': 'DIRECTO ONLINE',
         'OTA': 'OTA/AAVV', 
         'GRUPO TANTEO': 'GRTANTEO', 
         'GRUPO TAN': 'GRTANTEO',
@@ -19,13 +22,13 @@
         'EMPRESAS': 'CORPORATIVO LINEAL', 
         'EMPRESA': 'CORPORATIVO LINEAL', 
         'PARTICULA': 'PARTICULARES', 
-        'SERCOTEL': 'DIRONLINE', 
+        'SERCOTEL': 'DIRECTO ONLINE', 
         'BONO LINE': 'BONO ONLINE', 
         'BONO LINEAL': 'OTROS', 
         'GRUPO AVORIS': 'AGENCIAS',
         'GRUPO AVO': 'OTA/AAVV'
     };
-    const validSegments = ['CORPORATIVO LINEAL', 'DIRECTO OFFLINE', 'DIRONLINE', 'GRTANTEO', 'GRUPOS', 'OTA/AAVV', 'OTROS', 'TTOO DINAMICA', 'PARTICULARES', 'AGENCIAS', 'BONO ONLINE', 'BONO SPA'];
+    const validSegments = ['CORPORATIVO LINEAL', 'DIRECTO OFFLINE', 'DIRECTO ONLINE', 'GRTANTEO', 'GRUPOS', 'OTA/AAVV', 'OTROS', 'TTOO DINAMICA', 'PARTICULARES', 'AGENCIAS', 'BONO ONLINE', 'BONO SPA'];
     const isRoomMetric = value => /^(HAB|HABI|RN|RMS|NOCHES|HABITACIONES|UNIDADES)$/.test(norm(value));
     const canonical = value => aliases[norm(value)] || norm(value);
     const isTotalName = value => /^(TOTAL|TOTAL GENERAL|TOTAL MASTER|RESUMEN)$/.test(norm(value));
