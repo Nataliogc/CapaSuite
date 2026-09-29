@@ -963,6 +963,162 @@
         .adr-bench-pill strong {
             color: var(--text-main);
         }
+
+        /* YIELD & PICK-UP STRATEGY STYLES */
+        .yield-strategy-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        }
+        .yield-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 16px;
+        }
+        .yield-title {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .yield-badges {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .yield-badge {
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 5px 12px;
+            border-radius: 8px;
+            background: var(--bg-deep);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+        }
+        .yield-badge strong {
+            color: var(--text-main);
+        }
+        .yield-alert-box {
+            background: rgba(99, 102, 241, 0.08);
+            border: 1px solid rgba(99, 102, 241, 0.25);
+            border-radius: 12px;
+            padding: 14px 18px;
+            display: flex;
+            gap: 14px;
+            align-items: center;
+        }
+        .yield-alert-box.alert-accelerated {
+            background: rgba(16, 185, 129, 0.08);
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+        .yield-alert-box.alert-slow {
+            background: rgba(239, 68, 68, 0.08);
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+        .yield-matrix-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 8px;
+        }
+        .yield-matrix-cell {
+            background: var(--bg-deep);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            transition: var(--transition);
+        }
+        .yield-matrix-cell.cell-active {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.12);
+            box-shadow: 0 0 14px var(--primary-glow);
+            transform: translateY(-2px);
+        }
+        .yield-matrix-occ {
+            font-size: 0.72rem;
+            font-weight: 800;
+            color: var(--text-muted);
+        }
+        .yield-matrix-adj {
+            font-size: 1.1rem;
+            font-weight: 900;
+        }
+        .yield-matrix-crit {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            line-height: 1.25;
+            margin-top: 2px;
+        }
+        .yield-table-wrapper {
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: var(--bg-deep);
+        }
+        .yield-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78rem;
+            text-align: left;
+            min-width: 820px;
+        }
+        .yield-table th {
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-muted);
+            font-weight: 700;
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border);
+            text-transform: uppercase;
+            font-size: 0.65rem;
+            letter-spacing: 0.5px;
+        }
+        [data-theme="light"] .yield-table th {
+            background: rgba(0, 0, 0, 0.03);
+        }
+        .yield-table td {
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-main);
+        }
+        .yield-table tr:last-child td {
+            border-bottom: none;
+        }
+        .yield-table tr.current-month-row {
+            background: rgba(99, 102, 241, 0.1);
+        }
+        .yield-table tr.current-month-row td:first-child {
+            border-left: 3px solid var(--primary);
+            font-weight: 800;
+        }
+        .tactical-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 9px;
+            border-radius: 20px;
+            font-size: 0.68rem;
+            font-weight: 700;
+        }
+        .tactical-up { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+        .tactical-freeze { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
+        .tactical-down { background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); }
+        .tactical-peak { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
     </style>
 </head>
 
@@ -1278,6 +1434,148 @@
             </div>
         </div>
 
+        <!-- MÓDULO ESTRATÉGICO: YIELD MANAGEMENT & ESTRATEGIA DE PICK-UP / OTB -->
+        <div class="yield-strategy-card" id="cardYieldStrategy">
+            <div class="yield-top">
+                <div class="yield-title">
+                    <span>⚡</span> Estrategia Dinámica de Revenue: Matriz OTB & Acelerador de Pick-up
+                </div>
+                <div class="yield-badges">
+                    <span class="yield-badge">Hotel: <strong id="yield-badge-hotel">Guadiana (108 hab)</strong></span>
+                    <span class="yield-badge">🎯 Obj. ADR 2027: <strong id="yield-badge-adr-target" style="color:var(--secondary);">66,00 € – 68,00 €</strong></span>
+                    <span class="yield-badge">🎯 Obj. RevPAR: <strong id="yield-badge-revpar-target" style="color:#60a5fa;">38,50 €</strong></span>
+                    <span class="yield-badge">BAR sobre EBI: <strong id="yield-badge-bar-spread">+10,0%</strong></span>
+                    <span class="yield-badge">EBI Base: <strong id="yield-badge-base-ebi">60,00 €</strong></span>
+                    <button type="button" onclick="toggleYieldMatrix()" class="btn-econ-guide" style="padding: 5px 12px; font-size: 0.72rem; border-radius: 8px;">
+                        <span id="btnToggleMatrixText">📖 Ver Matriz de Reglas</span>
+                    </button>
+                    <button type="button" onclick="openYieldModal()" class="btn-econ-guide" style="padding: 5px 12px; font-size: 0.72rem; border-radius: 8px; border-color: var(--primary); color: var(--primary);">
+                        ⚙️ Configurar Estrategia
+                    </button>
+                </div>
+            </div>
+
+            <!-- SEMÁFORO PRESCRIPTIVO DE PICK-UP & MOMENTUM -->
+            <div class="yield-alert-box" id="yieldMomentumBox">
+                <div style="font-size: 1.8rem;" id="yieldMomentumIcon">🚀</div>
+                <div style="flex: 1;">
+                    <div style="font-size: 0.85rem; font-weight: 800; color: var(--text-main); margin-bottom: 3px;" id="yieldMomentumTitle">
+                        Analizando ritmo de reservas y posicionamiento OTB...
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.5;" id="yieldMomentumDesc">
+                        Calculando variación entre cargas de datos para detectar aceleración o freno de demanda.
+                    </div>
+                </div>
+                <div style="text-align: right; min-width: 140px;">
+                    <div style="font-size: 0.65rem; font-weight: 800; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px;">Pick-up Detectado</div>
+                    <div style="font-size: 1.3rem; font-weight: 900;" id="yieldMomentumBadge">0 RN</div>
+                </div>
+            </div>
+
+            <!-- REJILLA VISUAL DE LA MATRIZ DE REGLAS OTB (DESPLEGABLE / RESUMEN) -->
+            <div id="yieldMatrixContainer" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px;">
+                        📋 Matriz Estratégica de Curva OTB & Ajustes sobre EBI Base
+                    </span>
+                    <span style="font-size: 0.7rem; color: var(--text-muted);">
+                        * En tramo bajo (0–30%), un Pick-up alto congela automáticamente el descuento del -15%
+                    </span>
+                </div>
+                <div class="yield-matrix-grid" id="yieldMatrixGrid">
+                    <!-- Rellenado dinámicamente con los 7 tramos -->
+                </div>
+            </div>
+
+            <!-- TABLA DINÁMICA DE YIELD & RECOMENDACIÓN DE TARIFAS (MES A MES) -->
+            <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="font-size: 0.74rem; font-weight: 800; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px;">
+                        📊 Planificación de Yield y Recomendación de Precios BAR / EBI por Mes
+                    </span>
+                    <span style="font-size: 0.72rem; color: var(--text-muted);">
+                        Calculado s/cartera OTB cargada y ritmo de Pick-up
+                    </span>
+                </div>
+                <div class="yield-table-wrapper">
+                    <table class="yield-table">
+                        <thead>
+                            <tr>
+                                <th>Mes</th>
+                                <th>Cartera OTB (RN)</th>
+                                <th style="width: 130px;">Ocupación OTB</th>
+                                <th>Pick-up Reciente</th>
+                                <th>Tramo OTB Activo</th>
+                                <th>Ajuste EBI</th>
+                                <th>Tarifa EBI Sug.</th>
+                                <th>Tarifa BAR Rec.</th>
+                                <th>RevPAR Proyectado</th>
+                                <th>Criterio & Acción Táctica</th>
+                            </tr>
+                        </thead>
+                        <tbody id="yieldTableBody">
+                            <!-- Filas de los 12 meses -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- PICK-UP Y COMPARATIVA INTERANUAL POR SEGMENTO / CANAL -->
+            <div style="margin-top: 15px; border-top: 1px solid var(--border); padding-top: 18px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <span style="font-size: 0.85rem; font-weight: 800; text-transform: uppercase; color: var(--text-main); letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
+                            <span>👥</span> Rendimiento y Pick-up por Segmento de Mercado (vs Año Anterior)
+                        </span>
+                        <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
+                            Análisis comparativo de ingresos de habitación, volumen RN y precio medio ADR frente a <span id="yield-ly-label" style="font-weight:700; color:var(--text-main);">Año Anterior</span>
+                        </div>
+                    </div>
+                    <div style="font-size: 0.72rem; color: var(--text-muted);">
+                        Fuente: Desglose comercial de segmentos CapaSuite
+                    </div>
+                </div>
+
+                <div class="yield-table-wrapper">
+                    <table class="yield-table">
+                        <thead>
+                            <tr style="border-bottom: 2px solid var(--border);">
+                                <th rowspan="2" style="vertical-align: middle;">Segmento / Canal</th>
+                                <th colspan="3" style="text-align: center; background: rgba(99, 102, 241, 0.08); color: #818cf8; border-right: 1px solid var(--border);">
+                                    PRODUCCIÓN HABITACIÓN (€)
+                                </th>
+                                <th colspan="3" style="text-align: center; background: rgba(16, 185, 129, 0.08); color: #10b981; border-right: 1px solid var(--border);">
+                                    HABITACIONES (RN)
+                                </th>
+                                <th colspan="3" style="text-align: center; background: rgba(245, 158, 11, 0.08); color: #f59e0b; border-right: 1px solid var(--border);">
+                                    PRECIO MEDIO (ADR)
+                                </th>
+                                <th colspan="2" style="text-align: center; background: rgba(236, 72, 153, 0.08); color: #ec4899;">
+                                    PICK-UP RECIENTE
+                                </th>
+                            </tr>
+                            <tr style="font-size: 0.64rem;">
+                                <th>Este Año</th>
+                                <th>Año Ant.</th>
+                                <th style="border-right: 1px solid var(--border);">Var %</th>
+                                <th>Este Año</th>
+                                <th>Año Ant.</th>
+                                <th style="border-right: 1px solid var(--border);">Var %</th>
+                                <th>Este Año</th>
+                                <th>Año Ant.</th>
+                                <th style="border-right: 1px solid var(--border);">Var %</th>
+                                <th>Δ RN</th>
+                                <th>Δ €</th>
+                            </tr>
+                        </thead>
+                        <tbody id="segmentPickupBody">
+                            <!-- Filas dinámicas por segmento -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <!-- HISTORICAL CHART (NEW) -->
         <div class="chart-container" style="margin-bottom: 25px; min-height: 420px; display: flex; flex-direction: column;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -1532,6 +1830,139 @@
         </div>
     </div>
 
+    <!-- MODAL DE CONFIGURACIÓN DE ESTRATEGIA YIELD & PICK-UP -->
+    <div id="yieldConfigModal" class="modal">
+        <div class="modal-content" style="max-width: 780px;">
+            <div class="modal-header">
+                <h2><span>⚡</span> Configuración de Estrategia Yield & Matriz OTB</h2>
+                <span style="font-size: 1.5rem; cursor: pointer; color: var(--text-muted); font-weight: 700;" onclick="closeYieldModal()">&times;</span>
+            </div>
+            
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: -5px; margin-bottom: 16px;">
+                Define los tramos de ocupación en cartera (OTB), los ajustes aplicables sobre la tarifa EBI base, el margen BAR y los objetivos de Revenue.
+            </p>
+
+            <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 18px; background: rgba(99, 102, 241, 0.08); padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(99, 102, 241, 0.2);">
+                <label style="font-size: 0.82rem; font-weight: 700; color: var(--text-main);">Hotel a configurar:</label>
+                <select id="modalYieldHotelSelect" onchange="loadYieldModalInputs(this.value)" style="padding: 6px 12px; border-radius: 8px; background: var(--bg-deep); color: var(--text-main); border: 1px solid var(--border); font-weight: 700; cursor: pointer;">
+                    <option value="Guadiana">Hotel Guadiana</option>
+                    <option value="Cumbria">Hotel Cumbria</option>
+                </select>
+            </div>
+
+            <!-- PARÁMETROS GENERALES -->
+            <div class="cost-group">
+                <div class="cost-group-title">
+                    <span style="color: var(--primary);">⚙️ Parámetros Generales y Objetivos de Revenue</span>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 8px;">
+                    <div class="cost-row">
+                        <label>
+                            Inventario referencia
+                            <span class="cost-range">Habitaciones disponibles</span>
+                        </label>
+                        <div class="cost-input-wrapper">
+                            <input type="number" id="yield_inventory" min="10" max="500" step="1">
+                            <span>hab</span>
+                        </div>
+                    </div>
+
+                    <div class="cost-row">
+                        <label>
+                            BAR sobre EBI (Spread)
+                            <span class="cost-range">Margen sobre tarifa base EBI</span>
+                        </label>
+                        <div class="cost-input-wrapper">
+                            <input type="number" id="yield_bar_spread" min="0" max="50" step="0.5">
+                            <span>%</span>
+                        </div>
+                    </div>
+
+                    <div class="cost-row">
+                        <label>
+                            Tarifa EBI Base
+                            <span class="cost-range">Tarifa neutra al 45–60% OTB</span>
+                        </label>
+                        <div class="cost-input-wrapper">
+                            <input type="number" id="yield_base_ebi" min="20" max="250" step="1">
+                            <span>€</span>
+                        </div>
+                    </div>
+
+                    <div class="cost-row">
+                        <label>
+                            Objetivo ADR 2027 (Mín.)
+                            <span class="cost-range">Suelo estratégico de precio</span>
+                        </label>
+                        <div class="cost-input-wrapper">
+                            <input type="number" id="yield_target_adr_min" min="20" max="250" step="0.5">
+                            <span>€</span>
+                        </div>
+                    </div>
+
+                    <div class="cost-row">
+                        <label>
+                            Objetivo ADR 2027 (Máx.)
+                            <span class="cost-range">Techo óptimo de precio</span>
+                        </label>
+                        <div class="cost-input-wrapper">
+                            <input type="number" id="yield_target_adr_max" min="20" max="250" step="0.5">
+                            <span>€</span>
+                        </div>
+                    </div>
+
+                    <div class="cost-row">
+                        <label>
+                            Objetivo RevPAR 2027
+                            <span class="cost-range">Rendimiento por hab. disponible</span>
+                        </label>
+                        <div class="cost-input-wrapper">
+                            <input type="number" id="yield_target_revpar" min="10" max="200" step="0.5">
+                            <span>€</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TABLA DE LOS 7 TRAMOS OTB -->
+            <div class="cost-group">
+                <div class="cost-group-title">
+                    <span style="color: var(--secondary);">📈 Tramos de Ocupación OTB y Ajustes EBI</span>
+                </div>
+
+                <div style="overflow-x: auto; margin-top: 8px;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.76rem;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid var(--border); color: var(--text-muted); text-align: left;">
+                                <th style="padding: 6px 8px;">Ocupación OTB</th>
+                                <th style="padding: 6px 8px; width: 120px;">Ajuste EBI (%)</th>
+                                <th style="padding: 6px 8px;">Criterio Estratégico</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modalYieldTiersBody">
+                            <!-- Filas generadas dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+                <button type="button" onclick="resetYieldModalDefaults()" style="background: none; border: 1px solid var(--border); color: var(--text-muted); padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.8rem;">
+                    ↺ Restaurar Valores por Defecto
+                </button>
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" onclick="closeYieldModal()" style="background: none; border: 1px solid var(--border); color: var(--text-main); padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.85rem;">
+                        Cancelar
+                    </button>
+                    <button type="button" onclick="saveYieldModalInputs()" style="background: var(--primary); border: none; color: white; padding: 8px 22px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 0.85rem; box-shadow: 0 4px 12px var(--primary-glow);">
+                        Guardar Estrategia
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         let db = {};
         let currentHotel = localStorage.getItem('active_hotel_suite') || "Guadiana";
@@ -1689,6 +2120,589 @@
             saveRoomCosts(targetHotel, def);
             loadCostModalInputs(targetHotel);
             refreshAll();
+        }
+
+        /* ==========================================================================
+           YIELD MANAGEMENT & ESTRATEGIA DE PICK-UP / OTB
+           ========================================================================== */
+        const YIELD_STRATEGY_STORAGE_KEY = 'capasuite_yield_strategy_v1';
+
+        const DEFAULT_YIELD_STRATEGY = {
+            "Guadiana": {
+                inventory: 108,
+                barOverEbi: 10.0,
+                baseEbiPrice: 60.0,
+                targetAdrMin: 66.0,
+                targetAdrMax: 68.0,
+                targetRevpar: 38.5,
+                tiers: [
+                    { minOcc: 0,  maxOcc: 30, adjustment: -15.0, criteria: "Demanda baja; no bajar automáticamente sin revisar lead time/pickup", action: "Estudiar pick-up / Promoción controlada" },
+                    { minOcc: 30, maxOcc: 45, adjustment: -10.0, criteria: "Bajo/medio", action: "Estimular venta anticipada (EBI)" },
+                    { minOcc: 45, maxOcc: 60, adjustment: 0.0,   criteria: "BAR/EBI base", action: "Tarifa base neutra equilibrada" },
+                    { minOcc: 60, maxOcc: 70, adjustment: 5.0,   criteria: "Demanda buena", action: "Subida progresiva BAR (+5%)" },
+                    { minOcc: 70, maxOcc: 80, adjustment: 12.5,  criteria: "Demanda alta", action: "Optimizar yield (+12,5%) / MLOS" },
+                    { minOcc: 80, maxOcc: 90, adjustment: 25.0,  criteria: "Demanda muy alta", action: "Proteger inventario (+25%)" },
+                    { minOcc: 90, maxOcc: 100, adjustment: 40.0, criteria: "Pico; cerrar tarifas bajas", action: "Cierre tarifas opacas y BAR máxima (+40%)" }
+                ]
+            },
+            "Cumbria": {
+                inventory: 59,
+                barOverEbi: 10.0,
+                baseEbiPrice: 60.0,
+                targetAdrMin: 66.0,
+                targetAdrMax: 68.0,
+                targetRevpar: 38.5,
+                tiers: [
+                    { minOcc: 0,  maxOcc: 30, adjustment: -15.0, criteria: "Demanda baja; no bajar automáticamente sin revisar lead time/pickup", action: "Estudiar pick-up / Promoción controlada" },
+                    { minOcc: 30, maxOcc: 45, adjustment: -10.0, criteria: "Bajo/medio", action: "Estimular venta anticipada (EBI)" },
+                    { minOcc: 45, maxOcc: 60, adjustment: 0.0,   criteria: "BAR/EBI base", action: "Tarifa base neutra equilibrada" },
+                    { minOcc: 60, maxOcc: 70, adjustment: 5.0,   criteria: "Demanda buena", action: "Subida progresiva BAR (+5%)" },
+                    { minOcc: 70, maxOcc: 80, adjustment: 12.5,  criteria: "Demanda alta", action: "Optimizar yield (+12,5%) / MLOS" },
+                    { minOcc: 80, maxOcc: 90, adjustment: 25.0,  criteria: "Demanda muy alta", action: "Proteger inventario (+25%)" },
+                    { minOcc: 90, maxOcc: 100, adjustment: 40.0, criteria: "Pico; cerrar tarifas bajas", action: "Cierre tarifas opacas y BAR máxima (+40%)" }
+                ]
+            }
+        };
+
+        function getYieldStrategy(hotel) {
+            const h = hotel || currentHotel;
+            const def = DEFAULT_YIELD_STRATEGY[h] || DEFAULT_YIELD_STRATEGY["Guadiana"];
+            try {
+                const raw = CapaStorage.getItem(YIELD_STRATEGY_STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && parsed[h] && parsed[h].tiers) {
+                        return Object.assign({}, def, parsed[h]);
+                    }
+                }
+            } catch(e) { console.warn("Error leyendo estrategia yield:", e); }
+            return JSON.parse(JSON.stringify(def));
+        }
+
+        function saveYieldStrategy(hotel, strategy) {
+            try {
+                let full = {};
+                const raw = CapaStorage.getItem(YIELD_STRATEGY_STORAGE_KEY);
+                if (raw) full = JSON.parse(raw) || {};
+                full[hotel] = strategy;
+                CapaStorage.setItem(YIELD_STRATEGY_STORAGE_KEY, JSON.stringify(full));
+                if (window.uploadToCloud) uploadToCloud();
+            } catch(e) { console.error("Error guardando estrategia yield:", e); }
+        }
+
+        function toggleYieldMatrix() {
+            const container = document.getElementById('yieldMatrixContainer');
+            const btnText = document.getElementById('btnToggleMatrixText');
+            if (!container) return;
+            const isHidden = container.style.display === 'none';
+            container.style.display = isHidden ? 'block' : 'none';
+            if (btnText) btnText.innerText = isHidden ? '🙈 Ocultar Matriz' : '📖 Ver Matriz de Reglas';
+        }
+
+        function openYieldModal() {
+            const mHotel = document.getElementById('modalYieldHotelSelect');
+            if (mHotel) mHotel.value = currentHotel;
+            loadYieldModalInputs(currentHotel);
+            const m = document.getElementById('yieldConfigModal');
+            if (m) m.classList.add('open');
+        }
+
+        function closeYieldModal() {
+            const m = document.getElementById('yieldConfigModal');
+            if (m) m.classList.remove('open');
+        }
+
+        function loadYieldModalInputs(hotel) {
+            const h = hotel || currentHotel;
+            const strat = getYieldStrategy(h);
+
+            document.getElementById('yield_inventory').value = strat.inventory ?? (h === 'Cumbria' ? 59 : 108);
+            document.getElementById('yield_bar_spread').value = (strat.barOverEbi ?? 10.0).toFixed(1);
+            document.getElementById('yield_base_ebi').value = (strat.baseEbiPrice ?? 60.0).toFixed(2);
+            document.getElementById('yield_target_adr_min').value = (strat.targetAdrMin ?? 66.0).toFixed(2);
+            document.getElementById('yield_target_adr_max').value = (strat.targetAdrMax ?? 68.0).toFixed(2);
+            document.getElementById('yield_target_revpar').value = (strat.targetRevpar ?? 38.5).toFixed(2);
+
+            const tbody = document.getElementById('modalYieldTiersBody');
+            tbody.innerHTML = '';
+            (strat.tiers || []).forEach((tier, idx) => {
+                const label = tier.minOcc === 90 ? '> 90 %' : `${tier.minOcc}–${tier.maxOcc} %`;
+                tbody.innerHTML += `
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 6px 8px; font-weight: 700; color: var(--text-main);">${label}</td>
+                        <td style="padding: 6px 8px;">
+                            <input type="number" id="tier_adj_${idx}" value="${tier.adjustment.toFixed(1)}" step="0.5" style="width: 80px; padding: 4px 8px; border-radius: 6px; background: var(--bg-deep); color: var(--text-main); border: 1px solid var(--border); font-weight: 700; text-align: right;"> %
+                        </td>
+                        <td style="padding: 6px 8px;">
+                            <input type="text" id="tier_crit_${idx}" value="${tier.criteria}" style="width: 100%; padding: 4px 8px; border-radius: 6px; background: var(--bg-deep); color: var(--text-main); border: 1px solid var(--border); font-size: 0.74rem;">
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function saveYieldModalInputs() {
+            const targetHotel = document.getElementById('modalYieldHotelSelect').value || currentHotel;
+            const strat = getYieldStrategy(targetHotel);
+
+            const newTiers = (strat.tiers || []).map((t, idx) => {
+                const adjEl = document.getElementById(`tier_adj_${idx}`);
+                const critEl = document.getElementById(`tier_crit_${idx}`);
+                return {
+                    minOcc: t.minOcc,
+                    maxOcc: t.maxOcc,
+                    adjustment: adjEl ? (parseFloat(adjEl.value) || 0) : t.adjustment,
+                    criteria: critEl ? critEl.value.trim() : t.criteria,
+                    action: t.action
+                };
+            });
+
+            const newStrategy = {
+                inventory: parseFloat(document.getElementById('yield_inventory').value) || (targetHotel === 'Cumbria' ? 59 : 108),
+                barOverEbi: parseFloat(document.getElementById('yield_bar_spread').value) || 10.0,
+                baseEbiPrice: parseFloat(document.getElementById('yield_base_ebi').value) || 60.0,
+                targetAdrMin: parseFloat(document.getElementById('yield_target_adr_min').value) || 66.0,
+                targetAdrMax: parseFloat(document.getElementById('yield_target_adr_max').value) || 68.0,
+                targetRevpar: parseFloat(document.getElementById('yield_target_revpar').value) || 38.5,
+                tiers: newTiers
+            };
+
+            saveYieldStrategy(targetHotel, newStrategy);
+            closeYieldModal();
+            refreshAll();
+        }
+
+        function resetYieldModalDefaults() {
+            const targetHotel = document.getElementById('modalYieldHotelSelect').value || currentHotel;
+            const def = JSON.parse(JSON.stringify(DEFAULT_YIELD_STRATEGY[targetHotel] || DEFAULT_YIELD_STRATEGY["Guadiana"]));
+            saveYieldStrategy(targetHotel, def);
+            loadYieldModalInputs(targetHotel);
+            refreshAll();
+        }
+
+        function getMatchingTier(strategy, occPct) {
+            const tiers = strategy.tiers || [];
+            for (let i = 0; i < tiers.length; i++) {
+                const t = tiers[i];
+                if (i === tiers.length - 1) {
+                    if (occPct >= t.minOcc) return t;
+                } else {
+                    if (occPct >= t.minOcc && occPct < t.maxOcc) return t;
+                }
+            }
+            return tiers[0] || { minOcc: 0, maxOcc: 30, adjustment: -15, criteria: "Demanda baja", action: "Estudiar pick-up" };
+        }
+
+        function evaluateYieldDecision(strategy, occPct, pickupRms) {
+            const tier = getMatchingTier(strategy, occPct);
+            const baseEbi = Number(strategy.baseEbiPrice) || 60.0;
+            const barSpread = Number(strategy.barOverEbi) || 10.0;
+
+            let effectiveAdj = tier.adjustment;
+            let overrideReason = null;
+            let badgeType = "neutral"; // "accelerated", "freeze", "down", "peak"
+            let tacticalText = tier.action;
+
+            // REGLA FUNDAMENTAL DE TU CRITERIO: "Demanda baja; no bajar automáticamente sin revisar lead time/pickup"
+            if (occPct <= 45 && pickupRms >= 5) {
+                // Momentum positivo en tramo bajo: congelar descuento
+                effectiveAdj = Math.max(0.0, tier.adjustment);
+                overrideReason = `⚡ Momentum de Pick-up activo (+${pickupRms} RN): Demanda con buena tracción. Congelar descuento automático del ${tier.adjustment.toFixed(1)}% para consolidar ADR.`;
+                badgeType = "freeze";
+                tacticalText = `Congelar descuento (Pick-up +${pickupRms} RN)`;
+            } else if (occPct >= 60 && pickupRms >= 8) {
+                // Aceleración de ventas en tramo medio/alto: recomendar pasar al siguiente nivel
+                effectiveAdj = tier.adjustment + 5.0;
+                overrideReason = `🚀 Aceleración intensa de ventas (+${pickupRms} RN): Ritmo de reservas superior a la media. Subir tarifa BAR sugerida (+5% adicional) para exprimir yield.`;
+                badgeType = "accelerated";
+                tacticalText = `Acelerar subida (+5% s/tramo)`;
+            } else if (pickupRms < 0) {
+                // Alerta de cancelaciones
+                overrideReason = `⚠️ Alerta de cancelaciones netas (${pickupRms} RN) entre informes recientes. Mantener vigilancia de ritmo antes de alterar precio.`;
+                badgeType = "down";
+                tacticalText = `Revisar cancelaciones (${pickupRms} RN)`;
+            } else if (occPct >= 90) {
+                badgeType = "peak";
+                tacticalText = `Pico: Cierre tarifas bajas y estancia mín.`;
+            }
+
+            const recEbi = baseEbi * (1 + effectiveAdj / 100);
+            const recBar = recEbi * (1 + barSpread / 100);
+            const projRevpar = (occPct / 100) * recBar;
+
+            return {
+                tier,
+                baseEbi,
+                barSpread,
+                effectiveAdj,
+                overrideReason,
+                badgeType,
+                tacticalText,
+                recEbi,
+                recBar,
+                projRevpar
+            };
+        }
+
+        function renderYieldStrategy(yearData, hotel, year, midx) {
+            const strat = getYieldStrategy(hotel);
+            const totalHotelRooms = Number(strat.inventory) || (hotel === 'Cumbria' ? 59 : 108);
+
+            // 1. Badges superiores
+            const elHotel = document.getElementById('yield-badge-hotel');
+            if (elHotel) elHotel.innerText = `${hotel === 'Cumbria' ? 'Cumbria' : 'Guadiana'} (${totalHotelRooms} hab)`;
+
+            const elAdrTgt = document.getElementById('yield-badge-adr-target');
+            if (elAdrTgt) elAdrTgt.innerText = `${strat.targetAdrMin.toFixed(2).replace('.', ',')} € – ${strat.targetAdrMax.toFixed(2).replace('.', ',')} €`;
+
+            const elRevparTgt = document.getElementById('yield-badge-revpar-target');
+            if (elRevparTgt) elRevparTgt.innerText = `${strat.targetRevpar.toFixed(2).replace('.', ',')} €`;
+
+            const elBarSpread = document.getElementById('yield-badge-bar-spread');
+            if (elBarSpread) elBarSpread.innerText = `+${strat.barOverEbi.toFixed(1).replace('.', ',')}%`;
+
+            const elBaseEbi = document.getElementById('yield-badge-base-ebi');
+            if (elBaseEbi) elBaseEbi.innerText = `${strat.baseEbiPrice.toFixed(2).replace('.', ',')} €`;
+
+            // 2. Extraer OTB mensual y Pick-up
+            const otbData = (yearData && yearData.otb) || {};
+            const otbPrevData = (yearData && yearData.otb_prev) || {};
+            const otbRms = otbData.breakdown?.habitacion_rn || otbData.rooms || new Array(12).fill(0);
+            const otbPrevRms = otbPrevData.breakdown?.habitacion_rn || otbPrevData.rooms || new Array(12).fill(0);
+            const otbRev = otbData.breakdown?.habitacion || otbData.revenue || new Array(12).fill(0);
+            const otbPrevRev = otbPrevData.breakdown?.habitacion || otbPrevData.revenue || new Array(12).fill(0);
+
+            const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+            const daysInMonths = [31, (parseInt(year) % 4 === 0 ? 29 : 28), 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+            // 3. Renderizar Rejilla Visual de los 7 Tramos
+            // Calcular ocupación activa del periodo para resaltar el tramo
+            let activeOccPct = 0;
+            let activePickupRms = 0;
+            if (midx === -1) {
+                const totOtbRms = otbRms.reduce((a, b) => a + b, 0);
+                const totAvail = totalHotelRooms * daysInMonths.reduce((a, b) => a + b, 0);
+                activeOccPct = totAvail > 0 ? (totOtbRms / totAvail * 100) : 0;
+                activePickupRms = otbRms.reduce((a, b) => a + b, 0) - otbPrevRms.reduce((a, b) => a + b, 0);
+            } else {
+                const curM = otbRms[midx] || 0;
+                const availM = totalHotelRooms * daysInMonths[midx];
+                activeOccPct = availM > 0 ? (curM / availM * 100) : 0;
+                activePickupRms = curM - (otbPrevRms[midx] || 0);
+            }
+
+            const activeTier = getMatchingTier(strat, activeOccPct);
+            const gridEl = document.getElementById('yieldMatrixGrid');
+            if (gridEl) {
+                gridEl.innerHTML = '';
+                (strat.tiers || []).forEach(tier => {
+                    const isSelected = (activeTier && activeTier.minOcc === tier.minOcc);
+                    const label = tier.minOcc === 90 ? '> 90 %' : `${tier.minOcc}–${tier.maxOcc} %`;
+                    const sign = tier.adjustment > 0 ? '+' : '';
+                    const col = tier.adjustment > 0 ? '#10b981' : (tier.adjustment < 0 ? '#818cf8' : 'var(--text-main)');
+                    gridEl.innerHTML += `
+                        <div class="yield-matrix-cell ${isSelected ? 'cell-active' : ''}">
+                            <div class="yield-matrix-occ">${label}</div>
+                            <div class="yield-matrix-adj" style="color: ${col};">${sign}${tier.adjustment.toFixed(1)}%</div>
+                            <div class="yield-matrix-crit">${tier.criteria}</div>
+                            ${isSelected ? '<div style="font-size:0.6rem; font-weight:800; color:var(--primary); margin-top:2px;">● ACTIVO</div>' : ''}
+                        </div>
+                    `;
+                });
+            }
+
+            // 4. Semáforo Prescriptivo de Pick-up
+            const decisionActive = evaluateYieldDecision(strat, activeOccPct, activePickupRms);
+            const boxEl = document.getElementById('yieldMomentumBox');
+            const iconEl = document.getElementById('yieldMomentumIcon');
+            const titleEl = document.getElementById('yieldMomentumTitle');
+            const descEl = document.getElementById('yieldMomentumDesc');
+            const badgeEl = document.getElementById('yieldMomentumBadge');
+
+            if (boxEl && iconEl && titleEl && descEl && badgeEl) {
+                boxEl.className = 'yield-alert-box';
+                if (decisionActive.badgeType === 'accelerated') {
+                    boxEl.classList.add('alert-accelerated');
+                    iconEl.innerText = '🚀';
+                    titleEl.innerText = `Pick-up Acelerado (+${activePickupRms} RN): Oportunidad de Maximizar Yield`;
+                    descEl.innerHTML = decisionActive.overrideReason || `El ritmo de reservas supera con creces el ritmo medio. La BAR recomendada sube a <strong>${decisionActive.recBar.toFixed(2).replace('.', ',')} €</strong> (+${decisionActive.effectiveAdj.toFixed(1)}% sobre base).`;
+                    badgeEl.style.color = '#10b981';
+                    badgeEl.innerText = `+${activePickupRms} RN`;
+                } else if (decisionActive.badgeType === 'freeze') {
+                    boxEl.classList.add('alert-accelerated');
+                    iconEl.innerText = '⚡';
+                    titleEl.innerText = `Regla de Oro: Congelar Bajadas por Pick-up Fuerte (+${activePickupRms} RN)`;
+                    descEl.innerHTML = decisionActive.overrideReason || `A pesar de estar en tramo bajo (${activeOccPct.toFixed(1)}%), la demanda tiene momentum real. <strong>NO aplicar descuento del ${decisionActive.tier.adjustment.toFixed(1)}%</strong>. Mantener tarifa BAR base en <strong>${decisionActive.recBar.toFixed(2).replace('.', ',')} €</strong>.`;
+                    badgeEl.style.color = '#f59e0b';
+                    badgeEl.innerText = `+${activePickupRms} RN`;
+                } else if (decisionActive.badgeType === 'down') {
+                    boxEl.classList.add('alert-slow');
+                    iconEl.innerText = '⚠️';
+                    titleEl.innerText = `Alerta de Cancelaciones Netas (${activePickupRms} RN)`;
+                    descEl.innerHTML = decisionActive.overrideReason || `Salidas de cartera registradas. Evaluar aperturas de canales o revisión de restricciones.`;
+                    badgeEl.style.color = '#ef4444';
+                    badgeEl.innerText = `${activePickupRms} RN`;
+                } else {
+                    iconEl.innerText = activeOccPct >= 70 ? '🎯' : '📊';
+                    titleEl.innerText = `Estrategia Equilibrada: OTB al ${activeOccPct.toFixed(1).replace('.', ',')}% (Tramo ${activeTier.minOcc}–${activeTier.maxOcc}%)`;
+                    descEl.innerHTML = `Ritmo de reservas acorde a la previsión. Tarifa EBI sugerida: <strong>${decisionActive.recEbi.toFixed(2).replace('.', ',')} €</strong> · BAR recomendada: <strong>${decisionActive.recBar.toFixed(2).replace('.', ',')} €</strong>.`;
+                    badgeEl.style.color = 'var(--text-main)';
+                    badgeEl.innerText = `${activePickupRms >= 0 ? '+' : ''}${activePickupRms} RN`;
+                }
+            }
+
+            // 5. Tabla Dinámica de Yield Mes a Mes
+            const tbody = document.getElementById('yieldTableBody');
+            if (tbody) {
+                tbody.innerHTML = '';
+                for (let m = 0; m < 12; m++) {
+                    const mRms = Number(otbRms[m]) || 0;
+                    const mPrevRms = Number(otbPrevRms[m]) || 0;
+                    const mRev = Number(otbRev[m]) || 0;
+                    const mPrevRev = Number(otbPrevRev[m]) || 0;
+
+                    const mPickupRms = mRms - mPrevRms;
+                    const mPickupRev = mRev - mPrevRev;
+                    const mAvail = totalHotelRooms * daysInMonths[m];
+                    const mOcc = mAvail > 0 ? (mRms / mAvail * 100) : 0;
+
+                    const dec = evaluateYieldDecision(strat, mOcc, mPickupRms);
+                    const isCurr = (midx === m);
+
+                    // Badge de pickup
+                    let pickupTag = '<span style="color:var(--text-muted); font-size:0.7rem;">● 0 RN</span>';
+                    if (mPickupRms > 0) {
+                        pickupTag = `<span style="color:#10b981; font-weight:700; font-size:0.72rem;">▲ +${mPickupRms} RN <span style="font-size:0.65rem; color:var(--text-muted);">(+${fmt(mPickupRev)})</span></span>`;
+                    } else if (mPickupRms < 0) {
+                        pickupTag = `<span style="color:#ef4444; font-weight:700; font-size:0.72rem;">▼ ${mPickupRms} RN <span style="font-size:0.65rem; color:var(--text-muted);">(${fmt(mPickupRev)})</span></span>`;
+                    }
+
+                    // Píldora táctica
+                    let pillClass = 'tactical-down';
+                    if (dec.badgeType === 'accelerated') pillClass = 'tactical-up';
+                    else if (dec.badgeType === 'freeze') pillClass = 'tactical-freeze';
+                    else if (dec.badgeType === 'peak') pillClass = 'tactical-peak';
+
+                    const tierLabel = dec.tier.minOcc === 90 ? '> 90 %' : `${dec.tier.minOcc}–${dec.tier.maxOcc} %`;
+
+                    tbody.innerHTML += `
+                        <tr class="${isCurr ? 'current-month-row' : ''}">
+                            <td style="font-weight:700;">${months[m]} ${isCurr ? '⭐' : ''}</td>
+                            <td style="font-weight:600;">${fmtNum(mRms)} RN</td>
+                            <td>
+                                <div style="display:flex; justify-content:space-between; font-size:0.7rem; font-weight:700; margin-bottom:2px;">
+                                    <span>${mOcc.toFixed(1).replace('.', ',')}%</span>
+                                </div>
+                                <div style="width:100%; height:6px; background:rgba(0,0,0,0.25); border-radius:4px; overflow:hidden;">
+                                    <div style="height:100%; width:${Math.min(100, mOcc)}%; background:${mOcc >= 70 ? '#10b981' : (mOcc >= 45 ? '#818cf8' : '#f59e0b')}; border-radius:4px;"></div>
+                                </div>
+                            </td>
+                            <td>${pickupTag}</td>
+                            <td><span style="font-size:0.7rem; font-weight:700; background:rgba(255,255,255,0.05); padding:3px 8px; border-radius:6px; border:1px solid var(--border);">${tierLabel}</span></td>
+                            <td style="font-weight:700; color:${dec.effectiveAdj > 0 ? '#10b981' : (dec.effectiveAdj < 0 ? '#818cf8' : 'var(--text-main)')};">${dec.effectiveAdj > 0 ? '+' : ''}${dec.effectiveAdj.toFixed(1).replace('.', ',')}%</td>
+                            <td style="font-weight:700; color:var(--text-main);">${dec.recEbi.toFixed(2).replace('.', ',')} €</td>
+                            <td style="font-weight:800; color:var(--primary); font-size:0.88rem;">${dec.recBar.toFixed(2).replace('.', ',')} €</td>
+                            <td style="font-weight:600; color:${dec.projRevpar >= strat.targetRevpar ? '#10b981' : 'var(--text-muted)'};">${dec.projRevpar.toFixed(2).replace('.', ',')} €</td>
+                            <td><span class="tactical-pill ${pillClass}">${dec.tacticalText}</span></td>
+                        </tr>
+                    `;
+                }
+            }
+
+            // 6. Ejecutar análisis de segmentos con pick-up y comparativa interanual
+            renderSegmentPickupAnalysis(hotel, year, midx);
+        }
+
+        /* ==========================================================================
+           PICK-UP Y RENDIMIENTO POR SEGMENTO (VS AÑO ANTERIOR)
+           ========================================================================== */
+        function renderSegmentPickupAnalysis(hotel, year, midx) {
+            const lyYear = String(Number(year) - 1);
+            const lyLabel = document.getElementById('yield-ly-label');
+            if (lyLabel) lyLabel.innerText = `${lyYear} (Año Anterior)`;
+
+            const segTbody = document.getElementById('segmentPickupBody');
+            if (!segTbody) return;
+            segTbody.innerHTML = '';
+
+            // Intentar leer de upload_segment_db_v2, y fallback a hotel_manager_db_v2
+            let segDataTY = {};
+            let segDataLY = {};
+            let segPrevTY = {};
+
+            try {
+                const segRaw = CapaStorage.getItem('upload_segment_db_v2');
+                if (segRaw) {
+                    const parsed = JSON.parse(segRaw);
+                    if (parsed && parsed[hotel]) {
+                        segDataTY = parsed[hotel][year]?.segment || {};
+                        segDataLY = parsed[hotel][lyYear]?.segment || {};
+                        segPrevTY = parsed[hotel][year]?.segment_prev || {};
+                    }
+                }
+            } catch(e) { console.warn("Error leyendo upload_segment_db_v2:", e); }
+
+            // Fallback a db principal si no estaban en upload_segment_db_v2
+            if (Object.keys(segDataTY).length === 0 && db[hotel]) {
+                segDataTY = db[hotel][year]?.segment || {};
+                segDataLY = db[hotel][lyYear]?.segment || {};
+                segPrevTY = db[hotel][year]?.segment_prev || {};
+            }
+
+            const allSegKeys = new Set([...Object.keys(segDataTY), ...Object.keys(segDataLY)]);
+            if (allSegKeys.size === 0) {
+                segTbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:24px; color:var(--text-muted);">No hay informes de segmentos cargados para este hotel y año</td></tr>';
+                return;
+            }
+
+            const getSegmentValues = (segObj) => {
+                if (!segObj) return { rooms: 0, rev: 0 };
+                const mStart = midx === -1 ? 0 : midx;
+                const mEnd = midx === -1 ? 11 : midx;
+                let rooms = 0, rev = 0;
+
+                const roomRevArr = (typeof segmentRoomRevenue === 'function') ? segmentRoomRevenue(segObj) : null;
+
+                for (let m = mStart; m <= mEnd; m++) {
+                    rooms += (Number(segObj.rooms?.[m]) || 0);
+                    if (roomRevArr) {
+                        rev += (Number(roomRevArr[m]) || 0);
+                    } else if (segObj.accommodation) {
+                        rev += (Number(segObj.accommodation[m]) || 0);
+                    } else if (segObj.revenue) {
+                        rev += (Number(segObj.revenue[m]) || 0);
+                    }
+                }
+                return { rooms, rev };
+            };
+
+            const rows = [];
+            let totRmsTY = 0, totRevTY = 0;
+            let totRmsLY = 0, totRevLY = 0;
+            let totPickupRms = 0, totPickupRev = 0;
+
+            allSegKeys.forEach(segName => {
+                const segTY = segDataTY[segName];
+                const segLY = segDataLY[segName];
+                const segPrev = segPrevTY[segName];
+
+                const cur = getSegmentValues(segTY);
+                const ly = getSegmentValues(segLY);
+                const prev = getSegmentValues(segPrev);
+
+                if (cur.rev === 0 && ly.rev === 0 && cur.rooms === 0 && ly.rooms === 0) return;
+
+                const adrTY = cur.rooms > 0 ? (cur.rev / cur.rooms) : 0;
+                const adrLY = ly.rooms > 0 ? (ly.rev / ly.rooms) : 0;
+
+                const deltaRev = cur.rev - ly.rev;
+                const deltaRevPct = ly.rev > 0 ? (deltaRev / ly.rev * 100) : (cur.rev > 0 ? 100 : 0);
+
+                const deltaRms = cur.rooms - ly.rooms;
+                const deltaRmsPct = ly.rooms > 0 ? (deltaRms / ly.rooms * 100) : (cur.rooms > 0 ? 100 : 0);
+
+                const deltaAdr = adrTY - adrLY;
+                const deltaAdrPct = adrLY > 0 ? (deltaAdr / adrLY * 100) : 0;
+
+                // Pick-up de segmento (entre cargas si existe snapshot previo, o variación neta reciente)
+                const pickupRms = prev.rooms > 0 ? (cur.rooms - prev.rooms) : 0;
+                const pickupRev = prev.rev > 0 ? (cur.rev - prev.rev) : 0;
+
+                totRmsTY += cur.rooms;
+                totRevTY += cur.rev;
+                totRmsLY += ly.rooms;
+                totRevLY += ly.rev;
+                totPickupRms += pickupRms;
+                totPickupRev += pickupRev;
+
+                rows.push({
+                    name: segName,
+                    roomsTY: cur.rooms,
+                    revTY: cur.rev,
+                    adrTY: adrTY,
+                    roomsLY: ly.rooms,
+                    revLY: ly.rev,
+                    adrLY: adrLY,
+                    deltaRev,
+                    deltaRevPct,
+                    deltaRms,
+                    deltaRmsPct,
+                    deltaAdr,
+                    deltaAdrPct,
+                    pickupRms,
+                    pickupRev
+                });
+            });
+
+            // Ordenar por ingresos de este año
+            rows.sort((a, b) => b.revTY - a.revTY);
+
+            const formatVar = (diffVal, pctVal, isCurrency = false) => {
+                if (pctVal === 0 && diffVal === 0) return '<span style="color:var(--text-muted); font-size:0.7rem;">= 0%</span>';
+                const isPos = diffVal > 0;
+                const col = isPos ? '#10b981' : '#ef4444';
+                const sign = isPos ? '+' : '';
+                const pctFormatted = isFinite(pctVal) ? `${sign}${pctVal.toFixed(1).replace('.', ',')}%` : 'N/A';
+                return `<span style="color:${col}; font-weight:700; font-size:0.72rem;">${pctFormatted}</span>`;
+            };
+
+            rows.forEach(r => {
+                const pRmsTag = r.pickupRms > 0 
+                    ? `<span style="color:#10b981; font-weight:700;">+${r.pickupRms} RN</span>`
+                    : (r.pickupRms < 0 ? `<span style="color:#ef4444; font-weight:700;">${r.pickupRms} RN</span>` : '<span style="color:var(--text-muted);">● 0</span>');
+
+                const pRevTag = r.pickupRev > 0
+                    ? `<span style="color:#10b981; font-weight:700;">+${fmt(r.pickupRev)}</span>`
+                    : (r.pickupRev < 0 ? `<span style="color:#ef4444; font-weight:700;">${fmt(r.pickupRev)}</span>` : '<span style="color:var(--text-muted);">● 0 €</span>');
+
+                segTbody.innerHTML += `
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="font-weight:700; color:var(--text-main);">${r.name}</td>
+                        <!-- PRODUCCIÓN HABITACIÓN -->
+                        <td style="font-weight:700;">${fmt(r.revTY)}</td>
+                        <td style="color:var(--text-muted);">${fmt(r.revLY)}</td>
+                        <td style="border-right: 1px solid var(--border);">${formatVar(r.deltaRev, r.deltaRevPct, true)}</td>
+                        <!-- HABITACIONES RN -->
+                        <td style="font-weight:700;">${fmtNum(r.roomsTY)} RN</td>
+                        <td style="color:var(--text-muted);">${fmtNum(r.roomsLY)} RN</td>
+                        <td style="border-right: 1px solid var(--border);">${formatVar(r.deltaRms, r.deltaRmsPct)}</td>
+                        <!-- ADR HABITACIÓN -->
+                        <td style="font-weight:700; color:var(--primary);">${fmt(r.adrTY)}</td>
+                        <td style="color:var(--text-muted);">${fmt(r.adrLY)}</td>
+                        <td style="border-right: 1px solid var(--border);">${formatVar(r.deltaAdr, r.deltaAdrPct, true)}</td>
+                        <!-- PICK-UP RECIENTE -->
+                        <td>${pRmsTag}</td>
+                        <td>${pRevTag}</td>
+                    </tr>
+                `;
+            });
+
+            // Fila Total
+            const totAdrTY = totRmsTY > 0 ? (totRevTY / totRmsTY) : 0;
+            const totAdrLY = totRmsLY > 0 ? (totRevLY / totRmsLY) : 0;
+            const totDeltaRev = totRevTY - totRevLY;
+            const totDeltaRevPct = totRevLY > 0 ? (totDeltaRev / totRevLY * 100) : 0;
+            const totDeltaRms = totRmsTY - totRmsLY;
+            const totDeltaRmsPct = totRmsLY > 0 ? (totDeltaRms / totRmsLY * 100) : 0;
+            const totDeltaAdr = totAdrTY - totAdrLY;
+            const totDeltaAdrPct = totAdrLY > 0 ? (totDeltaAdr / totAdrLY * 100) : 0;
+
+            segTbody.innerHTML += `
+                <tr style="background: rgba(99, 102, 241, 0.12); font-weight:800; border-top: 2px solid var(--border);">
+                    <td style="color: #a78bfa;">TOTAL TODOS LOS CANALES</td>
+                    <td>${fmt(totRevTY)}</td>
+                    <td style="color:var(--text-muted);">${fmt(totRevLY)}</td>
+                    <td style="border-right: 1px solid var(--border);">${formatVar(totDeltaRev, totDeltaRevPct, true)}</td>
+                    <td>${fmtNum(totRmsTY)} RN</td>
+                    <td style="color:var(--text-muted);">${fmtNum(totRmsLY)} RN</td>
+                    <td style="border-right: 1px solid var(--border);">${formatVar(totDeltaRms, totDeltaRmsPct)}</td>
+                    <td style="color:var(--primary); font-size:0.85rem;">${fmt(totAdrTY)}</td>
+                    <td style="color:var(--text-muted);">${fmt(totAdrLY)}</td>
+                    <td style="border-right: 1px solid var(--border);">${formatVar(totDeltaAdr, totDeltaAdrPct, true)}</td>
+                    <td>${totPickupRms > 0 ? `<span style="color:#10b981;">+${totPickupRms} RN</span>` : (totPickupRms < 0 ? `<span style="color:#ef4444;">${totPickupRms} RN</span>` : '● 0')}</td>
+                    <td>${totPickupRev > 0 ? `<span style="color:#10b981;">+${fmt(totPickupRev)}</span>` : (totPickupRev < 0 ? `<span style="color:#ef4444;">${fmt(totPickupRev)}</span>` : '● 0 €')}</td>
+                </tr>
+            `;
         }
 
         function switchHotel(h) {
@@ -1852,6 +2866,9 @@
             renderHistoricalChart(midx);
             renderCharts(agg, data.segment || {}, data.daily || {}, midx);
             renderTables(agg, data.segment || {}, midx);
+            if (typeof renderYieldStrategy === 'function') {
+                renderYieldStrategy(data, currentHotel, currentYear, midx);
+            }
         }
 
         function getGroupedProduction(serviceDb) {
