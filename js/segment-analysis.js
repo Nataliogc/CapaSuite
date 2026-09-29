@@ -90,7 +90,9 @@
                 value = item.original;
             }
 
-            let name = (hotelMappings && hotelMappings[rawNorm]) ? hotelMappings[rawNorm] : canonical(value);
+            // An explicit choice in this import takes precedence over remembered mappings.
+            let name = Object.hasOwn(corrections, cell) ? canonical(value)
+                : (hotelMappings && hotelMappings[rawNorm]) ? hotelMappings[rawNorm] : canonical(value);
             const isLastHab = (idx === habRows.length - 1);
             if (!name && !item.original) {
                 name = (hotelMappings && hotelMappings[cell]) || (isLastHab ? 'TOTAL GENERAL' : 'OTROS');

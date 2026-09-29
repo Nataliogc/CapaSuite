@@ -722,7 +722,7 @@
             }
 
             // ============================================================
-            // INSIGHT 6: Días con precio bajo (con € estimado de pérdida)
+            // INSIGHT 6: Días con precio bajo (escenario orientativo, no pérdida realizada)
             // ============================================================
             const compDataRaw = CapaStorage.getItem('revenue_data_v2');
             if (compDataRaw) {
@@ -742,9 +742,13 @@
                                 return acc + gap * avgRoomsDay;
                             }, 0);
                             const topDays = lowDays.slice(0, 3)
-                                .map(d => `<b>${d.date || d.checkIn || '—'}</b>`).join(', ');
-                            addInsight('warning', '💰 Revenue potencial no capturado',
-                                `<b>${lowDays.length} días</b> con tarifa >15% inferior al mercado → pérdida estimada: <b style="color:var(--danger);">${fmtEuro(estLoss)}</b>. Días prioritarios: ${topDays}.`,
+                                .map(d => {
+                                    const date = String(d.dateISO || d.date || d.checkIn || 'Fecha no disponible')
+                                        .replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+                                    return `<b>${date}</b>`;
+                                }).join(', ');
+                            addInsight('warning', '💰 Fechas para revisar tarifa',
+                                `<b>${lowDays.length} días</b> con tarifa >15% inferior al mercado. Escenario orientativo: <b>${fmtEuro(estLoss)}</b>, calculado como diferencia de tarifa × ${avgRoomsDay} habitaciones por día. No representa una pérdida comprobada ni garantiza demanda a ese precio. Primeras fechas detectadas: ${topDays}.`,
                                 'AnalisisCompetencia.html');
                         }
                     }

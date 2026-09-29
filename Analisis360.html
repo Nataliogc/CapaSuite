@@ -1183,7 +1183,7 @@
     <header class="header-360">
         <div class="header-title">
             <h1>Panel 360º</h1>
-            <p id="subTitle360">Inteligencia de Producción, Previsión y Costes</p>
+            <p id="subTitle360">Revenue de habitaciones: producción, previsión y costes de alojamiento</p>
         </div>
         <div class="controls" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
             <select id="viewModeSelector" onchange="refreshAll()" style="font-weight:700; border-color:var(--primary); color:var(--primary);" title="Modo de Vista">
@@ -1256,10 +1256,10 @@
                 </div>
             </div>
             <div class="kpi-card" style="animation-delay: 0.4s;">
-                <span class="label">RevPAR & Mix</span>
+                <span class="label">RevPAR Habitaciones</span>
                 <span class="value" id="kpi-total-revpar">0 €</span>
                 <div class="trend" id="kpi-mix-label" style="color: #60a5fa; margin-bottom: 8px;">
-                    <span>●</span> Mix Alojamiento: 0%
+                    <span>●</span> Solo ingresos de habitaciones
                 </div>
                 <div class="budget-progress-container">
                     <div id="budget-bar-revpar" class="budget-progress-bar" style="background: linear-gradient(90deg, #60a5fa, #93c5fd);"></div>
@@ -1692,7 +1692,7 @@
         <!-- CHARTS GRID -->
         <div class="charts-grid">
             <div class="chart-container">
-                <h3><span style="color: var(--primary);">◔</span> Mix de Servicios</h3>
+                <h3><span style="color: var(--primary);">◔</span> Ingresos de habitaciones</h3>
                 <div class="chart-wrapper">
                     <canvas id="serviceChart"></canvas>
                 </div>
@@ -1737,7 +1737,7 @@
             <!-- DEPARTMENTS TABLE -->
             <div class="table-card">
                 <div class="table-header">
-                    <span>Producción por Departamento</span>
+                    <span>Producción de habitaciones</span>
                     <span class="tag tag-seg" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">FINANZAS</span>
                 </div>
                 <div style="max-height: 500px; overflow-y: auto;">
@@ -2482,7 +2482,9 @@
                 return m < curMonth;
             };
 
-            const otbHabRevArr = otbData.breakdown?.habitacion || otbData.revenue || new Array(12).fill(0);
+            const otbHabRevArr = otbData.breakdown?.habitacion || new Array(12).fill(0);
+            const missingRoomBreakdown = !otbData.breakdown?.habitacion && (otbData.revenue || []).some((v, m) =>
+                v !== 0 && (midx === -1 || midx === m) && (mode === 'otb' || (mode === 'projected' && !isMonthClosed(m))));
             const otbHabRmsArr = otbData.breakdown?.habitacion_rn || otbData.rooms || new Array(12).fill(0);
 
             let realHabRevTotal = 0, realHabRmsTotal = 0;
@@ -2517,24 +2519,8 @@
             }
 
             const summary = {
-                "Habitaciones": { revenue: 0, rooms: 0 },
-                "Restauración": { revenue: 0, rooms: 0 },
-                "Eventos": { revenue: 0, rooms: 0 },
-                "Otros": { revenue: 0, rooms: 0 }
+                "Habitaciones": { revenue: 0, rooms: 0 }
             };
-
-            let totalNonHabRev = 0;
-            Object.entries(groupedTY).forEach(([gid, grp]) => {
-                if (gid === "HABITACION") return;
-                const cat = GROUP_TO_CATEGORY[gid] || "Otros";
-                let rev = 0;
-                for (let m = 0; m < 12; m++) {
-                    if (midx !== -1 && m !== midx) continue;
-                    rev += (grp.revenue[m] || 0);
-                }
-                summary[cat].revenue += rev;
-                totalNonHabRev += rev;
-            });
 
             let habRevChosen = 0;
             let habRmsChosen = 0;
@@ -2552,7 +2538,7 @@
             summary["Habitaciones"].revenue = habRevChosen;
             summary["Habitaciones"].rooms = habRmsChosen;
 
-            const totalRev = habRevChosen + totalNonHabRev;
+            const totalRev = habRevChosen;
             const totalRms = habRmsChosen;
 
             const raw = [];
@@ -2566,6 +2552,7 @@
                     rms += (s.rooms?.[m] || 0);
                 }
                 const gid = typeof getGroupID === 'function' ? getGroupID(s.name) : "VARIOS";
+                if (gid !== 'HABITACION') return;
                 const category = GROUP_TO_CATEGORY[gid] || "Otros";
                 if (rev > 0 || rms > 0) {
                     raw.push({ name: s.name, rev, rms, category });
@@ -2574,6 +2561,7 @@
 
             return {
                 summary,
+                missingRoomBreakdown,
                 totalRev,
                 totalRms,
                 raw,
@@ -2623,8 +2611,9 @@
             document.getElementById('kpi-total-revpar').innerText = revpar.toFixed(2).replace('.', ',') + " €";
             document.getElementById('kpi-total-occ').innerText = occ.toFixed(1).replace('.', ',') + "%";
             
-            const roomsPerc = totalRev > 0 ? (habRev / totalRev * 100) : 0;
-            document.getElementById('kpi-mix-label').innerHTML = `<span>●</span> Mix Alojamiento: ${roomsPerc.toFixed(1)}%`;
+            document.getElementById('kpi-mix-label').innerHTML = agg.missingRoomBreakdown
+                ? '<span>●</span> Ingresos incompletos: falta desglose OTB de habitaciones'
+                : '<span>●</span> Solo ingresos de habitaciones';
 
             // Sublabels according to Mode
             const occSubEl = document.getElementById('kpi-occ-sublabel');
@@ -2726,24 +2715,39 @@
                 document.getElementById('budget-pct-revpar').innerText = 'N/A';
             }
 
-            // PICK-UP MONITOR (Last 24h Snapshot)
+            // PICK-UP MONITOR: comparison of loaded reports, not a verified 24h interval.
+            const pickupElement = document.getElementById('kpi-pickup-24h');
+            pickupElement.innerHTML = '<span class="pickup-badge pickup-neutral">No hay datos comparables de Pick-up</span>';
             let totalPickup = 0;
-            if (yearData.otb_prev && yearData.otb_prev.daily_otb) {
-                const currOtb = yearData.daily_otb || {};
+            if (yearData.daily_otb && yearData.otb_prev && yearData.otb_prev.daily_otb) {
+                const currOtb = yearData.daily_otb;
                 const prevOtb = yearData.otb_prev.daily_otb;
-                
-                Object.keys(currOtb).forEach(date => {
-                    const m = new Date(date).getMonth();
-                    if (midx === -1 || m === midx) {
-                        const c = (typeof currOtb[date] === 'object') ? currOtb[date].rooms : currOtb[date];
-                        const p = (typeof prevOtb[date] === 'object') ? prevOtb[date].rooms : (prevOtb[date] || 0);
-                        totalPickup += (c - p);
+                let comparable = true;
+                let comparedDays = 0;
+                const dates = new Set([...Object.keys(currOtb), ...Object.keys(prevOtb)]);
+                dates.forEach(date => {
+                    const parsed = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+                    if (!parsed) { comparable = false; return; }
+                    const m = Number(parsed[2]) - 1;
+                    if (parsed[1] !== String(currentYear) || (midx !== -1 && m !== midx)) return;
+                    const validDate = new Date(Date.UTC(Number(parsed[1]), m, Number(parsed[3])));
+                    if (validDate.toISOString().slice(0, 10) !== date) { comparable = false; return; }
+                    const rooms = entry => entry !== null && typeof entry === 'object' ? entry.rooms : entry;
+                    const c = rooms(currOtb[date]);
+                    const p = rooms(prevOtb[date]);
+                    // Missing dates/amounts are not evidence of zero bookings or cancellations.
+                    if (!Number.isFinite(c) || !Number.isFinite(p) || c < 0 || p < 0) {
+                        comparable = false;
+                        return;
                     }
+                    comparedDays++;
+                    totalPickup += c - p;
                 });
-                
-                const badgeClass = totalPickup > 0 ? 'pickup-up' : (totalPickup < 0 ? 'pickup-down' : 'pickup-neutral');
-                const icon = totalPickup > 0 ? '📈' : (totalPickup < 0 ? '📉' : '●');
-                document.getElementById('kpi-pickup-24h').innerHTML = `<span class="pickup-badge ${badgeClass}">${icon} Pick-up 24h: ${totalPickup > 0 ? '+' : ''}${totalPickup} rms</span>`;
+                if (comparable && comparedDays > 0) {
+                    const badgeClass = totalPickup > 0 ? 'pickup-up' : (totalPickup < 0 ? 'pickup-down' : 'pickup-neutral');
+                    const icon = totalPickup > 0 ? '📈' : (totalPickup < 0 ? '📉' : '●');
+                    pickupElement.innerHTML = `<span class="pickup-badge ${badgeClass}">${icon} Variación entre cargas: ${totalPickup > 0 ? '+' : ''}${totalPickup} RN</span>`;
+                }
             }
 
             // BUDGET OCCUPANCY (Progress Bar)
@@ -3193,6 +3197,18 @@
             }
         }
 
+        function segmentRoomRevenue(segment) {
+            // Legacy accommodation may have been filled from total revenue by the importer.
+            // Only a concept-level breakdown proves which income belongs to rooms.
+            if (!segment?.concepts || Object.keys(segment.concepts).length === 0) return null;
+            const result = new Array(12).fill(0);
+            Object.entries(segment.concepts).forEach(([name, values]) => {
+                if (getGroupID(name) !== 'HABITACION') return;
+                for (let m = 0; m < 12; m++) result[m] += Number(values?.[m]) || 0;
+            });
+            return result;
+        }
+
         function renderCharts(agg, segmentDb, dailyDb, midx) {
             const colors = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316'];
             
@@ -3218,7 +3234,8 @@
                 let chanTotal = 0;
                 segNames.forEach(sName => {
                     const obj = segmentDb[sName];
-                    if (obj) chanTotal += getVal(obj.revenue);
+                    const roomRevenue = segmentRoomRevenue(obj);
+                    if (roomRevenue) chanTotal += getVal(roomRevenue);
                 });
                 if (chanTotal > 10) {
                     chanLabels.push(chanName);
@@ -3310,12 +3327,14 @@
                     if (hotelSegs && hotelSegs.segment) {
                         let segData = [];
                         Object.entries(hotelSegs.segment).forEach(([segName, seg]) => {
+                            const roomRevenue = segmentRoomRevenue(seg);
+                            if (!roomRevenue) return;
                             let rev = 0, acc = 0, rooms = 0;
                             const mStart = midx === -1 ? 0 : midx;
                             const mEnd = midx === -1 ? 11 : midx;
                             for (let m = mStart; m <= mEnd; m++) {
-                                rev += (seg.revenue?.[m] || 0);
-                                acc += (seg.accommodation?.[m] || 0);
+                                rev += (roomRevenue[m] || 0);
+                                acc += (roomRevenue[m] || 0);
                                 rooms += (seg.rooms?.[m] || 0);
                             }
                             if (rev > 0) segData.push({ name: segName, rev, acc, rooms });
@@ -3325,11 +3344,11 @@
                             realSegmentsBody.innerHTML += `<tr>
                                 <td style="font-weight:700; color:var(--text-main);">${item.name}</td>
                                 <td style="font-weight:600;">${fmt(item.rev)}</td>
-                                <td style="color:var(--text-muted);">${fmt(adr)} €</td>
+                                    <td style="color:var(--text-muted);">${fmt(adr)}</td>
                             </tr>`;
                         });
                         if (segData.length === 0) {
-                            realSegmentsBody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--text-muted); padding:20px;">No hay segmentos cargados</td></tr>';
+                            realSegmentsBody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--text-muted); padding:20px;">Sin desglose verificable de ingresos de habitaciones por segmento</td></tr>';
                         }
                     } else {
                         realSegmentsBody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--text-muted); padding:20px;">No hay segmentos cargados</td></tr>';
@@ -3396,9 +3415,7 @@
                     let dataObj = null;
                     let masterObj = null;
                     if (db[currentHotel][y] && db[currentHotel][y].service) {
-                        const pyRoomsGrp = Object.values(db[currentHotel][y].service).find(s => s.name && s.name.toUpperCase().includes('HABITACION') && !s.name.toUpperCase().includes('TOTAL_MASTER'));
-                        if (pyRoomsGrp) dataObj = pyRoomsGrp;
-                        else dataObj = db[currentHotel][y].service["TOTAL_MASTER"];
+                        dataObj = getGroupedProduction(db[currentHotel][y].service).HABITACION;
                         masterObj = db[currentHotel][y].service["TOTAL_MASTER"];
                     }
                     dataObj = dataObj || {};
@@ -3484,9 +3501,7 @@
                     let dataObj = null;
                     let masterObj = null;
                     if (db[currentHotel][y] && db[currentHotel][y].service) {
-                        const pyRoomsGrp = Object.values(db[currentHotel][y].service).find(s => s.name && s.name.toUpperCase().includes('HABITACION') && !s.name.toUpperCase().includes('TOTAL_MASTER'));
-                        if (pyRoomsGrp) dataObj = pyRoomsGrp;
-                        else dataObj = db[currentHotel][y].service["TOTAL_MASTER"];
+                        dataObj = getGroupedProduction(db[currentHotel][y].service).HABITACION;
                         masterObj = db[currentHotel][y].service["TOTAL_MASTER"];
                     }
                     dataObj = dataObj || {};

@@ -1332,6 +1332,7 @@
 
 
             // --- BUDGET PROGRESS INTEGRATION ---
+            const otbData = data.otb || { revenue: new Array(12).fill(0) };
             const customKey = `custom_budget_${currentYear}`;
             const budgetData = (db[currentHotel] && db[currentHotel][customKey]) ? db[currentHotel][customKey] : null;
 
@@ -1372,6 +1373,8 @@
                 ['total', 'hab', 'adr'].forEach(id => {
                     const el = document.getElementById(`prog-cont-${id}`);
                     if (el) el.style.display = 'none';
+                    const label = document.getElementById(`target-label-${id}`);
+                    if (label) label.style.display = 'none';
                 });
             }
 
@@ -1380,6 +1383,7 @@
 
             // Charts
             renderCharts(data, groupedTY, groupedLY, totalTY, totalLY, midx);
+            renderHeatmap();
         }
 
         function renderTable(grouped, midx, total, fmt) {
@@ -2240,7 +2244,9 @@
         });
 
         function renderHeatmap() {
-            const data = db[currentHotel][currentYear];
+            const container = document.getElementById('weekday-heatmap');
+            const data = db[currentHotel]?.[currentYear];
+            container.innerHTML = '<p>Sin datos diarios para el periodo seleccionado.</p>';
             if (!data || !data.daily) return;
 
             const metric = document.getElementById('heatmapMetricSelector').value;
@@ -2281,6 +2287,7 @@
                 }
 
                 if (isNaN(date.getTime())) return;
+                if (date.getUTCFullYear() !== Number(currentYear)) return;
                 
                 // Filter by month if selected
                 if (midx !== -1 && date.getUTCMonth() !== midx) return;
@@ -2307,7 +2314,7 @@
                 if (val > maxVal) maxVal = val;
             });
 
-            const container = document.getElementById('weekday-heatmap');
+            if (!weekData.some(s => s.count > 0)) return;
             container.innerHTML = weekData.map(s => {
                 const score = maxVal > 0 ? (s.avg / maxVal) : 0;
                 const opacity = 0.15 + (score * 0.55);
