@@ -5287,70 +5287,72 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
     <!-- EMAIL REVENUE MODAL (REVISIÓN DE CENTRAL - MIHAIL STAVILA) -->
     <div id="emailRevenueModal" class="modal" style="z-index:999999;">
-        <div class="modal-content" style="max-width:960px; max-height:90vh; overflow-y:auto; background:var(--bg-surface); color:var(--text-main); border:1px solid var(--border); border-radius:16px; padding:24px; box-shadow:0 20px 50px rgba(0,0,0,0.5);">
-            <span class="close-modal" onclick="closeEmailRevenueModal()">&times;</span>
-            <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
-                <div style="background:rgba(2, 132, 199, 0.15); width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.6rem; border:1px solid rgba(2, 132, 199, 0.3);">
-                    ✉️
-                </div>
-                <div>
-                    <h3 style="margin:0; font-size:1.25rem; color:var(--text-main);">Enviar Revisión de Tarifas a Revenue Central</h3>
-                    <div style="font-size:0.8rem; color:var(--text-muted);">
-                        Notificación estructurada de tarifas modificadas con comparativa de competidores para revisión de <strong>Mihail Stavila (mstavila@sercotel.com)</strong>
+        <div class="modal-content" style="max-width:980px; max-height:92vh; overflow-y:auto; background:var(--bg-surface); color:var(--text-main); border:1px solid var(--border); border-radius:18px; padding:0; box-shadow:0 24px 60px rgba(0,0,0,0.6); overflow:hidden;">
+
+            <!-- HEADER CORPORATIVO -->
+            <div style="background:linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e293b 100%); padding:20px 28px; position:relative; border-radius:18px 18px 0 0;">
+                <span class="close-modal" onclick="closeEmailRevenueModal()" style="position:absolute; top:14px; right:18px; color:#a5b4fc; font-size:1.5rem; cursor:pointer; line-height:1;">&times;</span>
+                <div style="display:flex; align-items:center; gap:14px;">
+                    <div style="background:rgba(165,180,252,0.15); width:48px; height:48px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:1.5rem; border:1px solid rgba(165,180,252,0.3); flex-shrink:0;">
+                        ✉️
+                    </div>
+                    <div>
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:3px;">
+                            <h3 style="margin:0; font-size:1.1rem; color:#ffffff; font-weight:800; letter-spacing:-0.3px;">Revisión de Tarifas · Revenue Central</h3>
+                            <span style="background:rgba(99,102,241,0.4); color:#a5b4fc; font-size:0.65rem; font-weight:800; padding:2px 8px; border-radius:20px; text-transform:uppercase; letter-spacing:0.5px; border:1px solid rgba(165,180,252,0.3);">SERCOTEL RM</span>
+                        </div>
+                        <div style="font-size:0.78rem; color:#94a3b8; display:flex; align-items:center; gap:6px;">
+                            <span>Para revisión de</span>
+                            <span style="background:rgba(255,255,255,0.08); color:#c7d2fe; font-weight:700; padding:1px 8px; border-radius:4px; font-size:0.72rem;">Mihail Stavila · mstavila@sercotel.com</span>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            <div style="padding:22px 28px;">
 
             <!-- FORMULARIO DE CORREO -->
-            <div style="background:var(--bg-deep); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px;">
-                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:12px; margin-bottom:12px;">
+            <div style="background:var(--bg-deep); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:18px;">
+                <div style="font-size:0.7rem; font-weight:800; color:var(--primary); text-transform:uppercase; letter-spacing:0.6px; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+                    <span>📧</span> Datos del Correo
+                </div>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:12px; margin-bottom:12px;">
                     <div>
-                        <label style="display:block; font-size:0.75rem; font-weight:800; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase;">
-                            Destinatario Principal (Revenue Central):
-                        </label>
-                        <input type="email" id="revenueEmailTo" value="mstavila@sercotel.com" style="width:100%; padding:8px 12px; border-radius:8px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border); font-size:0.85rem; font-weight:700;">
+                        <label style="display:block; font-size:0.7rem; font-weight:800; color:var(--text-muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.4px;">📨 Destinatario Principal</label>
+                        <input type="email" id="revenueEmailTo" value="mstavila@sercotel.com" style="width:100%; padding:9px 12px; border-radius:8px; background:var(--bg-card); color:var(--text-main); border:1px solid rgba(99,102,241,0.4); font-size:0.85rem; font-weight:700; box-sizing:border-box; outline:none;">
                     </div>
                     <div>
-                        <label style="display:block; font-size:0.75rem; font-weight:800; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase;">
-                            En copia (CC):
-                        </label>
-                        <input type="text" id="revenueEmailCc" placeholder="dirección@sercotel.com (opcional)" style="width:100%; padding:8px 12px; border-radius:8px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border); font-size:0.85rem;">
+                        <label style="display:block; font-size:0.7rem; font-weight:800; color:var(--text-muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.4px;">📩 En copia (CC)</label>
+                        <input type="text" id="revenueEmailCc" placeholder="dirección@sercotel.com (opcional)" style="width:100%; padding:9px 12px; border-radius:8px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border); font-size:0.85rem; box-sizing:border-box; outline:none;">
                     </div>
                 </div>
-
                 <div style="margin-bottom:12px;">
-                    <label style="display:block; font-size:0.75rem; font-weight:800; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase;">
-                        Asunto del Correo:
-                    </label>
-                    <input type="text" id="revenueEmailSubject" style="width:100%; padding:8px 12px; border-radius:8px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border); font-size:0.88rem; font-weight:700;">
+                    <label style="display:block; font-size:0.7rem; font-weight:800; color:var(--text-muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.4px;">📋 Asunto del Correo</label>
+                    <input type="text" id="revenueEmailSubject" style="width:100%; padding:9px 12px; border-radius:8px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border); font-size:0.85rem; font-weight:600; box-sizing:border-box; outline:none;">
                 </div>
-
                 <div>
-                    <label style="display:block; font-size:0.75rem; font-weight:800; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase;">
-                        Notas u Observaciones para Mihail (opcional):
-                    </label>
-                    <textarea id="revenueEmailNotes" rows="2" placeholder="Ej: Hola Mihail, te paso la revisión de precios ajustando tarifas según los picos de ocupación y los movimientos de la competencia..." style="width:100%; padding:8px 12px; border-radius:8px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border); font-size:0.85rem; resize:vertical; font-family:inherit;"></textarea>
+                    <label style="display:block; font-size:0.7rem; font-weight:800; color:var(--text-muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.4px;">💬 Observaciones (opcional)</label>
+                    <textarea id="revenueEmailNotes" rows="2" placeholder="Ej: Hola Mihail, ajustamos tarifas por picos de ocupación y movimientos de la competencia..." style="width:100%; padding:9px 12px; border-radius:8px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border); font-size:0.83rem; resize:vertical; font-family:inherit; box-sizing:border-box; outline:none; line-height:1.5;"></textarea>
                 </div>
             </div>
 
-            <!-- TARJETAS DE RESUMEN EJECUTIVO -->
-            <div id="revenueEmailSummaryCards" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:16px;">
+            <!-- TARJETAS KPI RESUMEN EJECUTIVO -->
+            <div id="revenueEmailSummaryCards" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin-bottom:20px;">
                 <!-- Rellenado por JS -->
             </div>
 
             <!-- TABLA PREVISUALIZACIÓN -->
-            <div style="margin-bottom:16px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                    <span style="font-size:0.82rem; font-weight:800; text-transform:uppercase; color:var(--primary); letter-spacing:0.5px;">
-                        📊 Detalle de Tarifas Modificadas & Línea de Competidores
-                    </span>
-                    <span id="revenueEmailCountBadge" style="font-size:0.75rem; font-weight:700; color:var(--text-muted);">
-                        0 fechas
-                    </span>
+            <div style="margin-bottom:18px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:0.78rem; font-weight:800; text-transform:uppercase; color:var(--primary); letter-spacing:0.5px;">📊 Detalle de Tarifas &amp; Línea de Competidores</span>
+                        <span id="revenueEmailCountBadge" style="background:rgba(99,102,241,0.15); color:var(--primary); font-size:0.68rem; font-weight:800; padding:2px 9px; border-radius:20px; border:1px solid rgba(99,102,241,0.3);">0 fechas</span>
+                    </div>
+                    <span style="font-size:0.68rem; color:var(--text-muted); font-style:italic;">scroll horizontal si hay muchos competidores →</span>
                 </div>
-                <div style="overflow-x:auto; border:1px solid var(--border); border-radius:10px; max-height:360px;">
-                    <table id="revenueEmailPreviewTable" style="width:100%; border-collapse:collapse; font-size:0.75rem;">
-                        <thead id="revenueEmailPreviewThead" style="position:sticky; top:0; background:var(--bg-card); z-index:2; border-bottom:1px solid var(--border);">
+                <div style="overflow-x:auto; border:1px solid var(--border); border-radius:12px; max-height:380px; box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+                    <table id="revenueEmailPreviewTable" style="width:100%; border-collapse:collapse; font-size:0.73rem;">
+                        <thead id="revenueEmailPreviewThead" style="position:sticky; top:0; z-index:2;">
                             <!-- Encabezado dinámico -->
                         </thead>
                         <tbody id="revenueEmailPreviewTbody">
@@ -5360,25 +5362,30 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 </div>
             </div>
 
-            <!-- BOTONES DE ACCIÓN -->
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; padding-top:14px; border-top:1px solid var(--border);">
-                <button type="button" class="btn" onclick="closeEmailRevenueModal()" style="background:var(--bg-body); border:1px solid var(--border); color:var(--text-main); font-weight:600;">
-                    Cerrar
-                </button>
-                <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                    <button type="button" class="btn" onclick="copyRevenueEmailHtmlToClipboard()" style="background:var(--bg-deep); border:1px solid var(--primary); color:var(--primary); font-weight:700; display:inline-flex; align-items:center; gap:6px; cursor:pointer;" title="Copia la tabla HTML con colores y estilos para pegarla en Outlook, Gmail o Teams con Ctrl+V">
-                        <span>📋</span> Copiar Tabla (Outlook / Teams)
+            <!-- FOOTER / BOTONES DE ACCIÓN -->
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; padding-top:16px; border-top:1px solid var(--border);">
+                <div style="font-size:0.68rem; color:var(--text-muted); font-style:italic;">
+                    🔒 Documento preparado por <strong style="color:var(--primary);">CapaSuite</strong> · Sercotel Hotel Group
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                    <button type="button" class="btn" onclick="closeEmailRevenueModal()" style="background:transparent; border:1px solid var(--border); color:var(--text-muted); font-weight:600; font-size:0.82rem; padding:8px 16px;">
+                        Cerrar
                     </button>
-                    <button type="button" class="btn" onclick="sendRevenueEmailViaMailto()" style="background:linear-gradient(135deg, #0284c7, #2563eb); border:none; color:#fff; font-weight:700; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 12px rgba(37, 99, 235, 0.4); cursor:pointer;" title="Abrir Outlook o cliente de correo predeterminado con el correo ya redactado">
-                        <span>✉️</span> Abrir en Email (mailto:)
+                    <button type="button" class="btn" onclick="copyRevenueEmailHtmlToClipboard()" style="background:var(--bg-deep); border:1.5px solid var(--primary); color:var(--primary); font-weight:700; display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-size:0.82rem; padding:8px 16px;" title="Copia la tabla HTML con colores y estilos para pegarla en Outlook o Teams con Ctrl+V">
+                        📋 Copiar tabla (Outlook / Teams)
+                    </button>
+                    <button type="button" class="btn" onclick="sendRevenueEmailViaMailto()" style="background:linear-gradient(135deg, #4f46e5, #2563eb); border:none; color:#fff; font-weight:700; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 14px rgba(79,70,229,0.45); cursor:pointer; font-size:0.82rem; padding:9px 18px;" title="Abrir Outlook o cliente de correo predeterminado con el correo ya redactado">
+                        ✉️ Abrir en Email
                     </button>
                 </div>
             </div>
+
+            </div><!-- fin padding wrapper -->
         </div>
     </div>
 
     <!-- TOAST NOTIFICATION PARA COPIADO -->
-    <div id="revenueEmailToast" style="display:none; position:fixed; bottom:30px; right:30px; z-index:9999999; background:#0f172a; color:#fff; padding:12px 20px; border-radius:10px; box-shadow:0 10px 30px rgba(0,0,0,0.5); border:1px solid #10b981; font-size:0.85rem; font-weight:700; display:none; align-items:center; gap:10px; animation:fadeIn 0.3s ease;">
+    <div id="revenueEmailToast" style="display:none; position:fixed; bottom:30px; right:30px; z-index:9999999; background:#0f172a; color:#fff; padding:12px 20px; border-radius:10px; box-shadow:0 10px 30px rgba(0,0,0,0.5); border:1px solid #10b981; font-size:0.85rem; font-weight:700; align-items:center; gap:10px; animation:fadeIn 0.3s ease;">
         <span style="font-size:1.2rem;">📋</span>
         <span id="revenueEmailToastText">¡Tabla copiada al portapapeles!</span>
     </div>
@@ -5524,60 +5531,31 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     const capacity = (targetHotel === 'Cumbria' ? 59 : 108);
                     const occPct = capacity > 0 ? Math.round((currentOcc / capacity) * 100) : 0;
 
-                    // Date & Day Calculation
-                    const dateParts = (d.dateISO || '').split('-');
-                    let dayName = d.dayName || '';
-                    let dateDisplay = d.date || d.dateISO;
-                    let isWeekend = false;
-                    let isSunday = false;
-                    if (dateParts.length === 3) {
-                        const y = parseInt(dateParts[0]);
-                        const m = parseInt(dateParts[1]) - 1;
-                        const dayNum = parseInt(dateParts[2]);
-                        const dt = new Date(y, m, dayNum);
-                        const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-                        const dow = dt.getDay();
-                        dayName = dayNames[dow] || '';
-                        isWeekend = (dow === 5 || dow === 6);
-                        isSunday = (dow === 0);
-                        dateDisplay = `${String(dayNum).padStart(2, '0')}/${String(m + 1).padStart(2, '0')}/${y}`;
-                    }
-
-                    // Competidores (con nombres más limpios)
+                    // Competidores
                     const comps = [];
                     competitorsList.forEach(c => {
                         const cH = d.hotels[c.name];
                         let priceText = '-';
                         if (cH) {
                             if (cH.sold || cH.status === 'sold') priceText = 'Cerrado';
-                            else if (cH.status === 'minStay') priceText = (cH.raw && cH.raw.includes('2')) ? 'Min 2n' : (cH.raw || 'Min');
-                            else if (cH.price > 0) priceText = `${Math.round(cH.price)} €`;
+                            else if (cH.status === 'minStay') priceText = cH.raw || 'M';
+                            else if (cH.price > 0) priceText = `${Math.round(cH.price)}€`;
                         }
-                        const cleanCompName = c.name.replace(/^Hotel\s+/i, '').replace(/^Sercotel\s+/i, '').replace(/\s+Ciudad\s+Real$/i, '').trim();
-                        comps.push({ name: cleanCompName, rawName: c.name, price: priceText });
+                        comps.push({ name: c.name, price: priceText });
                     });
 
-                    // Smart Yield Action y Criterio
+                    // Smart Yield Action
+                    let actionText = 'En Rango';
                     const yieldInfo = calculateSmartYield(d, targetHotel);
-                    let actionText = '';
-                    let actionSub = '';
-                    if (delta > 0) {
-                        actionText = `▲ Subida +${Math.round(delta)} €`;
-                    } else if (delta < 0) {
-                        actionText = `▼ Bajada ${Math.round(delta)} €`;
-                    } else {
-                        actionText = `= Mantenida`;
-                    }
                     if (yieldInfo && yieldInfo.actionText) {
-                        actionSub = yieldInfo.actionText;
+                        actionText = yieldInfo.actionText;
+                        if (yieldInfo.rangeText) actionText += ` (${yieldInfo.rangeText})`;
                     }
 
                     items.push({
                         dateISO: d.dateISO,
-                        dateDisplay: dateDisplay,
-                        dayName: dayName,
-                        isWeekend: isWeekend,
-                        isSunday: isSunday,
+                        dateDisplay: d.date || d.dateISO,
+                        dayName: d.dayName || '',
                         rooms: currentOcc,
                         occPct: occPct,
                         capacity: capacity,
@@ -5587,7 +5565,6 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         deltaPct: deltaPct,
                         marketAvg: d.compAvg || d.marketAvg || 0,
                         actionText: actionText,
-                        actionSub: actionSub,
                         competitors: comps
                     });
                 }
@@ -5622,7 +5599,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             if (subjInput) {
                 const now = new Date();
                 const dStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
-                subjInput.value = `[Revisión Revenue Central] Propuesta de Tarifas - Hotel ${report.hotel} (${report.count} fecha${report.count !== 1 ? 's' : ''}) - ${dStr}`;
+                subjInput.value = `[Revenue Central] Propuesta Tarifas · Hotel ${report.hotel} · ${report.count} fecha${report.count !== 1 ? 's' : ''} · ${dStr}`;
             }
 
             const countBadge = document.getElementById('revenueEmailCountBadge');
@@ -5630,66 +5607,75 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 countBadge.innerText = `${report.count} fecha${report.count !== 1 ? 's' : ''} modificada${report.count !== 1 ? 's' : ''}`;
             }
 
-            // Resumen Ejecutivo Cards
+            // KPI CARDS con diseño visual corporativo
             const cardsEl = document.getElementById('revenueEmailSummaryCards');
             if (cardsEl) {
-                const deltaColor = report.avgDelta >= 0 ? '#10b981' : '#ef4444';
-                const deltaSign = report.avgDelta >= 0 ? '+' : '';
+                const dPos = report.avgDelta >= 0;
+                const dSign = dPos ? '+' : '';
+                const dColorBg = dPos ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)';
+                const dColorBorder = dPos ? 'rgba(16,185,129,0.35)' : 'rgba(239,68,68,0.35)';
+                const dColorText = dPos ? '#10b981' : '#ef4444';
+                const dIcon = dPos ? '📈' : '📉';
                 cardsEl.innerHTML = `
-                    <div style="background:var(--bg-deep); border:1px solid var(--border); border-radius:10px; padding:10px 14px;">
-                        <span style="font-size:0.72rem; color:var(--text-muted); font-weight:800; text-transform:uppercase;">Hotel Seleccionado</span>
-                        <div style="font-size:1.05rem; font-weight:800; color:var(--text-main); margin-top:2px;">Hotel ${report.hotel}</div>
+                    <div style="background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.3); border-radius:12px; padding:12px 16px; display:flex; flex-direction:column; gap:4px;">
+                        <span style="font-size:0.65rem; color:#818cf8; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">🏨 Hotel</span>
+                        <div style="font-size:1rem; font-weight:800; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Hotel ${report.hotel}</div>
                     </div>
-                    <div style="background:var(--bg-deep); border:1px solid var(--border); border-radius:10px; padding:10px 14px;">
-                        <span style="font-size:0.72rem; color:var(--text-muted); font-weight:800; text-transform:uppercase;">Fechas Revisadas</span>
-                        <div style="font-size:1.05rem; font-weight:800; color:var(--primary); margin-top:2px;">${report.count} días</div>
+                    <div style="background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.25); border-radius:12px; padding:12px 16px; display:flex; flex-direction:column; gap:4px;">
+                        <span style="font-size:0.65rem; color:#818cf8; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">📅 Fechas Revisadas</span>
+                        <div style="font-size:1.5rem; font-weight:800; color:var(--primary); line-height:1;">${report.count}</div>
+                        <div style="font-size:0.68rem; color:var(--text-muted);">días modificados</div>
                     </div>
-                    <div style="background:var(--bg-deep); border:1px solid var(--border); border-radius:10px; padding:10px 14px;">
-                        <span style="font-size:0.72rem; color:var(--text-muted); font-weight:800; text-transform:uppercase;">Precio Medio Anterior</span>
-                        <div style="font-size:1.05rem; font-weight:700; color:var(--text-muted); margin-top:2px;">${report.avgOld > 0 ? report.avgOld.toFixed(2) + ' €' : '-'}</div>
+                    <div style="background:var(--bg-deep); border:1px solid var(--border); border-radius:12px; padding:12px 16px; display:flex; flex-direction:column; gap:4px;">
+                        <span style="font-size:0.65rem; color:var(--text-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">💶 Precio Medio Anterior</span>
+                        <div style="font-size:1.3rem; font-weight:700; color:var(--text-muted); line-height:1; text-decoration:line-through; opacity:0.7;">${report.avgOld > 0 ? report.avgOld.toFixed(2) + ' €' : '-'}</div>
+                        <div style="font-size:0.68rem; color:var(--text-muted);">antes del ajuste</div>
                     </div>
-                    <div style="background:var(--bg-deep); border:1px solid var(--border); border-radius:10px; padding:10px 14px;">
-                        <span style="font-size:0.72rem; color:var(--text-muted); font-weight:800; text-transform:uppercase;">Precio Medio Propuesto</span>
-                        <div style="font-size:1.05rem; font-weight:800; color:var(--text-main); margin-top:2px;">${report.avgNew > 0 ? report.avgNew.toFixed(2) + ' €' : '-'}</div>
+                    <div style="background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); border-radius:12px; padding:12px 16px; display:flex; flex-direction:column; gap:4px;">
+                        <span style="font-size:0.65rem; color:#10b981; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">✅ Precio Medio Propuesto</span>
+                        <div style="font-size:1.5rem; font-weight:800; color:#10b981; line-height:1;">${report.avgNew > 0 ? report.avgNew.toFixed(2) + ' €' : '-'}</div>
+                        <div style="font-size:0.68rem; color:var(--text-muted);">nueva tarifa media</div>
                     </div>
-                    <div style="background:var(--bg-deep); border:1px solid var(--border); border-radius:10px; padding:10px 14px;">
-                        <span style="font-size:0.72rem; color:var(--text-muted); font-weight:800; text-transform:uppercase;">Variación Media</span>
-                        <div style="font-size:1.05rem; font-weight:800; color:${deltaColor}; margin-top:2px;">
-                            ${report.count > 0 ? `${deltaSign}${report.avgDelta.toFixed(2)} € (${deltaSign}${report.avgDeltaPct.toFixed(1)}%)` : '-'}
-                        </div>
+                    <div style="background:${dColorBg}; border:1px solid ${dColorBorder}; border-radius:12px; padding:12px 16px; display:flex; flex-direction:column; gap:4px;">
+                        <span style="font-size:0.65rem; color:${dColorText}; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">${dIcon} Variación Media</span>
+                        <div style="font-size:1.2rem; font-weight:800; color:${dColorText}; line-height:1;">${report.count > 0 ? `${dSign}${report.avgDelta.toFixed(2)} €` : '-'}</div>
+                        <div style="font-size:0.78rem; color:${dColorText}; font-weight:700; opacity:0.85;">${report.count > 0 ? `${dSign}${report.avgDeltaPct.toFixed(1)}%` : ''}</div>
                     </div>
                 `;
             }
 
-            // Encabezados de tabla
+            // Encabezados de tabla — con fondo corporativo oscuro y mejor tipografía
             const theadEl = document.getElementById('revenueEmailPreviewThead');
             if (theadEl) {
                 const sampleComps = (report.items[0]?.competitors || competitorsList);
+                const thBaseStyle = 'padding:9px 10px; font-size:0.68rem; font-weight:800; text-transform:uppercase; letter-spacing:0.4px; white-space:nowrap; border-bottom:2px solid rgba(99,102,241,0.5);';
                 let thHtml = `
-                    <tr style="border-bottom:1px solid var(--border); color:var(--text-muted); text-align:left;">
-                        <th style="padding:8px 10px;">Fecha</th>
-                        <th style="padding:8px 10px; text-align:center;">Ocupación</th>
-                        <th style="padding:8px 10px; text-align:right;">Tarifa Ant.</th>
-                        <th style="padding:8px 10px; text-align:right; color:var(--primary);">Tarifa Nueva</th>
-                        <th style="padding:8px 10px; text-align:right;">Mercado</th>
+                    <tr style="background:linear-gradient(135deg, #1e1b4b, #1e293b); color:#94a3b8; text-align:left;">
+                        <th style="${thBaseStyle} color:#c7d2fe; min-width:110px;">Fecha</th>
+                        <th style="${thBaseStyle} text-align:center; min-width:80px;">Ocup.</th>
+                        <th style="${thBaseStyle} text-align:right; min-width:75px; color:#94a3b8;">Ant.</th>
+                        <th style="${thBaseStyle} text-align:right; min-width:90px; color:#a5b4fc; background:rgba(99,102,241,0.15);">▶ NUEVA</th>
+                        <th style="${thBaseStyle} text-align:right; min-width:75px;">Mercado</th>
                 `;
                 sampleComps.forEach(c => {
-                    const short = c.name.length > 18 ? c.name.substring(0, 16) + '..' : c.name;
-                    thHtml += `<th style="padding:8px 8px; text-align:center; font-size:0.7rem;" title="${c.name}">${short}</th>`;
+                    const words = c.name.split(' ');
+                    const short = words.length > 1 ? words.slice(0,2).join(' ') : (c.name.length > 14 ? c.name.substring(0,12) + '..' : c.name);
+                    thHtml += `<th style="${thBaseStyle} text-align:center; min-width:70px; font-size:0.62rem;" title="${c.name}">${short}</th>`;
                 });
-                thHtml += `<th style="padding:8px 10px;">Criterio / Acción</th></tr>`;
+                thHtml += `<th style="${thBaseStyle} min-width:120px;">Acción / Criterio</th></tr>`;
                 theadEl.innerHTML = thHtml;
             }
 
-            // Cuerpo de tabla
+            // Cuerpo de tabla — con badges visuales para todo
             const tbodyEl = document.getElementById('revenueEmailPreviewTbody');
             if (tbodyEl) {
                 if (report.items.length === 0) {
                     tbodyEl.innerHTML = `
                         <tr>
-                            <td colspan="15" style="text-align:center; padding:30px 15px; color:var(--text-muted); font-size:0.85rem;">
-                                ℹ️ No hay tarifas cambiadas manualmente en este momento.<br>
-                                <span style="font-size:0.75rem; color:var(--text-light); margin-top:4px; display:block;">
+                            <td colspan="15" style="text-align:center; padding:40px 15px; color:var(--text-muted); font-size:0.85rem; background:var(--bg-deep);">
+                                <div style="font-size:2rem; margin-bottom:8px;">📭</div>
+                                <div style="font-weight:700; margin-bottom:4px;">Sin tarifas modificadas</div>
+                                <span style="font-size:0.75rem; color:var(--text-light);">
                                     Haz clic sobre cualquier precio en la tabla principal para simular o cambiar una tarifa, o pulsa "Aplicar recomendados".
                                 </span>
                             </td>
@@ -5698,43 +5684,78 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 } else {
                     tbodyEl.innerHTML = '';
                     report.items.forEach((item, idx) => {
-                        const deltaColor = item.delta > 0 ? '#10b981' : (item.delta < 0 ? '#ef4444' : 'var(--text-muted)');
-                        const deltaSign = item.delta > 0 ? '+' : '';
-                        const compTds = item.competitors.map(c => `
-                            <td style="padding:6px 8px; text-align:center; color:var(--text-muted); font-size:0.72rem; border-bottom:1px solid var(--border);">
-                                ${c.price}
-                            </td>
-                        `).join('');
+                        const isUp   = item.delta > 0;
+                        const isDown = item.delta < 0;
+                        const dColor = isUp ? '#10b981' : (isDown ? '#ef4444' : '#94a3b8');
+                        const dSign  = isUp ? '+' : '';
+                        const dArrow = isUp ? '▲' : (isDown ? '▼' : '—');
+                        const dBg    = isUp ? 'rgba(16,185,129,0.12)' : (isDown ? 'rgba(239,68,68,0.12)' : 'transparent');
+
+                        // Badge de día de la semana
+                        const dn = (item.dayName || '').toLowerCase();
+                        let dowBg = 'rgba(148,163,184,0.15)', dowColor = '#94a3b8', dowBorder = 'rgba(148,163,184,0.3)';
+                        if (dn.includes('sábado') || dn.includes('sabado') || dn.includes('viernes')) {
+                            dowBg = 'rgba(16,185,129,0.15)'; dowColor = '#10b981'; dowBorder = 'rgba(16,185,129,0.3)';
+                        } else if (dn.includes('domingo')) {
+                            dowBg = 'rgba(245,158,11,0.15)'; dowColor = '#f59e0b'; dowBorder = 'rgba(245,158,11,0.3)';
+                        }
+
+                        // Badge de ocupación
+                        const occColor = item.occPct >= 75 ? '#10b981' : (item.occPct >= 50 ? '#818cf8' : '#f59e0b');
+                        const occBg = item.occPct >= 75 ? 'rgba(16,185,129,0.12)' : (item.occPct >= 50 ? 'rgba(129,140,248,0.12)' : 'rgba(245,158,11,0.12)');
+
+                        // Celdas de competidores con badges para cerrado/min2nights
+                        const compTds = item.competitors.map(c => {
+                            const v = String(c.price || '').trim().toLowerCase();
+                            let cellContent = '';
+                            if (v === 'cerrado' || v === 'closed' || v === '—' || v === '-') {
+                                cellContent = `<span style="background:rgba(239,68,68,0.18); color:#ef4444; font-size:0.6rem; font-weight:800; padding:1px 5px; border-radius:4px; border:1px solid rgba(239,68,68,0.3); white-space:nowrap;">CERRADO</span>`;
+                            } else if (v.includes('min') || v.includes('2n') || v.includes('noche')) {
+                                cellContent = `<span style="background:rgba(245,158,11,0.15); color:#f59e0b; font-size:0.6rem; font-weight:800; padding:1px 5px; border-radius:4px; border:1px solid rgba(245,158,11,0.3); white-space:nowrap;">MIN 2N</span>`;
+                            } else if (v && v !== 'n/d' && v !== 'nd') {
+                                cellContent = `<span style="color:var(--text-main); font-weight:600;">${c.price}</span>`;
+                            } else {
+                                cellContent = `<span style="color:var(--text-light); opacity:0.5;">—</span>`;
+                            }
+                            return `<td style="padding:6px 7px; text-align:center; font-size:0.71rem; border-bottom:1px solid var(--border);">${cellContent}</td>`;
+                        }).join('');
+
+                        // Pill de acción con color según tipo
+                        const act = (item.actionText || '').toLowerCase();
+                        let pillBg = 'rgba(255,255,255,0.06)', pillColor = 'var(--text-muted)', pillBorder = 'var(--border)';
+                        if (act.includes('subi') || act.includes('aument') || act.includes('yield+') || act.includes('alza')) {
+                            pillBg='rgba(16,185,129,0.12)'; pillColor='#10b981'; pillBorder='rgba(16,185,129,0.3)';
+                        } else if (act.includes('baj') || act.includes('reduc') || act.includes('descuento')) {
+                            pillBg='rgba(239,68,68,0.1)'; pillColor='#ef4444'; pillBorder='rgba(239,68,68,0.3)';
+                        } else if (act.includes('viernes') || act.includes('sábado') || act.includes('sabado') || act.includes('fin de semana') || act.includes('weekend')) {
+                            pillBg='rgba(99,102,241,0.12)'; pillColor='#818cf8'; pillBorder='rgba(99,102,241,0.3)';
+                        } else if (act.includes('domingo') || act.includes('valley') || act.includes('valle')) {
+                            pillBg='rgba(245,158,11,0.12)'; pillColor='#f59e0b'; pillBorder='rgba(245,158,11,0.3)';
+                        }
 
                         tbodyEl.innerHTML += `
-                            <tr style="border-bottom:1px solid var(--border); background:${idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)'};">
-                                <td style="padding:6px 10px; font-weight:700; color:var(--text-main); white-space:nowrap;">
-                                    ${item.dateDisplay}
-                                    <span style="font-size:0.65rem; color:var(--text-muted); display:block;">${item.dayName}</span>
+                            <tr style="border-bottom:1px solid var(--border); background:${idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)'}; transition:background 0.15s;">
+                                <td style="padding:7px 10px; white-space:nowrap;">
+                                    <div style="font-weight:800; color:var(--text-main); font-size:0.8rem;">${item.dateDisplay}</div>
+                                    <span style="display:inline-block; margin-top:3px; background:${dowBg}; color:${dowColor}; border:1px solid ${dowBorder}; font-size:0.6rem; font-weight:800; padding:1px 6px; border-radius:10px; text-transform:uppercase;">${item.dayName}</span>
                                 </td>
-                                <td style="padding:6px 10px; text-align:center; color:var(--text-main); font-weight:600;">
-                                    ${item.rooms}/${item.capacity}
-                                    <span style="font-size:0.65rem; color:${item.occPct >= 70 ? '#10b981' : (item.occPct >= 50 ? '#818cf8' : '#f59e0b')}; display:block; font-weight:700;">
-                                        ${item.occPct}%
-                                    </span>
+                                <td style="padding:7px 10px; text-align:center;">
+                                    <div style="font-weight:700; color:var(--text-main); font-size:0.78rem;">${item.rooms}/${item.capacity}</div>
+                                    <span style="display:inline-block; margin-top:3px; background:${occBg}; color:${occColor}; font-size:0.65rem; font-weight:800; padding:1px 6px; border-radius:10px;">${item.occPct}%</span>
                                 </td>
-                                <td style="padding:6px 10px; text-align:right; color:var(--text-muted); text-decoration:line-through;">
+                                <td style="padding:7px 10px; text-align:right; color:var(--text-muted); font-size:0.78rem; text-decoration:line-through; opacity:0.6;">
                                     ${Math.round(item.oldPrice)} €
                                 </td>
-                                <td style="padding:6px 10px; text-align:right; font-weight:800; color:var(--text-main); font-size:0.88rem; background:rgba(99,102,241,0.06);">
-                                    ${Math.round(item.newPrice)} €
-                                    <span style="display:block; font-size:0.65rem; color:${deltaColor}; font-weight:800;">
-                                        ${deltaSign}${Math.round(item.delta)} € (${deltaSign}${item.deltaPct.toFixed(1)}%)
-                                    </span>
+                                <td style="padding:7px 10px; text-align:right; background:rgba(99,102,241,0.07);">
+                                    <div style="font-weight:800; color:var(--text-main); font-size:0.9rem;">${Math.round(item.newPrice)} €</div>
+                                    <span style="display:inline-block; margin-top:2px; background:${dBg}; color:${dColor}; font-size:0.63rem; font-weight:800; padding:1px 5px; border-radius:8px;">${dArrow} ${dSign}${Math.round(item.delta)}€ (${dSign}${item.deltaPct.toFixed(1)}%)</span>
                                 </td>
-                                <td style="padding:6px 10px; text-align:right; font-weight:700; color:var(--primary);">
+                                <td style="padding:7px 10px; text-align:right; font-weight:700; color:var(--primary); font-size:0.8rem;">
                                     ${Math.round(item.marketAvg)} €
                                 </td>
                                 ${compTds}
-                                <td style="padding:6px 10px; color:var(--text-main); font-size:0.72rem;">
-                                    <span style="background:rgba(255,255,255,0.05); padding:2px 6px; border-radius:4px; border:1px solid var(--border);">
-                                        ${item.actionText}
-                                    </span>
+                                <td style="padding:7px 10px; font-size:0.7rem; max-width:160px;">
+                                    <span style="background:${pillBg}; color:${pillColor}; border:1px solid ${pillBorder}; padding:2px 7px; border-radius:6px; font-weight:700; display:inline-block; line-height:1.4; word-break:break-word;">${item.actionText}</span>
                                 </td>
                             </tr>
                         `;
@@ -5756,193 +5777,183 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
         function generateRevenueEmailHtml(report, userNotes) {
             const hotel = report.hotel;
-            const compsHeaders = (report.items[0]?.competitors || []).map(c => `
-                <th style="padding:10px 6px; border:1px solid #334155; background-color:#1e293b; color:#cbd5e1; font-size:11px; text-align:center; font-weight:bold; white-space:nowrap;">
-                    ${c.name}
-                </th>
-            `).join('');
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('es-ES', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+            const dPos = report.avgDelta >= 0;
+            const dSign = dPos ? '+' : '';
+            const varColor = dPos ? '#059669' : '#dc2626';
+            const varBg = dPos ? '#f0fdf4' : '#fef2f2';
+            const varBorder = dPos ? '#bbf7d0' : '#fecaca';
+            const varArrow = dPos ? '▲' : '▼';
+
+            const compsHeaders = (report.items[0]?.competitors || []).map(c => {
+                const words = c.name.split(' ');
+                const short = words.length >= 2 ? words[0] + ' ' + words[1] : c.name;
+                return `<th style="padding:8px 6px; border:1px solid #475569; background:#1e293b; color:#cbd5e1; font-size:10px; text-align:center; font-family:Calibri,Arial,sans-serif;">${short}</th>`;
+            }).join('');
 
             let rowsHtml = '';
             report.items.forEach((item, idx) => {
                 const bg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
-                const deltaColor = item.delta > 0 ? '#15803d' : (item.delta < 0 ? '#dc2626' : '#64748b');
-                const deltaSign = item.delta > 0 ? '+' : '';
+                const isUp = item.delta > 0, isDown = item.delta < 0;
+                const dc = isUp ? '#059669' : (isDown ? '#dc2626' : '#64748b');
+                const ds = isUp ? '+' : '';
+                const dArr = isUp ? '▲' : (isDown ? '▼' : '');
+                const dBg = isUp ? '#f0fdf4' : (isDown ? '#fef2f2' : '#f8fafc');
+                const dBorder = isUp ? '#bbf7d0' : (isDown ? '#fecaca' : '#e2e8f0');
 
-                // Occupancy pill colors
-                let occBg = '#f1f5f9';
-                let occColor = '#475569';
-                if (item.occPct >= 75) { occBg = '#dcfce7'; occColor = '#15803d'; }
-                else if (item.occPct >= 50) { occBg = '#e0e7ff'; occColor = '#3730a3'; }
-                else if (item.occPct < 40) { occBg = '#fef3c7'; occColor = '#b45309'; }
-
-                // Day tag
-                let dayTag = '';
-                if (item.isWeekend) {
-                    dayTag = `<div style="font-size:9px; font-weight:bold; background-color:#e0e7ff; color:#3730a3; padding:1px 5px; border-radius:3px; display:inline-block; margin-top:2px; white-space:nowrap;">Fin de Semana</div>`;
-                } else if (item.isSunday) {
-                    dayTag = `<div style="font-size:9px; font-weight:bold; background-color:#fef3c7; color:#b45309; padding:1px 5px; border-radius:3px; display:inline-block; margin-top:2px; white-space:nowrap;">Domingo</div>`;
+                // Día de semana color
+                const dn = (item.dayName || '').toLowerCase();
+                let dowColor = '#64748b', dowBg = '#f1f5f9';
+                if (dn.includes('viernes') || dn.includes('sábado') || dn.includes('sabado')) {
+                    dowColor = '#059669'; dowBg = '#f0fdf4';
+                } else if (dn.includes('domingo')) {
+                    dowColor = '#d97706'; dowBg = '#fffbeb';
                 }
 
-                // Competitors cells
+                // Ocupación color
+                const occColor = item.occPct >= 75 ? '#059669' : (item.occPct >= 50 ? '#4f46e5' : '#d97706');
+                const occBg = item.occPct >= 75 ? '#f0fdf4' : (item.occPct >= 50 ? '#eef2ff' : '#fffbeb');
+
+                // Celdas competidores con badges
                 const compCells = item.competitors.map(c => {
-                    let cellVal = c.price;
-                    if (cellVal === 'Cerrado') {
-                        cellVal = `<span style="font-size:10px; font-weight:bold; color:#b91c1c; background-color:#fee2e2; padding:1px 5px; border-radius:3px; white-space:nowrap;">Cerrado</span>`;
-                    } else if (cellVal.includes('Min')) {
-                        cellVal = `<span style="font-size:10px; font-weight:bold; color:#b45309; background-color:#fef3c7; padding:1px 5px; border-radius:3px; white-space:nowrap;">${cellVal}</span>`;
-                    } else if (cellVal !== '-') {
-                        cellVal = `<strong style="color:#334155; white-space:nowrap;">${cellVal}</strong>`;
+                    const v = String(c.price || '').trim().toLowerCase();
+                    let cellHtml = '';
+                    if (v === 'cerrado' || v === 'closed' || v === '—' || v === '-') {
+                        cellHtml = `<span style="background:#fee2e2; color:#dc2626; font-size:10px; font-weight:bold; padding:1px 5px; border-radius:3px; border:1px solid #fca5a5;">CERRADO</span>`;
+                    } else if (v.includes('min') || v.includes('2n') || v.includes('noche')) {
+                        cellHtml = `<span style="background:#fffbeb; color:#d97706; font-size:10px; font-weight:bold; padding:1px 5px; border-radius:3px; border:1px solid #fde68a;">MIN 2N</span>`;
+                    } else if (v && v !== 'n/d' && v !== 'nd') {
+                        cellHtml = `<span style="color:#1e293b; font-weight:600;">${c.price}</span>`;
+                    } else {
+                        cellHtml = `<span style="color:#94a3b8;">—</span>`;
                     }
-                    return `<td style="padding:8px 6px; border:1px solid #e2e8f0; text-align:center; font-size:11px; white-space:nowrap;">${cellVal}</td>`;
+                    return `<td style="padding:7px 6px; border:1px solid #e2e8f0; background:${bg}; text-align:center; font-size:11px; font-family:Calibri,Arial,sans-serif;">${cellHtml}</td>`;
                 }).join('');
 
+                // Pill de acción
+                const act = (item.actionText || '').toLowerCase();
+                let actColor = '#475569', actBg = '#f8fafc', actBorder = '#e2e8f0';
+                if (act.includes('subi') || act.includes('aument') || act.includes('alza')) {
+                    actColor = '#059669'; actBg = '#f0fdf4'; actBorder = '#bbf7d0';
+                } else if (act.includes('baj') || act.includes('reduc')) {
+                    actColor = '#dc2626'; actBg = '#fef2f2'; actBorder = '#fecaca';
+                } else if (act.includes('viernes') || act.includes('sábado') || act.includes('sabado') || act.includes('fin de semana')) {
+                    actColor = '#4f46e5'; actBg = '#eef2ff'; actBorder = '#c7d2fe';
+                } else if (act.includes('domingo') || act.includes('valle')) {
+                    actColor = '#d97706'; actBg = '#fffbeb'; actBorder = '#fde68a';
+                }
+
                 rowsHtml += `
-                    <tr style="background-color:${bg};">
-                        <td style="padding:8px 10px; border:1px solid #e2e8f0; white-space:nowrap;">
-                            <div style="font-weight:bold; color:#0f172a; font-size:12px; white-space:nowrap;">
-                                ${item.dateDisplay}&nbsp;<span style="color:${item.isWeekend ? '#2563eb' : '#64748b'}; font-size:11px; font-weight:bold;">(${item.dayName})</span>
-                            </div>
-                            ${dayTag}
+                    <tr style="background:${bg};">
+                        <td style="padding:8px 8px; border:1px solid #e2e8f0; white-space:nowrap; font-family:Calibri,Arial,sans-serif;">
+                            <div style="font-weight:bold; color:#0f172a; font-size:12px;">${item.dateDisplay}</div>
+                            <span style="display:inline-block; margin-top:2px; background:${dowBg}; color:${dowColor}; font-size:9px; font-weight:bold; padding:1px 5px; border-radius:10px; text-transform:uppercase;">${item.dayName}</span>
                         </td>
-                        <td style="padding:8px 8px; border:1px solid #e2e8f0; text-align:center; white-space:nowrap;">
-                            <div style="font-weight:bold; color:#0f172a; font-size:12px; white-space:nowrap;">${item.rooms}/${item.capacity}</div>
-                            <span style="font-size:10px; font-weight:bold; background-color:${occBg}; color:${occColor}; padding:1px 6px; border-radius:10px; display:inline-block; margin-top:2px; white-space:nowrap;">
-                                ${item.occPct}%
-                            </span>
+                        <td style="padding:8px 8px; border:1px solid #e2e8f0; text-align:center; font-family:Calibri,Arial,sans-serif;">
+                            <div style="font-weight:bold; color:#1e293b; font-size:12px;">${item.rooms}/${item.capacity}</div>
+                            <span style="display:inline-block; margin-top:2px; background:${occBg}; color:${occColor}; font-size:10px; font-weight:bold; padding:1px 5px; border-radius:10px;">${item.occPct}%</span>
                         </td>
-                        <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:right; white-space:nowrap;">
-                            <span style="font-size:12px; color:#64748b; text-decoration:line-through; white-space:nowrap;">${Math.round(item.oldPrice)}&nbsp;€</span>
+                        <td style="padding:8px 8px; border:1px solid #e2e8f0; text-align:right; color:#94a3b8; text-decoration:line-through; font-size:12px; font-family:Calibri,Arial,sans-serif;">
+                            ${Math.round(item.oldPrice)} €
                         </td>
-                        <td bgcolor="#eef2ff" style="padding:8px 10px; border:1px solid #c7d2fe; text-align:right; background-color:#eef2ff; white-space:nowrap;">
-                            <div style="font-size:14px; font-weight:bold; color:#312e81; white-space:nowrap;">${Math.round(item.newPrice)}&nbsp;€</div>
-                            <div style="font-size:10px; font-weight:bold; color:${deltaColor}; white-space:nowrap; margin-top:2px;">
-                                ${deltaSign}${Math.round(item.delta)}&nbsp;€&nbsp;(${deltaSign}${item.deltaPct.toFixed(1)}%)
-                            </div>
+                        <td style="padding:8px 8px; border:1px solid #6366f1; background:#eef2ff; text-align:right; font-family:Calibri,Arial,sans-serif;">
+                            <div style="font-weight:bold; color:#312e81; font-size:14px;">${Math.round(item.newPrice)} €</div>
+                            <span style="display:inline-block; margin-top:2px; background:${dBg}; color:${dc}; font-size:9px; font-weight:bold; padding:1px 5px; border-radius:8px; border:1px solid ${dBorder};">${dArr} ${ds}${Math.round(item.delta)}€ (${ds}${item.deltaPct.toFixed(1)}%)</span>
                         </td>
-                        <td style="padding:8px 8px; border:1px solid #e2e8f0; text-align:center; white-space:nowrap;">
-                            <span style="font-size:12px; font-weight:bold; color:#0284c7; white-space:nowrap;">${Math.round(item.marketAvg)}&nbsp;€</span>
+                        <td style="padding:8px 8px; border:1px solid #e2e8f0; text-align:center; font-weight:bold; color:#4f46e5; font-size:12px; font-family:Calibri,Arial,sans-serif;">
+                            ${Math.round(item.marketAvg)} €
                         </td>
                         ${compCells}
-                        <td style="padding:8px 10px; border:1px solid #e2e8f0; white-space:nowrap;">
-                            <div style="font-size:11px; font-weight:bold; color:${deltaColor}; white-space:nowrap;">${item.actionText}</div>
-                            <div style="font-size:10px; color:#64748b; margin-top:2px; white-space:nowrap;">${item.actionSub || 'Ajuste manual'}</div>
+                        <td style="padding:8px 8px; border:1px solid #e2e8f0; background:${bg}; font-family:Calibri,Arial,sans-serif;">
+                            <span style="background:${actBg}; color:${actColor}; border:1px solid ${actBorder}; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold;">${item.actionText}</span>
                         </td>
                     </tr>
                 `;
             });
 
             const notesBlock = userNotes && userNotes.trim() ? `
-                <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:18px;">
-                    <tr>
-                        <td bgcolor="#eff6ff" style="background-color:#eff6ff; border-left:4px solid #3b82f6; border:1px solid #bfdbfe; border-left-width:4px; padding:12px 16px; border-radius:4px; font-size:13px; color:#1e40af; line-height:1.5;">
-                            <strong style="color:#1e3a8a; font-size:12px; text-transform:uppercase; letter-spacing:0.5px;">📝 Observaciones de la Dirección:</strong><br>
-                            <span style="color:#1e40af;">${userNotes.trim().replace(/\n/g, '<br>')}</span>
-                        </td>
-                    </tr>
-                </table>
+                <div style="background:#eff6ff; border-left:4px solid #3b82f6; padding:12px 16px; margin-bottom:18px; border-radius:4px; font-size:13px; color:#1e40af; line-height:1.6; font-family:Calibri,Arial,sans-serif;">
+                    <strong>Observaciones de la Direcci&oacute;n:</strong><br>${userNotes.trim().replace(/\n/g, '<br>')}
+                </div>
             ` : '';
 
-            const todayFormatted = new Date().toLocaleDateString('es-ES', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-
             return `
-                <table cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family:'Segoe UI', Helvetica, Arial, sans-serif; background-color:#ffffff; color:#0f172a; margin:0; padding:0;">
-                    <tr>
-                        <td align="center" style="padding:10px 0;">
-                            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:1150px; border:1px solid #cbd5e1; border-radius:8px; overflow:hidden; background-color:#ffffff;">
-                                <!-- HEADER BANNER -->
-                                <tr>
-                                    <td bgcolor="#0f172a" style="background-color:#0f172a; padding:18px 24px; border-bottom:3px solid #2563eb;">
-                                        <table cellpadding="0" cellspacing="0" border="0" width="100%">
-                                            <tr>
-                                                <td>
-                                                    <div style="font-size:10px; font-weight:bold; text-transform:uppercase; letter-spacing:1px; color:#38bdf8; margin-bottom:4px;">
-                                                        SERCOTEL HOTEL GROUP · REVENUE MANAGEMENT CENTRAL
-                                                    </div>
-                                                    <div style="font-size:20px; font-weight:bold; color:#ffffff; margin:0;">
-                                                        Propuesta de Modificación de Tarifas — Hotel ${hotel}
-                                                    </div>
-                                                    <div style="font-size:12px; color:#94a3b8; margin-top:4px;">
-                                                        Generado desde <strong>CapaSuite</strong> para <strong>Mihail Stavila</strong> · ${todayFormatted}
-                                                    </div>
-                                                </td>
-                                                <td align="right" style="vertical-align:middle;">
-                                                    <div style="background-color:#1e293b; color:#ffffff; border:1px solid #475569; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:bold; display:inline-block; white-space:nowrap;">
-                                                        ${report.count} Fecha${report.count !== 1 ? 's' : ''} a validar
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        </table>
-                                    </td>
+                <div style="font-family:Calibri,Arial,sans-serif; color:#0f172a; max-width:900px; margin:0 auto;">
+
+                    <!-- HEADER -->
+                    <div style="background:linear-gradient(135deg,#1e1b4b,#312e81,#1e293b); color:#ffffff; padding:20px 24px; border-radius:8px 8px 0 0;">
+                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                                <td>
+                                    <div style="font-size:11px; color:#818cf8; font-weight:bold; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">SERCOTEL · REVENUE MANAGEMENT CENTRAL</div>
+                                    <div style="font-size:18px; font-weight:bold; color:#ffffff; margin-bottom:2px;">Propuesta de Modificaci&oacute;n de Tarifas &mdash; Hotel ${hotel}</div>
+                                    <div style="font-size:11px; color:#94a3b8;">${dateStr} &nbsp;&bull;&nbsp; Generado desde CapaSuite</div>
+                                </td>
+                                <td align="right" valign="top">
+                                    <span style="background:rgba(99,102,241,0.4); color:#c7d2fe; font-size:10px; font-weight:bold; padding:3px 10px; border-radius:20px; border:1px solid rgba(165,180,252,0.4);">Para: Mihail Stavila</span>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <!-- CUERPO -->
+                    <div style="border:1px solid #e2e8f0; border-top:none; padding:20px 24px; border-radius:0 0 8px 8px; background:#ffffff;">
+                        ${notesBlock}
+
+                        <!-- KPI CARDS -->
+                        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;">
+                            <tr>
+                                <td style="background:#eef2ff; padding:12px 14px; border-radius:6px; border:1px solid #c7d2fe; width:23%; vertical-align:top;">
+                                    <div style="font-size:10px; color:#6366f1; font-weight:bold; text-transform:uppercase; letter-spacing:0.5px;">&#128197; Fechas Revisadas</div>
+                                    <div style="font-size:22px; font-weight:bold; color:#312e81; margin-top:2px;">${report.count}</div>
+                                    <div style="font-size:10px; color:#818cf8;">d&iacute;as modificados</div>
+                                </td>
+                                <td width="8">&nbsp;</td>
+                                <td style="background:#f1f5f9; padding:12px 14px; border-radius:6px; border:1px solid #e2e8f0; width:23%; vertical-align:top;">
+                                    <div style="font-size:10px; color:#64748b; font-weight:bold; text-transform:uppercase; letter-spacing:0.5px;">Precio Medio Anterior</div>
+                                    <div style="font-size:18px; font-weight:bold; color:#94a3b8; text-decoration:line-through; margin-top:2px;">${report.avgOld.toFixed(2)} &euro;</div>
+                                    <div style="font-size:10px; color:#94a3b8;">antes del ajuste</div>
+                                </td>
+                                <td width="8">&nbsp;</td>
+                                <td style="background:#f0fdf4; padding:12px 14px; border-radius:6px; border:1px solid #bbf7d0; width:23%; vertical-align:top;">
+                                    <div style="font-size:10px; color:#059669; font-weight:bold; text-transform:uppercase; letter-spacing:0.5px;">&#9989; Precio Propuesto</div>
+                                    <div style="font-size:22px; font-weight:bold; color:#065f46; margin-top:2px;">${report.avgNew.toFixed(2)} &euro;</div>
+                                    <div style="font-size:10px; color:#10b981;">nueva tarifa media</div>
+                                </td>
+                                <td width="8">&nbsp;</td>
+                                <td style="background:${varBg}; padding:12px 14px; border-radius:6px; border:1px solid ${varBorder}; width:23%; vertical-align:top;">
+                                    <div style="font-size:10px; color:${varColor}; font-weight:bold; text-transform:uppercase; letter-spacing:0.5px;">${varArrow} Variaci&oacute;n Media</div>
+                                    <div style="font-size:20px; font-weight:bold; color:${varColor}; margin-top:2px;">${dSign}${report.avgDelta.toFixed(2)} &euro;</div>
+                                    <div style="font-size:11px; font-weight:bold; color:${varColor};">${dSign}${report.avgDeltaPct.toFixed(1)}%</div>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- TABLA DE TARIFAS -->
+                        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; font-size:12px; font-family:Calibri,Arial,sans-serif;">
+                            <thead>
+                                <tr style="background:#1e293b;">
+                                    <th style="padding:9px 8px; border:1px solid #334155; color:#c7d2fe; text-align:left; font-size:11px; white-space:nowrap;">Fecha</th>
+                                    <th style="padding:9px 8px; border:1px solid #334155; color:#94a3b8; text-align:center; font-size:11px;">Ocup.</th>
+                                    <th style="padding:9px 8px; border:1px solid #334155; color:#94a3b8; text-align:right; font-size:11px;">Ant.</th>
+                                    <th style="padding:9px 8px; border:1px solid #6366f1; color:#a5b4fc; text-align:right; font-size:11px; background:#312e81;">&#9654; NUEVA</th>
+                                    <th style="padding:9px 8px; border:1px solid #334155; color:#94a3b8; text-align:center; font-size:11px;">Mercado</th>
+                                    ${compsHeaders}
+                                    <th style="padding:9px 8px; border:1px solid #334155; color:#94a3b8; text-align:left; font-size:11px;">Acci&oacute;n</th>
                                 </tr>
+                            </thead>
+                            <tbody>
+                                ${rowsHtml}
+                            </tbody>
+                        </table>
 
-                                <!-- CONTENIDO PRINCIPAL -->
-                                <tr>
-                                    <td style="padding:20px 24px;">
-                                        ${notesBlock}
-
-                                        <!-- KPI RESUMEN CARDS (TABLA EXECUTIVA) -->
-                                        <table cellpadding="0" cellspacing="8" border="0" width="100%" style="margin-bottom:20px;">
-                                            <tr>
-                                                <td width="25%" bgcolor="#f8fafc" style="background-color:#f8fafc; border:1px solid #e2e8f0; border-top:3px solid #64748b; padding:12px 14px; border-radius:6px; vertical-align:top;">
-                                                    <div style="font-size:10px; font-weight:bold; color:#64748b; text-transform:uppercase; letter-spacing:0.5px;">📅 Fechas a Modificar</div>
-                                                    <div style="font-size:20px; font-weight:bold; color:#0f172a; margin-top:2px;">${report.count} días</div>
-                                                    <div style="font-size:11px; color:#94a3b8; margin-top:2px;">Hotel ${hotel}</div>
-                                                </td>
-                                                <td width="25%" bgcolor="#f8fafc" style="background-color:#f8fafc; border:1px solid #e2e8f0; border-top:3px solid #94a3b8; padding:12px 14px; border-radius:6px; vertical-align:top;">
-                                                    <div style="font-size:10px; font-weight:bold; color:#64748b; text-transform:uppercase; letter-spacing:0.5px;">Tarifa Anterior Media</div>
-                                                    <div style="font-size:20px; font-weight:bold; color:#64748b; margin-top:2px;">${report.avgOld.toFixed(2)}&nbsp;€</div>
-                                                    <div style="font-size:11px; color:#94a3b8; margin-top:2px;">Tarifa cargada actual</div>
-                                                </td>
-                                                <td width="25%" bgcolor="#eef2ff" style="background-color:#eef2ff; border:1px solid #c7d2fe; border-top:3px solid #4f46e5; padding:12px 14px; border-radius:6px; vertical-align:top;">
-                                                    <div style="font-size:10px; font-weight:bold; color:#4338ca; text-transform:uppercase; letter-spacing:0.5px;">✨ Tarifa Nueva Propuesta</div>
-                                                    <div style="font-size:20px; font-weight:bold; color:#312e81; margin-top:2px;">${report.avgNew.toFixed(2)}&nbsp;€</div>
-                                                    <div style="font-size:11px; color:#6366f1; margin-top:2px;">Propuesta de precio medio</div>
-                                                </td>
-                                                <td width="25%" bgcolor="${report.avgDelta >= 0 ? '#f0fdf4' : '#fef2f2'}" style="background-color:${report.avgDelta >= 0 ? '#f0fdf4' : '#fef2f2'}; border:1px solid ${report.avgDelta >= 0 ? '#bbf7d0' : '#fecaca'}; border-top:3px solid ${report.avgDelta >= 0 ? '#16a34a' : '#dc2626'}; padding:12px 14px; border-radius:6px; vertical-align:top;">
-                                                    <div style="font-size:10px; font-weight:bold; color:${report.avgDelta >= 0 ? '#15803d' : '#991b1b'}; text-transform:uppercase; letter-spacing:0.5px;">📈 Variación Media</div>
-                                                    <div style="font-size:20px; font-weight:bold; color:${report.avgDelta >= 0 ? '#15803d' : '#991b1b'}; margin-top:2px;">
-                                                        ${report.avgDelta >= 0 ? '+' : ''}${report.avgDelta.toFixed(2)}&nbsp;€&nbsp;<span style="font-size:13px; font-weight:normal;">(${report.avgDelta >= 0 ? '+' : ''}${report.avgDeltaPct.toFixed(1)}%)</span>
-                                                    </div>
-                                                    <div style="font-size:11px; color:${report.avgDelta >= 0 ? '#16a34a' : '#dc2626'}; margin-top:2px;">Impacto neto sobre ADR</div>
-                                                </td>
-                                            </tr>
-                                        </table>
-
-                                        <!-- TABLA DETALLE DE FECHAS Y COMPETIDORES -->
-                                        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse; font-size:12px; font-family:'Segoe UI', Helvetica, Arial, sans-serif;">
-                                            <thead>
-                                                <tr bgcolor="#0f172a" style="background-color:#0f172a; color:#ffffff;">
-                                                    <th style="padding:10px 8px; border:1px solid #334155; font-size:11px; text-align:left; color:#ffffff; font-weight:bold; white-space:nowrap;">FECHA & DÍA</th>
-                                                    <th style="padding:10px 8px; border:1px solid #334155; font-size:11px; text-align:center; color:#ffffff; font-weight:bold; white-space:nowrap;">OCUPACIÓN</th>
-                                                    <th style="padding:10px 8px; border:1px solid #334155; font-size:11px; text-align:right; color:#cbd5e1; font-weight:bold; white-space:nowrap;">TARIFA ANT.</th>
-                                                    <th bgcolor="#2563eb" style="padding:10px 8px; border:1px solid #1d4ed8; font-size:12px; text-align:right; background-color:#2563eb; color:#ffffff; font-weight:bold; white-space:nowrap;">✨ TARIFA NUEVA</th>
-                                                    <th style="padding:10px 8px; border:1px solid #334155; font-size:11px; text-align:center; color:#38bdf8; font-weight:bold; white-space:nowrap;">MERCADO</th>
-                                                    ${compsHeaders}
-                                                    <th style="padding:10px 8px; border:1px solid #334155; font-size:11px; text-align:left; color:#ffffff; font-weight:bold; white-space:nowrap;">ACCIÓN / CRITERIO</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                ${rowsHtml}
-                                            </tbody>
-                                        </table>
-
-                                        <!-- FOOTER NOTA -->
-                                        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:18px; padding-top:12px; border-top:1px solid #e2e8f0;">
-                                            <tr>
-                                                <td style="font-size:11px; color:#94a3b8;">
-                                                    Documento preparado para validación y carga en Central de Revenue Management · Sercotel Hotel Group
-                                                </td>
-                                                <td align="right" style="font-size:11px; color:#94a3b8; font-weight:bold;">
-                                                    CapaSuite Revenue Intelligence
-                                                </td>
-                                            </tr>
-                                        </table>
-                                    </td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
-                </table>
+                        <!-- FOOTER -->
+                        <div style="margin-top:18px; padding-top:14px; border-top:1px solid #e2e8f0; text-align:right; font-size:10px; color:#94a3b8; font-family:Calibri,Arial,sans-serif;">
+                            Documento preparado para validaci&oacute;n de Revenue Management &bull; <strong>Sercotel Hotel Group</strong> &bull; CapaSuite
+                        </div>
+                    </div>
+                </div>
             `;
         }
 
@@ -5952,16 +5963,6 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             text += `Te envío la propuesta de revisión de tarifas modificadas para Hotel ${hotel}:\n\n`;
             if (userNotes && userNotes.trim()) {
                 text += `OBSERVACIONES DE LA DIRECCIÓN:\n${userNotes.trim()}\n\n`;
-            }
-            text += `RESUMEN EJECUTIVO:\n`;
-            text += `- Hotel: Hotel ${hotel}\n`;
-            text += `- Fechas revisadas: ${report.count} días\n`;
-            text += `- Precio medio anterior: ${report.avgOld.toFixed(2)} €\n`;
-            text += `- Precio medio propuesto: ${report.avgNew.toFixed(2)} €\n`;
-            text += `- Variación media: ${report.avgDelta >= 0 ? '+' : ''}${report.avgDelta.toFixed(2)} € (${report.avgDelta >= 0 ? '+' : ''}${report.avgDeltaPct.toFixed(1)}%)\n\n`;
-
-            text += `DETALLE DE TARIFAS Y LÍNEA DE COMPETIDORES:\n`;
-            text += `----------------------------------------------------------------------------------------------------\n`;
             }
             text += `RESUMEN EJECUTIVO:\n`;
             text += `- Hotel: Hotel ${hotel}\n`;
