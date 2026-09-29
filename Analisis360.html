@@ -1119,6 +1119,21 @@
         .tactical-freeze { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
         .tactical-down { background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); }
         .tactical-peak { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .tactical-closed { background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.25); }
+        .month-closed-row { background: rgba(255, 255, 255, 0.015); }
+        [data-theme="light"] .month-closed-row { background: rgba(0, 0, 0, 0.015); }
+        .month-closed-badge {
+            font-size: 0.62rem;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(16, 185, 129, 0.12);
+            color: #10b981;
+            margin-left: 6px;
+            vertical-align: middle;
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            display: inline-block;
+        }
     </style>
 </head>
 
@@ -1489,12 +1504,12 @@
 
             <!-- TABLA DINÁMICA DE YIELD & RECOMENDACIÓN DE TARIFAS (MES A MES) -->
             <div>
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
                     <span style="font-size: 0.74rem; font-weight: 800; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px;">
-                        📊 Planificación de Yield y Recomendación de Precios BAR / EBI por Mes
+                        📊 Planificación de Yield & Seguimiento de Cierre por Mes
                     </span>
                     <span style="font-size: 0.72rem; color: var(--text-muted);">
-                        Calculado s/cartera OTB cargada y ritmo de Pick-up
+                        <strong style="color:#10b981;">Meses pasados:</strong> Cierre Real consolidado (ADR y RevPAR) · <strong style="color:var(--primary);">Meses futuros:</strong> Yield dinámico s/OTB y Pick-up
                     </span>
                 </div>
                 <div class="yield-table-wrapper">
@@ -1502,14 +1517,14 @@
                         <thead>
                             <tr>
                                 <th>Mes</th>
-                                <th>Cartera OTB (RN)</th>
-                                <th style="width: 130px;">Ocupación OTB</th>
-                                <th>Pick-up Reciente</th>
-                                <th>Tramo OTB Activo</th>
+                                <th>Habitaciones (RN)</th>
+                                <th style="width: 130px;">% Ocupación</th>
+                                <th>Pick-up / Estado</th>
+                                <th>Tramo</th>
                                 <th>Ajuste EBI</th>
-                                <th>Tarifa EBI Sug.</th>
-                                <th>Tarifa BAR Rec.</th>
-                                <th>RevPAR Proyectado</th>
+                                <th>Tarifa EBI / ADR</th>
+                                <th>Tarifa BAR / RevPAR</th>
+                                <th>RevPAR vs Obj.</th>
                                 <th>Criterio & Acción Táctica</th>
                             </tr>
                         </thead>
@@ -2372,26 +2387,127 @@
             const otbRev = otbData.breakdown?.habitacion || otbData.revenue || new Array(12).fill(0);
             const otbPrevRev = otbPrevData.breakdown?.habitacion || otbPrevData.revenue || new Array(12).fill(0);
 
+            // 3. Extraer Datos Reales Consolidados (serviceDb y segment)
+            const serviceDb = (yearData && yearData.service) || {};
+            const groupedTY = (typeof getGroupedProduction === 'function') ? getGroupedProduction(serviceDb) : {};
+            const habRealRmsArr = groupedTY["HABITACION"]?.rooms || new Array(12).fill(0);
+            const habRealRevArr = groupedTY["HABITACION"]?.revenue || new Array(12).fill(0);
+            const masterRoomsArr = serviceDb["TOTAL_MASTER"]?.rooms || new Array(12).fill(0);
+
+            const segRmsArr = new Array(12).fill(0);
+            const segRevArr = new Array(12).fill(0);
+            if (yearData && yearData.segment) {
+                Object.values(yearData.segment).forEach(s => {
+                    for (let m = 0; m < 12; m++) {
+                        segRmsArr[m] += (Number(s.rooms?.[m]) || 0);
+                        const accom = s.accommodation ? Number(s.accommodation[m]) : 0;
+                        segRevArr[m] += (accom > 0 ? accom : (Number(s.revenue?.[m]) || 0));
+                    }
+                });
+            }
+
             const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
             const daysInMonths = [31, (parseInt(year) % 4 === 0 ? 29 : 28), 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
-            // 3. Renderizar Rejilla Visual de los 7 Tramos
-            // Calcular ocupación activa del periodo para resaltar el tramo
+            const now = new Date();
+            const curRealYear = now.getFullYear();
+            const curRealMonth = now.getMonth();
+            const selYearNum = parseInt(year);
+
+            const isMonthPast = (m) => {
+                if (selYearNum < curRealYear) return true;
+                if (selYearNum > curRealYear) return false;
+                return m < curRealMonth;
+            };
+
+            // Calcular métricas para cada mes
+            let totalPeriodRms = 0;
+            let totalPeriodRev = 0;
+            let totalPeriodAvail = 0;
+            let futurePickupSum = 0;
+
+            const monthMetrics = [];
+            for (let m = 0; m < 12; m++) {
+                let rRms = Number(habRealRmsArr[m]) || 0;
+                if (rRms === 0 && masterRoomsArr[m]) rRms = Number(masterRoomsArr[m]) || 0;
+                if (rRms === 0 && segRmsArr[m] > 0) rRms = segRmsArr[m];
+
+                let rRev = Number(habRealRevArr[m]) || 0;
+                if (rRev === 0 && segRevArr[m] > 0) rRev = segRevArr[m];
+
+                const oRms = Number(otbRms[m]) || 0;
+                const oPrevRms = Number(otbPrevRms[m]) || 0;
+                const oRev = Number(otbRev[m]) || 0;
+                const oPrevRev = Number(otbPrevRev[m]) || 0;
+
+                const mAvail = totalHotelRooms * daysInMonths[m];
+                const past = isMonthPast(m);
+                // Un mes es cerrado si es mes pasado o si tiene producción real y no tiene cartera OTB viva
+                const isClosed = past || (selYearNum <= curRealYear && rRms > 0 && oRms === 0 && m <= curRealMonth);
+
+                let displayRms = 0;
+                let displayRev = 0;
+                let displayOcc = 0;
+                let displayAdr = 0;
+                let displayRevpar = 0;
+                let pickupRms = 0;
+                let pickupRev = 0;
+
+                if (isClosed) {
+                    displayRms = rRms;
+                    displayRev = rRev;
+                    displayOcc = mAvail > 0 ? (rRms / mAvail * 100) : 0;
+                    displayAdr = rRms > 0 ? (rRev / rRms) : 0;
+                    displayRevpar = mAvail > 0 ? (rRev / mAvail) : 0;
+                } else {
+                    displayRms = oRms;
+                    displayRev = oRev;
+                    displayOcc = mAvail > 0 ? (oRms / mAvail * 100) : 0;
+                    displayAdr = oRms > 0 ? (oRev / oRms) : 0;
+                    displayRevpar = mAvail > 0 ? (oRev / mAvail) : 0;
+                    pickupRms = oRms - oPrevRms;
+                    pickupRev = oRev - oPrevRev;
+                    futurePickupSum += pickupRms;
+                }
+
+                totalPeriodRms += displayRms;
+                totalPeriodRev += displayRev;
+                totalPeriodAvail += mAvail;
+
+                monthMetrics.push({
+                    monthIdx: m,
+                    monthName: months[m],
+                    days: daysInMonths[m],
+                    isClosed,
+                    displayRms,
+                    displayRev,
+                    displayOcc,
+                    displayAdr,
+                    displayRevpar,
+                    pickupRms,
+                    pickupRev,
+                    mAvail
+                });
+            }
+
+            // 4. Ocupación de Referencia para Resaltar Tramo Activo
             let activeOccPct = 0;
             let activePickupRms = 0;
+            let activeMonthMetric = null;
+
             if (midx === -1) {
-                const totOtbRms = otbRms.reduce((a, b) => a + b, 0);
-                const totAvail = totalHotelRooms * daysInMonths.reduce((a, b) => a + b, 0);
-                activeOccPct = totAvail > 0 ? (totOtbRms / totAvail * 100) : 0;
-                activePickupRms = otbRms.reduce((a, b) => a + b, 0) - otbPrevRms.reduce((a, b) => a + b, 0);
+                // Periodo anual: ocupación proyectada de todo el año
+                activeOccPct = totalPeriodAvail > 0 ? (totalPeriodRms / totalPeriodAvail * 100) : 0;
+                activePickupRms = futurePickupSum;
             } else {
-                const curM = otbRms[midx] || 0;
-                const availM = totalHotelRooms * daysInMonths[midx];
-                activeOccPct = availM > 0 ? (curM / availM * 100) : 0;
-                activePickupRms = curM - (otbPrevRms[midx] || 0);
+                activeMonthMetric = monthMetrics[midx];
+                activeOccPct = activeMonthMetric ? activeMonthMetric.displayOcc : 0;
+                activePickupRms = activeMonthMetric ? activeMonthMetric.pickupRms : 0;
             }
 
             const activeTier = getMatchingTier(strat, activeOccPct);
+
+            // 5. Renderizar Rejilla Visual de los 7 Tramos
             const gridEl = document.getElementById('yieldMatrixGrid');
             if (gridEl) {
                 gridEl.innerHTML = '';
@@ -2411,8 +2527,7 @@
                 });
             }
 
-            // 4. Semáforo Prescriptivo de Pick-up
-            const decisionActive = evaluateYieldDecision(strat, activeOccPct, activePickupRms);
+            // 6. Semáforo Prescriptivo de Pick-up
             const boxEl = document.getElementById('yieldMomentumBox');
             const iconEl = document.getElementById('yieldMomentumIcon');
             const titleEl = document.getElementById('yieldMomentumTitle');
@@ -2421,95 +2536,196 @@
 
             if (boxEl && iconEl && titleEl && descEl && badgeEl) {
                 boxEl.className = 'yield-alert-box';
-                if (decisionActive.badgeType === 'accelerated') {
+
+                if (midx !== -1 && activeMonthMetric && activeMonthMetric.isClosed) {
+                    // Mes cerrado seleccionado
                     boxEl.classList.add('alert-accelerated');
-                    iconEl.innerText = '🚀';
-                    titleEl.innerText = `Pick-up Acelerado (+${activePickupRms} RN): Oportunidad de Maximizar Yield`;
-                    descEl.innerHTML = decisionActive.overrideReason || `El ritmo de reservas supera con creces el ritmo medio. La BAR recomendada sube a <strong>${decisionActive.recBar.toFixed(2).replace('.', ',')} €</strong> (+${decisionActive.effectiveAdj.toFixed(1)}% sobre base).`;
+                    iconEl.innerText = '✅';
+                    titleEl.innerText = `${activeMonthMetric.monthName}: Mes Cerrado con ${activeMonthMetric.displayOcc.toFixed(1).replace('.', ',')}% de Ocupación`;
+                    descEl.innerHTML = `Rendimiento consolidado definitivo: <strong>${fmtNum(activeMonthMetric.displayRms)} RN</strong> vendidas · ADR Real: <strong>${activeMonthMetric.displayAdr.toFixed(2).replace('.', ',')} €</strong> · RevPAR Real: <strong>${activeMonthMetric.displayRevpar.toFixed(2).replace('.', ',')} €</strong> (Objetivo 2027: ${strat.targetRevpar.toFixed(2).replace('.', ',')} €).`;
                     badgeEl.style.color = '#10b981';
-                    badgeEl.innerText = `+${activePickupRms} RN`;
-                } else if (decisionActive.badgeType === 'freeze') {
-                    boxEl.classList.add('alert-accelerated');
-                    iconEl.innerText = '⚡';
-                    titleEl.innerText = `Regla de Oro: Congelar Bajadas por Pick-up Fuerte (+${activePickupRms} RN)`;
-                    descEl.innerHTML = decisionActive.overrideReason || `A pesar de estar en tramo bajo (${activeOccPct.toFixed(1)}%), la demanda tiene momentum real. <strong>NO aplicar descuento del ${decisionActive.tier.adjustment.toFixed(1)}%</strong>. Mantener tarifa BAR base en <strong>${decisionActive.recBar.toFixed(2).replace('.', ',')} €</strong>.`;
-                    badgeEl.style.color = '#f59e0b';
-                    badgeEl.innerText = `+${activePickupRms} RN`;
-                } else if (decisionActive.badgeType === 'down') {
-                    boxEl.classList.add('alert-slow');
-                    iconEl.innerText = '⚠️';
-                    titleEl.innerText = `Alerta de Cancelaciones Netas (${activePickupRms} RN)`;
-                    descEl.innerHTML = decisionActive.overrideReason || `Salidas de cartera registradas. Evaluar aperturas de canales o revisión de restricciones.`;
-                    badgeEl.style.color = '#ef4444';
-                    badgeEl.innerText = `${activePickupRms} RN`;
+                    badgeEl.innerText = `🔒 REAL`;
                 } else {
-                    iconEl.innerText = activeOccPct >= 70 ? '🎯' : '📊';
-                    titleEl.innerText = `Estrategia Equilibrada: OTB al ${activeOccPct.toFixed(1).replace('.', ',')}% (Tramo ${activeTier.minOcc}–${activeTier.maxOcc}%)`;
-                    descEl.innerHTML = `Ritmo de reservas acorde a la previsión. Tarifa EBI sugerida: <strong>${decisionActive.recEbi.toFixed(2).replace('.', ',')} €</strong> · BAR recomendada: <strong>${decisionActive.recBar.toFixed(2).replace('.', ',')} €</strong>.`;
-                    badgeEl.style.color = 'var(--text-main)';
-                    badgeEl.innerText = `${activePickupRms >= 0 ? '+' : ''}${activePickupRms} RN`;
+                    const decisionActive = evaluateYieldDecision(strat, activeOccPct, activePickupRms);
+                    if (decisionActive.badgeType === 'accelerated') {
+                        boxEl.classList.add('alert-accelerated');
+                        iconEl.innerText = '🚀';
+                        titleEl.innerText = `Pick-up Acelerado (+${activePickupRms} RN): Oportunidad de Maximizar Yield`;
+                        descEl.innerHTML = decisionActive.overrideReason || `El ritmo de reservas supera con creces el ritmo medio. La BAR recomendada sube a <strong>${decisionActive.recBar.toFixed(2).replace('.', ',')} €</strong> (+${decisionActive.effectiveAdj.toFixed(1)}% sobre base).`;
+                        badgeEl.style.color = '#10b981';
+                        badgeEl.innerText = `+${activePickupRms} RN`;
+                    } else if (decisionActive.badgeType === 'freeze') {
+                        boxEl.classList.add('alert-accelerated');
+                        iconEl.innerText = '⚡';
+                        titleEl.innerText = `Regla de Oro: Congelar Bajadas por Pick-up Fuerte (+${activePickupRms} RN)`;
+                        descEl.innerHTML = decisionActive.overrideReason || `A pesar de estar en tramo bajo (${activeOccPct.toFixed(1)}%), la demanda tiene momentum real. <strong>NO aplicar descuento del ${decisionActive.tier.adjustment.toFixed(1)}%</strong>. Mantener tarifa BAR base en <strong>${decisionActive.recBar.toFixed(2).replace('.', ',')} €</strong>.`;
+                        badgeEl.style.color = '#f59e0b';
+                        badgeEl.innerText = `+${activePickupRms} RN`;
+                    } else if (decisionActive.badgeType === 'down') {
+                        boxEl.classList.add('alert-slow');
+                        iconEl.innerText = '⚠️';
+                        titleEl.innerText = `Alerta de Cancelaciones Netas (${activePickupRms} RN)`;
+                        descEl.innerHTML = decisionActive.overrideReason || `Salidas de cartera registradas. Evaluar aperturas de canales o revisión de restricciones.`;
+                        badgeEl.style.color = '#ef4444';
+                        badgeEl.innerText = `${activePickupRms} RN`;
+                    } else {
+                        iconEl.innerText = activeOccPct >= 70 ? '🎯' : '📊';
+                        titleEl.innerText = `Estrategia Equilibrada: OTB al ${activeOccPct.toFixed(1).replace('.', ',')}% (Tramo ${activeTier.minOcc}–${activeTier.maxOcc}%)`;
+                        descEl.innerHTML = `Ritmo de reservas acorde a la previsión. Tarifa EBI sugerida: <strong>${decisionActive.recEbi.toFixed(2).replace('.', ',')} €</strong> · BAR recomendada: <strong>${decisionActive.recBar.toFixed(2).replace('.', ',')} €</strong>.`;
+                        badgeEl.style.color = 'var(--text-main)';
+                        badgeEl.innerText = `${activePickupRms >= 0 ? '+' : ''}${activePickupRms} RN`;
+                    }
                 }
             }
 
-            // 5. Tabla Dinámica de Yield Mes a Mes
+            // 7. Renderizar Tabla Mes a Mes (Meses Pasados Reales + Meses Futuros OTB/Yield)
             const tbody = document.getElementById('yieldTableBody');
             if (tbody) {
                 tbody.innerHTML = '';
-                for (let m = 0; m < 12; m++) {
-                    const mRms = Number(otbRms[m]) || 0;
-                    const mPrevRms = Number(otbPrevRms[m]) || 0;
-                    const mRev = Number(otbRev[m]) || 0;
-                    const mPrevRev = Number(otbPrevRev[m]) || 0;
-
-                    const mPickupRms = mRms - mPrevRms;
-                    const mPickupRev = mRev - mPrevRev;
-                    const mAvail = totalHotelRooms * daysInMonths[m];
-                    const mOcc = mAvail > 0 ? (mRms / mAvail * 100) : 0;
-
-                    const dec = evaluateYieldDecision(strat, mOcc, mPickupRms);
+                monthMetrics.forEach(mm => {
+                    const m = mm.monthIdx;
                     const isCurr = (midx === m);
+                    const isClosed = mm.isClosed;
 
-                    // Badge de pickup
-                    let pickupTag = '<span style="color:var(--text-muted); font-size:0.7rem;">● 0 RN</span>';
-                    if (mPickupRms > 0) {
-                        pickupTag = `<span style="color:#10b981; font-weight:700; font-size:0.72rem;">▲ +${mPickupRms} RN <span style="font-size:0.65rem; color:var(--text-muted);">(+${fmt(mPickupRev)})</span></span>`;
-                    } else if (mPickupRms < 0) {
-                        pickupTag = `<span style="color:#ef4444; font-weight:700; font-size:0.72rem;">▼ ${mPickupRms} RN <span style="font-size:0.65rem; color:var(--text-muted);">(${fmt(mPickupRev)})</span></span>`;
+                    if (isClosed) {
+                        // FILA DE MES CERRADO (REAL)
+                        const tierClosed = getMatchingTier(strat, mm.displayOcc);
+                        const tierLabel = tierClosed.minOcc === 90 ? '> 90 %' : `${tierClosed.minOcc}–${tierClosed.maxOcc} %`;
+                        const revparMet = mm.displayRevpar >= strat.targetRevpar;
+
+                        let revparBadge = `<span style="font-weight:700; color:var(--text-main); font-size:0.82rem;">${mm.displayRevpar.toFixed(2).replace('.', ',')} €</span>`;
+                        if (revparMet) {
+                            revparBadge = `<span style="font-weight:800; color:#10b981; font-size:0.82rem;">✅ ${mm.displayRevpar.toFixed(2).replace('.', ',')} €</span> <span style="font-size:0.6rem; color:#10b981; display:block;">(+${(mm.displayRevpar - strat.targetRevpar).toFixed(2).replace('.', ',')} €)</span>`;
+                        } else if (mm.displayRevpar > 0) {
+                            revparBadge = `<span style="font-weight:700; color:#f59e0b; font-size:0.82rem;">${mm.displayRevpar.toFixed(2).replace('.', ',')} €</span> <span style="font-size:0.6rem; color:var(--text-muted); display:block;">Obj: ${strat.targetRevpar.toFixed(2).replace('.', ',')} €</span>`;
+                        }
+
+                        tbody.innerHTML += `
+                            <tr class="month-closed-row ${isCurr ? 'current-month-row' : ''}">
+                                <td style="font-weight:700;">
+                                    ${mm.monthName} ${isCurr ? '⭐' : ''}
+                                    <span class="month-closed-badge">CERRADO</span>
+                                </td>
+                                <td style="font-weight:700; color:var(--text-main);">
+                                    ${fmtNum(mm.displayRms)} RN
+                                    <span style="font-size:0.62rem; color:#10b981; font-weight:800; display:block;">● REAL CERRADO</span>
+                                </td>
+                                <td>
+                                    <div style="display:flex; justify-content:space-between; font-size:0.7rem; font-weight:700; margin-bottom:2px;">
+                                        <span>${mm.displayOcc.toFixed(1).replace('.', ',')}%</span>
+                                    </div>
+                                    <div style="width:100%; height:6px; background:rgba(0,0,0,0.25); border-radius:4px; overflow:hidden;">
+                                        <div style="height:100%; width:${Math.min(100, mm.displayOcc)}%; background:${mm.displayOcc >= 70 ? '#10b981' : (mm.displayOcc >= 45 ? '#818cf8' : '#f59e0b')}; border-radius:4px;"></div>
+                                    </div>
+                                </td>
+                                <td><span style="color:var(--text-muted); font-size:0.72rem; font-weight:700;">🔒 Consolidado</span></td>
+                                <td><span style="font-size:0.7rem; font-weight:700; background:rgba(16, 185, 129, 0.1); color:#10b981; padding:3px 8px; border-radius:6px; border:1px solid rgba(16, 185, 129, 0.2);">${tierLabel}</span></td>
+                                <td style="font-weight:600; color:var(--text-muted); font-size:0.75rem;">Cierre</td>
+                                <td>
+                                    <span style="font-weight:700; color:var(--text-main); font-size:0.85rem;">${mm.displayAdr.toFixed(2).replace('.', ',')} €</span>
+                                    <span style="font-size:0.6rem; color:var(--text-muted); display:block;">ADR Cierre</span>
+                                </td>
+                                <td>
+                                    <span style="font-weight:800; color:var(--primary); font-size:0.88rem;">${mm.displayRevpar.toFixed(2).replace('.', ',')} €</span>
+                                    <span style="font-size:0.6rem; color:var(--text-muted); display:block;">RevPAR Cierre</span>
+                                </td>
+                                <td>${revparBadge}</td>
+                                <td>
+                                    <span class="tactical-pill tactical-closed">
+                                        ✅ Cierre Definitivo · ADR: ${mm.displayAdr.toFixed(2).replace('.', ',')} €
+                                    </span>
+                                </td>
+                            </tr>
+                        `;
+                    } else {
+                        // FILA DE MES EN CURSO O FUTURO (YIELD PREDICTIVO)
+                        const dec = evaluateYieldDecision(strat, mm.displayOcc, mm.pickupRms);
+                        const tierLabel = dec.tier.minOcc === 90 ? '> 90 %' : `${dec.tier.minOcc}–${dec.tier.maxOcc} %`;
+
+                        let pickupTag = '<span style="color:var(--text-muted); font-size:0.7rem;">● 0 RN</span>';
+                        if (mm.pickupRms > 0) {
+                            pickupTag = `<span style="color:#10b981; font-weight:700; font-size:0.72rem;">▲ +${mm.pickupRms} RN <span style="font-size:0.65rem; color:var(--text-muted);">(+${fmt(mm.pickupRev)})</span></span>`;
+                        } else if (mm.pickupRms < 0) {
+                            pickupTag = `<span style="color:#ef4444; font-weight:700; font-size:0.72rem;">▼ ${mm.pickupRms} RN <span style="font-size:0.65rem; color:var(--text-muted);">(${fmt(mm.pickupRev)})</span></span>`;
+                        }
+
+                        let pillClass = 'tactical-down';
+                        if (dec.badgeType === 'accelerated') pillClass = 'tactical-up';
+                        else if (dec.badgeType === 'freeze') pillClass = 'tactical-freeze';
+                        else if (dec.badgeType === 'peak') pillClass = 'tactical-peak';
+
+                        const projRevpar = dec.projRevpar;
+                        let revparTag = `<span style="font-weight:600; color:var(--text-muted); font-size:0.82rem;">${projRevpar.toFixed(2).replace('.', ',')} €</span>`;
+                        if (projRevpar >= strat.targetRevpar) {
+                            revparTag = `<span style="font-weight:800; color:#10b981; font-size:0.82rem;">🎯 ${projRevpar.toFixed(2).replace('.', ',')} €</span> <span style="font-size:0.6rem; color:#10b981; display:block;">Alcanza Objetivo</span>`;
+                        } else if (projRevpar > 0) {
+                            revparTag = `<span style="font-weight:700; color:#f59e0b; font-size:0.82rem;">${projRevpar.toFixed(2).replace('.', ',')} €</span> <span style="font-size:0.6rem; color:var(--text-muted); display:block;">Obj: ${strat.targetRevpar.toFixed(2).replace('.', ',')} €</span>`;
+                        }
+
+                        tbody.innerHTML += `
+                            <tr class="${isCurr ? 'current-month-row' : ''}">
+                                <td style="font-weight:700;">${mm.monthName} ${isCurr ? '⭐' : ''}</td>
+                                <td style="font-weight:600;">
+                                    ${fmtNum(mm.displayRms)} RN
+                                    <span style="font-size:0.62rem; color:var(--primary); font-weight:700; display:block;">OTB CARTERA</span>
+                                </td>
+                                <td>
+                                    <div style="display:flex; justify-content:space-between; font-size:0.7rem; font-weight:700; margin-bottom:2px;">
+                                        <span>${mm.displayOcc.toFixed(1).replace('.', ',')}%</span>
+                                    </div>
+                                    <div style="width:100%; height:6px; background:rgba(0,0,0,0.25); border-radius:4px; overflow:hidden;">
+                                        <div style="height:100%; width:${Math.min(100, mm.displayOcc)}%; background:${mm.displayOcc >= 70 ? '#10b981' : (mm.displayOcc >= 45 ? '#818cf8' : '#f59e0b')}; border-radius:4px;"></div>
+                                    </div>
+                                </td>
+                                <td>${pickupTag}</td>
+                                <td><span style="font-size:0.7rem; font-weight:700; background:rgba(255,255,255,0.05); padding:3px 8px; border-radius:6px; border:1px solid var(--border);">${tierLabel}</span></td>
+                                <td style="font-weight:700; color:${dec.effectiveAdj > 0 ? '#10b981' : (dec.effectiveAdj < 0 ? '#818cf8' : 'var(--text-main)')};">${dec.effectiveAdj > 0 ? '+' : ''}${dec.effectiveAdj.toFixed(1).replace('.', ',')}%</td>
+                                <td style="font-weight:700; color:var(--text-main); font-size:0.85rem;">${dec.recEbi.toFixed(2).replace('.', ',')} €</td>
+                                <td style="font-weight:800; color:var(--primary); font-size:0.88rem;">${dec.recBar.toFixed(2).replace('.', ',')} €</td>
+                                <td>${revparTag}</td>
+                                <td><span class="tactical-pill ${pillClass}">${dec.tacticalText}</span></td>
+                            </tr>
+                        `;
                     }
+                });
 
-                    // Píldora táctica
-                    let pillClass = 'tactical-down';
-                    if (dec.badgeType === 'accelerated') pillClass = 'tactical-up';
-                    else if (dec.badgeType === 'freeze') pillClass = 'tactical-freeze';
-                    else if (dec.badgeType === 'peak') pillClass = 'tactical-peak';
+                // FILA TOTAL / PROYECCIÓN ANUAL
+                const totalOccAnnual = totalPeriodAvail > 0 ? (totalPeriodRms / totalPeriodAvail * 100) : 0;
+                const totalAdrAnnual = totalPeriodRms > 0 ? (totalPeriodRev / totalPeriodRms) : 0;
+                const totalRevparAnnual = totalPeriodAvail > 0 ? (totalPeriodRev / totalPeriodAvail) : 0;
 
-                    const tierLabel = dec.tier.minOcc === 90 ? '> 90 %' : `${dec.tier.minOcc}–${dec.tier.maxOcc} %`;
-
-                    tbody.innerHTML += `
-                        <tr class="${isCurr ? 'current-month-row' : ''}">
-                            <td style="font-weight:700;">${months[m]} ${isCurr ? '⭐' : ''}</td>
-                            <td style="font-weight:600;">${fmtNum(mRms)} RN</td>
-                            <td>
-                                <div style="display:flex; justify-content:space-between; font-size:0.7rem; font-weight:700; margin-bottom:2px;">
-                                    <span>${mOcc.toFixed(1).replace('.', ',')}%</span>
-                                </div>
-                                <div style="width:100%; height:6px; background:rgba(0,0,0,0.25); border-radius:4px; overflow:hidden;">
-                                    <div style="height:100%; width:${Math.min(100, mOcc)}%; background:${mOcc >= 70 ? '#10b981' : (mOcc >= 45 ? '#818cf8' : '#f59e0b')}; border-radius:4px;"></div>
-                                </div>
-                            </td>
-                            <td>${pickupTag}</td>
-                            <td><span style="font-size:0.7rem; font-weight:700; background:rgba(255,255,255,0.05); padding:3px 8px; border-radius:6px; border:1px solid var(--border);">${tierLabel}</span></td>
-                            <td style="font-weight:700; color:${dec.effectiveAdj > 0 ? '#10b981' : (dec.effectiveAdj < 0 ? '#818cf8' : 'var(--text-main)')};">${dec.effectiveAdj > 0 ? '+' : ''}${dec.effectiveAdj.toFixed(1).replace('.', ',')}%</td>
-                            <td style="font-weight:700; color:var(--text-main);">${dec.recEbi.toFixed(2).replace('.', ',')} €</td>
-                            <td style="font-weight:800; color:var(--primary); font-size:0.88rem;">${dec.recBar.toFixed(2).replace('.', ',')} €</td>
-                            <td style="font-weight:600; color:${dec.projRevpar >= strat.targetRevpar ? '#10b981' : 'var(--text-muted)'};">${dec.projRevpar.toFixed(2).replace('.', ',')} €</td>
-                            <td><span class="tactical-pill ${pillClass}">${dec.tacticalText}</span></td>
-                        </tr>
-                    `;
-                }
+                tbody.innerHTML += `
+                    <tr style="background: rgba(99, 102, 241, 0.12); font-weight:800; border-top: 2px solid var(--border);">
+                        <td style="color: #a78bfa;">TOTAL / PROYECCIÓN ANUAL</td>
+                        <td style="font-weight:800; font-size:0.85rem;">${fmtNum(totalPeriodRms)} RN</td>
+                        <td>
+                            <div style="display:flex; justify-content:space-between; font-size:0.72rem; font-weight:800; margin-bottom:2px;">
+                                <span>${totalOccAnnual.toFixed(1).replace('.', ',')}%</span>
+                            </div>
+                            <div style="width:100%; height:6px; background:rgba(0,0,0,0.25); border-radius:4px; overflow:hidden;">
+                                <div style="height:100%; width:${Math.min(100, totalOccAnnual)}%; background:${totalOccAnnual >= 70 ? '#10b981' : (totalOccAnnual >= 45 ? '#818cf8' : '#f59e0b')}; border-radius:4px;"></div>
+                            </div>
+                        </td>
+                        <td>${futurePickupSum > 0 ? `<span style="color:#10b981; font-weight:700;">+${futurePickupSum} RN</span>` : '<span style="color:var(--text-muted);">● 0 RN</span>'}</td>
+                        <td><span style="font-size:0.7rem; font-weight:800; color:var(--primary);">${activeTier.minOcc === 90 ? '> 90 %' : `${activeTier.minOcc}–${activeTier.maxOcc} %`}</span></td>
+                        <td>-</td>
+                        <td style="color:var(--text-main); font-size:0.85rem;">${totalAdrAnnual.toFixed(2).replace('.', ',')} € (ADR)</td>
+                        <td style="color:var(--primary); font-size:0.88rem;">${totalRevparAnnual.toFixed(2).replace('.', ',')} € (RevPAR)</td>
+                        <td>
+                            ${totalRevparAnnual >= strat.targetRevpar 
+                                ? `<span style="color:#10b981; font-weight:800; font-size:0.82rem;">✅ ${totalRevparAnnual.toFixed(2).replace('.', ',')} €</span>` 
+                                : `<span style="color:#f59e0b; font-weight:700; font-size:0.82rem;">${totalRevparAnnual.toFixed(2).replace('.', ',')} €</span> <span style="font-size:0.6rem; color:var(--text-muted); display:block;">Obj: ${strat.targetRevpar.toFixed(2).replace('.', ',')} €</span>`}
+                        </td>
+                        <td>
+                            <span class="tactical-pill tactical-up" style="background: rgba(16, 185, 129, 0.2); font-weight:800;">
+                                📈 Cierre Real + Cartera Viva
+                            </span>
+                        </td>
+                    </tr>
+                `;
             }
 
-            // 6. Ejecutar análisis de segmentos con pick-up y comparativa interanual
+            // 8. Ejecutar análisis de segmentos con pick-up y comparativa interanual
             renderSegmentPickupAnalysis(hotel, year, midx);
         }
 
