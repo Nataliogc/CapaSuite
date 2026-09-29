@@ -1487,6 +1487,49 @@
         let hotelMinPrices = { ...DEFAULT_HOTEL_MIN_PRICES };
         let ignoreCompetitorsBelowMin = false;
 
+        // --- MULTIPLICADORES POR TRAMO SEMANAL (SMART YIELD L-J / V-S / DOM) ---
+        const DEFAULT_DAY_PART_MULTIPLIERS = {
+            weekday: 0.0,   // L-J: 0% (Factor 1.00 - Base corporativa)
+            weekend: 15.0,  // V-S: +15% (Factor 1.15 - Yield ocio/eventos)
+            sunday: -10.0   // Dom: -10% (Factor 0.90 - Valle estructural)
+        };
+        let dayPartMultipliers = { ...DEFAULT_DAY_PART_MULTIPLIERS };
+        let useDayPartMultipliers = true;
+
+        function loadDayPartMultipliers() {
+            try {
+                const saved = localStorage.getItem('capasuite_day_part_multipliers');
+                if (saved) {
+                    dayPartMultipliers = Object.assign({ ...DEFAULT_DAY_PART_MULTIPLIERS }, JSON.parse(saved));
+                } else {
+                    const rawStrat = localStorage.getItem('capasuite_yield_strategy_v1');
+                    if (rawStrat) {
+                        const parsed = JSON.parse(rawStrat);
+                        const actH = (typeof activeHotel !== 'undefined' ? activeHotel : 'Guadiana');
+                        if (parsed && parsed[actH] && parsed[actH].dayPartMultipliers) {
+                            dayPartMultipliers = Object.assign({ ...DEFAULT_DAY_PART_MULTIPLIERS }, parsed[actH].dayPartMultipliers);
+                        }
+                    }
+                }
+                const savedUse = localStorage.getItem('capasuite_use_day_part_mult');
+                if (savedUse !== null) {
+                    useDayPartMultipliers = (savedUse === 'true');
+                }
+            } catch(e) {
+                console.warn("Failed to load day part multipliers:", e);
+            }
+        }
+        loadDayPartMultipliers();
+
+        function saveDayPartMultipliers() {
+            try {
+                localStorage.setItem('capasuite_day_part_multipliers', JSON.stringify(dayPartMultipliers));
+                localStorage.setItem('capasuite_use_day_part_mult', String(useDayPartMultipliers));
+            } catch(e) {
+                console.warn("Failed to save day part multipliers:", e);
+            }
+        }
+
         function loadHotelMinPrices() {
             try {
                 const saved = localStorage.getItem('capasuite_hotel_min_prices');
@@ -1822,6 +1865,40 @@
                 }
             }
 
+            // --- APLICAR MULTIPLICADOR DE TRAMO SEMANAL (L-J / V-S / DOM) ---
+            let dayPartName = 'L-J';
+            let dayPartAdj = 0;
+            if (useDayPartMultipliers && d.dateISO) {
+                const dateParts = d.dateISO.split('-');
+                if (dateParts.length === 3) {
+                    const dt = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
+                    const dow = dt.getDay(); // 0 = Domingo, 5 = Viernes, 6 = Sábado
+                    if (dow === 0) {
+                        dayPartName = 'Dom';
+                        dayPartAdj = Number(dayPartMultipliers.sunday) !== undefined ? Number(dayPartMultipliers.sunday) : -10;
+                    } else if (dow === 5 || dow === 6) {
+                        dayPartName = 'V-S';
+                        dayPartAdj = Number(dayPartMultipliers.weekend) || 15;
+                    } else {
+                        dayPartName = 'L-J';
+                        dayPartAdj = Number(dayPartMultipliers.weekday) || 0;
+                    }
+
+                    if (dayPartAdj !== 0) {
+                        targetPrice = targetPrice * (1 + (dayPartAdj / 100));
+                        if (dayPartName === 'V-S' && myP < targetPrice * 0.95) {
+                            actionText = `▲ ${Math.round(targetPrice)}€ (Fin Semana)`;
+                            actionColor = "#16a34a";
+                            cls = 'gap-low';
+                        } else if (dayPartName === 'Dom' && myP > targetPrice * 1.05) {
+                            actionText = `▼ ${Math.round(targetPrice)}€ (Domingo)`;
+                            actionColor = "#ea580c";
+                            cls = 'gap-high';
+                        }
+                    }
+                }
+            }
+
             // --- ENFORCE CONFIGURED MINIMUM PRICE (TARIFA SUELO) ---
             if (minPrice > 0) {
                 if (myP < minPrice) {
@@ -1884,7 +1961,9 @@
                 actionColor: actionColor,
                 cls: cls,
                 diff: diff,
-                canApply: canApply
+                canApply: canApply,
+                dayPartName: dayPartName,
+                dayPartAdj: dayPartAdj
             };
         }
 
@@ -4680,6 +4759,17 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             const chkIgnore = document.getElementById('chkIgnoreCompetitorsBelowMin');
             if (chkIgnore) chkIgnore.checked = ignoreCompetitorsBelowMin;
 
+            // Cargar Tramos Semanales (L-J, V-S, Dom)
+            const chkUseDP = document.getElementById('chkUseDayPartMultipliers');
+            if (chkUseDP) chkUseDP.checked = useDayPartMultipliers;
+
+            const elWd = document.getElementById('daypart_weekday_input');
+            const elWe = document.getElementById('daypart_weekend_input');
+            const elSu = document.getElementById('daypart_sunday_input');
+            if (elWd) elWd.value = (Number(dayPartMultipliers.weekday) || 0).toFixed(1);
+            if (elWe) elWe.value = (Number(dayPartMultipliers.weekend) || 15).toFixed(1);
+            if (elSu) elSu.value = (Number(dayPartMultipliers.sunday) !== undefined ? Number(dayPartMultipliers.sunday) : -10).toFixed(1);
+
             document.getElementById('minPriceModal').style.display = 'flex';
         }
 
@@ -4713,6 +4803,20 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 ignoreCompetitorsBelowMin = chkIgnore.checked;
             }
 
+            // Guardar Tramos Semanales
+            const chkUseDP = document.getElementById('chkUseDayPartMultipliers');
+            if (chkUseDP) useDayPartMultipliers = chkUseDP.checked;
+
+            const elWd = document.getElementById('daypart_weekday_input');
+            const elWe = document.getElementById('daypart_weekend_input');
+            const elSu = document.getElementById('daypart_sunday_input');
+            dayPartMultipliers = {
+                weekday: elWd ? (parseFloat(elWd.value) || 0) : 0,
+                weekend: elWe ? (parseFloat(elWe.value) || 15) : 15,
+                sunday: elSu ? (parseFloat(elSu.value) || -10) : -10
+            };
+            saveDayPartMultipliers();
+
             saveHotelMinPrices();
             closeMinPriceModal();
 
@@ -4724,10 +4828,13 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
         }
 
         function resetMinPrices() {
-            if (confirm("¿Restablecer precios mínimos a los valores por defecto (Cumbria: 50€, Guadiana: 60€)?")) {
+            if (confirm("¿Restablecer precios mínimos y tramos semanales a los valores por defecto (Cumbria: 50€, Guadiana: 60€, V-S: +15%, Dom: -10%)?")) {
                 hotelMinPrices = { ...DEFAULT_HOTEL_MIN_PRICES };
                 ignoreCompetitorsBelowMin = false;
+                dayPartMultipliers = { ...DEFAULT_DAY_PART_MULTIPLIERS };
+                useDayPartMultipliers = true;
                 saveHotelMinPrices();
+                saveDayPartMultipliers();
                 openMinPriceModal();
                 if (processedData && processedData.length > 0) {
                     recalcMarketAverages(processedData);
@@ -5015,6 +5122,48 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 </div>
                 <div id="ourHotelsMinList">
                     <!-- Injected by JS -->
+                </div>
+            </div>
+
+            <!-- Sección Moduladores por Tramo Semanal (Smart Yield) -->
+            <div style="margin-bottom:20px; background:rgba(99, 102, 241, 0.06); padding:12px 14px; border-radius:10px; border:1px solid rgba(99, 102, 241, 0.2);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <div style="font-size:0.8rem; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; color:var(--primary); display:flex; align-items:center; gap:6px;">
+                        <span>📅</span> Tramos Semanales Smart Yield
+                    </div>
+                    <label style="display:flex; align-items:center; gap:6px; font-size:0.75rem; cursor:pointer; font-weight:700; color:var(--text-main);">
+                        <input type="checkbox" id="chkUseDayPartMultipliers" style="accent-color:var(--primary); width:15px; height:15px;">
+                        Activar modulador
+                    </label>
+                </div>
+                <div style="font-size:0.74rem; color:var(--text-muted); margin-bottom:10px; line-height:1.35;">
+                    Modula la tarifa recomendada según el día (L-J Corporativo, V-S Ocio y Dom Valle), protegiendo siempre tu tarifa suelo:
+                </div>
+                <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;">
+                    <div style="background:var(--bg-body); padding:8px; border-radius:8px; border:1px solid var(--border);">
+                        <div style="font-size:0.72rem; font-weight:700; color:var(--text-main);">Lunes a Jueves</div>
+                        <div style="font-size:0.64rem; color:var(--text-muted); margin-bottom:5px;">Corporativo</div>
+                        <div style="display:flex; align-items:center; gap:3px;">
+                            <input type="number" id="daypart_weekday_input" min="-50" max="100" step="0.5" style="width:100%; padding:3px 5px; border-radius:5px; background:var(--bg-surface); color:var(--text-main); border:1px solid var(--border); font-weight:700; text-align:right; font-size:0.78rem;">
+                            <span style="font-size:0.72rem; font-weight:700;">%</span>
+                        </div>
+                    </div>
+                    <div style="background:var(--bg-body); padding:8px; border-radius:8px; border:1px solid rgba(16, 185, 129, 0.3);">
+                        <div style="font-size:0.72rem; font-weight:700; color:#10b981;">Viernes y Sábado</div>
+                        <div style="font-size:0.64rem; color:var(--text-muted); margin-bottom:5px;">Ocio / Bodas</div>
+                        <div style="display:flex; align-items:center; gap:3px;">
+                            <input type="number" id="daypart_weekend_input" min="-50" max="100" step="0.5" style="width:100%; padding:3px 5px; border-radius:5px; background:var(--bg-surface); color:#10b981; border:1px solid rgba(16, 185, 129, 0.4); font-weight:800; text-align:right; font-size:0.78rem;">
+                            <span style="font-size:0.72rem; font-weight:700; color:#10b981;">%</span>
+                        </div>
+                    </div>
+                    <div style="background:var(--bg-body); padding:8px; border-radius:8px; border:1px solid rgba(245, 158, 11, 0.3);">
+                        <div style="font-size:0.72rem; font-weight:700; color:#f59e0b;">Domingos</div>
+                        <div style="font-size:0.64rem; color:var(--text-muted); margin-bottom:5px;">Valle / Tránsito</div>
+                        <div style="display:flex; align-items:center; gap:3px;">
+                            <input type="number" id="daypart_sunday_input" min="-50" max="100" step="0.5" style="width:100%; padding:3px 5px; border-radius:5px; background:var(--bg-surface); color:#f59e0b; border:1px solid rgba(245, 158, 11, 0.4); font-weight:800; text-align:right; font-size:0.78rem;">
+                            <span style="font-size:0.72rem; font-weight:700; color:#f59e0b;">%</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 

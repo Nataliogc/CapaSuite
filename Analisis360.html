@@ -1943,11 +1943,14 @@
                     </select>
                 </div>
                 <!-- NAVEGACIÓN PESTAÑAS -->
-                <div style="display: flex; gap: 6px;">
-                    <button type="button" id="tabBtnYieldTargets" onclick="switchYieldModalTab('targets')" style="padding: 7px 14px; border-radius: 8px; font-weight: 700; font-size: 0.8rem; cursor: pointer; border: 1px solid var(--primary); background: var(--primary); color: #fff; transition: all 0.2s;">
-                        🎯 Objetivos Mensuales & Estacionalidad
+                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                    <button type="button" id="tabBtnYieldTargets" onclick="switchYieldModalTab('targets')" style="padding: 7px 12px; border-radius: 8px; font-weight: 700; font-size: 0.78rem; cursor: pointer; border: 1px solid var(--primary); background: var(--primary); color: #fff; transition: all 0.2s;">
+                        🎯 Objetivos & Estacionalidad
                     </button>
-                    <button type="button" id="tabBtnYieldMatrix" onclick="switchYieldModalTab('matrix')" style="padding: 7px 14px; border-radius: 8px; font-weight: 600; font-size: 0.8rem; cursor: pointer; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-muted); transition: all 0.2s;">
+                    <button type="button" id="tabBtnYieldDayParts" onclick="switchYieldModalTab('dayparts')" style="padding: 7px 12px; border-radius: 8px; font-weight: 600; font-size: 0.78rem; cursor: pointer; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-muted); transition: all 0.2s;">
+                        📅 Tramos Semanales (L-J / V-S / Dom)
+                    </button>
+                    <button type="button" id="tabBtnYieldMatrix" onclick="switchYieldModalTab('matrix')" style="padding: 7px 12px; border-radius: 8px; font-weight: 600; font-size: 0.78rem; cursor: pointer; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-muted); transition: all 0.2s;">
                         ⚙️ Matriz OTB & Parámetros Base
                     </button>
                 </div>
@@ -2046,7 +2049,131 @@
                 </div>
             </div>
 
-            <!-- CONTENIDO PESTAÑA 2: MATRIZ OTB Y PARÁMETROS BASE -->
+            <!-- CONTENIDO PESTAÑA 2: TRAMOS SEMANALES (L-J / V-S / DOM) -->
+            <div id="yieldTabDayPartsContent" style="display: none;">
+                <div style="background: var(--bg-deep); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap;">
+                        <div>
+                            <h3 style="margin: 0 0 4px 0; font-size: 0.95rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                                <span>📅</span> Moduladores de Precio por Tramo Semanal
+                            </h3>
+                            <p style="margin: 0; font-size: 0.76rem; color: var(--text-muted); line-height: 1.4;">
+                                En Ciudad Real, la demanda opera en 3 bloques claramente diferenciados. Configura el ajuste porcentual sobre la BAR recomendada según el día de la semana.
+                            </p>
+                        </div>
+                        <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 8px; padding: 6px 12px; text-align: right;">
+                            <span style="font-size: 0.7rem; color: var(--text-muted); display: block;">BAR Base Neutra Estimada:</span>
+                            <span id="daypart_base_bar_display" style="font-size: 0.95rem; font-weight: 800; color: var(--primary);">66.00 €</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3 TARJETAS DE TRAMOS -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                    <!-- CARD 1: LUNES A JUEVES -->
+                    <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; position: relative; display: flex; flex-direction: column; justify-content: space-between;">
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <span style="font-weight: 800; font-size: 0.88rem; color: var(--text-main);">Lunes a Jueves</span>
+                                <span style="font-size: 0.68rem; font-weight: 700; background: rgba(99, 102, 241, 0.12); color: var(--primary); padding: 3px 8px; border-radius: 6px;">~58% del Mes (17-18d)</span>
+                            </div>
+                            <div style="font-size: 0.74rem; color: var(--text-muted); margin-bottom: 10px; line-height: 1.35;">
+                                <strong>Perfil Corporativo / Empresa:</strong> Comerciales, técnicos, funcionarios, jueces y empresas. Sensibilidad media/baja al precio. Defender tarifa estable.
+                            </div>
+                            <div style="background: var(--bg-deep); padding: 6px 10px; border-radius: 8px; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 12px;">
+                                Ocupación típica: <strong style="color: var(--text-main);">45% – 65%</strong>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-main);">Ajuste s/BAR Base:</label>
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <input type="number" id="yield_daypart_weekday" min="-50" max="100" step="0.5" value="0.0" oninput="updateDayPartPreviews()" style="width: 75px; padding: 4px 8px; border-radius: 6px; background: var(--bg-deep); color: var(--text-main); border: 1px solid var(--border); font-weight: 700; text-align: right; font-size: 0.82rem;">
+                                    <span style="font-size: 0.78rem; font-weight: 700;">%</span>
+                                </div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 6px; border-top: 1px dashed var(--border); font-size: 0.76rem;">
+                                <span style="color: var(--text-muted);">Tarifa sugerida:</span>
+                                <span id="bar_preview_weekday" style="font-weight: 800; color: var(--text-main); font-size: 0.9rem;">66.00 €</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CARD 2: VIERNES Y SÁBADO -->
+                    <div style="background: var(--bg-card); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; padding: 14px; position: relative; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 2px 10px rgba(16, 185, 129, 0.05);">
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <span style="font-weight: 800; font-size: 0.88rem; color: #10b981;">Viernes y Sábado</span>
+                                <span style="font-size: 0.68rem; font-weight: 700; background: rgba(16, 185, 129, 0.15); color: #10b981; padding: 3px 8px; border-radius: 6px;">~28% del Mes (8-9d)</span>
+                            </div>
+                            <div style="font-size: 0.74rem; color: var(--text-muted); margin-bottom: 10px; line-height: 1.35;">
+                                <strong>Perfil Ocio / Eventos / Bodas:</strong> Bodas, comuniones, escapadas y turismo. Dispuesta a pagar más. Yield agresivo y estancia mínima (MLOS).
+                            </div>
+                            <div style="background: var(--bg-deep); padding: 6px 10px; border-radius: 8px; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 12px;">
+                                Ocupación típica: <strong style="color: #10b981;">65% – 95%+</strong>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <label style="font-size: 0.75rem; font-weight: 700; color: #10b981;">Ajuste s/BAR Base:</label>
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <input type="number" id="yield_daypart_weekend" min="-50" max="100" step="0.5" value="18.0" oninput="updateDayPartPreviews()" style="width: 75px; padding: 4px 8px; border-radius: 6px; background: var(--bg-deep); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4); font-weight: 800; text-align: right; font-size: 0.82rem;">
+                                    <span style="font-size: 0.78rem; font-weight: 700; color: #10b981;">%</span>
+                                </div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 6px; border-top: 1px dashed var(--border); font-size: 0.76rem;">
+                                <span style="color: var(--text-muted);">Tarifa sugerida:</span>
+                                <span id="bar_preview_weekend" style="font-weight: 800; color: #10b981; font-size: 0.9rem;">77.88 €</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CARD 3: DOMINGO -->
+                    <div style="background: var(--bg-card); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; padding: 14px; position: relative; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 2px 10px rgba(245, 158, 11, 0.05);">
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <span style="font-weight: 800; font-size: 0.88rem; color: #f59e0b;">Domingos (Valle)</span>
+                                <span style="font-size: 0.68rem; font-weight: 700; background: rgba(245, 158, 11, 0.15); color: #f59e0b; padding: 3px 8px; border-radius: 6px;">~14% del Mes (4-5d)</span>
+                            </div>
+                            <div style="font-size: 0.74rem; color: var(--text-muted); margin-bottom: 10px; line-height: 1.35;">
+                                <strong>Valle Estructural / Transición:</strong> Salidas de fin de semana o llegadas anticipadas. Estimular con tarifas atractivas o packs Late Check-out sin canibalizar el lunes.
+                            </div>
+                            <div style="background: var(--bg-deep); padding: 6px 10px; border-radius: 8px; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 12px;">
+                                Ocupación típica: <strong style="color: #f59e0b;">20% – 35%</strong>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <label style="font-size: 0.75rem; font-weight: 700; color: #f59e0b;">Ajuste s/BAR Base:</label>
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <input type="number" id="yield_daypart_sunday" min="-50" max="100" step="0.5" value="-12.0" oninput="updateDayPartPreviews()" style="width: 75px; padding: 4px 8px; border-radius: 6px; background: var(--bg-deep); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.4); font-weight: 800; text-align: right; font-size: 0.82rem;">
+                                    <span style="font-size: 0.78rem; font-weight: 700; color: #f59e0b;">%</span>
+                                </div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 6px; border-top: 1px dashed var(--border); font-size: 0.76rem;">
+                                <span style="color: var(--text-muted);">Tarifa sugerida:</span>
+                                <span id="bar_preview_sunday" style="font-weight: 800; color: #f59e0b; font-size: 0.9rem;">58.08 €</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BANNER FORMULA MATEMATICA DEL ADR PONDERADO -->
+                <div style="background: rgba(99, 102, 241, 0.05); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 10px; padding: 12px 16px;">
+                    <div style="display: flex; align-items: flex-start; gap: 10px;">
+                        <span style="font-size: 1.2rem;">💡</span>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.45;">
+                            <strong style="color: var(--text-main);">Fórmula del ADR Medio Mensual Ponderado por Volumen:</strong><br>
+                            <code style="display: block; margin: 5px 0; padding: 6px 10px; background: var(--bg-deep); border-radius: 6px; color: var(--primary); font-family: monospace; font-size: 0.76rem;">
+                                ADR_Mes = [(RN_L-J × ADR_L-J) + (RN_V-S × ADR_V-S) + (RN_Dom × ADR_Dom)] / Total_RN_Vendidas
+                            </code>
+                            El fin de semana (Viernes y Sábado) concentra la mayor disposición al pago y levanta el precio medio global del hotel, compensando el menor volumen y precio de los domingos.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CONTENIDO PESTAÑA 3: MATRIZ OTB Y PARÁMETROS BASE -->
             <div id="yieldTabMatrixContent" style="display: none;">
                 <!-- PARÁMETROS GENERALES -->
                 <div class="cost-group">
@@ -2302,6 +2429,11 @@
                 targetAdrMin: 66.0,
                 targetAdrMax: 68.0,
                 targetRevpar: 38.5,
+                dayPartMultipliers: {
+                    weekday: 0.0,   // L-J: 0% (Factor 1.00 - Base corporativa)
+                    weekend: 18.0,  // V-S: +18% (Factor 1.18 - Yield ocio/eventos)
+                    sunday: -12.0   // Dom: -12% (Factor 0.88 - Valle estructural)
+                },
                 monthlyTargets: {},
                 tiers: [
                     { minOcc: 0,  maxOcc: 30, adjustment: -15.0, criteria: "Demanda baja; no bajar automáticamente sin revisar lead time/pickup", action: "Estudiar pick-up / Promoción controlada" },
@@ -2320,6 +2452,11 @@
                 targetAdrMin: 66.0,
                 targetAdrMax: 68.0,
                 targetRevpar: 38.5,
+                dayPartMultipliers: {
+                    weekday: 0.0,   // L-J: 0%
+                    weekend: 18.0,  // V-S: +18%
+                    sunday: -12.0   // Dom: -12%
+                },
                 monthlyTargets: {},
                 tiers: [
                     { minOcc: 0,  maxOcc: 30, adjustment: -15.0, criteria: "Demanda baja; no bajar automáticamente sin revisar lead time/pickup", action: "Estudiar pick-up / Promoción controlada" },
@@ -2343,12 +2480,14 @@
                     if (parsed && parsed[h] && parsed[h].tiers) {
                         const strat = Object.assign({}, def, parsed[h]);
                         if (!strat.monthlyTargets) strat.monthlyTargets = {};
+                        strat.dayPartMultipliers = Object.assign({}, def.dayPartMultipliers, strat.dayPartMultipliers || {});
                         return strat;
                     }
                 }
             } catch(e) { console.warn("Error leyendo estrategia yield:", e); }
             const res = JSON.parse(JSON.stringify(def));
             if (!res.monthlyTargets) res.monthlyTargets = {};
+            res.dayPartMultipliers = Object.assign({}, def.dayPartMultipliers, res.dayPartMultipliers || {});
             return res;
         }
 
@@ -2374,39 +2513,49 @@
 
         function switchYieldModalTab(tab) {
             const targetsContent = document.getElementById('yieldTabTargetsContent');
+            const dayPartsContent = document.getElementById('yieldTabDayPartsContent');
             const matrixContent = document.getElementById('yieldTabMatrixContent');
             const tabTargetsBtn = document.getElementById('tabBtnYieldTargets');
+            const tabDayPartsBtn = document.getElementById('tabBtnYieldDayParts');
             const tabMatrixBtn = document.getElementById('tabBtnYieldMatrix');
+
+            const allContents = [targetsContent, dayPartsContent, matrixContent];
+            const allBtns = [tabTargetsBtn, tabDayPartsBtn, tabMatrixBtn];
+
+            allContents.forEach(c => { if (c) c.style.display = 'none'; });
+            allBtns.forEach(b => {
+                if (b) {
+                    b.style.background = 'var(--bg-card)';
+                    b.style.color = 'var(--text-muted)';
+                    b.style.borderColor = 'var(--border)';
+                    b.style.fontWeight = '600';
+                }
+            });
 
             if (tab === 'targets') {
                 if (targetsContent) targetsContent.style.display = 'block';
-                if (matrixContent) matrixContent.style.display = 'none';
                 if (tabTargetsBtn) {
                     tabTargetsBtn.style.background = 'var(--primary)';
                     tabTargetsBtn.style.color = '#fff';
                     tabTargetsBtn.style.borderColor = 'var(--primary)';
                     tabTargetsBtn.style.fontWeight = '700';
                 }
-                if (tabMatrixBtn) {
-                    tabMatrixBtn.style.background = 'var(--bg-card)';
-                    tabMatrixBtn.style.color = 'var(--text-muted)';
-                    tabMatrixBtn.style.borderColor = 'var(--border)';
-                    tabMatrixBtn.style.fontWeight = '600';
+            } else if (tab === 'dayparts') {
+                if (dayPartsContent) dayPartsContent.style.display = 'block';
+                if (tabDayPartsBtn) {
+                    tabDayPartsBtn.style.background = 'var(--primary)';
+                    tabDayPartsBtn.style.color = '#fff';
+                    tabDayPartsBtn.style.borderColor = 'var(--primary)';
+                    tabDayPartsBtn.style.fontWeight = '700';
                 }
+                updateDayPartPreviews();
             } else {
-                if (targetsContent) targetsContent.style.display = 'none';
                 if (matrixContent) matrixContent.style.display = 'block';
                 if (tabMatrixBtn) {
                     tabMatrixBtn.style.background = 'var(--primary)';
                     tabMatrixBtn.style.color = '#fff';
                     tabMatrixBtn.style.borderColor = 'var(--primary)';
                     tabMatrixBtn.style.fontWeight = '700';
-                }
-                if (tabTargetsBtn) {
-                    tabTargetsBtn.style.background = 'var(--bg-card)';
-                    tabTargetsBtn.style.color = 'var(--text-muted)';
-                    tabTargetsBtn.style.borderColor = 'var(--border)';
-                    tabTargetsBtn.style.fontWeight = '600';
                 }
             }
         }
@@ -2602,6 +2751,41 @@
             const targetYear = tYearSel ? tYearSel.value : (currentYear || "2027");
             const baseYear = bYearSel ? bYearSel.value : "2025";
             renderModalMonthlyTargets(h, targetYear, baseYear);
+
+            // 6. Cargar Tramos Semanales (L-J, V-S, Dom)
+            const dp = strat.dayPartMultipliers || { weekday: 0.0, weekend: 18.0, sunday: -12.0 };
+            const elWd = document.getElementById('yield_daypart_weekday');
+            const elWe = document.getElementById('yield_daypart_weekend');
+            const elSu = document.getElementById('yield_daypart_sunday');
+            if (elWd) elWd.value = (Number(dp.weekday) || 0.0).toFixed(1);
+            if (elWe) elWe.value = (Number(dp.weekend) || 18.0).toFixed(1);
+            if (elSu) elSu.value = (Number(dp.sunday) !== undefined ? Number(dp.sunday) : -12.0).toFixed(1);
+            updateDayPartPreviews();
+        }
+
+        function updateDayPartPreviews() {
+            const baseEbi = parseFloat(document.getElementById('yield_base_ebi')?.value) || 60.0;
+            const barSpread = parseFloat(document.getElementById('yield_bar_spread')?.value) || 10.0;
+            const baseBar = baseEbi * (1 + barSpread / 100);
+
+            const elBaseDisp = document.getElementById('daypart_base_bar_display');
+            if (elBaseDisp) elBaseDisp.innerText = `${baseBar.toFixed(2).replace('.', ',')} €`;
+
+            const adjWd = parseFloat(document.getElementById('yield_daypart_weekday')?.value) || 0.0;
+            const adjWe = parseFloat(document.getElementById('yield_daypart_weekend')?.value) || 0.0;
+            const adjSu = parseFloat(document.getElementById('yield_daypart_sunday')?.value) || 0.0;
+
+            const barWd = baseBar * (1 + adjWd / 100);
+            const barWe = baseBar * (1 + adjWe / 100);
+            const barSu = baseBar * (1 + adjSu / 100);
+
+            const elP_Wd = document.getElementById('bar_preview_weekday');
+            const elP_We = document.getElementById('bar_preview_weekend');
+            const elP_Su = document.getElementById('bar_preview_sunday');
+
+            if (elP_Wd) elP_Wd.innerText = `${barWd.toFixed(2).replace('.', ',')} €`;
+            if (elP_We) elP_We.innerText = `${barWe.toFixed(2).replace('.', ',')} €`;
+            if (elP_Su) elP_Su.innerText = `${barSu.toFixed(2).replace('.', ',')} €`;
         }
 
         function onModalYieldTargetYearChange() {
@@ -2855,6 +3039,12 @@
             const monthlyDict = strat.monthlyTargets || {};
             monthlyDict[targetYear] = newMonthlyTargets;
 
+            const newDayParts = {
+                weekday: parseFloat(document.getElementById('yield_daypart_weekday')?.value) || 0.0,
+                weekend: parseFloat(document.getElementById('yield_daypart_weekend')?.value) || 18.0,
+                sunday: parseFloat(document.getElementById('yield_daypart_sunday')?.value) || -12.0
+            };
+
             const newStrategy = {
                 inventory: inv,
                 barOverEbi: parseFloat(document.getElementById('yield_bar_spread').value) || 10.0,
@@ -2862,6 +3052,7 @@
                 targetAdrMin: parseFloat(document.getElementById('yield_target_adr_min').value) || 66.0,
                 targetAdrMax: parseFloat(document.getElementById('yield_target_adr_max').value) || 68.0,
                 targetRevpar: parseFloat(document.getElementById('yield_target_revpar').value) || 38.5,
+                dayPartMultipliers: newDayParts,
                 monthlyTargets: monthlyDict,
                 tiers: newTiers
             };
@@ -2929,6 +3120,11 @@
             const recBar = recEbi * (1 + barSpread / 100);
             const projRevpar = (occPct / 100) * recBar;
 
+            const dayParts = strategy.dayPartMultipliers || { weekday: 0.0, weekend: 18.0, sunday: -12.0 };
+            const recBarWeekday = recBar * (1 + (Number(dayParts.weekday) || 0.0) / 100);
+            const recBarWeekend = recBar * (1 + (Number(dayParts.weekend) || 18.0) / 100);
+            const recBarSunday = recBar * (1 + (Number(dayParts.sunday) !== undefined ? Number(dayParts.sunday) : -12.0) / 100);
+
             return {
                 tier,
                 baseEbi,
@@ -2939,6 +3135,10 @@
                 tacticalText,
                 recEbi,
                 recBar,
+                recBarWeekday,
+                recBarWeekend,
+                recBarSunday,
+                dayParts,
                 projRevpar
             };
         }
@@ -3166,24 +3366,26 @@
                     boxEl.classList.add('alert-accelerated');
                     iconEl.innerText = '⚡';
                     const decCurr = evaluateYieldDecision(strat, activeMonthMetric.displayOcc, activeMonthMetric.pickupRms);
+                    const dpBadge = `<span style="font-size:0.75rem; color:var(--text-muted); display:inline-block; margin-left:4px;">(L-J: <strong style="color:var(--text-main);">${decCurr.recBarWeekday.toFixed(0)}€</strong> · V-S: <strong style="color:#10b981;">${decCurr.recBarWeekend.toFixed(0)}€</strong> · Dom: <strong style="color:#f59e0b;">${decCurr.recBarSunday.toFixed(0)}€</strong>)</span>`;
                     titleEl.innerText = `${activeMonthMetric.monthName}: Mes en Curso al ${activeMonthMetric.displayOcc.toFixed(1).replace('.', ',')}% de Ocupación Proyectada`;
-                    descEl.innerHTML = `Ventas consolidadas: <strong>${fmtNum(activeMonthMetric.realRms)} RN Real</strong> vendidas + <strong>${fmtNum(activeMonthMetric.otbRms)} RN OTB</strong> en cartera (= <strong>${fmtNum(activeMonthMetric.displayRms)} RN</strong> total proyectado). ADR medio: <strong>${activeMonthMetric.displayAdr.toFixed(2).replace('.', ',')} €</strong> · BAR recomendada para optimizar los días restantes: <strong>${decCurr.recBar.toFixed(2).replace('.', ',')} €</strong>.`;
+                    descEl.innerHTML = `Ventas consolidadas: <strong>${fmtNum(activeMonthMetric.realRms)} RN Real</strong> vendidas + <strong>${fmtNum(activeMonthMetric.otbRms)} RN OTB</strong> en cartera (= <strong>${fmtNum(activeMonthMetric.displayRms)} RN</strong> total proyectado). ADR medio: <strong>${activeMonthMetric.displayAdr.toFixed(2).replace('.', ',')} €</strong> · BAR recomendada para optimizar los días restantes: <strong>${decCurr.recBar.toFixed(2).replace('.', ',')} €</strong> ${dpBadge}.`;
                     badgeEl.style.color = '#f59e0b';
                     badgeEl.innerText = `${activePickupRms >= 0 ? '+' : ''}${activePickupRms} RN`;
                 } else {
                     const decisionActive = evaluateYieldDecision(strat, activeOccPct, activePickupRms);
+                    const dpBadgeActive = `<span style="font-size:0.75rem; color:var(--text-muted); display:inline-block; margin-left:4px;">(L-J: <strong style="color:var(--text-main);">${decisionActive.recBarWeekday.toFixed(0)}€</strong> · V-S: <strong style="color:#10b981;">${decisionActive.recBarWeekend.toFixed(0)}€</strong> · Dom: <strong style="color:#f59e0b;">${decisionActive.recBarSunday.toFixed(0)}€</strong>)</span>`;
                     if (decisionActive.badgeType === 'accelerated') {
                         boxEl.classList.add('alert-accelerated');
                         iconEl.innerText = '🚀';
                         titleEl.innerText = `Pick-up Acelerado (+${activePickupRms} RN): Oportunidad de Maximizar Yield`;
-                        descEl.innerHTML = decisionActive.overrideReason || `El ritmo de reservas supera con creces el ritmo medio. La BAR recomendada sube a <strong>${decisionActive.recBar.toFixed(2).replace('.', ',')} €</strong> (+${decisionActive.effectiveAdj.toFixed(1)}% sobre base).`;
+                        descEl.innerHTML = decisionActive.overrideReason || `El ritmo de reservas supera con creces el ritmo medio. La BAR recomendada sube a <strong>${decisionActive.recBar.toFixed(2).replace('.', ',')} €</strong> (+${decisionActive.effectiveAdj.toFixed(1)}% sobre base) ${dpBadgeActive}.`;
                         badgeEl.style.color = '#10b981';
                         badgeEl.innerText = `+${activePickupRms} RN`;
                     } else if (decisionActive.badgeType === 'freeze') {
                         boxEl.classList.add('alert-accelerated');
                         iconEl.innerText = '⚡';
                         titleEl.innerText = `Regla de Oro: Congelar Bajadas por Pick-up Fuerte (+${activePickupRms} RN)`;
-                        descEl.innerHTML = decisionActive.overrideReason || `A pesar de estar en tramo bajo (${activeOccPct.toFixed(1)}%), la demanda tiene momentum real. <strong>NO aplicar descuento del ${decisionActive.tier.adjustment.toFixed(1)}%</strong>. Mantener tarifa BAR base en <strong>${decisionActive.recBar.toFixed(2).replace('.', ',')} €</strong>.`;
+                        descEl.innerHTML = decisionActive.overrideReason || `A pesar de estar en tramo bajo (${activeOccPct.toFixed(1)}%), la demanda tiene momentum real. <strong>NO aplicar descuento del ${decisionActive.tier.adjustment.toFixed(1)}%</strong>. Mantener tarifa BAR base en <strong>${decisionActive.recBar.toFixed(2).replace('.', ',')} €</strong> ${dpBadgeActive}.`;
                         badgeEl.style.color = '#f59e0b';
                         badgeEl.innerText = `+${activePickupRms} RN`;
                     } else if (decisionActive.badgeType === 'down') {
@@ -3196,7 +3398,7 @@
                     } else {
                         iconEl.innerText = activeOccPct >= 70 ? '🎯' : '📊';
                         titleEl.innerText = `Estrategia Equilibrada: OTB al ${activeOccPct.toFixed(1).replace('.', ',')}% (Tramo ${activeTier.minOcc}–${activeTier.maxOcc}%)`;
-                        descEl.innerHTML = `Ritmo de reservas acorde a la previsión. Tarifa EBI sugerida: <strong>${decisionActive.recEbi.toFixed(2).replace('.', ',')} €</strong> · BAR recomendada: <strong>${decisionActive.recBar.toFixed(2).replace('.', ',')} €</strong>.`;
+                        descEl.innerHTML = `Ritmo de reservas acorde a la previsión. Tarifa EBI sugerida: <strong>${decisionActive.recEbi.toFixed(2).replace('.', ',')} €</strong> · BAR recomendada: <strong>${decisionActive.recBar.toFixed(2).replace('.', ',')} €</strong> ${dpBadgeActive}.`;
                         badgeEl.style.color = 'var(--text-main)';
                         badgeEl.innerText = `${activePickupRms >= 0 ? '+' : ''}${activePickupRms} RN`;
                     }
@@ -3329,7 +3531,12 @@
                                 <td><span style="font-size:0.7rem; font-weight:700; background:rgba(255,255,255,0.05); padding:3px 8px; border-radius:6px; border:1px solid var(--border);">${tierLabel}</span></td>
                                 <td style="font-weight:700; color:${dec.effectiveAdj > 0 ? '#10b981' : (dec.effectiveAdj < 0 ? '#818cf8' : 'var(--text-main)')};">${dec.effectiveAdj > 0 ? '+' : ''}${dec.effectiveAdj.toFixed(1).replace('.', ',')}%</td>
                                 <td style="font-weight:700; color:var(--text-main); font-size:0.85rem;">${dec.recEbi.toFixed(2).replace('.', ',')} €</td>
-                                <td style="font-weight:800; color:var(--primary); font-size:0.88rem;">${dec.recBar.toFixed(2).replace('.', ',')} €</td>
+                                <td style="font-weight:800; color:var(--primary); font-size:0.88rem;">
+                                    ${dec.recBar.toFixed(2).replace('.', ',')} €
+                                    <span style="font-size:0.62rem; color:var(--text-muted); display:block; font-weight:600; line-height:1.2; margin-top:2px;">
+                                        L-J: <strong style="color:var(--text-main);">${dec.recBarWeekday.toFixed(0)}€</strong> · V-S: <strong style="color:#10b981;">${dec.recBarWeekend.toFixed(0)}€</strong> · D: <strong style="color:#f59e0b;">${dec.recBarSunday.toFixed(0)}€</strong>
+                                    </span>
+                                </td>
                                 <td>${revparTag}</td>
                                 <td><span class="tactical-pill ${pillClass}">${dec.tacticalText}</span></td>
                             </tr>
