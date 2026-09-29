@@ -1226,6 +1226,7 @@
                     <span>Progreso Objetivo <span id="budget-target-rev" style="font-weight:500; font-size:0.65rem; opacity:0.8; margin-left:3px;"></span></span>
                     <span id="budget-pct-rev" style="font-weight:700;">0%</span>
                 </div>
+                <p id="budget-source" style="font-size:0.72rem;line-height:1.4;color:var(--text-muted);margin:8px 0 0;">Sin presupuesto para este periodo</p>
             </div>
             <div class="kpi-card" style="animation-delay: 0.2s;">
                 <span class="label">Ocupación & Pick-up</span>
@@ -2665,14 +2666,17 @@
             // BUDGET COMPARISON
             const budgetKey = `custom_budget_${currentYear}`;
             let budget = db[hotel][budgetKey];
+            let budgetSource = budget ? `Presupuesto guardado de ${hotel} · ${currentYear}` : '';
             
             if (!budget && currentYear === "2026") {
                 if (hotel === "Guadiana") {
+                    budgetSource = 'Referencia predeterminada Guadiana 2026 · pendiente de conciliar con Presupuesto';
                     budget = {
                         rev: [48728, 68308, 89982, 117837, 168341, 112215, 135720, 130172, 149670, 153014, 111277, 94975],
                         adr: [60.00, 70.80, 80.50, 82.80, 92.00, 73.60, 78.50, 69.20, 68.60, 69.30, 66.40, 66.80]
                     };
                 } else if (hotel === "Cumbria") {
+                    budgetSource = 'Propuesta predeterminada Cumbria 2026 · aprobación pendiente de confirmar';
                     budget = {
                         rev: [66000, 69000, 81000, 101000, 118000, 108000, 126000, 118000, 116000, 111000, 96000, 86000],
                         adr: [70.00, 70.00, 75.00, 78.00, 87.00, 83.00, 91.00, 87.00, 86.00, 81.00, 78.00, 77.00]
@@ -2681,6 +2685,7 @@
             }
 
             if (budget && budget.rev) {
+                document.getElementById('budget-source').textContent = budgetSource;
                 const bRev = midx === -1 ? budget.rev.reduce((a, b) => a + b, 0) : budget.rev[midx];
                 const bAdr = midx === -1 ? (budget.adr.reduce((a, b) => a + b, 0) / 12) : budget.adr[midx];
                 
@@ -2688,10 +2693,12 @@
                 const pctAdr = bAdr > 0 ? Math.min(100, (adr / bAdr * 100)) : 0;
                 
                 document.getElementById('budget-target-rev').innerText = `(Obj: ${fmt(bRev)})`;
+                document.getElementById('budget-target-rev').title = budgetSource;
                 document.getElementById('budget-bar-rev').style.width = pctRev + '%';
                 document.getElementById('budget-pct-rev').innerText = Math.round(habRev / bRev * 100) + '%';
                 
                 document.getElementById('budget-target-adr').innerText = `(Obj: ${bAdr.toFixed(1).replace('.', ',')} €)`;
+                document.getElementById('budget-target-adr').title = budgetSource;
                 document.getElementById('budget-bar-adr').style.width = pctAdr + '%';
                 document.getElementById('budget-pct-adr').innerText = Math.round(adr / bAdr * 100) + '%';
                 
@@ -2706,9 +2713,12 @@
                 document.getElementById('budget-pct-revpar').innerText = pctRev.toFixed(0) + '% del ideal';
             } else {
                 document.getElementById('budget-target-rev').innerText = '';
+                document.getElementById('budget-source').textContent = 'Sin presupuesto para este hotel y año';
+                document.getElementById('budget-target-rev').title = '';
                 document.getElementById('budget-bar-rev').style.width = '0%';
                 document.getElementById('budget-pct-rev').innerText = '0%';
                 document.getElementById('budget-target-adr').innerText = '';
+                document.getElementById('budget-target-adr').title = '';
                 document.getElementById('budget-bar-adr').style.width = '0%';
                 document.getElementById('budget-pct-adr').innerText = '0%';
                 document.getElementById('budget-bar-revpar').style.width = '0%';
