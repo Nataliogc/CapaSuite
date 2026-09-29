@@ -1173,6 +1173,18 @@
             border: 1px solid rgba(16, 185, 129, 0.25);
             display: inline-block;
         }
+        .month-current-badge {
+            font-size: 0.62rem;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 4px;
+            background: rgba(245, 158, 11, 0.15);
+            color: #f59e0b;
+            margin-left: 6px;
+            vertical-align: middle;
+            border: 1px solid rgba(245, 158, 11, 0.35);
+            display: inline-block;
+        }
     </style>
 </head>
 
@@ -2506,8 +2518,10 @@
 
                 const mAvail = totalHotelRooms * daysInMonths[m];
                 const past = isMonthPast(m);
-                // Un mes es cerrado si es mes pasado o si tiene producción real y no tiene cartera OTB viva
-                const isClosed = past || (selYearNum <= curRealYear && rRms > 0 && oRms === 0 && m <= curRealMonth);
+                const isCurrentMonth = (selYearNum === curRealYear && m === curRealMonth);
+
+                // Un mes es cerrado únicamente si es un mes pasado ya terminado
+                const isClosed = past && !isCurrentMonth;
 
                 let displayRms = 0;
                 let displayRev = 0;
@@ -2518,17 +2532,30 @@
                 let pickupRev = 0;
 
                 if (isClosed) {
+                    // Mes 100% pasado y cerrado: Cierre real consolidado
                     displayRms = rRms;
                     displayRev = rRev;
                     displayOcc = mAvail > 0 ? (rRms / mAvail * 100) : 0;
                     displayAdr = rRms > 0 ? (rRev / rRms) : 0;
                     displayRevpar = mAvail > 0 ? (rRev / mAvail) : 0;
+                } else if (isCurrentMonth) {
+                    // MES EN CURSO (ej. Septiembre):
+                    // ¡Tiene en cuenta LO YA VENDIDO (Real) + LA CARTERA PENDIENTE (OTB)!
+                    displayRms = rRms + oRms;
+                    displayRev = rRev + oRev;
+                    displayOcc = mAvail > 0 ? (displayRms / mAvail * 100) : 0;
+                    displayAdr = displayRms > 0 ? (displayRev / displayRms) : 0;
+                    displayRevpar = mAvail > 0 ? (displayRev / mAvail) : 0;
+                    pickupRms = oRms - oPrevRms;
+                    pickupRev = oRev - oPrevRev;
+                    futurePickupSum += pickupRms;
                 } else {
-                    displayRms = oRms;
-                    displayRev = oRev;
-                    displayOcc = mAvail > 0 ? (oRms / mAvail * 100) : 0;
-                    displayAdr = oRms > 0 ? (oRev / oRms) : 0;
-                    displayRevpar = mAvail > 0 ? (oRev / mAvail) : 0;
+                    // Meses futuros (Octubre, Noviembre, Diciembre):
+                    displayRms = rRms + oRms;
+                    displayRev = rRev + oRev;
+                    displayOcc = mAvail > 0 ? (displayRms / mAvail * 100) : 0;
+                    displayAdr = displayRms > 0 ? (displayRev / displayRms) : 0;
+                    displayRevpar = mAvail > 0 ? (displayRev / mAvail) : 0;
                     pickupRms = oRms - oPrevRms;
                     pickupRev = oRev - oPrevRev;
                     futurePickupSum += pickupRms;
@@ -2543,6 +2570,11 @@
                     monthName: months[m],
                     days: daysInMonths[m],
                     isClosed,
+                    isCurrentMonth,
+                    realRms: rRms,
+                    realRev: rRev,
+                    otbRms: oRms,
+                    otbRev: oRev,
                     displayRms,
                     displayRev,
                     displayOcc,
@@ -2609,6 +2641,15 @@
                     descEl.innerHTML = `Rendimiento consolidado definitivo: <strong>${fmtNum(activeMonthMetric.displayRms)} RN</strong> vendidas · ADR Real: <strong>${activeMonthMetric.displayAdr.toFixed(2).replace('.', ',')} €</strong> · RevPAR Real: <strong>${activeMonthMetric.displayRevpar.toFixed(2).replace('.', ',')} €</strong> (Objetivo 2027: ${strat.targetRevpar.toFixed(2).replace('.', ',')} €).`;
                     badgeEl.style.color = '#10b981';
                     badgeEl.innerText = `🔒 REAL`;
+                } else if (midx !== -1 && activeMonthMetric && activeMonthMetric.isCurrentMonth) {
+                    // Mes en curso seleccionado (ej. Septiembre)
+                    boxEl.classList.add('alert-accelerated');
+                    iconEl.innerText = '⚡';
+                    const decCurr = evaluateYieldDecision(strat, activeMonthMetric.displayOcc, activeMonthMetric.pickupRms);
+                    titleEl.innerText = `${activeMonthMetric.monthName}: Mes en Curso al ${activeMonthMetric.displayOcc.toFixed(1).replace('.', ',')}% de Ocupación Proyectada`;
+                    descEl.innerHTML = `Ventas consolidadas: <strong>${fmtNum(activeMonthMetric.realRms)} RN Real</strong> vendidas + <strong>${fmtNum(activeMonthMetric.otbRms)} RN OTB</strong> en cartera (= <strong>${fmtNum(activeMonthMetric.displayRms)} RN</strong> total proyectado). ADR medio: <strong>${activeMonthMetric.displayAdr.toFixed(2).replace('.', ',')} €</strong> · BAR recomendada para optimizar los días restantes: <strong>${decCurr.recBar.toFixed(2).replace('.', ',')} €</strong>.`;
+                    badgeEl.style.color = '#f59e0b';
+                    badgeEl.innerText = `${activePickupRms >= 0 ? '+' : ''}${activePickupRms} RN`;
                 } else {
                     const decisionActive = evaluateYieldDecision(strat, activeOccPct, activePickupRms);
                     if (decisionActive.badgeType === 'accelerated') {
@@ -2650,6 +2691,7 @@
                     const m = mm.monthIdx;
                     const isCurr = (midx === m);
                     const isClosed = mm.isClosed;
+                    const isCurrentMonth = mm.isCurrentMonth;
 
                     if (isClosed) {
                         // FILA DE MES CERRADO (REAL)
@@ -2726,12 +2768,25 @@
                             revparTag = `<span style="font-weight:700; color:#f59e0b; font-size:0.82rem;">${projRevpar.toFixed(2).replace('.', ',')} €</span> <span style="font-size:0.6rem; color:var(--text-muted); display:block;">Obj: ${strat.targetRevpar.toFixed(2).replace('.', ',')} €</span>`;
                         }
 
+                        // Etiqueta de volumen según si es mes en curso con Real+OTB o solo OTB
+                        let rnSubLabel = '<span style="font-size:0.62rem; color:var(--primary); font-weight:700; display:block;">OTB CARTERA</span>';
+                        let monthBadge = '';
+                        if (isCurrentMonth) {
+                            monthBadge = '<span class="month-current-badge">EN CURSO</span>';
+                            if (mm.realRms > 0) {
+                                rnSubLabel = `<span style="font-size:0.62rem; color:var(--text-muted); display:block;">(${fmtNum(mm.realRms)} Real + ${fmtNum(mm.otbRms)} OTB)</span><span style="font-size:0.62rem; color:#f59e0b; font-weight:800; display:block;">● PROYECTADO</span>`;
+                            }
+                        }
+
                         tbody.innerHTML += `
                             <tr class="${isCurr ? 'current-month-row' : ''}">
-                                <td style="font-weight:700;">${mm.monthName} ${isCurr ? '⭐' : ''}</td>
+                                <td style="font-weight:700;">
+                                    ${mm.monthName} ${isCurr ? '⭐' : ''}
+                                    ${monthBadge}
+                                </td>
                                 <td style="font-weight:600;">
                                     ${fmtNum(mm.displayRms)} RN
-                                    <span style="font-size:0.62rem; color:var(--primary); font-weight:700; display:block;">OTB CARTERA</span>
+                                    ${rnSubLabel}
                                 </td>
                                 <td>
                                     <div style="display:flex; justify-content:space-between; font-size:0.7rem; font-weight:700; margin-bottom:2px;">
