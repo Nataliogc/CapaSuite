@@ -1923,122 +1923,198 @@
 
     <!-- MODAL DE CONFIGURACIÓN DE ESTRATEGIA YIELD & PICK-UP -->
     <div id="yieldConfigModal" class="modal">
-        <div class="modal-content" style="max-width: 780px;">
+        <div class="modal-content" style="max-width: 940px; max-height: 90vh; overflow-y: auto;">
             <div class="modal-header">
                 <h2><span>⚡</span> Configuración de Estrategia Yield & Matriz OTB</h2>
                 <span style="font-size: 1.5rem; cursor: pointer; color: var(--text-muted); font-weight: 700;" onclick="closeYieldModal()">&times;</span>
             </div>
             
-            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: -5px; margin-bottom: 16px;">
-                Define los tramos de ocupación en cartera (OTB), los ajustes aplicables sobre la tarifa EBI base, el margen BAR y los objetivos de Revenue.
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: -5px; margin-bottom: 14px;">
+                Define los objetivos estacionales por mes y año basados en el histórico real, la matriz de tramos OTB y la política de precios.
             </p>
 
-            <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 18px; background: rgba(99, 102, 241, 0.08); padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(99, 102, 241, 0.2);">
-                <label style="font-size: 0.82rem; font-weight: 700; color: var(--text-main);">Hotel a configurar:</label>
-                <select id="modalYieldHotelSelect" onchange="loadYieldModalInputs(this.value)" style="padding: 6px 12px; border-radius: 8px; background: var(--bg-deep); color: var(--text-main); border: 1px solid var(--border); font-weight: 700; cursor: pointer;">
-                    <option value="Guadiana">Hotel Guadiana</option>
-                    <option value="Cumbria">Hotel Cumbria</option>
-                </select>
-            </div>
-
-            <!-- PARÁMETROS GENERALES -->
-            <div class="cost-group">
-                <div class="cost-group-title">
-                    <span style="color: var(--primary);">⚙️ Parámetros Generales y Objetivos de Revenue</span>
+            <!-- SELECTOR DE HOTEL Y PESTAÑAS -->
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; background: rgba(99, 102, 241, 0.08); padding: 10px 16px; border-radius: 12px; border: 1px solid rgba(99, 102, 241, 0.2);">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <label style="font-size: 0.82rem; font-weight: 700; color: var(--text-main);">Hotel a configurar:</label>
+                    <select id="modalYieldHotelSelect" onchange="loadYieldModalInputs(this.value)" style="padding: 6px 12px; border-radius: 8px; background: var(--bg-deep); color: var(--text-main); border: 1px solid var(--border); font-weight: 700; cursor: pointer;">
+                        <option value="Guadiana">Hotel Guadiana</option>
+                        <option value="Cumbria">Hotel Cumbria</option>
+                    </select>
                 </div>
-
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 8px;">
-                    <div class="cost-row">
-                        <label>
-                            Inventario referencia
-                            <span class="cost-range">Habitaciones disponibles</span>
-                        </label>
-                        <div class="cost-input-wrapper">
-                            <input type="number" id="yield_inventory" min="10" max="500" step="1">
-                            <span>hab</span>
-                        </div>
-                    </div>
-
-                    <div class="cost-row">
-                        <label>
-                            BAR sobre EBI (Spread)
-                            <span class="cost-range">Margen sobre tarifa base EBI</span>
-                        </label>
-                        <div class="cost-input-wrapper">
-                            <input type="number" id="yield_bar_spread" min="0" max="50" step="0.5">
-                            <span>%</span>
-                        </div>
-                    </div>
-
-                    <div class="cost-row">
-                        <label>
-                            Tarifa EBI Base
-                            <span class="cost-range">Tarifa neutra al 45–60% OTB</span>
-                        </label>
-                        <div class="cost-input-wrapper">
-                            <input type="number" id="yield_base_ebi" min="20" max="250" step="1">
-                            <span>€</span>
-                        </div>
-                    </div>
-
-                    <div class="cost-row">
-                        <label>
-                            Objetivo ADR 2027 (Mín.)
-                            <span class="cost-range">Suelo estratégico de precio</span>
-                        </label>
-                        <div class="cost-input-wrapper">
-                            <input type="number" id="yield_target_adr_min" min="20" max="250" step="0.5">
-                            <span>€</span>
-                        </div>
-                    </div>
-
-                    <div class="cost-row">
-                        <label>
-                            Objetivo ADR 2027 (Máx.)
-                            <span class="cost-range">Techo óptimo de precio</span>
-                        </label>
-                        <div class="cost-input-wrapper">
-                            <input type="number" id="yield_target_adr_max" min="20" max="250" step="0.5">
-                            <span>€</span>
-                        </div>
-                    </div>
-
-                    <div class="cost-row">
-                        <label>
-                            Objetivo RevPAR 2027
-                            <span class="cost-range">Rendimiento por hab. disponible</span>
-                        </label>
-                        <div class="cost-input-wrapper">
-                            <input type="number" id="yield_target_revpar" min="10" max="200" step="0.5">
-                            <span>€</span>
-                        </div>
-                    </div>
+                <!-- NAVEGACIÓN PESTAÑAS -->
+                <div style="display: flex; gap: 6px;">
+                    <button type="button" id="tabBtnYieldTargets" onclick="switchYieldModalTab('targets')" style="padding: 7px 14px; border-radius: 8px; font-weight: 700; font-size: 0.8rem; cursor: pointer; border: 1px solid var(--primary); background: var(--primary); color: #fff; transition: all 0.2s;">
+                        🎯 Objetivos Mensuales & Estacionalidad
+                    </button>
+                    <button type="button" id="tabBtnYieldMatrix" onclick="switchYieldModalTab('matrix')" style="padding: 7px 14px; border-radius: 8px; font-weight: 600; font-size: 0.8rem; cursor: pointer; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-muted); transition: all 0.2s;">
+                        ⚙️ Matriz OTB & Parámetros Base
+                    </button>
                 </div>
             </div>
 
-            <!-- TABLA DE LOS 7 TRAMOS OTB -->
-            <div class="cost-group">
-                <div class="cost-group-title">
-                    <span style="color: var(--secondary);">📈 Tramos de Ocupación OTB y Ajustes EBI</span>
+            <!-- CONTENIDO PESTAÑA 1: OBJETIVOS MENSUALES & ESTACIONALIDAD -->
+            <div id="yieldTabTargetsContent">
+                <!-- BARRA DE SELECCIÓN DE AÑOS Y GENERADOR -->
+                <div style="background: var(--bg-deep); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; margin-bottom: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                            <div>
+                                <label style="font-size: 0.74rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 3px;">AÑO OBJETIVO:</label>
+                                <select id="modalYieldTargetYear" onchange="onModalYieldTargetYearChange()" style="padding: 5px 12px; border-radius: 8px; background: var(--bg-card); color: var(--primary); border: 1px solid var(--primary); font-weight: 800; cursor: pointer; font-size: 0.88rem;">
+                                    <option value="2027">2027</option>
+                                    <option value="2026">2026</option>
+                                    <option value="2025">2025</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size: 0.74rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 3px;">AÑO HISTÓRICO REFERENCIA:</label>
+                                <select id="modalYieldBaseYear" onchange="onModalYieldBaseYearChange()" style="padding: 5px 12px; border-radius: 8px; background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border); font-weight: 700; cursor: pointer; font-size: 0.82rem;">
+                                    <option value="2025">2025 (Histórico Real)</option>
+                                    <option value="2024">2024 (Histórico Real)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <button type="button" onclick="autocalculateModalMonthlyTargets()" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 700; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);">
+                                <span>🪄</span> Autocalcular con Estacionalidad Histórica
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- OBJETIVOS GLOBALES ANUALES -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border);">
+                        <div class="cost-row" style="margin-bottom: 0;">
+                            <label style="font-size: 0.75rem;">
+                                Obj. Anual ADR Mín.
+                                <span class="cost-range">Suelo estratégico anual</span>
+                            </label>
+                            <div class="cost-input-wrapper">
+                                <input type="number" id="yield_target_adr_min" min="20" max="250" step="0.5" onchange="onGlobalTargetInputChange()">
+                                <span>€</span>
+                            </div>
+                        </div>
+                        <div class="cost-row" style="margin-bottom: 0;">
+                            <label style="font-size: 0.75rem;">
+                                Obj. Anual ADR Máx.
+                                <span class="cost-range">Techo óptimo anual</span>
+                            </label>
+                            <div class="cost-input-wrapper">
+                                <input type="number" id="yield_target_adr_max" min="20" max="250" step="0.5" onchange="onGlobalTargetInputChange()">
+                                <span>€</span>
+                            </div>
+                        </div>
+                        <div class="cost-row" style="margin-bottom: 0;">
+                            <label style="font-size: 0.75rem;">
+                                Obj. Anual RevPAR
+                                <span class="cost-range">Rendimiento medio anual</span>
+                            </label>
+                            <div class="cost-input-wrapper">
+                                <input type="number" id="yield_target_revpar" min="10" max="200" step="0.5" onchange="onGlobalTargetInputChange()">
+                                <span>€</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <div style="overflow-x: auto; margin-top: 8px;">
+                <div id="modalSeasonalNotice" style="display: none; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #10b981; padding: 7px 12px; border-radius: 8px; font-size: 0.76rem; font-weight: 700; margin-bottom: 10px;">
+                    <!-- Mensaje dinámico de cálculo -->
+                </div>
+
+                <!-- TABLA MENSUAL DE OBJETIVOS -->
+                <div style="overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px; max-height: 380px;">
                     <table style="width: 100%; border-collapse: collapse; font-size: 0.76rem;">
-                        <thead>
+                        <thead style="position: sticky; top: 0; background: var(--bg-card); z-index: 2;">
                             <tr style="border-bottom: 1px solid var(--border); color: var(--text-muted); text-align: left;">
-                                <th style="padding: 6px 8px;">Ocupación OTB</th>
-                                <th style="padding: 6px 8px; width: 120px;">Ajuste EBI (%)</th>
-                                <th style="padding: 6px 8px;">Criterio Estratégico</th>
+                                <th style="padding: 7px 10px;">Mes</th>
+                                <th style="padding: 7px 10px;">Histórico Ref.</th>
+                                <th style="padding: 7px 10px; width: 110px;">ADR Mín. (€)</th>
+                                <th style="padding: 7px 10px; width: 110px;">ADR Máx. (€)</th>
+                                <th style="padding: 7px 10px; width: 115px; color: var(--primary);">RevPAR Obj. (€)</th>
+                                <th style="padding: 7px 10px; text-align: right; width: 95px;">Ocup. Obj.</th>
+                                <th style="padding: 7px 10px; text-align: right; width: 120px;">Ingresos Obj.</th>
                             </tr>
                         </thead>
-                        <tbody id="modalYieldTiersBody">
+                        <tbody id="modalYieldMonthsBody">
                             <!-- Filas generadas dinámicamente -->
                         </tbody>
+                        <tfoot id="modalYieldMonthsFoot" style="position: sticky; bottom: 0; z-index: 2; border-top: 2px solid var(--border); font-weight: 800; background: rgba(99, 102, 241, 0.08);">
+                            <!-- Totales / Medias ponderadas anuales -->
+                        </tfoot>
                     </table>
                 </div>
             </div>
 
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+            <!-- CONTENIDO PESTAÑA 2: MATRIZ OTB Y PARÁMETROS BASE -->
+            <div id="yieldTabMatrixContent" style="display: none;">
+                <!-- PARÁMETROS GENERALES -->
+                <div class="cost-group">
+                    <div class="cost-group-title">
+                        <span style="color: var(--primary);">⚙️ Parámetros de Operación y Tarifa Base</span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 8px;">
+                        <div class="cost-row">
+                            <label>
+                                Inventario referencia
+                                <span class="cost-range">Habitaciones disponibles</span>
+                            </label>
+                            <div class="cost-input-wrapper">
+                                <input type="number" id="yield_inventory" min="10" max="500" step="1">
+                                <span>hab</span>
+                            </div>
+                        </div>
+
+                        <div class="cost-row">
+                            <label>
+                                BAR sobre EBI (Spread)
+                                <span class="cost-range">Margen sobre tarifa base EBI</span>
+                            </label>
+                            <div class="cost-input-wrapper">
+                                <input type="number" id="yield_bar_spread" min="0" max="50" step="0.5">
+                                <span>%</span>
+                            </div>
+                        </div>
+
+                        <div class="cost-row">
+                            <label>
+                                Tarifa EBI Base
+                                <span class="cost-range">Tarifa neutra al 45–60% OTB</span>
+                            </label>
+                            <div class="cost-input-wrapper">
+                                <input type="number" id="yield_base_ebi" min="20" max="250" step="1">
+                                <span>€</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TABLA DE LOS 7 TRAMOS OTB -->
+                <div class="cost-group">
+                    <div class="cost-group-title">
+                        <span style="color: var(--secondary);">📈 Tramos de Ocupación OTB y Ajustes EBI</span>
+                    </div>
+
+                    <div style="overflow-x: auto; margin-top: 8px;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.76rem;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid var(--border); color: var(--text-muted); text-align: left;">
+                                    <th style="padding: 6px 8px;">Ocupación OTB</th>
+                                    <th style="padding: 6px 8px; width: 120px;">Ajuste EBI (%)</th>
+                                    <th style="padding: 6px 8px;">Criterio Estratégico</th>
+                                </tr>
+                            </thead>
+                            <tbody id="modalYieldTiersBody">
+                                <!-- Filas generadas dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BOTONES DE ACCIÓN INFERIORES -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--border);">
                 <button type="button" onclick="resetYieldModalDefaults()" style="background: none; border: 1px solid var(--border); color: var(--text-muted); padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.8rem;">
                     ↺ Restaurar Valores por Defecto
                 </button>
@@ -2226,6 +2302,7 @@
                 targetAdrMin: 66.0,
                 targetAdrMax: 68.0,
                 targetRevpar: 38.5,
+                monthlyTargets: {},
                 tiers: [
                     { minOcc: 0,  maxOcc: 30, adjustment: -15.0, criteria: "Demanda baja; no bajar automáticamente sin revisar lead time/pickup", action: "Estudiar pick-up / Promoción controlada" },
                     { minOcc: 30, maxOcc: 45, adjustment: -10.0, criteria: "Bajo/medio", action: "Estimular venta anticipada (EBI)" },
@@ -2243,6 +2320,7 @@
                 targetAdrMin: 66.0,
                 targetAdrMax: 68.0,
                 targetRevpar: 38.5,
+                monthlyTargets: {},
                 tiers: [
                     { minOcc: 0,  maxOcc: 30, adjustment: -15.0, criteria: "Demanda baja; no bajar automáticamente sin revisar lead time/pickup", action: "Estudiar pick-up / Promoción controlada" },
                     { minOcc: 30, maxOcc: 45, adjustment: -10.0, criteria: "Bajo/medio", action: "Estimular venta anticipada (EBI)" },
@@ -2263,11 +2341,15 @@
                 if (raw) {
                     const parsed = JSON.parse(raw);
                     if (parsed && parsed[h] && parsed[h].tiers) {
-                        return Object.assign({}, def, parsed[h]);
+                        const strat = Object.assign({}, def, parsed[h]);
+                        if (!strat.monthlyTargets) strat.monthlyTargets = {};
+                        return strat;
                     }
                 }
             } catch(e) { console.warn("Error leyendo estrategia yield:", e); }
-            return JSON.parse(JSON.stringify(def));
+            const res = JSON.parse(JSON.stringify(def));
+            if (!res.monthlyTargets) res.monthlyTargets = {};
+            return res;
         }
 
         function saveYieldStrategy(hotel, strategy) {
@@ -2290,10 +2372,163 @@
             if (btnText) btnText.innerText = isHidden ? '🙈 Ocultar Matriz' : '📖 Ver Matriz de Reglas';
         }
 
+        function switchYieldModalTab(tab) {
+            const targetsContent = document.getElementById('yieldTabTargetsContent');
+            const matrixContent = document.getElementById('yieldTabMatrixContent');
+            const tabTargetsBtn = document.getElementById('tabBtnYieldTargets');
+            const tabMatrixBtn = document.getElementById('tabBtnYieldMatrix');
+
+            if (tab === 'targets') {
+                if (targetsContent) targetsContent.style.display = 'block';
+                if (matrixContent) matrixContent.style.display = 'none';
+                if (tabTargetsBtn) {
+                    tabTargetsBtn.style.background = 'var(--primary)';
+                    tabTargetsBtn.style.color = '#fff';
+                    tabTargetsBtn.style.borderColor = 'var(--primary)';
+                    tabTargetsBtn.style.fontWeight = '700';
+                }
+                if (tabMatrixBtn) {
+                    tabMatrixBtn.style.background = 'var(--bg-card)';
+                    tabMatrixBtn.style.color = 'var(--text-muted)';
+                    tabMatrixBtn.style.borderColor = 'var(--border)';
+                    tabMatrixBtn.style.fontWeight = '600';
+                }
+            } else {
+                if (targetsContent) targetsContent.style.display = 'none';
+                if (matrixContent) matrixContent.style.display = 'block';
+                if (tabMatrixBtn) {
+                    tabMatrixBtn.style.background = 'var(--primary)';
+                    tabMatrixBtn.style.color = '#fff';
+                    tabMatrixBtn.style.borderColor = 'var(--primary)';
+                    tabMatrixBtn.style.fontWeight = '700';
+                }
+                if (tabTargetsBtn) {
+                    tabTargetsBtn.style.background = 'var(--bg-card)';
+                    tabTargetsBtn.style.color = 'var(--text-muted)';
+                    tabTargetsBtn.style.borderColor = 'var(--border)';
+                    tabTargetsBtn.style.fontWeight = '600';
+                }
+            }
+        }
+
+        function getHistoricalMonthlyPerformance(hotel, year) {
+            const yNum = parseInt(year) || 2025;
+            const daysInMonths = [31, (yNum % 4 === 0 ? 29 : 28), 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+            const strat = getYieldStrategy(hotel);
+            const totalRooms = Number(strat.inventory) || (hotel === 'Cumbria' ? 59 : 108);
+
+            const yearData = (db[hotel] && db[hotel][year]) ? db[hotel][year] : null;
+            const monthly = [];
+
+            if (!yearData) {
+                for (let m = 0; m < 12; m++) {
+                    monthly.push({ month: m, rooms: 0, revenue: 0, avail: totalRooms * daysInMonths[m], adr: 0, revpar: 0, occ: 0 });
+                }
+                return { monthly, totalRms: 0, totalRev: 0, totalAvail: totalRooms * (yNum % 4 === 0 ? 366 : 365), avgAdr: 0, avgRevpar: 0, avgOcc: 0, hasData: false };
+            }
+
+            const serviceDb = yearData.service || {};
+            const grouped = (typeof getGroupedProduction === 'function') ? getGroupedProduction(serviceDb) : {};
+            const habRms = grouped["HABITACION"]?.rooms || serviceDb["TOTAL_MASTER"]?.rooms || new Array(12).fill(0);
+            const habRev = grouped["HABITACION"]?.revenue || new Array(12).fill(0);
+
+            const segRms = new Array(12).fill(0);
+            const segRev = new Array(12).fill(0);
+            if (yearData.segment) {
+                Object.values(yearData.segment).forEach(s => {
+                    for (let m = 0; m < 12; m++) {
+                        segRms[m] += (Number(s.rooms?.[m]) || 0);
+                        const accom = s.accommodation ? Number(s.accommodation[m]) : 0;
+                        segRev[m] += (accom > 0 ? accom : (Number(s.revenue?.[m]) || 0));
+                    }
+                });
+            }
+
+            let totalRms = 0;
+            let totalRev = 0;
+            let totalAvail = 0;
+
+            for (let m = 0; m < 12; m++) {
+                let rRms = Number(habRms[m]) || 0;
+                if (rRms === 0 && segRms[m] > 0) rRms = segRms[m];
+
+                let rRev = Number(habRev[m]) || 0;
+                if (rRev === 0 && segRev[m] > 0) rRev = segRev[m];
+
+                const avail = totalRooms * daysInMonths[m];
+                const adr = rRms > 0 ? (rRev / rRms) : 0;
+                const revpar = avail > 0 ? (rRev / avail) : 0;
+                const occ = avail > 0 ? (rRms / avail * 100) : 0;
+
+                totalRms += rRms;
+                totalRev += rRev;
+                totalAvail += avail;
+
+                monthly.push({ month: m, rooms: rRms, revenue: rRev, avail, adr, revpar, occ });
+            }
+
+            const hasData = totalRev > 0 && totalRms > 0;
+            const avgAdr = totalRms > 0 ? (totalRev / totalRms) : 0;
+            const avgRevpar = totalAvail > 0 ? (totalRev / totalAvail) : 0;
+            const avgOcc = totalAvail > 0 ? (totalRms / totalAvail * 100) : 0;
+
+            return { monthly, totalRms, totalRev, totalAvail, avgAdr, avgRevpar, avgOcc, hasData };
+        }
+
+        function generateSeasonalTargetsFromHistory(hotel, baseYear, targetYear, annualAdrMin, annualAdrMax, annualRevpar) {
+            const hist = getHistoricalMonthlyPerformance(hotel, baseYear);
+            const yNum = parseInt(targetYear) || 2027;
+            const daysInMonths = [31, (yNum % 4 === 0 ? 29 : 28), 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+            const strat = getYieldStrategy(hotel);
+            const totalRooms = Number(strat.inventory) || (hotel === 'Cumbria' ? 59 : 108);
+
+            // Factores estándar de estacionalidad de Ciudad Real en caso de no haber datos históricos
+            const defaultRevparWeights = [0.70, 0.75, 0.95, 1.10, 1.30, 1.18, 0.85, 0.72, 1.22, 1.32, 1.02, 0.89];
+            const defaultAdrWeights = [0.92, 0.93, 0.97, 1.05, 1.14, 1.08, 0.95, 0.92, 1.08, 1.14, 1.00, 0.94];
+
+            const targets = [];
+            for (let m = 0; m < 12; m++) {
+                let revparWeight = defaultRevparWeights[m];
+                let adrWeight = defaultAdrWeights[m];
+
+                if (hist.hasData && hist.avgRevpar > 0 && hist.monthly[m].revpar > 0) {
+                    revparWeight = hist.monthly[m].revpar / hist.avgRevpar;
+                }
+                if (hist.hasData && hist.avgAdr > 0 && hist.monthly[m].adr > 0) {
+                    adrWeight = hist.monthly[m].adr / hist.avgAdr;
+                }
+
+                // Acotar factores extremos para garantizar estabilidad
+                revparWeight = Math.max(0.40, Math.min(2.10, revparWeight));
+                adrWeight = Math.max(0.70, Math.min(1.60, adrWeight));
+
+                const targetRevpar = Math.round(annualRevpar * revparWeight * 10) / 10;
+                const targetAdrMin = Math.round(annualAdrMin * adrWeight * 10) / 10;
+                const targetAdrMax = Math.round(annualAdrMax * adrWeight * 10) / 10;
+                const mAvail = totalRooms * daysInMonths[m];
+                const targetRevenue = Math.round(targetRevpar * mAvail);
+                const targetOcc = targetAdrMin > 0 ? Math.min(100, Math.round((targetRevpar / targetAdrMin * 100) * 10) / 10) : 0;
+
+                targets.push({
+                    month: m,
+                    targetAdrMin,
+                    targetAdrMax,
+                    targetRevpar,
+                    targetOcc,
+                    targetRevenue,
+                    histRevpar: hist.monthly[m]?.revpar || 0,
+                    histAdr: hist.monthly[m]?.adr || 0
+                });
+            }
+
+            return targets;
+        }
+
         function openYieldModal() {
             const mHotel = document.getElementById('modalYieldHotelSelect');
             if (mHotel) mHotel.value = currentHotel;
             loadYieldModalInputs(currentHotel);
+            switchYieldModalTab('targets');
             const m = document.getElementById('yieldConfigModal');
             if (m) m.classList.add('open');
         }
@@ -2307,6 +2542,35 @@
             const h = hotel || currentHotel;
             const strat = getYieldStrategy(h);
 
+            // 1. Selector de Años Objetivo
+            const tYearSel = document.getElementById('modalYieldTargetYear');
+            if (tYearSel) {
+                const targetYears = ["2027", "2026", "2025", "2028"];
+                if (db[h]) {
+                    Object.keys(db[h]).forEach(y => { if (/^(20\d{2})$/.test(y) && !targetYears.includes(y)) targetYears.push(y); });
+                }
+                targetYears.sort((a, b) => parseInt(b) - parseInt(a));
+                const prevVal = tYearSel.value;
+                tYearSel.innerHTML = targetYears.map(y => `<option value="${y}">${y}</option>`).join('');
+                if (targetYears.includes(currentYear)) tYearSel.value = currentYear;
+                else if (targetYears.includes(prevVal)) tYearSel.value = prevVal;
+                else tYearSel.value = "2027";
+            }
+
+            // 2. Selector de Año Histórico Base
+            const bYearSel = document.getElementById('modalYieldBaseYear');
+            if (bYearSel) {
+                let histYears = [];
+                if (db[h]) {
+                    histYears = Object.keys(db[h]).filter(y => /^(20\d{2})$/.test(y) && db[h][y] && (db[h][y].service || db[h][y].segment));
+                }
+                if (!histYears.length) histYears = ["2025", "2024"];
+                histYears.sort((a, b) => parseInt(b) - parseInt(a));
+                bYearSel.innerHTML = histYears.map(y => `<option value="${y}">${y} (Histórico Real)</option>`).join('');
+                bYearSel.value = histYears[0] || "2025";
+            }
+
+            // 3. Parámetros Base y Objetivos Globales
             document.getElementById('yield_inventory').value = strat.inventory ?? (h === 'Cumbria' ? 59 : 108);
             document.getElementById('yield_bar_spread').value = (strat.barOverEbi ?? 10.0).toFixed(1);
             document.getElementById('yield_base_ebi').value = (strat.baseEbiPrice ?? 60.0).toFixed(2);
@@ -2314,28 +2578,240 @@
             document.getElementById('yield_target_adr_max').value = (strat.targetAdrMax ?? 68.0).toFixed(2);
             document.getElementById('yield_target_revpar').value = (strat.targetRevpar ?? 38.5).toFixed(2);
 
-            const tbody = document.getElementById('modalYieldTiersBody');
+            // 4. Renderizar Tramos OTB
+            const tbodyTiers = document.getElementById('modalYieldTiersBody');
+            if (tbodyTiers) {
+                tbodyTiers.innerHTML = '';
+                (strat.tiers || []).forEach((tier, idx) => {
+                    const label = tier.minOcc === 90 ? '> 90 %' : `${tier.minOcc}–${tier.maxOcc} %`;
+                    tbodyTiers.innerHTML += `
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 6px 8px; font-weight: 700; color: var(--text-main);">${label}</td>
+                            <td style="padding: 6px 8px;">
+                                <input type="number" id="tier_adj_${idx}" value="${tier.adjustment.toFixed(1)}" step="0.5" style="width: 80px; padding: 4px 8px; border-radius: 6px; background: var(--bg-deep); color: var(--text-main); border: 1px solid var(--border); font-weight: 700; text-align: right;"> %
+                            </td>
+                            <td style="padding: 6px 8px;">
+                                <input type="text" id="tier_crit_${idx}" value="${tier.criteria}" style="width: 100%; padding: 4px 8px; border-radius: 6px; background: var(--bg-deep); color: var(--text-main); border: 1px solid var(--border); font-size: 0.74rem;">
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            // 5. Renderizar Tabla de Objetivos Mensuales
+            const targetYear = tYearSel ? tYearSel.value : (currentYear || "2027");
+            const baseYear = bYearSel ? bYearSel.value : "2025";
+            renderModalMonthlyTargets(h, targetYear, baseYear);
+        }
+
+        function onModalYieldTargetYearChange() {
+            const h = document.getElementById('modalYieldHotelSelect').value || currentHotel;
+            const targetYear = document.getElementById('modalYieldTargetYear').value;
+            const baseYear = document.getElementById('modalYieldBaseYear').value;
+            renderModalMonthlyTargets(h, targetYear, baseYear);
+        }
+
+        function onModalYieldBaseYearChange() {
+            const h = document.getElementById('modalYieldHotelSelect').value || currentHotel;
+            const targetYear = document.getElementById('modalYieldTargetYear').value;
+            const baseYear = document.getElementById('modalYieldBaseYear').value;
+            renderModalMonthlyTargets(h, targetYear, baseYear);
+        }
+
+        function onGlobalTargetInputChange() {
+            // Permite actualizar en vivo cuando el usuario cambia los inputs anuales
+        }
+
+        function renderModalMonthlyTargets(hotel, targetYear, baseYear) {
+            const h = hotel || currentHotel;
+            const strat = getYieldStrategy(h);
+            const totalRooms = Number(strat.inventory) || (h === 'Cumbria' ? 59 : 108);
+            const yNum = parseInt(targetYear) || 2027;
+            const daysInMonths = [31, (yNum % 4 === 0 ? 29 : 28), 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+            const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+            const bYear = baseYear || document.getElementById('modalYieldBaseYear')?.value || "2025";
+            const histPerf = getHistoricalMonthlyPerformance(h, bYear);
+
+            let monthlyList = strat.monthlyTargets?.[targetYear];
+            if (!monthlyList || !Array.isArray(monthlyList) || monthlyList.length !== 12) {
+                const annAdrMin = parseFloat(document.getElementById('yield_target_adr_min')?.value) || strat.targetAdrMin;
+                const annAdrMax = parseFloat(document.getElementById('yield_target_adr_max')?.value) || strat.targetAdrMax;
+                const annRevpar = parseFloat(document.getElementById('yield_target_revpar')?.value) || strat.targetRevpar;
+                monthlyList = generateSeasonalTargetsFromHistory(h, bYear, targetYear, annAdrMin, annAdrMax, annRevpar);
+            }
+
+            const tbody = document.getElementById('modalYieldMonthsBody');
+            if (!tbody) return;
             tbody.innerHTML = '';
-            (strat.tiers || []).forEach((tier, idx) => {
-                const label = tier.minOcc === 90 ? '> 90 %' : `${tier.minOcc}–${tier.maxOcc} %`;
+
+            monthlyList.forEach((item, m) => {
+                const mAvail = totalRooms * daysInMonths[m];
+                const adrMin = Number(item.targetAdrMin) || 66.0;
+                const adrMax = Number(item.targetAdrMax) || 68.0;
+                const revpar = Number(item.targetRevpar) || 38.5;
+
+                const occPct = adrMin > 0 ? Math.min(100, Math.round((revpar / adrMin * 100) * 10) / 10) : 0;
+                const totalRev = Math.round(revpar * mAvail);
+
+                const hItem = histPerf.monthly[m] || {};
+                const hAdrText = hItem.adr > 0 ? `${hItem.adr.toFixed(1)}€` : '-';
+                const hRevparText = hItem.revpar > 0 ? `${hItem.revpar.toFixed(1)}€` : '-';
+                const hRefBadge = (hItem.adr > 0 || hItem.revpar > 0)
+                    ? `<span style="font-size:0.7rem; color:var(--text-muted); font-weight:600;">RevP: <strong style="color:var(--text-main);">${hRevparText}</strong> · ADR: ${hAdrText}</span>`
+                    : `<span style="font-size:0.7rem; color:var(--text-muted);">Sin datos</span>`;
+
                 tbody.innerHTML += `
-                    <tr style="border-bottom: 1px solid var(--border);">
-                        <td style="padding: 6px 8px; font-weight: 700; color: var(--text-main);">${label}</td>
-                        <td style="padding: 6px 8px;">
-                            <input type="number" id="tier_adj_${idx}" value="${tier.adjustment.toFixed(1)}" step="0.5" style="width: 80px; padding: 4px 8px; border-radius: 6px; background: var(--bg-deep); color: var(--text-main); border: 1px solid var(--border); font-weight: 700; text-align: right;"> %
+                    <tr id="modal_target_row_${m}" style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 6px 10px; font-weight: 700; color: var(--text-main);">
+                            ${months[m]}
+                            <span style="font-size: 0.65rem; color: var(--text-muted); display: block;">${daysInMonths[m]} días · ${mAvail} RN</span>
                         </td>
-                        <td style="padding: 6px 8px;">
-                            <input type="text" id="tier_crit_${idx}" value="${tier.criteria}" style="width: 100%; padding: 4px 8px; border-radius: 6px; background: var(--bg-deep); color: var(--text-main); border: 1px solid var(--border); font-size: 0.74rem;">
+                        <td style="padding: 6px 10px;">${hRefBadge}</td>
+                        <td style="padding: 6px 10px;">
+                            <input type="number" id="m_target_adr_min_${m}" value="${adrMin.toFixed(1)}" step="0.5" oninput="onModalTargetRowChange(${m})" style="width: 85px; padding: 4px 6px; border-radius: 6px; background: var(--bg-deep); color: var(--text-main); border: 1px solid var(--border); font-weight: 700; text-align: right;"> €
+                        </td>
+                        <td style="padding: 6px 10px;">
+                            <input type="number" id="m_target_adr_max_${m}" value="${adrMax.toFixed(1)}" step="0.5" oninput="onModalTargetRowChange(${m})" style="width: 85px; padding: 4px 6px; border-radius: 6px; background: var(--bg-deep); color: var(--text-main); border: 1px solid var(--border); font-weight: 700; text-align: right;"> €
+                        </td>
+                        <td style="padding: 6px 10px;">
+                            <input type="number" id="m_target_revpar_${m}" value="${revpar.toFixed(1)}" step="0.5" oninput="onModalTargetRowChange(${m})" style="width: 90px; padding: 4px 6px; border-radius: 6px; background: var(--bg-deep); color: var(--primary); border: 1px solid var(--primary); font-weight: 800; text-align: right;"> €
+                        </td>
+                        <td id="m_target_occ_${m}" style="padding: 6px 10px; text-align: right; font-weight: 700; color: ${occPct >= 70 ? '#10b981' : (occPct >= 50 ? '#818cf8' : '#f59e0b')};">
+                            ${occPct.toFixed(1).replace('.', ',')}%
+                        </td>
+                        <td id="m_target_rev_${m}" style="padding: 6px 10px; text-align: right; font-weight: 800; color: var(--text-main);">
+                            ${fmtNum(totalRev)} €
                         </td>
                     </tr>
                 `;
             });
+
+            recalculateModalFootTotals();
+        }
+
+        function onModalTargetRowChange(m) {
+            const h = document.getElementById('modalYieldHotelSelect').value || currentHotel;
+            const strat = getYieldStrategy(h);
+            const totalRooms = Number(strat.inventory) || (h === 'Cumbria' ? 59 : 108);
+            const targetYear = document.getElementById('modalYieldTargetYear').value;
+            const yNum = parseInt(targetYear) || 2027;
+            const daysInMonths = [31, (yNum % 4 === 0 ? 29 : 28), 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+            const elAdrMin = document.getElementById(`m_target_adr_min_${m}`);
+            const elRevpar = document.getElementById(`m_target_revpar_${m}`);
+            const elOcc = document.getElementById(`m_target_occ_${m}`);
+            const elRev = document.getElementById(`m_target_rev_${m}`);
+
+            const adrMin = parseFloat(elAdrMin?.value) || 0;
+            const revpar = parseFloat(elRevpar?.value) || 0;
+            const mAvail = totalRooms * daysInMonths[m];
+
+            const occPct = adrMin > 0 ? Math.min(100, Math.round((revpar / adrMin * 100) * 10) / 10) : 0;
+            const totalRev = Math.round(revpar * mAvail);
+
+            if (elOcc) {
+                elOcc.innerText = `${occPct.toFixed(1).replace('.', ',')}%`;
+                elOcc.style.color = occPct >= 70 ? '#10b981' : (occPct >= 50 ? '#818cf8' : '#f59e0b');
+            }
+            if (elRev) {
+                elRev.innerText = `${fmtNum(totalRev)} €`;
+            }
+
+            recalculateModalFootTotals();
+        }
+
+        function recalculateModalFootTotals() {
+            const h = document.getElementById('modalYieldHotelSelect').value || currentHotel;
+            const strat = getYieldStrategy(h);
+            const totalRooms = Number(strat.inventory) || (h === 'Cumbria' ? 59 : 108);
+            const targetYear = document.getElementById('modalYieldTargetYear').value;
+            const yNum = parseInt(targetYear) || 2027;
+            const daysInMonths = [31, (yNum % 4 === 0 ? 29 : 28), 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+            let sumAvail = 0;
+            let sumRev = 0;
+            let sumRoomsSold = 0;
+            let weightedAdrMinSum = 0;
+            let weightedAdrMaxSum = 0;
+
+            for (let m = 0; m < 12; m++) {
+                const elAdrMin = document.getElementById(`m_target_adr_min_${m}`);
+                const elAdrMax = document.getElementById(`m_target_adr_max_${m}`);
+                const elRevpar = document.getElementById(`m_target_revpar_${m}`);
+
+                const adrMin = parseFloat(elAdrMin?.value) || 0;
+                const adrMax = parseFloat(elAdrMax?.value) || 0;
+                const revpar = parseFloat(elRevpar?.value) || 0;
+                const mAvail = totalRooms * daysInMonths[m];
+
+                const mRev = revpar * mAvail;
+                const mSold = adrMin > 0 ? (mRev / adrMin) : 0;
+
+                sumAvail += mAvail;
+                sumRev += mRev;
+                sumRoomsSold += mSold;
+                weightedAdrMinSum += (adrMin * mSold);
+                weightedAdrMaxSum += (adrMax * mSold);
+            }
+
+            const avgRevpar = sumAvail > 0 ? (sumRev / sumAvail) : 0;
+            const avgOcc = sumAvail > 0 ? (sumRoomsSold / sumAvail * 100) : 0;
+            const avgAdrMin = sumRoomsSold > 0 ? (weightedAdrMinSum / sumRoomsSold) : 0;
+            const avgAdrMax = sumRoomsSold > 0 ? (weightedAdrMaxSum / sumRoomsSold) : 0;
+
+            const tfoot = document.getElementById('modalYieldMonthsFoot');
+            if (tfoot) {
+                tfoot.innerHTML = `
+                    <tr>
+                        <td style="padding: 8px 10px; color: var(--primary);">MEDIA / TOTAL ANUAL</td>
+                        <td style="padding: 8px 10px; color: var(--text-muted); font-size: 0.72rem;">${fmtNum(sumAvail)} RN Disp.</td>
+                        <td style="padding: 8px 10px; color: var(--text-main);">${avgAdrMin.toFixed(1).replace('.', ',')} €</td>
+                        <td style="padding: 8px 10px; color: var(--text-main);">${avgAdrMax.toFixed(1).replace('.', ',')} €</td>
+                        <td style="padding: 8px 10px; color: var(--primary); font-size: 0.88rem;">${avgRevpar.toFixed(2).replace('.', ',')} €</td>
+                        <td style="padding: 8px 10px; text-align: right; color: #10b981;">${avgOcc.toFixed(1).replace('.', ',')}%</td>
+                        <td style="padding: 8px 10px; text-align: right; color: var(--primary); font-size: 0.88rem;">${fmtNum(Math.round(sumRev))} €</td>
+                    </tr>
+                `;
+            }
+        }
+
+        function autocalculateModalMonthlyTargets() {
+            const h = document.getElementById('modalYieldHotelSelect').value || currentHotel;
+            const targetYear = document.getElementById('modalYieldTargetYear').value;
+            const baseYear = document.getElementById('modalYieldBaseYear').value;
+
+            const annAdrMin = parseFloat(document.getElementById('yield_target_adr_min')?.value) || 66.0;
+            const annAdrMax = parseFloat(document.getElementById('yield_target_adr_max')?.value) || 68.0;
+            const annRevpar = parseFloat(document.getElementById('yield_target_revpar')?.value) || 38.5;
+
+            const calculatedTargets = generateSeasonalTargetsFromHistory(h, baseYear, targetYear, annAdrMin, annAdrMax, annRevpar);
+
+            // Cargar los valores en los inputs de los 12 meses
+            calculatedTargets.forEach((t, m) => {
+                const elMin = document.getElementById(`m_target_adr_min_${m}`);
+                const elMax = document.getElementById(`m_target_adr_max_${m}`);
+                const elRevpar = document.getElementById(`m_target_revpar_${m}`);
+                if (elMin) elMin.value = t.targetAdrMin.toFixed(1);
+                if (elMax) elMax.value = t.targetAdrMax.toFixed(1);
+                if (elRevpar) elRevpar.value = t.targetRevpar.toFixed(1);
+                onModalTargetRowChange(m);
+            });
+
+            const noticeEl = document.getElementById('modalSeasonalNotice');
+            if (noticeEl) {
+                noticeEl.style.display = 'block';
+                noticeEl.innerHTML = `✨ <strong>¡Objetivos ${targetYear} generados con éxito!</strong> Se ha aplicado la curva de estacionalidad real de <strong>${baseYear}</strong> sobre tus objetivos anuales (${annRevpar.toFixed(2)}€ RevPAR / ${annAdrMin.toFixed(2)}€-${annAdrMax.toFixed(2)}€ ADR). Puedes ajustar libremente cualquier mes según ferias o eventos.`;
+                setTimeout(() => { if (noticeEl) noticeEl.style.display = 'none'; }, 8000);
+            }
         }
 
         function saveYieldModalInputs() {
             const targetHotel = document.getElementById('modalYieldHotelSelect').value || currentHotel;
+            const targetYear = document.getElementById('modalYieldTargetYear')?.value || currentYear || "2027";
             const strat = getYieldStrategy(targetHotel);
 
+            // 1. Guardar Tramos OTB
             const newTiers = (strat.tiers || []).map((t, idx) => {
                 const adjEl = document.getElementById(`tier_adj_${idx}`);
                 const critEl = document.getElementById(`tier_crit_${idx}`);
@@ -2348,13 +2824,45 @@
                 };
             });
 
+            // 2. Guardar Objetivos Mensuales para el Año Objetivo seleccionado
+            const newMonthlyTargets = [];
+            const yNum = parseInt(targetYear) || 2027;
+            const daysInMonths = [31, (yNum % 4 === 0 ? 29 : 28), 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+            const inv = parseFloat(document.getElementById('yield_inventory')?.value) || (targetHotel === 'Cumbria' ? 59 : 108);
+
+            for (let m = 0; m < 12; m++) {
+                const elMin = document.getElementById(`m_target_adr_min_${m}`);
+                const elMax = document.getElementById(`m_target_adr_max_${m}`);
+                const elRevpar = document.getElementById(`m_target_revpar_${m}`);
+
+                const adrMin = elMin ? (parseFloat(elMin.value) || 66.0) : 66.0;
+                const adrMax = elMax ? (parseFloat(elMax.value) || 68.0) : 68.0;
+                const revpar = elRevpar ? (parseFloat(elRevpar.value) || 38.5) : 38.5;
+                const mAvail = inv * daysInMonths[m];
+                const occ = adrMin > 0 ? (revpar / adrMin * 100) : 0;
+                const rev = Math.round(revpar * mAvail);
+
+                newMonthlyTargets.push({
+                    month: m,
+                    targetAdrMin: adrMin,
+                    targetAdrMax: adrMax,
+                    targetRevpar: revpar,
+                    targetOcc: Math.round(occ * 10) / 10,
+                    targetRevenue: rev
+                });
+            }
+
+            const monthlyDict = strat.monthlyTargets || {};
+            monthlyDict[targetYear] = newMonthlyTargets;
+
             const newStrategy = {
-                inventory: parseFloat(document.getElementById('yield_inventory').value) || (targetHotel === 'Cumbria' ? 59 : 108),
+                inventory: inv,
                 barOverEbi: parseFloat(document.getElementById('yield_bar_spread').value) || 10.0,
                 baseEbiPrice: parseFloat(document.getElementById('yield_base_ebi').value) || 60.0,
                 targetAdrMin: parseFloat(document.getElementById('yield_target_adr_min').value) || 66.0,
                 targetAdrMax: parseFloat(document.getElementById('yield_target_adr_max').value) || 68.0,
                 targetRevpar: parseFloat(document.getElementById('yield_target_revpar').value) || 38.5,
+                monthlyTargets: monthlyDict,
                 tiers: newTiers
             };
 
@@ -2438,16 +2946,29 @@
         function renderYieldStrategy(yearData, hotel, year, midx) {
             const strat = getYieldStrategy(hotel);
             const totalHotelRooms = Number(strat.inventory) || (hotel === 'Cumbria' ? 59 : 108);
+            const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
             // 1. Badges superiores
             const elHotel = document.getElementById('yield-badge-hotel');
             if (elHotel) elHotel.innerText = `${hotel === 'Cumbria' ? 'Cumbria' : 'Guadiana'} (${totalHotelRooms} hab)`;
 
+            let displayAdrTarget = `${strat.targetAdrMin.toFixed(2).replace('.', ',')} € – ${strat.targetAdrMax.toFixed(2).replace('.', ',')} €`;
+            let displayRevparTarget = `${strat.targetRevpar.toFixed(2).replace('.', ',')} €`;
+            if (midx !== -1) {
+                const mTarget = strat.monthlyTargets?.[year]?.[midx];
+                if (mTarget && Number(mTarget.targetRevpar) > 0) {
+                    displayAdrTarget = `${Number(mTarget.targetAdrMin).toFixed(2).replace('.', ',')} € – ${Number(mTarget.targetAdrMax).toFixed(2).replace('.', ',')} € (${months[midx]})`;
+                    displayRevparTarget = `${Number(mTarget.targetRevpar).toFixed(2).replace('.', ',')} € (${months[midx]})`;
+                } else {
+                    displayRevparTarget = `${strat.targetRevpar.toFixed(2).replace('.', ',')} € (${months[midx]})`;
+                }
+            }
+
             const elAdrTgt = document.getElementById('yield-badge-adr-target');
-            if (elAdrTgt) elAdrTgt.innerText = `${strat.targetAdrMin.toFixed(2).replace('.', ',')} € – ${strat.targetAdrMax.toFixed(2).replace('.', ',')} €`;
+            if (elAdrTgt) elAdrTgt.innerText = displayAdrTarget;
 
             const elRevparTgt = document.getElementById('yield-badge-revpar-target');
-            if (elRevparTgt) elRevparTgt.innerText = `${strat.targetRevpar.toFixed(2).replace('.', ',')} €`;
+            if (elRevparTgt) elRevparTgt.innerText = displayRevparTarget;
 
             const elBarSpread = document.getElementById('yield-badge-bar-spread');
             if (elBarSpread) elBarSpread.innerText = `+${strat.barOverEbi.toFixed(1).replace('.', ',')}%`;
@@ -2482,7 +3003,6 @@
                 });
             }
 
-            const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
             const daysInMonths = [31, (parseInt(year) % 4 === 0 ? 29 : 28), 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
             const now = new Date();
@@ -2693,17 +3213,24 @@
                     const isClosed = mm.isClosed;
                     const isCurrentMonth = mm.isCurrentMonth;
 
+                    const mTarget = strat.monthlyTargets?.[year]?.[m];
+                    const mTargetRevpar = (mTarget && Number(mTarget.targetRevpar) > 0) ? Number(mTarget.targetRevpar) : strat.targetRevpar;
+                    const mTargetAdrMin = (mTarget && Number(mTarget.targetAdrMin) > 0) ? Number(mTarget.targetAdrMin) : strat.targetAdrMin;
+                    const mTargetAdrMax = (mTarget && Number(mTarget.targetAdrMax) > 0) ? Number(mTarget.targetAdrMax) : strat.targetAdrMax;
+
                     if (isClosed) {
                         // FILA DE MES CERRADO (REAL)
                         const tierClosed = getMatchingTier(strat, mm.displayOcc);
                         const tierLabel = tierClosed.minOcc === 90 ? '> 90 %' : `${tierClosed.minOcc}–${tierClosed.maxOcc} %`;
-                        const revparMet = mm.displayRevpar >= strat.targetRevpar;
+                        const revparMet = mm.displayRevpar >= mTargetRevpar;
 
                         let revparBadge = `<span style="font-weight:700; color:var(--text-main); font-size:0.82rem;">${mm.displayRevpar.toFixed(2).replace('.', ',')} €</span>`;
                         if (revparMet) {
-                            revparBadge = `<span style="font-weight:800; color:#10b981; font-size:0.82rem;">✅ ${mm.displayRevpar.toFixed(2).replace('.', ',')} €</span> <span style="font-size:0.6rem; color:#10b981; display:block;">(+${(mm.displayRevpar - strat.targetRevpar).toFixed(2).replace('.', ',')} €)</span>`;
+                            const diff = mm.displayRevpar - mTargetRevpar;
+                            revparBadge = `<span style="font-weight:800; color:#10b981; font-size:0.82rem;">✅ ${mm.displayRevpar.toFixed(2).replace('.', ',')} €</span> <span style="font-size:0.6rem; color:#10b981; display:block;">(+${diff.toFixed(2).replace('.', ',')} € vs Obj. ${mTargetRevpar.toFixed(2).replace('.', ',')} €)</span>`;
                         } else if (mm.displayRevpar > 0) {
-                            revparBadge = `<span style="font-weight:700; color:#f59e0b; font-size:0.82rem;">${mm.displayRevpar.toFixed(2).replace('.', ',')} €</span> <span style="font-size:0.6rem; color:var(--text-muted); display:block;">Obj: ${strat.targetRevpar.toFixed(2).replace('.', ',')} €</span>`;
+                            const diff = mm.displayRevpar - mTargetRevpar;
+                            revparBadge = `<span style="font-weight:700; color:#f59e0b; font-size:0.82rem;">${mm.displayRevpar.toFixed(2).replace('.', ',')} €</span> <span style="font-size:0.6rem; color:var(--text-muted); display:block;">Obj. Mes: ${mTargetRevpar.toFixed(2).replace('.', ',')} € (${diff.toFixed(2).replace('.', ',')} €)</span>`;
                         }
 
                         tbody.innerHTML += `
@@ -2762,10 +3289,12 @@
 
                         const projRevpar = dec.projRevpar;
                         let revparTag = `<span style="font-weight:600; color:var(--text-muted); font-size:0.82rem;">${projRevpar.toFixed(2).replace('.', ',')} €</span>`;
-                        if (projRevpar >= strat.targetRevpar) {
-                            revparTag = `<span style="font-weight:800; color:#10b981; font-size:0.82rem;">🎯 ${projRevpar.toFixed(2).replace('.', ',')} €</span> <span style="font-size:0.6rem; color:#10b981; display:block;">Alcanza Objetivo</span>`;
+                        if (projRevpar >= mTargetRevpar) {
+                            const diff = projRevpar - mTargetRevpar;
+                            revparTag = `<span style="font-weight:800; color:#10b981; font-size:0.82rem;">🎯 ${projRevpar.toFixed(2).replace('.', ',')} €</span> <span style="font-size:0.6rem; color:#10b981; display:block;">Alcanza Obj. (${mTargetRevpar.toFixed(2).replace('.', ',')} €)</span>`;
                         } else if (projRevpar > 0) {
-                            revparTag = `<span style="font-weight:700; color:#f59e0b; font-size:0.82rem;">${projRevpar.toFixed(2).replace('.', ',')} €</span> <span style="font-size:0.6rem; color:var(--text-muted); display:block;">Obj: ${strat.targetRevpar.toFixed(2).replace('.', ',')} €</span>`;
+                            const diff = projRevpar - mTargetRevpar;
+                            revparTag = `<span style="font-weight:700; color:#f59e0b; font-size:0.82rem;">${projRevpar.toFixed(2).replace('.', ',')} €</span> <span style="font-size:0.6rem; color:var(--text-muted); display:block;">Obj. Mes: ${mTargetRevpar.toFixed(2).replace('.', ',')} € (${diff.toFixed(2).replace('.', ',')} €)</span>`;
                         }
 
                         // Etiqueta de volumen según si es mes en curso con Real+OTB o solo OTB
