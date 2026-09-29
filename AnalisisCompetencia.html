@@ -2125,12 +2125,20 @@
             const unsavedCount = countModifiedPrices();
             const savedCount = countSavedManualPrices();
             const applyBtnText = filteredCount > 0 ? `⚡ Aplicar a las ${filteredCount}` : '⚡ Aplicar recomendados';
+            const totalModified = unsavedCount > 0 ? unsavedCount : savedCount;
+
+            const emailBtn = totalModified > 0 ? `
+                <button class="sim-btn" onclick="openEmailRevenueModal()" style="background:linear-gradient(135deg, #0284c7, #2563eb); color:#fff; font-weight:700; border:none; display:inline-flex; align-items:center; gap:5px; box-shadow:0 2px 8px rgba(37,99,235,0.35); padding:4px 10px; border-radius:6px; cursor:pointer;" title="Enviar informe de tarifas modificadas por email a Mihail Stavila (Revenue Central Sercotel)">
+                    <span>✉️</span> Enviar a Central (${totalModified})
+                </button>
+            ` : '';
 
             if (unsavedCount > 0 || manualPricesPending) {
                 return `
                     <span class="simulation-banner">
                         <button class="sim-btn sim-apply-all" onclick="saveManualPrices()" style="background:#4f46e5; color:#fff; font-weight:700;" title="Guardar las tarifas de ambos hoteles, incluidas las fechas ocultas por filtros">${manualPricesPending ? '💾 Guardar cambios' : '✓ Cambios guardados'}</button>
                         <span class="sim-info" style="color:#d97706; font-weight:700;">💡 <b>${unsavedCount}</b> tarifa${unsavedCount !== 1 ? 's' : ''} simulada${unsavedCount !== 1 ? 's' : ''} (sin guardar)</span>
+                        ${emailBtn}
                         <button class="sim-btn sim-apply-all" onclick="applyAllVisibleRecommendations()" title="Aplicar tarifas recomendadas a las fechas visibles">${applyBtnText}</button>
                         <button class="sim-btn sim-reset" onclick="resetAllManualPrices()" title="Restablecer solo las simulaciones no guardadas y volver a los precios guardados">↺ Restablecer</button>
                     </span>
@@ -2140,6 +2148,7 @@
                     <span class="simulation-banner" style="background:rgba(16, 185, 129, 0.08); border:1px solid rgba(16, 185, 129, 0.3);">
                         <button class="sim-btn" disabled style="background:#10b981; color:#fff; font-weight:700; opacity:0.95; cursor:default;" title="Todas las modificaciones están guardadas en la base de datos">✓ Cambios guardados</button>
                         <span class="sim-info" style="color:#059669; font-weight:700;">✓ <b>${savedCount}</b> tarifa${savedCount !== 1 ? 's' : ''} guardada${savedCount !== 1 ? 's' : ''}</span>
+                        ${emailBtn}
                         <button class="sim-btn sim-apply-all" onclick="applyAllVisibleRecommendations()" title="Aplicar tarifas recomendadas a las fechas visibles">${applyBtnText}</button>
                         <button class="sim-btn sim-reset" disabled style="opacity:0.35; cursor:not-allowed;" title="Solo se pueden restablecer simulaciones no guardadas. Para volver al archivo original, usa 'Restablecer archivo'.">↺ Restablecer</button>
                         <button class="sim-btn" onclick="resetToOriginalFilePrices()" style="background:transparent; border:none; color:#94a3b8; font-size:0.68rem; text-decoration:underline; cursor:pointer; padding:2px 4px;" title="Borrar tarifas personalizadas guardadas y volver a los precios originales del archivo Excel">Restablecer archivo</button>
@@ -2179,8 +2188,13 @@
             const countEl = document.getElementById('record-count');
             if (!countEl) return;
             const simHtml = buildSimulationBannerHtml(0);
+            const savedCount = countSavedManualPrices();
+            const unsavedCount = countModifiedPrices();
+            const totalModified = unsavedCount > 0 ? unsavedCount : savedCount;
+
             let statusHtml = `<span>${count} días analizados</span>`;
             statusHtml += `<button class="sim-btn" onclick="openMinPriceModal()" style="background:var(--bg-surface); border:1px solid var(--border); color:var(--text-main); font-size:0.75rem; padding:3px 9px; border-radius:12px; cursor:pointer;" title="Configurar tarifas mínimas para cada hotel">🏷️ Precios mín.</button>`;
+            statusHtml += `<button class="sim-btn" onclick="openEmailRevenueModal()" style="background:var(--bg-surface); border:1px solid ${totalModified > 0 ? '#0284c7' : 'var(--border)'}; color:${totalModified > 0 ? '#38bdf8' : 'var(--text-main)'}; font-size:0.75rem; padding:3px 10px; border-radius:12px; cursor:pointer; font-weight:700; display:inline-flex; align-items:center; gap:4px;" title="Revisar y enviar tarifas modificadas a Revenue Central (Mihail Stavila)">✉️ Enviar a Central ${totalModified > 0 ? `(${totalModified})` : ''}</button>`;
             statusHtml += `<span onclick="diagnoseAllData()" style="font-size:0.6rem; color:#94a3b8; cursor:pointer; margin-left:10px; text-decoration:underline;">[Debug]</span>`;
             countEl.innerHTML = `<div style="display:flex; align-items:center; gap:8px;">${simHtml} ${statusHtml}</div>`;
         }
@@ -5122,6 +5136,104 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
         </div>
     </div>
 
+    <!-- EMAIL REVENUE MODAL (REVISIÓN DE CENTRAL - MIHAIL STAVILA) -->
+    <div id="emailRevenueModal" class="modal" style="z-index:999999;">
+        <div class="modal-content" style="max-width:960px; max-height:90vh; overflow-y:auto; background:var(--bg-surface); color:var(--text-main); border:1px solid var(--border); border-radius:16px; padding:24px; box-shadow:0 20px 50px rgba(0,0,0,0.5);">
+            <span class="close-modal" onclick="closeEmailRevenueModal()">&times;</span>
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+                <div style="background:rgba(2, 132, 199, 0.15); width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.6rem; border:1px solid rgba(2, 132, 199, 0.3);">
+                    ✉️
+                </div>
+                <div>
+                    <h3 style="margin:0; font-size:1.25rem; color:var(--text-main);">Enviar Revisión de Tarifas a Revenue Central</h3>
+                    <div style="font-size:0.8rem; color:var(--text-muted);">
+                        Notificación estructurada de tarifas modificadas con comparativa de competidores para revisión de <strong>Mihail Stavila (mstavila@sercotel.com)</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FORMULARIO DE CORREO -->
+            <div style="background:var(--bg-deep); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px;">
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:12px; margin-bottom:12px;">
+                    <div>
+                        <label style="display:block; font-size:0.75rem; font-weight:800; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase;">
+                            Destinatario Principal (Revenue Central):
+                        </label>
+                        <input type="email" id="revenueEmailTo" value="mstavila@sercotel.com" style="width:100%; padding:8px 12px; border-radius:8px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border); font-size:0.85rem; font-weight:700;">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:0.75rem; font-weight:800; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase;">
+                            En copia (CC):
+                        </label>
+                        <input type="text" id="revenueEmailCc" placeholder="dirección@sercotel.com (opcional)" style="width:100%; padding:8px 12px; border-radius:8px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border); font-size:0.85rem;">
+                    </div>
+                </div>
+
+                <div style="margin-bottom:12px;">
+                    <label style="display:block; font-size:0.75rem; font-weight:800; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase;">
+                        Asunto del Correo:
+                    </label>
+                    <input type="text" id="revenueEmailSubject" style="width:100%; padding:8px 12px; border-radius:8px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border); font-size:0.88rem; font-weight:700;">
+                </div>
+
+                <div>
+                    <label style="display:block; font-size:0.75rem; font-weight:800; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase;">
+                        Notas u Observaciones para Mihail (opcional):
+                    </label>
+                    <textarea id="revenueEmailNotes" rows="2" placeholder="Ej: Hola Mihail, te paso la revisión de precios ajustando tarifas según los picos de ocupación y los movimientos de la competencia..." style="width:100%; padding:8px 12px; border-radius:8px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border); font-size:0.85rem; resize:vertical; font-family:inherit;"></textarea>
+                </div>
+            </div>
+
+            <!-- TARJETAS DE RESUMEN EJECUTIVO -->
+            <div id="revenueEmailSummaryCards" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:16px;">
+                <!-- Rellenado por JS -->
+            </div>
+
+            <!-- TABLA PREVISUALIZACIÓN -->
+            <div style="margin-bottom:16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <span style="font-size:0.82rem; font-weight:800; text-transform:uppercase; color:var(--primary); letter-spacing:0.5px;">
+                        📊 Detalle de Tarifas Modificadas & Línea de Competidores
+                    </span>
+                    <span id="revenueEmailCountBadge" style="font-size:0.75rem; font-weight:700; color:var(--text-muted);">
+                        0 fechas
+                    </span>
+                </div>
+                <div style="overflow-x:auto; border:1px solid var(--border); border-radius:10px; max-height:360px;">
+                    <table id="revenueEmailPreviewTable" style="width:100%; border-collapse:collapse; font-size:0.75rem;">
+                        <thead id="revenueEmailPreviewThead" style="position:sticky; top:0; background:var(--bg-card); z-index:2; border-bottom:1px solid var(--border);">
+                            <!-- Encabezado dinámico -->
+                        </thead>
+                        <tbody id="revenueEmailPreviewTbody">
+                            <!-- Filas dinámicas -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- BOTONES DE ACCIÓN -->
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; padding-top:14px; border-top:1px solid var(--border);">
+                <button type="button" class="btn" onclick="closeEmailRevenueModal()" style="background:var(--bg-body); border:1px solid var(--border); color:var(--text-main); font-weight:600;">
+                    Cerrar
+                </button>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button type="button" class="btn" onclick="copyRevenueEmailHtmlToClipboard()" style="background:var(--bg-deep); border:1px solid var(--primary); color:var(--primary); font-weight:700; display:inline-flex; align-items:center; gap:6px; cursor:pointer;" title="Copia la tabla HTML con colores y estilos para pegarla en Outlook, Gmail o Teams con Ctrl+V">
+                        <span>📋</span> Copiar Tabla (Outlook / Teams)
+                    </button>
+                    <button type="button" class="btn" onclick="sendRevenueEmailViaMailto()" style="background:linear-gradient(135deg, #0284c7, #2563eb); border:none; color:#fff; font-weight:700; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 12px rgba(37, 99, 235, 0.4); cursor:pointer;" title="Abrir Outlook o cliente de correo predeterminado con el correo ya redactado">
+                        <span>✉️</span> Abrir en Email (mailto:)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION PARA COPIADO -->
+    <div id="revenueEmailToast" style="display:none; position:fixed; bottom:30px; right:30px; z-index:9999999; background:#0f172a; color:#fff; padding:12px 20px; border-radius:10px; box-shadow:0 10px 30px rgba(0,0,0,0.5); border:1px solid #10b981; font-size:0.85rem; font-weight:700; display:none; align-items:center; gap:10px; animation:fadeIn 0.3s ease;">
+        <span style="font-size:1.2rem;">📋</span>
+        <span id="revenueEmailToastText">¡Tabla copiada al portapapeles!</span>
+    </div>
+
     <!-- Chart Modal -->
     <div id="chartModal" class="modal">
         <div class="modal-content">
@@ -5181,8 +5293,13 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             if (event.target == m) {
                 m.style.display = "none";
             }
-            // Keep existing modal logic if any (like the previous budget modal)
-            const m2 = document.getElementById('realDataModal'); // Example if mixed context
+            const mRev = document.getElementById('emailRevenueModal');
+            if (mRev && event.target == mRev) closeEmailRevenueModal();
+            const mMin = document.getElementById('minPriceModal');
+            if (mMin && event.target == mMin) closeMinPriceModal();
+            const mCup = document.getElementById('cuposModal');
+            if (mCup && event.target == mCup) closeCuposModal();
+            const m2 = document.getElementById('realDataModal');
             if (m2 && event.target == m2) m2.style.display = "none";
         }
 
@@ -5227,6 +5344,460 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             console.log(report);
             if (dbActiveKey) console.log("Contenido DB para activeHotel:", pDb[dbActiveKey]);
             alert(report + "\n\n(Previsión = Datos futuros / Producción = Datos reales pasados)\n\nRevisa la CONSOLA (F12) para más detalles técnicos.");
+        }
+        /* ==========================================================================
+           REVISIÓN DE REVENUE CENTRAL (MIHAIL STAVILA - SERCOTEL)
+           ========================================================================== */
+
+        function getModifiedRatesReport() {
+            const targetHotel = activeHotel || "Guadiana";
+            const items = [];
+
+            processedData.forEach(d => {
+                if (!d.hotels) return;
+                const h = d.hotels[targetHotel];
+                if (!h) return;
+
+                const isModified = !!(h.isModified || pendingManualPrices.has(h));
+                const hasOriginalPrice = (h.originalPrice !== undefined);
+                const priceChangedFromOriginal = hasOriginalPrice && (Math.round(h.price) !== Math.round(h.originalPrice));
+                const savedPriceChanged = (h.savedPrice !== undefined) && hasOriginalPrice && (Math.round(h.savedPrice) !== Math.round(h.originalPrice));
+
+                if (isModified || priceChangedFromOriginal || savedPriceChanged) {
+                    const oldPrice = hasOriginalPrice ? h.originalPrice : (h.savedPrice !== undefined ? h.savedPrice : h.price);
+                    const newPrice = h.price;
+                    const delta = newPrice - oldPrice;
+                    const deltaPct = oldPrice > 0 ? ((delta / oldPrice) * 100) : 0;
+
+                    // Ocupación
+                    const dynamic = getDynamicDateHtml(d, targetHotel);
+                    const currentOcc = (dynamic.occ > 0) ? dynamic.occ : (dynamic.otb || 0);
+                    const capacity = (targetHotel === 'Cumbria' ? 59 : 108);
+                    const occPct = capacity > 0 ? Math.round((currentOcc / capacity) * 100) : 0;
+
+                    // Competidores
+                    const comps = [];
+                    competitorsList.forEach(c => {
+                        const cH = d.hotels[c.name];
+                        let priceText = '-';
+                        if (cH) {
+                            if (cH.sold || cH.status === 'sold') priceText = 'Cerrado';
+                            else if (cH.status === 'minStay') priceText = cH.raw || 'M';
+                            else if (cH.price > 0) priceText = `${Math.round(cH.price)}€`;
+                        }
+                        comps.push({ name: c.name, price: priceText });
+                    });
+
+                    // Smart Yield Action
+                    let actionText = 'En Rango';
+                    const yieldInfo = calculateSmartYield(d, targetHotel);
+                    if (yieldInfo && yieldInfo.actionText) {
+                        actionText = yieldInfo.actionText;
+                        if (yieldInfo.rangeText) actionText += ` (${yieldInfo.rangeText})`;
+                    }
+
+                    items.push({
+                        dateISO: d.dateISO,
+                        dateDisplay: d.date || d.dateISO,
+                        dayName: d.dayName || '',
+                        rooms: currentOcc,
+                        occPct: occPct,
+                        capacity: capacity,
+                        oldPrice: oldPrice,
+                        newPrice: newPrice,
+                        delta: delta,
+                        deltaPct: deltaPct,
+                        marketAvg: d.compAvg || d.marketAvg || 0,
+                        actionText: actionText,
+                        competitors: comps
+                    });
+                }
+            });
+
+            // Ordenar por fecha cronológica
+            items.sort((a, b) => a.dateISO.localeCompare(b.dateISO));
+
+            const avgOld = items.length > 0 ? (items.reduce((acc, i) => acc + i.oldPrice, 0) / items.length) : 0;
+            const avgNew = items.length > 0 ? (items.reduce((acc, i) => acc + i.newPrice, 0) / items.length) : 0;
+            const avgDelta = avgNew - avgOld;
+            const avgDeltaPct = avgOld > 0 ? (avgDelta / avgOld * 100) : 0;
+
+            return {
+                hotel: targetHotel,
+                items: items,
+                count: items.length,
+                avgOld: avgOld,
+                avgNew: avgNew,
+                avgDelta: avgDelta,
+                avgDeltaPct: avgDeltaPct
+            };
+        }
+
+        function openEmailRevenueModal() {
+            const report = getModifiedRatesReport();
+            const modal = document.getElementById('emailRevenueModal');
+            if (!modal) return;
+
+            // Título y Asunto
+            const subjInput = document.getElementById('revenueEmailSubject');
+            if (subjInput) {
+                const now = new Date();
+                const dStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
+                subjInput.value = `[Revisión Revenue Central] Propuesta de Tarifas - Hotel ${report.hotel} (${report.count} fecha${report.count !== 1 ? 's' : ''}) - ${dStr}`;
+            }
+
+            const countBadge = document.getElementById('revenueEmailCountBadge');
+            if (countBadge) {
+                countBadge.innerText = `${report.count} fecha${report.count !== 1 ? 's' : ''} modificada${report.count !== 1 ? 's' : ''}`;
+            }
+
+            // Resumen Ejecutivo Cards
+            const cardsEl = document.getElementById('revenueEmailSummaryCards');
+            if (cardsEl) {
+                const deltaColor = report.avgDelta >= 0 ? '#10b981' : '#ef4444';
+                const deltaSign = report.avgDelta >= 0 ? '+' : '';
+                cardsEl.innerHTML = `
+                    <div style="background:var(--bg-deep); border:1px solid var(--border); border-radius:10px; padding:10px 14px;">
+                        <span style="font-size:0.72rem; color:var(--text-muted); font-weight:800; text-transform:uppercase;">Hotel Seleccionado</span>
+                        <div style="font-size:1.05rem; font-weight:800; color:var(--text-main); margin-top:2px;">Hotel ${report.hotel}</div>
+                    </div>
+                    <div style="background:var(--bg-deep); border:1px solid var(--border); border-radius:10px; padding:10px 14px;">
+                        <span style="font-size:0.72rem; color:var(--text-muted); font-weight:800; text-transform:uppercase;">Fechas Revisadas</span>
+                        <div style="font-size:1.05rem; font-weight:800; color:var(--primary); margin-top:2px;">${report.count} días</div>
+                    </div>
+                    <div style="background:var(--bg-deep); border:1px solid var(--border); border-radius:10px; padding:10px 14px;">
+                        <span style="font-size:0.72rem; color:var(--text-muted); font-weight:800; text-transform:uppercase;">Precio Medio Anterior</span>
+                        <div style="font-size:1.05rem; font-weight:700; color:var(--text-muted); margin-top:2px;">${report.avgOld > 0 ? report.avgOld.toFixed(2) + ' €' : '-'}</div>
+                    </div>
+                    <div style="background:var(--bg-deep); border:1px solid var(--border); border-radius:10px; padding:10px 14px;">
+                        <span style="font-size:0.72rem; color:var(--text-muted); font-weight:800; text-transform:uppercase;">Precio Medio Propuesto</span>
+                        <div style="font-size:1.05rem; font-weight:800; color:var(--text-main); margin-top:2px;">${report.avgNew > 0 ? report.avgNew.toFixed(2) + ' €' : '-'}</div>
+                    </div>
+                    <div style="background:var(--bg-deep); border:1px solid var(--border); border-radius:10px; padding:10px 14px;">
+                        <span style="font-size:0.72rem; color:var(--text-muted); font-weight:800; text-transform:uppercase;">Variación Media</span>
+                        <div style="font-size:1.05rem; font-weight:800; color:${deltaColor}; margin-top:2px;">
+                            ${report.count > 0 ? `${deltaSign}${report.avgDelta.toFixed(2)} € (${deltaSign}${report.avgDeltaPct.toFixed(1)}%)` : '-'}
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Encabezados de tabla
+            const theadEl = document.getElementById('revenueEmailPreviewThead');
+            if (theadEl) {
+                const sampleComps = (report.items[0]?.competitors || competitorsList);
+                let thHtml = `
+                    <tr style="border-bottom:1px solid var(--border); color:var(--text-muted); text-align:left;">
+                        <th style="padding:8px 10px;">Fecha</th>
+                        <th style="padding:8px 10px; text-align:center;">Ocupación</th>
+                        <th style="padding:8px 10px; text-align:right;">Tarifa Ant.</th>
+                        <th style="padding:8px 10px; text-align:right; color:var(--primary);">Tarifa Nueva</th>
+                        <th style="padding:8px 10px; text-align:right;">Mercado</th>
+                `;
+                sampleComps.forEach(c => {
+                    const short = c.name.length > 18 ? c.name.substring(0, 16) + '..' : c.name;
+                    thHtml += `<th style="padding:8px 8px; text-align:center; font-size:0.7rem;" title="${c.name}">${short}</th>`;
+                });
+                thHtml += `<th style="padding:8px 10px;">Criterio / Acción</th></tr>`;
+                theadEl.innerHTML = thHtml;
+            }
+
+            // Cuerpo de tabla
+            const tbodyEl = document.getElementById('revenueEmailPreviewTbody');
+            if (tbodyEl) {
+                if (report.items.length === 0) {
+                    tbodyEl.innerHTML = `
+                        <tr>
+                            <td colspan="15" style="text-align:center; padding:30px 15px; color:var(--text-muted); font-size:0.85rem;">
+                                ℹ️ No hay tarifas cambiadas manualmente en este momento.<br>
+                                <span style="font-size:0.75rem; color:var(--text-light); margin-top:4px; display:block;">
+                                    Haz clic sobre cualquier precio en la tabla principal para simular o cambiar una tarifa, o pulsa "Aplicar recomendados".
+                                </span>
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    tbodyEl.innerHTML = '';
+                    report.items.forEach((item, idx) => {
+                        const deltaColor = item.delta > 0 ? '#10b981' : (item.delta < 0 ? '#ef4444' : 'var(--text-muted)');
+                        const deltaSign = item.delta > 0 ? '+' : '';
+                        const compTds = item.competitors.map(c => `
+                            <td style="padding:6px 8px; text-align:center; color:var(--text-muted); font-size:0.72rem; border-bottom:1px solid var(--border);">
+                                ${c.price}
+                            </td>
+                        `).join('');
+
+                        tbodyEl.innerHTML += `
+                            <tr style="border-bottom:1px solid var(--border); background:${idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)'};">
+                                <td style="padding:6px 10px; font-weight:700; color:var(--text-main); white-space:nowrap;">
+                                    ${item.dateDisplay}
+                                    <span style="font-size:0.65rem; color:var(--text-muted); display:block;">${item.dayName}</span>
+                                </td>
+                                <td style="padding:6px 10px; text-align:center; color:var(--text-main); font-weight:600;">
+                                    ${item.rooms}/${item.capacity}
+                                    <span style="font-size:0.65rem; color:${item.occPct >= 70 ? '#10b981' : (item.occPct >= 50 ? '#818cf8' : '#f59e0b')}; display:block; font-weight:700;">
+                                        ${item.occPct}%
+                                    </span>
+                                </td>
+                                <td style="padding:6px 10px; text-align:right; color:var(--text-muted); text-decoration:line-through;">
+                                    ${Math.round(item.oldPrice)} €
+                                </td>
+                                <td style="padding:6px 10px; text-align:right; font-weight:800; color:var(--text-main); font-size:0.88rem; background:rgba(99,102,241,0.06);">
+                                    ${Math.round(item.newPrice)} €
+                                    <span style="display:block; font-size:0.65rem; color:${deltaColor}; font-weight:800;">
+                                        ${deltaSign}${Math.round(item.delta)} € (${deltaSign}${item.deltaPct.toFixed(1)}%)
+                                    </span>
+                                </td>
+                                <td style="padding:6px 10px; text-align:right; font-weight:700; color:var(--primary);">
+                                    ${Math.round(item.marketAvg)} €
+                                </td>
+                                ${compTds}
+                                <td style="padding:6px 10px; color:var(--text-main); font-size:0.72rem;">
+                                    <span style="background:rgba(255,255,255,0.05); padding:2px 6px; border-radius:4px; border:1px solid var(--border);">
+                                        ${item.actionText}
+                                    </span>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
+            }
+
+            modal.style.display = 'block';
+            modal.classList.add('open');
+        }
+
+        function closeEmailRevenueModal() {
+            const modal = document.getElementById('emailRevenueModal');
+            if (modal) {
+                modal.style.display = 'none';
+                modal.classList.remove('open');
+            }
+        }
+
+        function generateRevenueEmailHtml(report, userNotes) {
+            const hotel = report.hotel;
+            const compsHeaders = (report.items[0]?.competitors || []).map(c => `<th style="padding:8px 6px; border:1px solid #cbd5e1; background:#334155; color:#ffffff; font-size:11px; text-align:center;">${c.name}</th>`).join('');
+
+            let rowsHtml = '';
+            report.items.forEach((item, idx) => {
+                const bg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
+                const deltaColor = item.delta > 0 ? '#10b981' : (item.delta < 0 ? '#ef4444' : '#64748b');
+                const deltaSign = item.delta > 0 ? '+' : '';
+                const compCells = item.competitors.map(c => `<td style="padding:7px 6px; border:1px solid #e2e8f0; text-align:center; font-size:11px; color:#334155;">${c.price}</td>`).join('');
+
+                rowsHtml += `
+                    <tr style="background:${bg};">
+                        <td style="padding:7px 8px; border:1px solid #e2e8f0; font-weight:bold; color:#0f172a; white-space:nowrap;">
+                            ${item.dateDisplay} <span style="font-size:11px; color:#64748b; font-weight:normal;">(${item.dayName})</span>
+                        </td>
+                        <td style="padding:7px 8px; border:1px solid #e2e8f0; text-align:center; color:#334155;">
+                            <strong>${item.rooms}</strong>/${item.capacity} <span style="font-size:11px; color:#64748b;">(${item.occPct}%)</span>
+                        </td>
+                        <td style="padding:7px 8px; border:1px solid #e2e8f0; text-align:right; color:#64748b; text-decoration:line-through;">
+                            ${Math.round(item.oldPrice)} €
+                        </td>
+                        <td style="padding:7px 8px; border:1px solid #e2e8f0; text-align:right; font-weight:bold; color:#0f172a; font-size:13px; background:rgba(99,102,241,0.06);">
+                            ${Math.round(item.newPrice)} €
+                            <span style="display:block; font-size:10px; color:${deltaColor}; font-weight:bold;">
+                                ${deltaSign}${Math.round(item.delta)} € (${deltaSign}${item.deltaPct.toFixed(1)}%)
+                            </span>
+                        </td>
+                        <td style="padding:7px 8px; border:1px solid #e2e8f0; text-align:center; font-weight:bold; color:#4f46e5;">
+                            ${Math.round(item.marketAvg)} €
+                        </td>
+                        ${compCells}
+                        <td style="padding:7px 8px; border:1px solid #e2e8f0; font-size:11px; color:#475569;">
+                            ${item.actionText}
+                        </td>
+                    </tr>
+                `;
+            });
+
+            const notesBlock = userNotes && userNotes.trim() ? `
+                <div style="background:#eff6ff; border-left:4px solid #3b82f6; padding:12px 16px; margin-bottom:18px; border-radius:4px; font-size:13px; color:#1e40af; line-height:1.5;">
+                    <strong>Observaciones de la Dirección:</strong><br>${userNotes.trim().replace(/\n/g, '<br>')}
+                </div>
+            ` : '';
+
+            return `
+                <div style="font-family:'Segoe UI', Arial, sans-serif; color:#0f172a; max-width:100%;">
+                    <div style="background:#1e293b; color:#ffffff; padding:16px 20px; border-radius:8px 8px 0 0;">
+                        <h2 style="margin:0 0 4px 0; font-size:18px; color:#ffffff;">Propuesta de Modificación de Tarifas - Hotel ${hotel}</h2>
+                        <div style="font-size:12px; color:#94a3b8;">
+                            Revisión de Revenue Management Central · Generado desde CapaSuite · ${new Date().toLocaleDateString('es-ES', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}
+                        </div>
+                    </div>
+
+                    <div style="border:1px solid #e2e8f0; border-top:none; padding:16px; border-radius:0 0 8px 8px; background:#ffffff;">
+                        ${notesBlock}
+
+                        <table style="width:100%; margin-bottom:16px; border-collapse:collapse;">
+                            <tr>
+                                <td style="background:#f1f5f9; padding:10px 14px; border-radius:6px; border:1px solid #e2e8f0; width:25%;">
+                                    <span style="font-size:11px; color:#64748b; font-weight:bold; text-transform:uppercase;">Fechas Revisadas</span>
+                                    <div style="font-size:17px; font-weight:bold; color:#0f172a;">${report.count} días</div>
+                                </td>
+                                <td style="width:10px;"></td>
+                                <td style="background:#f1f5f9; padding:10px 14px; border-radius:6px; border:1px solid #e2e8f0; width:25%;">
+                                    <span style="font-size:11px; color:#64748b; font-weight:bold; text-transform:uppercase;">Precio Medio Anterior</span>
+                                    <div style="font-size:17px; font-weight:bold; color:#64748b;">${report.avgOld.toFixed(2)} €</div>
+                                </td>
+                                <td style="width:10px;"></td>
+                                <td style="background:#f1f5f9; padding:10px 14px; border-radius:6px; border:1px solid #e2e8f0; width:25%;">
+                                    <span style="font-size:11px; color:#64748b; font-weight:bold; text-transform:uppercase;">Precio Medio Propuesto</span>
+                                    <div style="font-size:17px; font-weight:bold; color:#4f46e5;">${report.avgNew.toFixed(2)} €</div>
+                                </td>
+                                <td style="width:10px;"></td>
+                                <td style="background:#f1f5f9; padding:10px 14px; border-radius:6px; border:1px solid #e2e8f0; width:25%;">
+                                    <span style="font-size:11px; color:#64748b; font-weight:bold; text-transform:uppercase;">Variación Media</span>
+                                    <div style="font-size:17px; font-weight:bold; color:${report.avgDelta >= 0 ? '#10b981' : '#ef4444'};">
+                                        ${report.avgDelta >= 0 ? '+' : ''}${report.avgDelta.toFixed(2)} € (${report.avgDelta >= 0 ? '+' : ''}${report.avgDeltaPct.toFixed(1)}%)
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <table style="width:100%; border-collapse:collapse; font-size:12px; font-family:'Segoe UI', Arial, sans-serif;">
+                            <thead>
+                                <tr style="background:#1e293b; color:#ffffff;">
+                                    <th style="padding:9px 8px; border:1px solid #334155; text-align:left;">Fecha</th>
+                                    <th style="padding:9px 8px; border:1px solid #334155; text-align:center;">Ocupación</th>
+                                    <th style="padding:9px 8px; border:1px solid #334155; text-align:right;">Tarifa Ant.</th>
+                                    <th style="padding:9px 8px; border:1px solid #334155; text-align:right; background:#4338ca;">TARIFA NUEVA</th>
+                                    <th style="padding:9px 8px; border:1px solid #334155; text-align:center;">Mercado</th>
+                                    ${compsHeaders}
+                                    <th style="padding:9px 8px; border:1px solid #334155; text-align:left;">Acción / Criterio</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rowsHtml}
+                            </tbody>
+                        </table>
+
+                        <div style="margin-top:14px; font-size:11px; color:#94a3b8; text-align:right;">
+                            Documento preparado para validación de Revenue Management · Sercotel Hotel Group
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function generateRevenueEmailPlainText(report, userNotes) {
+            const hotel = report.hotel;
+            let text = `Hola Mihail,\n\n`;
+            text += `Te envío la propuesta de revisión de tarifas modificadas para Hotel ${hotel}:\n\n`;
+            if (userNotes && userNotes.trim()) {
+                text += `OBSERVACIONES DE LA DIRECCIÓN:\n${userNotes.trim()}\n\n`;
+            }
+            text += `RESUMEN EJECUTIVO:\n`;
+            text += `- Hotel: Hotel ${hotel}\n`;
+            text += `- Fechas revisadas: ${report.count} días\n`;
+            text += `- Precio medio anterior: ${report.avgOld.toFixed(2)} €\n`;
+            text += `- Precio medio propuesto: ${report.avgNew.toFixed(2)} €\n`;
+            text += `- Variación media: ${report.avgDelta >= 0 ? '+' : ''}${report.avgDelta.toFixed(2)} € (${report.avgDelta >= 0 ? '+' : ''}${report.avgDeltaPct.toFixed(1)}%)\n\n`;
+
+            text += `DETALLE DE TARIFAS Y LÍNEA DE COMPETIDORES:\n`;
+            text += `----------------------------------------------------------------------------------------------------\n`;
+            text += `Fecha | Ocupación | Ant. -> NUEVA (Var) | Mercado | Competidores | Criterio\n`;
+            text += `----------------------------------------------------------------------------------------------------\n`;
+
+            report.items.forEach(item => {
+                const deltaSign = item.delta > 0 ? '+' : '';
+                const compStr = item.competitors.map(c => `${c.name.split(' ')[0]}: ${c.price}`).join(' | ');
+                text += `${item.dateDisplay} (${item.dayName.substring(0,3)}) | ${item.rooms}/${item.capacity} (${item.occPct}%) | ${Math.round(item.oldPrice)}€ -> ${Math.round(item.newPrice)}€ (${deltaSign}${Math.round(item.delta)}€) | Mkt: ${Math.round(item.marketAvg)}€ | ${compStr} | ${item.actionText}\n`;
+            });
+
+            text += `----------------------------------------------------------------------------------------------------\n\n`;
+            text += `Quedo a la espera de tus comentarios o confirmación.\n\nSaludos cordiales,\nNatalio\nHotel ${hotel} - Sercotel`;
+            return text;
+        }
+
+        function sendRevenueEmailViaMailto() {
+            const to = document.getElementById('revenueEmailTo')?.value || 'mstavila@sercotel.com';
+            const cc = document.getElementById('revenueEmailCc')?.value || '';
+            const subject = document.getElementById('revenueEmailSubject')?.value || `[Revisión Revenue Central] Modificación de Tarifas - ${activeHotel}`;
+            const notes = document.getElementById('revenueEmailNotes')?.value || '';
+
+            const report = getModifiedRatesReport();
+            if (report.items.length === 0) {
+                alert('No hay tarifas modificadas para enviar.');
+                return;
+            }
+
+            const plainText = generateRevenueEmailPlainText(report, notes);
+
+            let mailtoUrl = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(plainText)}`;
+            if (cc.trim()) {
+                mailtoUrl += `&cc=${encodeURIComponent(cc.trim())}`;
+            }
+
+            // Si la URL es muy larga para el protocolo mailto del sistema, copiamos automáticamente la tabla completa
+            if (mailtoUrl.length > 1900) {
+                copyRevenueEmailHtmlToClipboard(true);
+                const shortBody = `Hola Mihail,\n\nTe envío la propuesta de modificación de tarifas para Hotel ${report.hotel} (${report.count} fechas revisadas).\n\n⚠️ NOTA: La tabla completa con la comparativa detallada de competidores se ha copiado automáticamente a tu portapapeles. Solo tienes que pulsar (Ctrl+V) en este correo para pegarla con formato visual completo.\n\n${notes ? 'Observaciones: ' + notes + '\n\n' : ''}Saludos,\nNatalio`;
+                mailtoUrl = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(shortBody)}`;
+                if (cc.trim()) mailtoUrl += `&cc=${encodeURIComponent(cc.trim())}`;
+            }
+
+            window.location.href = mailtoUrl;
+        }
+
+        function copyRevenueEmailHtmlToClipboard(silent = false) {
+            const notes = document.getElementById('revenueEmailNotes')?.value || '';
+            const report = getModifiedRatesReport();
+            if (report.items.length === 0) {
+                alert('No hay tarifas modificadas para copiar.');
+                return;
+            }
+
+            const htmlContent = generateRevenueEmailHtml(report, notes);
+            const plainText = generateRevenueEmailPlainText(report, notes);
+
+            if (navigator.clipboard && window.ClipboardItem) {
+                const blobHtml = new Blob([htmlContent], { type: 'text/html' });
+                const blobText = new Blob([plainText], { type: 'text/plain' });
+                navigator.clipboard.write([
+                    new ClipboardItem({ 'text/html': blobHtml, 'text/plain': blobText })
+                ]).then(() => {
+                    if (!silent) showRevenueEmailToast('📋 ¡Tabla con diseño profesional copiada al portapapeles! Pégala en Outlook o Teams con Ctrl+V.');
+                }).catch(err => {
+                    console.warn('ClipboardItem error, usando fallback:', err);
+                    copyFallback(plainText, silent);
+                });
+            } else {
+                copyFallback(plainText, silent);
+            }
+        }
+
+        function copyFallback(text, silent = false) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+                document.execCommand('copy');
+                if (!silent) showRevenueEmailToast('📋 ¡Texto del informe copiado al portapapeles!');
+            } catch(e) {
+                console.error('Fallback copy failed', e);
+            }
+            document.body.removeChild(ta);
+        }
+
+        function showRevenueEmailToast(msg) {
+            const toast = document.getElementById('revenueEmailToast');
+            const toastText = document.getElementById('revenueEmailToastText');
+            if (toast && toastText) {
+                toastText.innerText = msg;
+                toast.style.display = 'flex';
+                setTimeout(() => {
+                    toast.style.display = 'none';
+                }, 5000);
+            } else {
+                alert(msg);
+            }
         }
     </script>
 </body>
