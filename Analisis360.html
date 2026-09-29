@@ -281,13 +281,52 @@
         }
 
         .chart-container h3 {
-            font-size: 1.1rem;
-            margin: 0 0 25px 0;
-            font-weight: 700;
-            color: white;
+            font-size: 1.05rem;
+            margin: 0 0 20px 0;
+            font-weight: 800;
+            color: var(--text-main);
             display: flex;
             align-items: center;
             gap: 10px;
+        }
+
+        .complementary-section {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            margin-top: 35px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+        }
+        .complementary-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            user-select: none;
+        }
+        .btn-toggle-comp {
+            background: var(--bg-deep);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 7px 16px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: var(--transition);
+        }
+        .btn-toggle-comp:hover {
+            border-color: var(--primary);
+            color: var(--primary);
         }
 
         .chart-wrapper {
@@ -1591,104 +1630,129 @@
             </div>
         </div>
 
-        <!-- HISTORICAL CHART (NEW) -->
-        <div class="chart-container" style="margin-bottom: 25px; min-height: 420px; display: flex; flex-direction: column;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <h3><span style="color: #8b5cf6;">📈</span> Evolución Histórica (Comparativa Anual)</h3>
-                <select id="histMetric" onchange="renderHistoricalChart()" style="font-size: 0.75rem; padding: 6px 12px; border-radius: 8px; background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--primary); cursor:pointer; font-weight: 600;">
-                    <option value="rev">Producción (€)</option>
-                    <option value="rn">Habitaciones (RN)</option>
-                    <option value="adr">Precio Medio (ADR)</option>
-                </select>
-            </div>
-            <div id="histYearToggles" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px;"></div>
-            <div class="chart-wrapper" style="flex: 1;">
-                <canvas id="historicalChart"></canvas>
-            </div>
-        </div>
-
-        <!-- CHARTS GRID -->
-        <div class="charts-grid">
-            <div class="chart-container">
-                <h3><span style="color: var(--primary);">◔</span> Ingresos de habitaciones</h3>
-                <div class="chart-wrapper">
-                    <canvas id="serviceChart"></canvas>
+        <!-- SECCIÓN COMPLEMENTARIA: HISTÓRICO Y DISTRIBUCIÓN (AL FINAL CON TOQUE PREMIUM) -->
+        <div class="complementary-section" id="complementarySection">
+            <div class="complementary-top" onclick="toggleComplementarySection()">
+                <div>
+                    <h3 style="margin: 0; font-size: 1.05rem; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 10px;">
+                        <span>📊</span> Análisis Histórico y Distribución Complementaria
+                    </h3>
+                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 4px;">
+                        Evolución plurianual comparativa, desglose por departamentos y comportamiento de canales
+                    </div>
                 </div>
-            </div>
-            <div class="chart-container">
-                <h3><span style="color: var(--secondary);">◈</span> Canales de Venta</h3>
-                <div class="chart-wrapper">
-                    <canvas id="segmentChart"></canvas>
-                </div>
-            </div>
-            <div class="chart-container">
-                <h3><span style="color: var(--accent);">📊</span> Intensidad Semanal</h3>
-                <div class="chart-wrapper">
-                    <canvas id="weeklyChart"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- GRID 360 -->
-        <div class="grid-360">
-            <!-- SERVICES TABLE -->
-            <div class="table-card">
-                <div class="table-header">
-                    <span>Desglose por Categoría</span>
-                    <span class="tag tag-prod">PRODUCCIÓN</span>
-                </div>
-                <div style="max-height: 500px; overflow-y: auto;">
-                    <table id="servicesTable">
-                        <thead>
-                            <tr>
-                                <th>Concepto</th>
-                                <th>Ingresos</th>
-                                <th>Mix %</th>
-                                <th>Cambio</th>
-                            </tr>
-                        </thead>
-                        <tbody id="servicesBody"></tbody>
-                    </table>
-                </div>
+                <button class="btn-toggle-comp" id="btnToggleCompText" type="button">
+                    <span id="btnToggleCompIcon">🔽</span>
+                    <span id="btnToggleCompLabel">Ocultar / Mostrar Métricas Secundarias</span>
+                </button>
             </div>
 
-            <!-- DEPARTMENTS TABLE -->
-            <div class="table-card">
-                <div class="table-header">
-                    <span>Producción de habitaciones</span>
-                    <span class="tag tag-seg" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">FINANZAS</span>
+            <div id="complementaryBody" style="display: block; margin-top: 22px;">
+                <!-- 1. GRÁFICO HISTÓRICO (SOLO AÑOS RELEVANTES) -->
+                <div class="chart-container" style="margin-bottom: 25px; min-height: 400px; display: flex; flex-direction: column;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+                        <h3 style="margin: 0; font-size: 0.95rem; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                            <span style="color: #8b5cf6;">📈</span> Evolución Histórica (Comparativa Anual)
+                        </h3>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700;">Métrica:</span>
+                            <select id="histMetric" onchange="renderHistoricalChart()" style="font-size: 0.75rem; padding: 6px 14px; border-radius: 8px; background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--primary); cursor:pointer; font-weight: 700;">
+                                <option value="rev">Producción (€)</option>
+                                <option value="rn">Habitaciones (RN)</option>
+                                <option value="adr">Precio Medio (ADR)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="histYearToggles" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px;"></div>
+                    <div class="chart-wrapper" style="flex: 1;">
+                        <canvas id="historicalChart"></canvas>
+                    </div>
                 </div>
-                <div style="max-height: 500px; overflow-y: auto;">
-                    <table id="departmentsTable">
-                        <thead>
-                            <tr>
-                                <th>Departamento</th>
-                                <th>Revenue</th>
-                                <th>Mix %</th>
-                            </tr>
-                        </thead>
-                        <tbody id="departmentsBody"></tbody>
-                    </table>
-                </div>
-            </div>
 
-            <!-- SEGMENTS TABLE -->
-            <div class="table-card">
-                <div class="table-header">
-                    <span>Top Segmentos</span>
-                    <span class="tag tag-prod" style="background: rgba(99, 102, 241, 0.1); color: #6366f1;">COMERCIAL</span>
+                <!-- 2. CHARTS GRID (DISTRIBUCIÓN Y DEMANDA SEMANAL) -->
+                <div class="charts-grid" style="margin-bottom: 25px;">
+                    <div class="chart-container">
+                        <h3 style="color: var(--text-main);"><span style="color: var(--primary);">◔</span> Ingresos de habitaciones</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="serviceChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <h3 style="color: var(--text-main);"><span style="color: var(--secondary);">◈</span> Canales de Venta</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="segmentChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <h3 style="color: var(--text-main);"><span style="color: var(--accent);">📊</span> Intensidad Semanal</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="weeklyChart"></canvas>
+                        </div>
+                    </div>
                 </div>
-                <div style="max-height: 500px; overflow-y: auto;">
-                    <table id="realSegmentsTable">
-                        <thead>
-                            <tr>
-                                <th>Segmento</th>
-                                <th>Producción</th>
-                                <th>ADR</th>
-                            </tr>
-                        </thead>
-                        <tbody id="realSegmentsBody"></tbody>
-                    </table>
+
+                <!-- 3. GRID 360 (TABLAS DE AUDITORÍA) -->
+                <div class="grid-360">
+                    <!-- SERVICES TABLE -->
+                    <div class="table-card">
+                        <div class="table-header">
+                            <span>Desglose por Categoría</span>
+                            <span class="tag tag-prod">PRODUCCIÓN</span>
+                        </div>
+                        <div style="max-height: 420px; overflow-y: auto;">
+                            <table id="servicesTable">
+                                <thead>
+                                    <tr>
+                                        <th>Concepto</th>
+                                        <th>Ingresos</th>
+                                        <th>Mix %</th>
+                                        <th>Cambio</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="servicesBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- DEPARTMENTS TABLE -->
+                    <div class="table-card">
+                        <div class="table-header">
+                            <span>Producción de habitaciones</span>
+                            <span class="tag tag-seg" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">FINANZAS</span>
+                        </div>
+                        <div style="max-height: 420px; overflow-y: auto;">
+                            <table id="departmentsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Departamento</th>
+                                        <th>Revenue</th>
+                                        <th>Mix %</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="departmentsBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- SEGMENTS TABLE -->
+                    <div class="table-card">
+                        <div class="table-header">
+                            <span>Top Segmentos</span>
+                            <span class="tag tag-prod" style="background: rgba(99, 102, 241, 0.1); color: #6366f1;">COMERCIAL</span>
+                        </div>
+                        <div style="max-height: 420px; overflow-y: auto;">
+                            <table id="realSegmentsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Segmento</th>
+                                        <th>Producción</th>
+                                        <th>ADR</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="realSegmentsBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -3767,6 +3831,25 @@
             }
         }
 
+        function toggleComplementarySection() {
+            const body = document.getElementById('complementaryBody');
+            const icon = document.getElementById('btnToggleCompIcon');
+            const label = document.getElementById('btnToggleCompLabel');
+            if (!body) return;
+            const isHidden = (body.style.display === 'none');
+            body.style.display = isHidden ? 'block' : 'none';
+            if (icon) icon.innerText = isHidden ? '🔽' : '🔼';
+            if (label) label.innerText = isHidden ? 'Ocultar / Mostrar Métricas Secundarias' : 'Mostrar Métricas Secundarias';
+            if (isHidden) {
+                setTimeout(() => {
+                    if (charts['historicalChart']) charts['historicalChart'].resize();
+                    if (charts['serviceChart']) charts['serviceChart'].resize();
+                    if (charts['segmentChart']) charts['segmentChart'].resize();
+                    if (charts['weeklyChart']) charts['weeklyChart'].resize();
+                }, 60);
+            }
+        }
+
         function toggleHistYear(y) {
             if (activeHistYears.has(y)) {
                 if (activeHistYears.size > 1) activeHistYears.delete(y);
@@ -3783,27 +3866,65 @@
             const ctx = document.getElementById('historicalChart').getContext('2d');
             const metric = document.getElementById('histMetric').value;
 
-            const rawYears = db[currentHotel] ? Object.keys(db[currentHotel]).filter(k => /^(20\d{2})$/.test(k)) : [];
+            // Filtrar ÚNICAMENTE los años que tienen datos reales cargados (o años recientes clave >= 2024)
+            const rawYears = db[currentHotel] ? Object.keys(db[currentHotel]).filter(k => {
+                if (!/^(20\d{2})$/.test(k)) return false;
+                const yData = db[currentHotel][k];
+                if (!yData) return false;
+                let hasData = false;
+                if (yData.service) {
+                    const hab = (typeof getGroupedProduction === 'function' ? getGroupedProduction(yData.service)?.HABITACION?.revenue : null) || [];
+                    const mast = yData.service["TOTAL_MASTER"]?.rooms || [];
+                    if (hab.some(v => v > 0) || mast.some(v => v > 0)) hasData = true;
+                }
+                if (!hasData && yData.otb) {
+                    const oRms = yData.otb.breakdown?.habitacion_rn || yData.otb.rooms || [];
+                    const oRev = yData.otb.breakdown?.habitacion || yData.otb.revenue || [];
+                    if (oRms.some(v => v > 0) || oRev.some(v => v > 0)) hasData = true;
+                }
+                if (!hasData && yData.segment) {
+                    Object.values(yData.segment).forEach(s => {
+                        if ((s.rooms || []).some(v => v > 0) || (s.revenue || []).some(v => v > 0)) hasData = true;
+                    });
+                }
+                if (!hasData && (k === "2025" || k === "2026" || k === "2027")) {
+                    hasData = true;
+                }
+                return hasData;
+            }) : [];
             const years = rawYears.sort((a, b) => parseInt(a) - parseInt(b)); // Ascending
             
             if (years.length === 0) return;
 
-            // Initialize default active years if empty
+            // Initialize default active years if empty (máximo los últimos 3 años relevantes)
             if (activeHistYears.size === 0) {
-                // Default: last 3 years or all if less than 3
                 const defaultYears = years.slice(-3);
                 defaultYears.forEach(y => activeHistYears.add(y));
+            } else {
+                // Limpiar años antiguos que ya no están en la lista filtrada
+                Array.from(activeHistYears).forEach(y => {
+                    if (!years.includes(y)) activeHistYears.delete(y);
+                });
+                if (activeHistYears.size === 0) {
+                    years.slice(-3).forEach(y => activeHistYears.add(y));
+                }
             }
 
-            // Build Toggles UI
+            // Build Toggles UI con estilo moderno de chips limpios
             const togglesContainer = document.getElementById('histYearToggles');
             if (togglesContainer) {
                 togglesContainer.innerHTML = years.map(y => {
                     const isActive = activeHistYears.has(y);
-                    const bg = isActive ? 'var(--primary)' : 'rgba(128,128,128,0.1)';
-                    const color = isActive ? 'white' : 'var(--text-muted)';
-                    const border = isActive ? 'var(--primary)' : 'rgba(128,128,128,0.2)';
-                    return `<div onclick="toggleHistYear('${y}')" style="background: ${bg}; color: ${color}; border: 1px solid ${border}; padding: 4px 12px; border-radius: 50px; font-size: 0.75rem; font-weight: 700; cursor: pointer; transition: all 0.2s; user-select: none;">${y}</div>`;
+                    const bg = isActive ? 'var(--primary)' : 'var(--bg-deep)';
+                    const color = isActive ? '#ffffff' : 'var(--text-main)';
+                    const border = isActive ? 'var(--primary)' : 'var(--border)';
+                    const dot = isActive ? '●' : '○';
+                    return `
+                        <button type="button" onclick="toggleHistYear('${y}')" style="background: ${bg}; color: ${color}; border: 1px solid ${border}; padding: 5px 14px; border-radius: 20px; font-size: 0.74rem; font-weight: 700; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; box-shadow: ${isActive ? '0 2px 8px var(--primary-glow)' : 'none'};">
+                            <span style="font-size: 0.7rem; color: ${isActive ? '#10b981' : 'var(--text-muted)'};">${dot}</span>
+                            <span>${y}</span>
+                        </button>
+                    `;
                 }).join('');
             }
 
