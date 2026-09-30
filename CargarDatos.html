@@ -834,7 +834,6 @@
 
             // Selector rápido de archivo dentro de la carpeta
             function showFolderFilePicker(files) {
-                // Reutiliza el modal existente si hay uno, o crea uno inline
                 let modal = document.getElementById('fav-file-modal');
                 if (!modal) {
                     modal = document.createElement('div');
@@ -847,38 +846,144 @@
                     document.body.appendChild(modal);
                 }
 
-                // Ordenar por fecha de modificación desc si está disponible, sino alfabético
+                // Ordenar alfabéticamente
                 files.sort((a, b) => a.name.localeCompare(b.name));
+
+                // ── Leer historial de cargas ───────────────────────────────
+                // Los logs están en config[hotel].logs[] con { timestamp, type, period, filename }
+                // También usamos config[hotel].lastProdDate etc. como fallback
+                const allLogs = [];
+                try {
+                    const cfg = JSON.parse(
+                        (typeof CapaStorage !== 'undefined'
+                            ? CapaStorage.getItem('upload_config_db_v2')
+                            : localStorage.getItem('upload_config_db_v2')) || '{}'
+                    ) || {};
+                    ['Guadiana', 'Cumbria'].forEach(h => {
+                        (cfg[h]?.logs || []).forEach(l => allLogs.push(l));
+                    });
+                } catch(e) {}
+
+                // Normaliza un nombre de archivo para comparar (sin extensión, minúsculas, sin espacios extra)
+                const norm = s => (s || '').toLowerCase().replace(/\.(xlsx?|xls)$/i, '').trim();
+
+                // Para cada archivo busca si tiene un log con filename coincidente
+                function getFileStatus(fname) {
+                    const fnNorm = norm(fname);
+                    // Búsqueda exacta primero
+                    let match = allLogs.find(l => norm(l.filename || '') === fnNorm);
+                    // Si no, búsqueda parcial (el nombre del log puede ser solo el periodo)
+                    if (!match) {
+                        match = allLogs.find(l =>
+                            fnNorm.includes(norm(l.filename || '')) ||
+                            norm(l.filename || '').includes(fnNorm)
+                        );
+                    }
+                    return match || null;
+                }
+
+                // Etiqueta de tipo
+                const typeLabels = {
+                    'Prod': 'Producción', 'Hist': 'Histórico',
+                    'Seg': 'Segmentos',   'Otb': 'Previsiones', 'Eventos': 'Eventos'
+                };
+
+                // Detectar tipo por nombre de archivo (usa la función existente de la app)
+                function guessType(fname) {
+                    if (typeof detectFileType === 'function') {
+                        const t = detectFileType(fname);
+                        return t ? (typeLabels[t] || t) : null;
+                    }
+                    const u = fname.toUpperCase();
+                    if (u.includes('PRODUCCION') || u.includes('PRODUCCIÓN')) return 'Producción';
+                    if (u.includes('HISTORICO')  || u.includes('HISTÓRICO'))  return 'Histórico';
+                    if (u.includes('SEGMENTO'))  return 'Segmentos';
+                    if (u.includes('PREVISION')  || u.includes('PREVISIONES') || u.includes('VALORADAS')) return 'Previsiones';
+                    if (u.includes('EVENTOS') || u.includes('GRUPOS')) return 'Eventos';
+                    return null;
+                }
+
+                // Colores por tipo
+                const typeColors = {
+                    'Producción':  { bg:'rgba(16,185,129,0.15)',  border:'#10b981', text:'#10b981'  },
+                    'Histórico':   { bg:'rgba(99,102,241,0.15)',  border:'#6366f1', text:'#6366f1'  },
+                    'Segmentos':   { bg:'rgba(245,158,11,0.15)',  border:'#f59e0b', text:'#f59e0b'  },
+                    'Previsiones': { bg:'rgba(139,92,246,0.15)',  border:'#8b5cf6', text:'#8b5cf6'  },
+                    'Eventos':     { bg:'rgba(236,72,153,0.15)',  border:'#ec4899', text:'#ec4899'  },
+                };
+
+                function renderBadge(type, loaded, timestamp) {
+                    const c = typeColors[type] || { bg:'rgba(148,163,184,0.15)', border:'#94a3b8', text:'#94a3b8' };
+                    const typeBadge = type
+                        ? `<span style="
+                                font-size:0.68rem; font-weight:700; padding:2px 8px;
+                                border-radius:20px; border:1px solid ${c.border};
+                                background:${c.bg}; color:${c.text}; white-space:nowrap;
+                            ">${type}</span>`
+                        : '';
+                    const loadedBadge = loaded
+                        ? `<span style="
+                                font-size:0.68rem; font-weight:700; padding:2px 8px;
+                                border-radius:20px; border:1px solid #10b981;
+                                background:rgba(16,185,129,0.12); color:#10b981;
+                                white-space:nowrap; display:inline-flex; align-items:center; gap:3px;
+                            ">&#10003; Cargado${timestamp ? ' · ' + timestamp.split(',')[1]?.trim() || '' : ''}</span>`
+                        : `<span style="
+                                font-size:0.68rem; font-weight:600; padding:2px 8px;
+                                border-radius:20px; border:1px solid rgba(148,163,184,0.3);
+                                background:transparent; color:#94a3b8; white-space:nowrap;
+                            ">Pendiente</span>`;
+                    return `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;">${typeBadge}${loadedBadge}</div>`;
+                }
 
                 modal.innerHTML = `
                     <div style="
                         background:var(--bg-surface,#1e293b);
                         border-radius:20px;
                         padding:28px;
-                        width:min(520px,90vw);
-                        max-height:70vh;
+                        width:min(560px,92vw);
+                        max-height:75vh;
                         overflow-y:auto;
                         box-shadow:0 20px 60px rgba(0,0,0,0.5);
                     ">
                         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
-                            <h3 style="color:var(--text-main,#f1f5f9);margin:0;">📂 Elige un archivo</h3>
+                            <div>
+                                <h3 style="color:var(--text-main,#f1f5f9);margin:0 0 2px;">📂 Elige un archivo</h3>
+                                <div style="font-size:0.75rem;color:var(--text-muted,#94a3b8);">
+                                    ${files.length} archivos · ${allLogs.length} cargas registradas
+                                </div>
+                            </div>
                             <button onclick="document.getElementById('fav-file-modal').style.display='none'"
-                                style="background:transparent;border:none;color:var(--text-muted,#94a3b8);font-size:1.4rem;cursor:pointer;">&#x2715;</button>
+                                style="background:transparent;border:none;color:var(--text-muted,#94a3b8);font-size:1.4rem;cursor:pointer;padding:0;">&#x2715;</button>
                         </div>
-                        <div style="display:flex;flex-direction:column;gap:8px;">
-                            ${files.map((f, i) => `
-                                <button data-idx="${i}" onclick="window._favPickFile(${i})" style="
+                        <div style="display:flex;flex-direction:column;gap:6px;">
+                            ${files.map((f, i) => {
+                                const logMatch = getFileStatus(f.name);
+                                const type     = guessType(f.name);
+                                const badges   = renderBadge(type, !!logMatch, logMatch?.timestamp);
+                                const loadedBorder = logMatch
+                                    ? 'border-color:rgba(16,185,129,0.4);'
+                                    : '';
+                                return `<button data-idx="${i}" onclick="window._favPickFile(${i})" style="
                                     text-align:left;
                                     background:var(--bg-glass,rgba(30,41,59,0.7));
                                     border:1px solid var(--border,rgba(255,255,255,0.1));
+                                    ${loadedBorder}
                                     border-radius:10px;
                                     padding:10px 14px;
                                     color:var(--text-main,#f1f5f9);
-                                    font-size:0.85rem;
+                                    font-size:0.83rem;
                                     cursor:pointer;
                                     transition:background 0.2s;
-                                ">📄 ${f.name}</button>
-                            `).join('')}
+                                    width:100%;
+                                ">
+                                    <div style="display:flex;align-items:center;gap:8px;">
+                                        <span style="flex-shrink:0;">📄</span>
+                                        <span style="word-break:break-word;">${f.name}</span>
+                                    </div>
+                                    ${badges}
+                                </button>`;
+                            }).join('')}
                         </div>
                     </div>
                 `;
@@ -888,7 +993,6 @@
                     modal.style.display = 'none';
                     const { fh } = files[i];
                     const file = await fh.getFile();
-                    // Reutiliza el handler ya existente en la app
                     if (typeof handleFile === 'function') {
                         handleFile(file, null);
                     }
