@@ -2270,7 +2270,8 @@
             config[hotel].logs.push({
                 timestamp: new Date().toLocaleString('es-ES'),
                 type: type === 'Prod' ? 'Producción' : (type === 'Hist' ? 'Histórico' : (type === 'Seg' ? 'Segmentos' : 'Previsiones')),
-                period: period
+                period: period,
+                filename: file.name
             });
 
             // 6. Limitar histórico para evitar Storage Quota Exceeded (Fase 2)
@@ -2997,9 +2998,16 @@
                     
                     const isEV = rowLabel.includes("EVENTO") || rowLabel.includes("HITO") || rowLabel.includes("COMENTARIO") || rowLabel.includes("FESTIVO") || rowLabel.includes("OBSERVAC");
 
+                    // Etiquetas que se ignoran silenciosamente (no son útiles para OTB)
+                    const isSilentIgnore = rowLabel.includes("PAX") || rowLabel.includes("PERSONA") ||
+                                          rowLabel.includes("PASAJERO") || rowLabel.includes("LLEGADA") ||
+                                          rowLabel.includes("SALIDA") || rowLabel.includes("NOCHE LIBRE") ||
+                                          rowLabel.includes("CONCEPTO") || rowLabel.includes("TIPO") ||
+                                          rowLabel.includes("CATEGORIA") || rowLabel.includes("DESCRIPCION");
+
                     if (!isRMS && !isREV && !isEV) {
-                        // Debug log for ignored rows that HAVE data
-                        if (row.some((v, idx) => dailyCols[idx] && v !== null && v !== 0 && v !== "")) {
+                        // Sólo logear si la fila tiene datos Y no es una fila conocida a ignorar
+                        if (!isSilentIgnore && row.some((v, idx) => dailyCols[idx] && v !== null && v !== 0 && v !== "")) {
                             console.log(`⚠️ Fila ${r} ignorada (Sin etiqueta reconocida): "${rowLabel.trim()}"`);
                         }
                         continue;
