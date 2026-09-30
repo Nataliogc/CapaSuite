@@ -151,9 +151,7 @@
         const dateYears = [...fileName.matchAll(/\d{1,2}[-/]\d{1,2}[-/](\d{4}|\d{2})(?!\d)/g)].map(m => m[1].length === 2 ? (Number(m[1]) > 50 ? '19' : '20') + m[1] : m[1]);
         const periodYears = String(hintYear || '').match(/\b20\d{2}\b/g) || [];
         const uniqueYears = [...new Set(periodYears.length ? periodYears : dateYears)];
-        // Si el archivo cubre un rango multi-año (ej. 30-09-2026 al 29-09-2027),
-        // usamos el año más pequeño como referencia para parsear cabeceras dd/mm.
-        hintYear = uniqueYears.length >= 1 ? uniqueYears.sort()[0] : undefined;
+        hintYear = uniqueYears.length === 1 ? uniqueYears[0] : undefined;
         let header = -1, columns = [];
         for (let r = 0; r < Math.min(rows.length, 30); r++) {
             const mapped = (rows[r] || []).map((v, c) => c < 2 ? null : column(v, hintYear));
@@ -260,6 +258,9 @@
         db[hotel] ||= {};
         for (const [year, incoming] of Object.entries(report.years)) {
             const target = db[hotel][year] ||= { service: {}, segment: {} };
+            if (target.segment && Object.keys(target.segment).length > 0) {
+                target.segment_prev = JSON.parse(JSON.stringify(target.segment));
+            }
             target.segment ||= {};
             target.segmentCoverage ||= {};
             target.segmentSources ||= {};

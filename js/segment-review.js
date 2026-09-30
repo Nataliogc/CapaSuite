@@ -5,7 +5,9 @@
         async read(rows, fileName, period, forceType, hotel) {
             if (active) throw new Error('Termina primero la revisión de segmentos abierta.');
             const detectedHotel = hotel || (String(fileName || '').toLowerCase().includes('cumbria') ? 'Cumbria' : 'Guadiana');
-            const isForecast = forceType ? (forceType === 'forecast' || forceType === 'Otb' || forceType === 'Prevision') : (fileName.toLowerCase().includes('prevision') || fileName.toLowerCase().includes('otb') || fileName.toLowerCase().includes('valorada'));
+            const nameLower = String(fileName || '').toLowerCase();
+            const isForecast = (forceType === 'forecast' || forceType === 'Otb' || forceType === 'Prevision') || 
+                nameLower.includes('prevision') || nameLower.includes('otb') || nameLower.includes('valorada');
             
             const blocks = SegmentAnalysis.reviewRows(rows, {}, detectedHotel);
             if (!blocks.length) {

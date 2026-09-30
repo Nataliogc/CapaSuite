@@ -395,6 +395,75 @@ function setupDragDrop() {
     });
 }
 
+function getCutoffDateInfo(hotel, year, mode) {
+    let config = {};
+    try {
+        config = JSON.parse((typeof CapaStorage !== 'undefined' ? CapaStorage.getItem('upload_config_db_v2') : localStorage.getItem('upload_config_db_v2')) || '{}') || {};
+    } catch (e) {}
+    const hotelConfig = config[hotel] || {};
+    const hotelData = segmentDB[hotel]?.[year] || {};
+
+    if (mode === 'forecast') {
+        let forecastStart = '', forecastEnd = '';
+        let fDB = {};
+        try {
+            fDB = JSON.parse((typeof CapaStorage !== 'undefined' ? CapaStorage.getItem('segment_forecast_v2') : localStorage.getItem('segment_forecast_v2')) || '{}') || {};
+        } catch (e) {}
+        const segData = fDB[hotel]?.segment || {};
+        const allDays = [];
+        for (const seg of Object.values(segData)) {
+            if (seg.days) {
+                for (const iso of Object.keys(seg.days)) {
+                    allDays.push(iso);
+                }
+            }
+        }
+        if (allDays.length > 0) {
+            allDays.sort();
+            forecastStart = allDays[0];
+            forecastEnd = allDays[allDays.length - 1];
+        }
+        const otbPeriod = hotelConfig.lastOtbDate || (forecastStart && forecastEnd ? `${forecastStart} al ${forecastEnd}` : '');
+        return {
+            type: 'forecast',
+            cutoffDate: forecastEnd,
+            period: otbPeriod,
+            label: otbPeriod ? `🔮 Previsión: <b>${otbPeriod}</b>` : ''
+        };
+    } else {
+        let maxMonth = -1, maxDay = -1;
+        const coverage = hotelData.segmentCoverage || hotelData.coverage || {};
+        for (let m = 11; m >= 0; m--) {
+            const days = coverage[m] || coverage[String(m)] || [];
+            if (days.length > 0) {
+                maxMonth = m;
+                maxDay = Math.max(...days);
+                break;
+            }
+        }
+
+        let cutoffDate = '';
+        if (maxMonth >= 0 && maxDay > 0) {
+            const dStr = String(maxDay).padStart(2, '0');
+            const mStr = String(maxMonth + 1).padStart(2, '0');
+            cutoffDate = `${dStr}-${mStr}-${year}`;
+        }
+
+        const segPeriod = hotelConfig.lastSegDate || hotelData.updates?.seg || hotelData.lastSegDate || '';
+        const prodPeriod = hotelConfig.lastProdDate || hotelData.updates?.prod || '';
+        const displayDate = cutoffDate || segPeriod || prodPeriod || hotelData.lastUpdate || '';
+
+        return {
+            type: 'historical',
+            cutoffDate: cutoffDate || displayDate,
+            period: displayDate,
+            maxMonth: maxMonth,
+            maxDay: maxDay,
+            label: displayDate ? `📅 Datos cargados hasta: <b>${displayDate}</b>` : ''
+        };
+    }
+}
+
 function renderDashboard() {
     const hotelData = segmentDB[currentHotel]?.[currentYear];
     if (!hotelData || !currentYear) return;
@@ -415,24 +484,43 @@ function renderDashboard() {
     const capacity = HOTELS[currentHotel].rooms;
     const revpar = totals.days ? totals.accommodation / (capacity * totals.days) : null;
     const priorRevpar = prior?.days ? prior.accommodation / (capacity * prior.days) : null;
-    el('metric-years').textContent = `${scopeName} · ${currentYear}${compareYear ? ' vs ' + compareYear : ''} · ${totals.days == null ? 'Cobertura sin verificar' : totals.days + ' días cargados'}`;
+
+    // Indicador y fecha de corte
+    const info = getCutoffDateInfo(currentHotel, currentYear, currentMode);
+    const badge = el('updateBadge');
+    if (badge) {
+        if (info.label) {
+            badge.innerHTML = info.label;
+            badge.style.display = 'inline-flex';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+
+    const cutoffText = info.cutoffDate ? ` · Corte: ${info.cutoffDate}` : '';
+    el('metric-years').textContent = `${scopeName} · ${currentYear}${compareYear ? ' vs ' + compareYear : ''} · ${totals.days == null ? 'Cobertura sin verificar' : totals.days + ' días cargados'}${cutoffText}`;
     el('revpar-label').textContent = currentSegment ? 'Aportación al RevPAR del hotel' : 'RevPAR · solo alojamiento';
-    el('period-note').textContent = `${months.map(m => MONTH_ORDER[m]).join(', ')}. Producción = Prod. Habitación / Alojamiento (base para ADR y comparativas). ${compareYear && !comparable ? '(Nota: Días cargados no coinciden, comparativa puede ser inexacta).' : ''}${totals.days == null ? ' Reimporta el Excel para verificar fechas y desglosar el alojamiento.' : ''}`;
+
+    let periodPrefix = '';
+    if (currentMode === 'historical' && info.cutoffDate) {
+        periodPrefix = `📅 <strong>Datos reales cargados hasta el ${info.cutoffDate}</strong>. `;
+    }
+    el('period-note').innerHTML = `${periodPrefix}${months.map(m => MONTH_ORDER[m]).join(', ')}. Producción = Prod. Habitación / Alojamiento (base para ADR y comparativas). ${compareYear && !comparable ? '(Nota: Días cargados no coinciden, comparativa puede ser inexacta).' : ''}${totals.days == null ? ' Reimporta el Excel para verificar fechas y desglosar el alojamiento.' : ''}`;
     if (currentMode === 'forecast') {
         const availableY = Object.keys(segmentDB[currentHotel] || {}).sort();
         const otherYears = availableY.filter(y => y !== currentYear);
         const yHint = otherYears.length ? ` (Tu previsión también incluye datos para ${otherYears.join(', ')}: selecciona ese año arriba para verlos).` : '';
-        el('period-note').textContent = `🔮 Modo Previsión (OTB) · Viendo previsión del ejercicio ${currentYear}${yHint}. ` + el('period-note').textContent;
+        el('period-note').innerHTML = `🔮 Modo Previsión (OTB) · Viendo previsión del ejercicio ${currentYear}${yHint}. ` + el('period-note').innerHTML;
     }
     const invalidStored = SegmentAnalysis.segments(data).filter(s => !SegmentAnalysis.validSegments.includes(SegmentAnalysis.canonical(s.name)) && months.some(m => ['rooms', 'revenue', 'accommodation', 'totalRevenue'].some(field => Number(s[field]?.[m]) !== 0 && s[field]?.[m] != null)));
-    if (invalidStored.length) el('period-note').textContent += ` Atención: hay segmentos incorrectos guardados (${invalidStored.map(s => s.name).join(', ')}). Pulsa Importar Excel para revisarlos y asignar el segmento correcto antes de guardar.`;
+    if (invalidStored.length) el('period-note').innerHTML += ` Atención: hay segmentos incorrectos guardados (${invalidStored.map(s => s.name).join(', ')}). Pulsa Importar Excel para revisarlos y asignar el segmento correcto antes de guardar.`;
     [['prod', totals.accommodation, prior?.accommodation, 'revenue'], ['rooms', totals.rooms, prior?.rooms, 'rooms'], ['adr', totals.adr, prior?.adr, 'adr'], ['revpar', revpar, priorRevpar, 'adr']].forEach(([id, value, before, metric]) => {
         el('kpi-' + id).textContent = fmt(value, metric);
         const trend = el('kpi-' + id + '-diff');
         trend.textContent = delta(value, before) + (previous && before !== 0 ? ` vs ${compareYear}` : '');
         trend.className = 'kpi-diff ' + (before != null && value != null ? (value > before ? 'positive' : value < before ? 'negative' : '') : '');
     });
-    el('period-note').textContent = `${scopeName}. ` + el('period-note').textContent;
+    el('period-note').innerHTML = `<strong>${scopeName}</strong>. ` + el('period-note').innerHTML;
     const names = new Set([...SegmentAnalysis.segments(hotelData), ...(previous ? SegmentAnalysis.segments(hotelPrevious) : [])].map(s => s.name));
     const currentMap = new Map(SegmentAnalysis.segments(hotelData).map(s => [s.name, s]));
     const previousMap = new Map(SegmentAnalysis.segments(hotelPrevious).map(s => [s.name, s]));

@@ -2252,6 +2252,9 @@
                     db[hotel][yStr].lastProdDate = lastDateLabel;
                     db[hotel][yStr].lastUpdate = lastDateLabel + " " + timeStr;
                 } else if (type === 'Seg') {
+                    if (db[hotel][yStr].segment && Object.keys(db[hotel][yStr].segment).length > 0 && !db[hotel][yStr].segment_prev) {
+                        db[hotel][yStr].segment_prev = JSON.parse(JSON.stringify(db[hotel][yStr].segment));
+                    }
                     db[hotel][yStr].updates.seg = lastDateLabel;
                     db[hotel][yStr].lastSegDate = lastDateLabel;
                     if (!db[hotel][yStr].lastUpdate) db[hotel][yStr].lastUpdate = lastDateLabel + " " + timeStr;

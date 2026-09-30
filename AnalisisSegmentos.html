@@ -518,7 +518,12 @@
                         style="height: 50px;"></a>
                 <div class="title">
                     <h1>Análisis de Segmentación</h1>
-                    <p>Análisis de canales y tipos de cliente</p>
+                    <div style="display: flex; align-items: center; gap: 12px; margin-top: 4px; flex-wrap: wrap;">
+                        <p style="margin: 0;">Análisis de canales y tipos de cliente</p>
+                        <span id="updateBadge"
+                            style="display: none; font-size: 0.78rem; background: rgba(99, 102, 241, 0.12); color: var(--primary); padding: 3px 12px; border-radius: 20px; font-weight: 700; border: 1px solid rgba(99, 102, 241, 0.25); white-space: nowrap;">📅
+                            Corte: --</span>
+                    </div>
                 </div>
             </div>
             <div style="display:flex; gap:12px; align-items:center; flex-wrap: wrap;">
@@ -655,7 +660,7 @@
     <script src="js/segment-analysis.js?v=20260929-corrections"></script>
     <script src="js/segment-review.js"></script>
     <script src="js/production-groups.js?v=20260916"></script>
-    <script src="js/segment-dashboard.js?v=20260916-grouped-detail"></script>
+    <script src="js/segment-dashboard.js?v=20260930-cutoff-badge"></script>
 
     <!-- MODAL CONFIRMAR SUBIDA DE SEGMENTACIÓN -->
     <div id="segmentConfirmModal"
