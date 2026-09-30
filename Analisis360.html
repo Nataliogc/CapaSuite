@@ -1224,7 +1224,10 @@
     <header class="header-360">
         <div class="header-title">
             <h1>Panel 360º</h1>
-            <p id="subTitle360">Revenue de habitaciones: producción, previsión y costes de alojamiento</p>
+            <div style="display:flex; align-items:center; gap:12px; margin-top:4px; flex-wrap:wrap;">
+                <p id="subTitle360" style="margin:0;">Revenue de habitaciones: producción, previsión y costes de alojamiento</p>
+                <span id="updateBadge360" style="display:none; font-size:0.75rem; background:rgba(99,102,241,0.1); color:var(--primary); padding:3px 12px; border-radius:20px; font-weight:700; border:1px solid rgba(99,102,241,0.25); white-space:nowrap;">📅 Actualizado: --</span>
+            </div>
         </div>
         <div class="controls" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
             <select id="viewModeSelector" onchange="refreshAll()" style="font-weight:700; border-color:var(--primary); color:var(--primary);" title="Modo de Vista">
@@ -1272,9 +1275,10 @@
             <div class="kpi-card" style="animation-delay: 0.2s;">
                 <span class="label">Ocupación & Pick-up</span>
                 <span class="value" id="kpi-total-occ">0%</span>
-                <div class="trend" id="kpi-pickup-24h" style="margin-bottom: 8px;">
+                <div class="trend" id="kpi-pickup-24h" style="margin-bottom: 4px;">
                     <span class="pickup-badge pickup-neutral">No hay datos de Pick-up</span>
                 </div>
+                <div id="kpi-pickup-range" style="font-size:0.7rem; color:var(--text-muted); line-height:1.3; min-height:16px; margin-bottom:8px;"></div>
                 <div class="budget-progress-container">
                     <div id="budget-bar-occ" class="budget-progress-bar" style="background: linear-gradient(90deg, var(--secondary), #34d399);"></div>
                 </div>
@@ -1286,9 +1290,10 @@
             <div class="kpi-card" style="animation-delay: 0.3s;">
                 <span class="label">Precio Medio (ADR)</span>
                 <span class="value" id="kpi-total-adr">0 €</span>
-                <div class="trend" id="kpi-adr-vs-prev" style="color: var(--accent); margin-bottom: 8px;">
+                <div class="trend" id="kpi-adr-vs-prev" style="color: var(--accent); margin-bottom: 4px;">
                     <span>⚡</span> Yield Intensity: Media
                 </div>
+                <div id="kpi-adr-pickup-badge" style="font-size:0.7rem; color:var(--text-muted); line-height:1.3; min-height:16px; margin-bottom:8px;"></div>
                 <div class="budget-progress-container">
                     <div id="budget-bar-adr" class="budget-progress-bar" style="background: linear-gradient(90deg, var(--accent), #fbbf24);"></div>
                 </div>
@@ -3956,6 +3961,29 @@
 
             const data = db[currentHotel][currentYear];
             const midx = currentMonth === "All" ? -1 : parseInt(currentMonth);
+
+            // Actualizar badge de última carga en la cabecera 360
+            const badge360 = document.getElementById('updateBadge360');
+            if (badge360) {
+                let config = {};
+                try {
+                    config = JSON.parse((typeof CapaStorage !== 'undefined' ? CapaStorage.getItem('upload_config_db_v2') : localStorage.getItem('upload_config_db_v2')) || '{}') || {};
+                } catch(e) {}
+                const hotelConfig = config[currentHotel] || {};
+                const prodDate = (data.updates?.prod && data.updates.prod !== "N/A") ? data.updates.prod : (hotelConfig.lastProdDate || "");
+                const otbDate = (data.updates?.otb && data.updates.otb !== "N/A") ? data.updates.otb : (hotelConfig.lastOtbDate || "");
+                let parts = [];
+                if (prodDate) parts.push(`📈 Real: <b>${prodDate}</b>`);
+                if (otbDate) parts.push(`🔮 Previsión: <b>${otbDate}</b>`);
+                if (parts.length === 0 && data.lastUpdate) parts.push(`📅 <b>${data.lastUpdate}</b>`);
+                if (parts.length > 0) {
+                    badge360.innerHTML = parts.join(' &nbsp;|&nbsp; ');
+                    badge360.style.display = 'inline-block';
+                } else {
+                    badge360.style.display = 'none';
+                }
+            }
+
             const agg = aggregateServices(data, midx, currentViewMode);
             
             renderKPIRow(agg, currentHotel);
@@ -4285,7 +4313,24 @@
             // PICK-UP MONITOR: comparison of loaded reports, not a verified 24h interval.
             const pickupElement = document.getElementById('kpi-pickup-24h');
             pickupElement.innerHTML = '<span class="pickup-badge pickup-neutral">No hay datos comparables de Pick-up</span>';
+            const rangeElement = document.getElementById('kpi-pickup-range');
+            if (rangeElement && rangeElement !== pickupElement) {
+                rangeElement.innerHTML = '';
+            }
+            const adrPickupElement = document.getElementById('kpi-adr-pickup-badge');
+            if (adrPickupElement && adrPickupElement !== pickupElement) {
+                adrPickupElement.innerHTML = '';
+            }
+
             let totalPickup = 0;
+            let totalPickupRev = 0;
+            let currRmsSum = 0;
+            let prevRmsSum = 0;
+            let currRevSum = 0;
+            let prevRevSum = 0;
+            let minStayDate = null;
+            let maxStayDate = null;
+
             if (yearData.daily_otb && yearData.otb_prev && yearData.otb_prev.daily_otb) {
                 const currOtb = yearData.daily_otb;
                 const prevOtb = yearData.otb_prev.daily_otb;
@@ -4300,8 +4345,11 @@
                     const validDate = new Date(Date.UTC(Number(parsed[1]), m, Number(parsed[3])));
                     if (validDate.toISOString().slice(0, 10) !== date) { comparable = false; return; }
                     const rooms = entry => entry !== null && typeof entry === 'object' ? entry.rooms : entry;
+                    const rev = entry => entry !== null && typeof entry === 'object' ? (entry.revenue || entry.accommodation || 0) : 0;
                     const c = rooms(currOtb[date]);
                     const p = rooms(prevOtb[date]);
+                    const cR = rev(currOtb[date]);
+                    const pR = rev(prevOtb[date]);
                     // Missing dates/amounts are not evidence of zero bookings or cancellations.
                     if (!Number.isFinite(c) || !Number.isFinite(p) || c < 0 || p < 0) {
                         comparable = false;
@@ -4309,11 +4357,53 @@
                     }
                     comparedDays++;
                     totalPickup += c - p;
+                    totalPickupRev += (Number.isFinite(cR) && Number.isFinite(pR)) ? (cR - pR) : 0;
+                    currRmsSum += c;
+                    prevRmsSum += p;
+                    currRevSum += (Number.isFinite(cR) ? cR : 0);
+                    prevRevSum += (Number.isFinite(pR) ? pR : 0);
+                    if (!minStayDate || date < minStayDate) minStayDate = date;
+                    if (!maxStayDate || date > maxStayDate) maxStayDate = date;
                 });
                 if (comparable && comparedDays > 0) {
                     const badgeClass = totalPickup > 0 ? 'pickup-up' : (totalPickup < 0 ? 'pickup-down' : 'pickup-neutral');
                     const icon = totalPickup > 0 ? '📈' : (totalPickup < 0 ? '📉' : '●');
                     pickupElement.innerHTML = `<span class="pickup-badge ${badgeClass}">${icon} Variación entre cargas: ${totalPickup > 0 ? '+' : ''}${totalPickup} RN</span>`;
+
+                    if (rangeElement && rangeElement !== pickupElement && minStayDate && maxStayDate) {
+                        const fmtD = d => {
+                            const p = d.split('-');
+                            return p.length === 3 ? `${p[2]}/${p[1]}/${p[0].slice(-2)}` : d;
+                        };
+                        const prevSnap = yearData.otb_prev.snapshotDate ? yearData.otb_prev.snapshotDate.split(' ')[0] : 'Ant.';
+                        const tramoTexto = minStayDate === maxStayDate ? fmtD(minStayDate) : `${fmtD(minStayDate)} al ${fmtD(maxStayDate)}`;
+                        rangeElement.innerHTML = `<span title="Comparando informe anterior (${prevSnap}) con el actual">📅 Tramo: <b>${tramoTexto}</b> · Foto <b>${prevSnap}</b></span>`;
+                    }
+
+                    if (adrPickupElement && adrPickupElement !== pickupElement) {
+                        const currAvgAdr = currRmsSum > 0 ? (currRevSum / currRmsSum) : 0;
+                        const prevAvgAdr = prevRmsSum > 0 ? (prevRevSum / prevRmsSum) : 0;
+                        const deltaAdr = (currAvgAdr > 0 && prevAvgAdr > 0) ? (currAvgAdr - prevAvgAdr) : 0;
+                        const newBookingAdr = (totalPickup > 0 && totalPickupRev > 0) ? (totalPickupRev / totalPickup) : null;
+
+                        let adrClass = 'pickup-neutral';
+                        let adrIcon = '●';
+                        if (deltaAdr > 0.05) { adrClass = 'pickup-up'; adrIcon = '📈'; }
+                        else if (deltaAdr < -0.05) { adrClass = 'pickup-down'; adrIcon = '📉'; }
+
+                        const signAdr = deltaAdr > 0 ? '+' : '';
+                        const tooltipText = newBookingAdr ? `ADR medio de nuevas reservas: ${newBookingAdr.toFixed(2)} €` : 'Variación de precio medio entre informes';
+                        adrPickupElement.innerHTML = `<span class="pickup-badge ${adrClass}" title="${tooltipText}">${adrIcon} Pick-up ADR: ${signAdr}${deltaAdr.toFixed(2).replace('.', ',')} €</span>`;
+                    }
+                }
+            } else {
+                if (rangeElement && rangeElement !== pickupElement) {
+                    const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+                    const monthLabel = midx === -1 ? `Todo el año ${currentYear}` : (monthNames[midx] + ` ${currentYear}`);
+                    rangeElement.innerHTML = `<span style="font-size:0.68rem; color:var(--text-muted);">Tramo: ${monthLabel} (1ª carga OTB)</span>`;
+                }
+                if (adrPickupElement && adrPickupElement !== pickupElement) {
+                    adrPickupElement.innerHTML = `<span class="pickup-badge pickup-neutral">● Sin pick-up de ADR</span>`;
                 }
             }
 
