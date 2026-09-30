@@ -3635,6 +3635,18 @@
                 segPrevTY = db[hotel][year]?.segment_prev || {};
             }
 
+            // Leer base de datos de previsiones por segmento y sus snapshots (segment_forecast_v2)
+            let forecastDB = {};
+            try {
+                forecastDB = JSON.parse(CapaStorage.getItem('segment_forecast_v2') || '{}') || {};
+            } catch(e) { console.warn("Error leyendo segment_forecast_v2:", e); }
+
+            const hotelForecast = forecastDB[hotel] || {};
+            const curForecastSeg = hotelForecast.segment || {};
+            const prevForecastSeg = hotelForecast.segment_prev || {};
+            const segOtbTY = db[hotel]?.[year]?.segment_otb || {};
+            const segOtbPrevTY = db[hotel]?.[year]?.segment_otb_prev || {};
+
             const getSegmentValues = (segObj) => {
                 if (!segObj) return { rooms: 0, rev: 0 };
                 const mStart = midx === -1 ? 0 : midx;
@@ -3656,6 +3668,36 @@
                 return { rooms, rev };
             };
 
+            const getForecastValues = (segMap) => {
+                const res = {};
+                if (!segMap) return res;
+                const mStart = midx === -1 ? 0 : midx;
+                const mEnd = midx === -1 ? 11 : midx;
+                Object.entries(segMap).forEach(([rawName, segObj]) => {
+                    const canonical = normalizeSegmentDisplayName(rawName);
+                    if (!res[canonical]) res[canonical] = { rooms: 0, rev: 0 };
+                    if (segObj && segObj.days) {
+                        Object.entries(segObj.days).forEach(([iso, dt]) => {
+                            const [yStr, mStr] = iso.split('-');
+                            if (yStr === String(year)) {
+                                const m = parseInt(mStr, 10) - 1;
+                                if (m >= mStart && m <= mEnd) {
+                                    res[canonical].rooms += (Number(dt.rooms) || 0);
+                                    res[canonical].rev += (Number(dt.accommodation) || Number(dt.revenue) || 0);
+                                }
+                            }
+                        });
+                    }
+                });
+                return res;
+            };
+
+            const curForecastVals = getForecastValues(curForecastSeg);
+            const prevForecastVals = getForecastValues(prevForecastSeg);
+            const hasForecastPrev = prevForecastSeg && Object.keys(prevForecastSeg).length > 0;
+            const hasMonthlyOtbPrev = segOtbPrevTY && Object.keys(segOtbPrevTY).length > 0;
+            const hasSegmentPrev = segPrevTY && Object.keys(segPrevTY).length > 0;
+
             // Agrupar y consolidar por nombre canónico (ej. DIRONLINE -> DIRECTO ONLINE)
             const groupedMap = {};
             const addToGroup = (srcObj, key) => {
@@ -3675,6 +3717,22 @@
             addToGroup(segDataLY, 'ly');
             addToGroup(segPrevTY, 'prev');
 
+            // Asegurar que segmentos con actividad en forecast también se listen si faltan en histórico
+            Object.keys(curForecastVals).forEach(canonical => {
+                if (!groupedMap[canonical]) {
+                    groupedMap[canonical] = { cur: { rooms: 0, rev: 0 }, ly: { rooms: 0, rev: 0 }, prev: { rooms: 0, rev: 0 } };
+                }
+            });
+
+            // Si un segmento no tiene producción real en este periodo pero sí OTB de forecast (ej. meses futuros o año de previsión), usar forecast
+            Object.keys(groupedMap).forEach(segName => {
+                const fData = curForecastVals[segName];
+                if (fData && fData.rooms > 0 && groupedMap[segName].cur.rooms === 0) {
+                    groupedMap[segName].cur.rooms = fData.rooms;
+                    groupedMap[segName].cur.rev = fData.rev;
+                }
+            });
+
             const allCanonicalKeys = Object.keys(groupedMap);
             if (allCanonicalKeys.length === 0) {
                 segTbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:24px; color:var(--text-muted);">No hay informes de segmentos cargados para este hotel y año</td></tr>';
@@ -3691,7 +3749,24 @@
                 const ly = groupedMap[segName].ly;
                 const prev = groupedMap[segName].prev;
 
-                if (cur.rev === 0 && ly.rev === 0 && cur.rooms === 0 && ly.rooms === 0) return;
+                let pickupRms = 0;
+                let pickupRev = 0;
+
+                // Pick-up de segmento: priorizar comparativa entre informes de previsión, o histórico de cargas
+                if (hasForecastPrev && curForecastVals[segName] && prevForecastVals[segName]) {
+                    pickupRms = curForecastVals[segName].rooms - prevForecastVals[segName].rooms;
+                    pickupRev = curForecastVals[segName].rev - prevForecastVals[segName].rev;
+                } else if (hasMonthlyOtbPrev && segOtbTY[segName] && segOtbPrevTY[segName]) {
+                    const cO = getSegmentValues(segOtbTY[segName]);
+                    const pO = getSegmentValues(segOtbPrevTY[segName]);
+                    pickupRms = cO.rooms - pO.rooms;
+                    pickupRev = cO.rev - pO.rev;
+                } else if (hasSegmentPrev && prev && (prev.rooms !== 0 || prev.rev !== 0)) {
+                    pickupRms = cur.rooms - prev.rooms;
+                    pickupRev = cur.rev - prev.rev;
+                }
+
+                if (cur.rev === 0 && ly.rev === 0 && cur.rooms === 0 && ly.rooms === 0 && pickupRms === 0 && pickupRev === 0) return;
 
                 const adrTY = cur.rooms > 0 ? (cur.rev / cur.rooms) : 0;
                 const adrLY = ly.rooms > 0 ? (ly.rev / ly.rooms) : 0;
@@ -3704,10 +3779,6 @@
 
                 const deltaAdr = adrTY - adrLY;
                 const deltaAdrPct = adrLY > 0 ? (deltaAdr / adrLY * 100) : 0;
-
-                // Pick-up de segmento (entre cargas si existe snapshot previo, o variación neta reciente)
-                const pickupRms = prev.rooms > 0 ? (cur.rooms - prev.rooms) : 0;
-                const pickupRev = prev.rev > 0 ? (cur.rev - prev.rev) : 0;
 
                 totRmsTY += cur.rooms;
                 totRevTY += cur.rev;

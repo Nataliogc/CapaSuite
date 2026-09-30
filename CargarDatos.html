@@ -964,7 +964,7 @@
                                 const loadedBorder = logMatch
                                     ? 'border-color:rgba(16,185,129,0.4);'
                                     : '';
-                                return `<button data-idx="${i}" onclick="window._favPickFile(${i})" style="
+                                return `<button data-idx="${i}" onclick="window._favShowFileDetail(${i})" style="
                                     text-align:left;
                                     background:var(--bg-glass,rgba(30,41,59,0.7));
                                     border:1px solid var(--border,rgba(255,255,255,0.1));
@@ -985,17 +985,62 @@
                                 </button>`;
                             }).join('')}
                         </div>
+                        <!-- Panel de confirmación de carga (oculto por defecto) -->
+                        <div id="fav-file-confirm" style="display:none; margin-top:16px;
+                            background:rgba(15,23,42,0.85); border:1px solid rgba(99,102,241,0.4);
+                            border-radius:12px; padding:14px 16px;">
+                            <div id="fav-file-confirm-info" style="font-size:0.8rem; color:var(--text-muted,#94a3b8); margin-bottom:12px; line-height:1.6;"></div>
+                            <div style="display:flex;gap:8px;">
+                                <button id="fav-file-confirm-ok" style="
+                                    flex:1; padding:8px 0; border-radius:8px; border:none; cursor:pointer;
+                                    background:#6366f1; color:#fff; font-weight:700; font-size:0.85rem;">
+                                    ⬆ Cargar ahora
+                                </button>
+                                <button onclick="document.getElementById('fav-file-confirm').style.display='none'"
+                                    style="padding:8px 14px; border-radius:8px; border:1px solid rgba(148,163,184,0.3);
+                                    background:transparent; color:#94a3b8; cursor:pointer; font-size:0.85rem;">
+                                    Cancelar
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 `;
                 modal.style.display = 'flex';
 
-                window._favPickFile = async function(i) {
-                    modal.style.display = 'none';
-                    const { fh } = files[i];
+                // Muestra el panel de detalle/confirmación sin cargar el archivo
+                window._favShowFileDetail = async function(i) {
+                    const { fh, name } = files[i];
                     const file = await fh.getFile();
-                    if (typeof handleFile === 'function') {
-                        handleFile(file, null);
-                    }
+
+                    // Hora de modificación del archivo en disco
+                    const fileDate = new Date(file.lastModified);
+                    const fileDateStr = fileDate.toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric' })
+                        + ' ' + fileDate.toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+
+                    // Historial de carga previa
+                    const logMatch = getFileStatus(name);
+                    const loadedStr = logMatch
+                        ? `<span style="color:#10b981;">✓ Cargado el ${logMatch.timestamp || '—'}</span>`
+                        : `<span style="color:#f59e0b;">⚠ No cargado todavía</span>`;
+
+                    // Tipo detectado
+                    const type = guessType(name) || '—';
+
+                    document.getElementById('fav-file-confirm-info').innerHTML =
+                        `<div style="font-weight:600; color:var(--text-main,#f1f5f9); margin-bottom:6px; word-break:break-word;">📄 ${name}</div>` +
+                        `<div>🕐 <b>Fecha del archivo:</b> ${fileDateStr}</div>` +
+                        `<div>📋 <b>Tipo detectado:</b> ${type}</div>` +
+                        `<div>📌 <b>Estado:</b> ${loadedStr}</div>`;
+
+                    const confirmPanel = document.getElementById('fav-file-confirm');
+                    confirmPanel.style.display = 'block';
+
+                    document.getElementById('fav-file-confirm-ok').onclick = async function() {
+                        modal.style.display = 'none';
+                        if (typeof handleFile === 'function') {
+                            handleFile(file, null);
+                        }
+                    };
                 };
             }
 
@@ -2209,7 +2254,8 @@
             else if (type === 'Otb') config[hotel].lastOtbDate = period;
 
             if (!db[hotel]) db[hotel] = {};
-            const yearsAffected = (type === 'Otb') ? (file.name.match(/20\d{2}/g) || [year]) : [year];
+            const isForecastSeg = (type === 'Seg' && (file.name.toUpperCase().includes('PREVISION') || file.name.toUpperCase().includes('OTB') || file.name.toUpperCase().includes('VALORADA')));
+            const yearsAffected = (type === 'Otb' || isForecastSeg) ? (file.name.match(/20\d{2}/g) || [year]) : [year];
             
             yearsAffected.forEach(y => {
                 const yStr = String(y);
@@ -2226,7 +2272,7 @@
                 if (!manualDate && dateInfo) {
                     if (type === 'Prod' && dateInfo.endDate) {
                         lastDateLabel = dateInfo.endDate;
-                    } else if (type === 'Otb' && dateInfo.startDate) {
+                    } else if ((type === 'Otb' || isForecastSeg) && dateInfo.startDate) {
                         lastDateLabel = dateInfo.startDate;
                     } else if (dateInfo.day) {
                         const dayStr = String(dateInfo.day).padStart(2, '0');
@@ -2252,8 +2298,9 @@
                     db[hotel][yStr].lastProdDate = lastDateLabel;
                     db[hotel][yStr].lastUpdate = lastDateLabel + " " + timeStr;
                 } else if (type === 'Seg') {
-                    if (db[hotel][yStr].segment && Object.keys(db[hotel][yStr].segment).length > 0 && !db[hotel][yStr].segment_prev) {
-                        db[hotel][yStr].segment_prev = JSON.parse(JSON.stringify(db[hotel][yStr].segment));
+                    if (isForecastSeg) {
+                        db[hotel][yStr].updates.otb = lastDateLabel;
+                        db[hotel][yStr].lastOtbDate = lastDateLabel;
                     }
                     db[hotel][yStr].updates.seg = lastDateLabel;
                     db[hotel][yStr].lastSegDate = lastDateLabel;
@@ -2351,16 +2398,39 @@
                             };
                         }
                         const targetY = db[hotel][yStr];
+
+                        // Snapshot previo de OTB y Segmentos para cálculo de Pick-up
+                        const hasExistingOtb = (targetY.daily_otb && Object.keys(targetY.daily_otb).length > 0) || (targetY.otb?.rooms?.some(r => r > 0));
+                        if (hasExistingOtb) {
+                            targetY.otb_prev = JSON.parse(JSON.stringify(targetY.otb || {}));
+                            if (targetY.daily_otb) targetY.otb_prev.daily_otb = JSON.parse(JSON.stringify(targetY.daily_otb));
+                            targetY.otb_prev.snapshotDate = targetY.updates?.otb || targetY.lastOtbDate || new Date().toLocaleString('es-ES');
+                        }
+                        if (targetY.segment && Object.keys(targetY.segment).length > 0) {
+                            targetY.segment_prev = JSON.parse(JSON.stringify(targetY.segment));
+                        }
+                        if (targetY.segment_otb && Object.keys(targetY.segment_otb).length > 0) {
+                            targetY.segment_otb_prev = JSON.parse(JSON.stringify(targetY.segment_otb));
+                        }
+
                         if (!targetY.daily_otb) targetY.daily_otb = {};
                         if (!targetY.otb) targetY.otb = { revenue: new Array(12).fill(0), rooms: new Array(12).fill(0), breakdown: {} };
                         if (!targetY.otb.breakdown) targetY.otb.breakdown = {};
                         if (!targetY.otb.breakdown.habitacion) targetY.otb.breakdown.habitacion = new Array(12).fill(0);
+                        targetY.otb.rooms.fill(0);
+                        targetY.otb.revenue.fill(0);
+                        targetY.otb.breakdown.habitacion.fill(0);
+                        targetY.segment_otb = {};
+
                         if (!targetY.updates) targetY.updates = { prod: 'N/A', seg: 'N/A', otb: 'N/A' };
                         targetY.updates.seg = manualPeriod || fileName;
                         targetY.lastSegDate = manualPeriod || fileName;
+                        targetY.updates.otb = manualPeriod || fileName;
+                        targetY.lastOtbDate = manualPeriod || fileName;
                     });
 
                     Object.values(report.segmentData).forEach(seg => {
+                        const sName = seg.name;
                         Object.entries(seg.days).forEach(([iso, dt]) => {
                             const [yStr, mStr] = iso.split('-');
                             const m = parseInt(mStr, 10) - 1;
@@ -2374,6 +2444,12 @@
                                 targetY.otb.rooms[m] += (dt.rooms || 0);
                                 targetY.otb.revenue[m] += (dt.revenue || 0);
                                 targetY.otb.breakdown.habitacion[m] += (dt.accommodation || 0);
+
+                                targetY.segment_otb ||= {};
+                                targetY.segment_otb[sName] ||= { name: sName, rooms: new Array(12).fill(0), revenue: new Array(12).fill(0), accommodation: new Array(12).fill(0) };
+                                targetY.segment_otb[sName].rooms[m] += (dt.rooms || 0);
+                                targetY.segment_otb[sName].revenue[m] += (dt.revenue || 0);
+                                targetY.segment_otb[sName].accommodation[m] += (dt.accommodation || 0);
                             }
                         });
                     });
@@ -3158,11 +3234,27 @@
                     if (report && report.segmentData) {
                     
                     yearsToClear.forEach(yStr => {
-                        if (db[hotel][yStr] && db[hotel][yStr].otb) {
-                            db[hotel][yStr].otb.rooms.fill(0);
-                            db[hotel][yStr].otb.revenue.fill(0);
-                            if (db[hotel][yStr].otb.breakdown && db[hotel][yStr].otb.breakdown.habitacion) db[hotel][yStr].otb.breakdown.habitacion.fill(0);
-                            db[hotel][yStr].daily_otb = {};
+                        if (db[hotel][yStr]) {
+                            const targetY = db[hotel][yStr];
+                            const hasExistingOtb = (targetY.daily_otb && Object.keys(targetY.daily_otb).length > 0) || (targetY.otb?.rooms?.some(r => r > 0));
+                            if (hasExistingOtb && !targetY.otb_prev) {
+                                targetY.otb_prev = JSON.parse(JSON.stringify(targetY.otb || {}));
+                                if (targetY.daily_otb) targetY.otb_prev.daily_otb = JSON.parse(JSON.stringify(targetY.daily_otb));
+                                targetY.otb_prev.snapshotDate = targetY.updates?.otb || targetY.lastOtbDate || new Date().toLocaleString('es-ES');
+                            }
+                            if (targetY.segment && Object.keys(targetY.segment).length > 0 && !targetY.segment_prev) {
+                                targetY.segment_prev = JSON.parse(JSON.stringify(targetY.segment));
+                            }
+                            if (targetY.segment_otb && Object.keys(targetY.segment_otb).length > 0) {
+                                targetY.segment_otb_prev = JSON.parse(JSON.stringify(targetY.segment_otb));
+                            }
+                            if (targetY.otb) {
+                                targetY.otb.rooms.fill(0);
+                                targetY.otb.revenue.fill(0);
+                                if (targetY.otb.breakdown && targetY.otb.breakdown.habitacion) targetY.otb.breakdown.habitacion.fill(0);
+                            }
+                            targetY.daily_otb = {};
+                            targetY.segment_otb = {};
                         }
                         if (!db[hotel]) db[hotel] = {};
                         if (!db[hotel][yStr]) {
@@ -3174,16 +3266,10 @@
                                 lastUpdate: ""
                             };
                         }
-                        const targetY = db[hotel][yStr];
-                        if (targetY.otb) {
-                            targetY.otb.rooms.fill(0);
-                            targetY.otb.revenue.fill(0);
-                            if (targetY.otb.breakdown && targetY.otb.breakdown.habitacion) targetY.otb.breakdown.habitacion.fill(0);
-                        }
-                        targetY.daily_otb = {};
                     });
 
                     Object.values(report.segmentData).forEach(seg => {
+                        const sName = seg.name;
                         Object.entries(seg.days).forEach(([iso, dt]) => {
                             const [yStr, mStr] = iso.split('-');
                             const m = parseInt(mStr, 10) - 1;
@@ -3201,6 +3287,12 @@
                                 targetYear.otb.rooms[m] += (dt.rooms || 0);
                                 targetYear.otb.revenue[m] += (dt.revenue || 0);
                                 targetYear.otb.breakdown.habitacion[m] += (dt.accommodation || 0);
+
+                                targetYear.segment_otb ||= {};
+                                targetYear.segment_otb[sName] ||= { name: sName, rooms: new Array(12).fill(0), revenue: new Array(12).fill(0), accommodation: new Array(12).fill(0) };
+                                targetYear.segment_otb[sName].rooms[m] += (dt.rooms || 0);
+                                targetYear.segment_otb[sName].revenue[m] += (dt.revenue || 0);
+                                targetYear.segment_otb[sName].accommodation[m] += (dt.accommodation || 0);
                             }
                         });
                     });

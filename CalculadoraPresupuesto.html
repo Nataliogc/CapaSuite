@@ -3084,6 +3084,9 @@
             const rnNeeded1 = targetAdr > 0 ? Math.ceil(gapRev / targetAdr) : 0;
             const dailyRN1 = daysRemaining > 0 ? (rnNeeded1 / daysRemaining) : rnNeeded1;
             const occRemaining1 = (daysRemaining > 0 && hotelRooms > 0) ? ((dailyRN1 / hotelRooms) * 100) : 0;
+            // finalOcc1 uses capped pickup (cannot exceed physical free rooms)
+            // NOTE: totalFreeRoomsInRemainingDays is computed later in the daily loop;
+            // we'll recompute finalOcc1Real after that loop. Placeholder here for UI cards.
             const finalOcc1 = totalCap > 0 ? ((soldRN + rnNeeded1) / totalCap * 100) : 0;
             const feasible1 = rnNeeded1 <= capRemaining;
 
@@ -3200,6 +3203,17 @@
             const currentRemainingDaysOcc = (capRemaining > 0) ? (totalBookedInRemainingDays / capRemaining * 100) : 0;
             const finalRemainingDaysOcc = (capRemaining > 0) ? ((totalBookedInRemainingDays + Math.min(rnNeeded1, totalFreeRoomsInRemainingDays)) / capRemaining * 100) : 0;
 
+            // Capped real final occupation: only rooms physically available can be sold
+            const rnPhysicallyPossible = Math.min(rnNeeded1, totalFreeRoomsInRemainingDays);
+            const finalOcc1Real = totalCap > 0 ? ((soldRN + rnPhysicallyPossible) / totalCap * 100) : 0;
+
+            // ADR needed to close the gap with only the physically available rooms
+            const adrNeededReal = totalFreeRoomsInRemainingDays > 0 ? (gapRev / totalFreeRoomsInRemainingDays) : 0;
+
+            // Maximum revenue achievable today with current free inventory at target ADR
+            const maxAchievableRev = soldRev + totalFreeRoomsInRemainingDays * targetAdr;
+            const physicalGapRev = Math.max(0, targetRev - maxAchievableRev);
+
             // Store in global state for simulator
             currentPacingData = {
                 monthIdx: m,
@@ -3234,8 +3248,13 @@
                 dailyRN1,
                 occRemaining1,
                 finalOcc1,
+                finalOcc1Real,
+                rnPhysicallyPossible,
                 rnNeeded2,
                 adrNeeded2,
+                adrNeededReal,
+                maxAchievableRev,
+                physicalGapRev,
                 dailyRN2,
                 occRemaining2,
                 recAdr,
@@ -3843,6 +3862,10 @@
                 ).join("\n");
             }
 
+            const inventoryWarning = d.rnNeeded1 > d.totalFreeRoomsInRemainingDays
+                ? `\n⚠️ AVISO: El objetivo requiere +${d.rnNeeded1} habs pero solo hay ${d.totalFreeRoomsInRemainingDays} libres → inventario INSUFICIENTE.\n   → GAP irrecuperable por volumen: ${formatMoney(d.physicalGapRev)}. Solo posible subiendo ADR.`
+                : `✅ Inventario suficiente: ${d.totalFreeRoomsInRemainingDays - d.rnNeeded1} habs libres sobrantes.`;
+
             const text = `📊 PLAN TÁCTICO DE CONSECUCIÓN DE PRESUPUESTO - ${d.fullMonth.toUpperCase()} ${currentYear}
 Hotel: ${currentHotel} (${d.hotelRooms} habs)
 
@@ -3860,12 +3883,15 @@ Hotel: ${currentHotel} (${d.hotelRooms} habs)
 ⚡ METAS NECESARIAS (${d.daysRemaining} DÍAS RESTANTES HASTA FIN DE MES):
 - Producción Necesaria / Día: ${formatMoney(d.dailyRevNeeded)} / día
 - Hab. Libres Reales Totales: ${d.totalFreeRoomsInRemainingDays} habitaciones libres
-- Hab. a Vender (Pick-up): +${d.rnNeeded1} habs (${d.freeInventoryConversionPct.toFixed(1)}% de las libres)
-- % Ocupación en días restantes: ${d.finalRemainingDaysOcc.toFixed(1)}% (Ocupación final mes: ${d.finalOcc1.toFixed(1)}%)
-- Precio Medio Necesario (ADR si vendes habs presupuestadas): ${d.adrNeeded2.toFixed(2)} € ADR${dailyPlanText}
+- Hab. a Vender (para cubrir GAP al ADR objetivo): +${d.rnNeeded1} habs (${d.freeInventoryConversionPct.toFixed(1)}% de las libres)
+- Hab. Físicamente Posibles de Vender: ${d.rnPhysicallyPossible} habs
+- Ocupación Final Mes (realista, con habs disponibles): ${d.finalOcc1Real.toFixed(1)}%
+- ADR necesario para cerrar el GAP con las ${d.totalFreeRoomsInRemainingDays} habs libres: ${d.adrNeededReal > 0 ? d.adrNeededReal.toFixed(2) + ' € ADR' : 'N/A'}
+- Máximo ingreso posible (al ADR objetivo): ${formatMoney(d.maxAchievableRev)}
+${inventoryWarning}${dailyPlanText}
 
 💡 RECOMENDACIÓN REVENUE MANAGEMENT:
-Tarifa sugerida: ${d.recAdr.toFixed(2)} € ADR • Venta sugerida: +${d.recRN} habs (${d.recOccRemaining.toFixed(1)}% Ocupación en días restantes).
+Tarifa sugerida: ${d.recAdr.toFixed(2)} € ADR • Venta sugerida: +${Math.min(d.recRN, d.totalFreeRoomsInRemainingDays)} habs (limitado a inventario físico disponible).
 Generado con CapaSuite Presupuestos.`;
 
             if (navigator.clipboard && navigator.clipboard.writeText) {

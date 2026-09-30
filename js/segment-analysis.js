@@ -390,7 +390,11 @@
     function mergeForecast(db, hotel, report) {
         db[hotel] ||= { segment: {} };
         const target = db[hotel];
-        
+        if (target.segment && Object.keys(target.segment).length > 0) {
+            target.segment_prev = JSON.parse(JSON.stringify(target.segment));
+            target.prevUpdatedAt = target.updatedAt;
+            target.prevSource = target.source;
+        }
         for (const [name, incomingSeg] of Object.entries(report.segmentData)) {
             const seg = target.segment[name] ||= { name, days: {} };
             for (const [iso, dt] of Object.entries(incomingSeg.days)) {
