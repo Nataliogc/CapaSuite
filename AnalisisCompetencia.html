@@ -5617,29 +5617,25 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 const dColorText = dPos ? '#10b981' : '#ef4444';
                 const dIcon = dPos ? '📈' : '📉';
                 cardsEl.innerHTML = `
-                    <div style="background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.3); border-radius:12px; padding:12px 16px; display:flex; flex-direction:column; gap:4px;">
+                    <div style="background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.3); border-radius:10px; padding:8px 12px; display:flex; flex-direction:column; gap:2px;">
                         <span style="font-size:0.65rem; color:#818cf8; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">🏨 Hotel</span>
-                        <div style="font-size:1rem; font-weight:800; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Hotel ${report.hotel}</div>
+                        <div style="font-size:0.95rem; font-weight:800; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Hotel ${report.hotel}</div>
                     </div>
-                    <div style="background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.25); border-radius:12px; padding:12px 16px; display:flex; flex-direction:column; gap:4px;">
-                        <span style="font-size:0.65rem; color:#818cf8; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">📅 Fechas Revisadas</span>
-                        <div style="font-size:1.5rem; font-weight:800; color:var(--primary); line-height:1;">${report.count}</div>
-                        <div style="font-size:0.68rem; color:var(--text-muted);">días modificados</div>
+                    <div style="background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.25); border-radius:10px; padding:8px 12px; display:flex; flex-direction:column; gap:2px;">
+                        <span style="font-size:0.65rem; color:#818cf8; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">📅 Fechas</span>
+                        <div style="font-size:1.15rem; font-weight:800; color:var(--primary); line-height:1.1;">${report.count} <span style="font-size:0.7rem; font-weight:normal; color:var(--text-muted);">días modif.</span></div>
                     </div>
-                    <div style="background:var(--bg-deep); border:1px solid var(--border); border-radius:12px; padding:12px 16px; display:flex; flex-direction:column; gap:4px;">
-                        <span style="font-size:0.65rem; color:var(--text-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">💶 Precio Medio Anterior</span>
-                        <div style="font-size:1.3rem; font-weight:700; color:var(--text-muted); line-height:1; text-decoration:line-through; opacity:0.7;">${report.avgOld > 0 ? report.avgOld.toFixed(2) + ' €' : '-'}</div>
-                        <div style="font-size:0.68rem; color:var(--text-muted);">antes del ajuste</div>
+                    <div style="background:var(--bg-deep); border:1px solid var(--border); border-radius:10px; padding:8px 12px; display:flex; flex-direction:column; gap:2px;">
+                        <span style="font-size:0.65rem; color:var(--text-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">Tarifa Anterior</span>
+                        <div style="font-size:1.15rem; font-weight:700; color:var(--text-muted); line-height:1.1; text-decoration:line-through; opacity:0.7;">${report.avgOld > 0 ? report.avgOld.toFixed(2) + ' €' : '-'}</div>
                     </div>
-                    <div style="background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); border-radius:12px; padding:12px 16px; display:flex; flex-direction:column; gap:4px;">
-                        <span style="font-size:0.65rem; color:#10b981; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">✅ Precio Medio Propuesto</span>
-                        <div style="font-size:1.5rem; font-weight:800; color:#10b981; line-height:1;">${report.avgNew > 0 ? report.avgNew.toFixed(2) + ' €' : '-'}</div>
-                        <div style="font-size:0.68rem; color:var(--text-muted);">nueva tarifa media</div>
+                    <div style="background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); border-radius:10px; padding:8px 12px; display:flex; flex-direction:column; gap:2px;">
+                        <span style="font-size:0.65rem; color:#10b981; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">✅ Tarifa Propuesta</span>
+                        <div style="font-size:1.15rem; font-weight:800; color:#10b981; line-height:1.1;">${report.avgNew > 0 ? report.avgNew.toFixed(2) + ' €' : '-'}</div>
                     </div>
-                    <div style="background:${dColorBg}; border:1px solid ${dColorBorder}; border-radius:12px; padding:12px 16px; display:flex; flex-direction:column; gap:4px;">
-                        <span style="font-size:0.65rem; color:${dColorText}; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">${dIcon} Variación Media</span>
-                        <div style="font-size:1.2rem; font-weight:800; color:${dColorText}; line-height:1;">${report.count > 0 ? `${dSign}${report.avgDelta.toFixed(2)} €` : '-'}</div>
-                        <div style="font-size:0.78rem; color:${dColorText}; font-weight:700; opacity:0.85;">${report.count > 0 ? `${dSign}${report.avgDeltaPct.toFixed(1)}%` : ''}</div>
+                    <div style="background:${dColorBg}; border:1px solid ${dColorBorder}; border-radius:10px; padding:8px 12px; display:flex; flex-direction:column; gap:2px;">
+                        <span style="font-size:0.65rem; color:${dColorText}; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">${dIcon} Variación</span>
+                        <div style="font-size:1.15rem; font-weight:800; color:${dColorText}; line-height:1.1;">${report.count > 0 ? `${dSign}${report.avgDelta.toFixed(2)} €` : '-'} <span style="font-size:0.72rem; font-weight:700; opacity:0.85;">(${dSign}${report.avgDeltaPct.toFixed(1)}%)</span></div>
                     </div>
                 `;
             }
@@ -5901,31 +5897,35 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     <div style="border:1px solid #e2e8f0; border-top:none; padding:20px 24px; border-radius:0 0 8px 8px; background:#ffffff;">
                         ${notesBlock}
 
-                        <!-- KPI CARDS -->
-                        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;">
+                        <!-- KPI CARDS (COMPACTO Y PROPORCIONADO PARA EMAIL) -->
+                        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:14px; border-collapse:separate;">
                             <tr>
-                                <td style="background:#eef2ff; padding:12px 14px; border-radius:6px; border:1px solid #c7d2fe; width:23%; vertical-align:top;">
-                                    <div style="font-size:10px; color:#6366f1; font-weight:bold; text-transform:uppercase; letter-spacing:0.5px;">&#128197; Fechas Revisadas</div>
-                                    <div style="font-size:22px; font-weight:bold; color:#312e81; margin-top:2px;">${report.count}</div>
-                                    <div style="font-size:10px; color:#818cf8;">d&iacute;as modificados</div>
+                                <td style="background:#eef2ff; padding:7px 10px; border-radius:6px; border:1px solid #c7d2fe; width:23%; vertical-align:middle;">
+                                    <div style="font-size:10px; color:#4f46e5; font-weight:bold; text-transform:uppercase; letter-spacing:0.5px;">&#128197; Fechas Revisadas</div>
+                                    <div style="font-size:15px; font-weight:bold; color:#1e1b4b; line-height:1.2; margin-top:2px;">
+                                        ${report.count} <span style="font-size:10px; font-weight:normal; color:#6366f1;">(${report.count === 1 ? '1 día modif.' : report.count + ' días modif.'})</span>
+                                    </div>
                                 </td>
                                 <td width="8">&nbsp;</td>
-                                <td style="background:#f1f5f9; padding:12px 14px; border-radius:6px; border:1px solid #e2e8f0; width:23%; vertical-align:top;">
-                                    <div style="font-size:10px; color:#64748b; font-weight:bold; text-transform:uppercase; letter-spacing:0.5px;">Precio Medio Anterior</div>
-                                    <div style="font-size:18px; font-weight:bold; color:#94a3b8; text-decoration:line-through; margin-top:2px;">${report.avgOld.toFixed(2)} &euro;</div>
-                                    <div style="font-size:10px; color:#94a3b8;">antes del ajuste</div>
+                                <td style="background:#f8fafc; padding:7px 10px; border-radius:6px; border:1px solid #e2e8f0; width:23%; vertical-align:middle;">
+                                    <div style="font-size:10px; color:#64748b; font-weight:bold; text-transform:uppercase; letter-spacing:0.5px;">Tarifa Anterior</div>
+                                    <div style="font-size:14px; font-weight:bold; color:#94a3b8; text-decoration:line-through; line-height:1.2; margin-top:2px;">
+                                        ${report.avgOld.toFixed(2)} &euro;
+                                    </div>
                                 </td>
                                 <td width="8">&nbsp;</td>
-                                <td style="background:#f0fdf4; padding:12px 14px; border-radius:6px; border:1px solid #bbf7d0; width:23%; vertical-align:top;">
-                                    <div style="font-size:10px; color:#059669; font-weight:bold; text-transform:uppercase; letter-spacing:0.5px;">&#9989; Precio Propuesto</div>
-                                    <div style="font-size:22px; font-weight:bold; color:#065f46; margin-top:2px;">${report.avgNew.toFixed(2)} &euro;</div>
-                                    <div style="font-size:10px; color:#10b981;">nueva tarifa media</div>
+                                <td style="background:#f0fdf4; padding:7px 10px; border-radius:6px; border:1px solid #bbf7d0; width:23%; vertical-align:middle;">
+                                    <div style="font-size:10px; color:#15803d; font-weight:bold; text-transform:uppercase; letter-spacing:0.5px;">&#9989; Tarifa Propuesta</div>
+                                    <div style="font-size:15px; font-weight:bold; color:#166534; line-height:1.2; margin-top:2px;">
+                                        ${report.avgNew.toFixed(2)} &euro;
+                                    </div>
                                 </td>
                                 <td width="8">&nbsp;</td>
-                                <td style="background:${varBg}; padding:12px 14px; border-radius:6px; border:1px solid ${varBorder}; width:23%; vertical-align:top;">
+                                <td style="background:${varBg}; padding:7px 10px; border-radius:6px; border:1px solid ${varBorder}; width:23%; vertical-align:middle;">
                                     <div style="font-size:10px; color:${varColor}; font-weight:bold; text-transform:uppercase; letter-spacing:0.5px;">${varArrow} Variaci&oacute;n Media</div>
-                                    <div style="font-size:20px; font-weight:bold; color:${varColor}; margin-top:2px;">${dSign}${report.avgDelta.toFixed(2)} &euro;</div>
-                                    <div style="font-size:11px; font-weight:bold; color:${varColor};">${dSign}${report.avgDeltaPct.toFixed(1)}%</div>
+                                    <div style="font-size:14px; font-weight:bold; color:${varColor}; line-height:1.2; margin-top:2px;">
+                                        ${dSign}${report.avgDelta.toFixed(2)} &euro; <span style="font-size:11px; font-weight:bold;">(${dSign}${report.avgDeltaPct.toFixed(1)}%)</span>
+                                    </div>
                                 </td>
                             </tr>
                         </table>
