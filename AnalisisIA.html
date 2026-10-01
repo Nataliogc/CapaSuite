@@ -493,7 +493,7 @@
     </div>
 
     <script>
-        let currentHotel = "Guadiana";
+        let currentHotel = window.CapaState.activeHotel;
         let db = {};
         const DB_KEY = "hotel_manager_db_v2";
 
@@ -509,6 +509,7 @@
         };
 
         function switchHotel(h) {
+            window.CapaState.setActiveHotel(h);
             currentHotel = h;
             document.querySelectorAll('.hotel-pill').forEach(p => p.classList.remove('active'));
             document.getElementById('pill' + h).classList.add('active');

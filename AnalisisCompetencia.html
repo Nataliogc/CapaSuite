@@ -20,6 +20,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="js/nav.js"></script>
+    <script src="js/theme-manager.js"></script>
     <script src="js/firebase-auth.js?v=20261001-sync3"></script>
 
     <link rel="stylesheet" href="css/tokens.css">
@@ -1427,7 +1428,7 @@
         let processedData = [];
         let competitorsList = [];
         let ignoredCompetitors = new Set();
-        let activeHotel = "Cumbria";
+        let activeHotel = window.CapaState?.activeHotel || "Guadiana";
         let chartInstance = null;
         let distinctMonths = [];
         let customEvents = [];
@@ -2423,7 +2424,7 @@
 
                     // Migrate old month format to Spanish with year
                     distinctMonths = migrateMonths(parsed.months || []);
-                    activeHotel = parsed.activeHotel || "Cumbria";
+                    activeHotel = window.CapaState.activeHotel;
 
                     // Restore View
                     populateMonths();

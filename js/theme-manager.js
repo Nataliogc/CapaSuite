@@ -6,7 +6,10 @@
 
 (function() {
     // 1. Cargar preferencia guardada o usar noche por defecto
-    const savedTheme = localStorage.getItem('capasuite_theme') || 'dark';
+    let savedTheme = 'dark';
+    try {
+        if (localStorage.getItem('capasuite_theme') === 'light') savedTheme = 'light';
+    } catch (_) { /* El cambio visual funciona aunque el almacenamiento no esté disponible. */ }
     document.documentElement.setAttribute('data-theme', savedTheme);
 
     // 2. Función para cambiar el tema
@@ -15,7 +18,7 @@
         const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
         
         document.documentElement.setAttribute('data-theme', newTheme);
-        localStorage.setItem('capasuite_theme', newTheme);
+        try { localStorage.setItem('capasuite_theme', newTheme); } catch (_) {}
         
         // Actualizar icono del botón si existe
         updateThemeIcon(newTheme);
@@ -25,9 +28,9 @@
     };
 
     // 3. Insertar el botón en la navegación cuando el DOM esté listo (solo si no existe ya)
-    document.addEventListener('DOMContentLoaded', () => {
+    function initializeThemeButton() {
         if (document.getElementById('themeToggleBtn')) {
-            updateThemeIcon(savedTheme);
+            updateThemeIcon(document.documentElement.getAttribute('data-theme'));
             return;
         }
 
@@ -44,8 +47,12 @@
             themeBtn.id = 'themeToggleBtn';
             
             navUser.insertBefore(themeBtn, navUser.firstChild);
-            updateThemeIcon(savedTheme);
+            updateThemeIcon(document.documentElement.getAttribute('data-theme'));
         }
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+        initializeThemeButton();
+        if (window.CapaNavReady) window.CapaNavReady.then(initializeThemeButton);
     });
 
     function updateThemeIcon(theme) {

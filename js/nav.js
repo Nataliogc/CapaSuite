@@ -13,6 +13,7 @@
     }
     window.switchHotel = persistHotel;
     function decorate(nav) {
+        document.querySelectorAll('#hotelSelector, #hotelSelectorNav').forEach(sel => { sel.value = savedHotel(); });
         const page = window.location.pathname.split('/').pop() || 'index.html';
         nav.querySelectorAll('.nav-links a').forEach(a => a.classList.toggle('active', a.getAttribute('href') === page));
         const links = nav.querySelector('.nav-links');

@@ -3,7 +3,7 @@ const MONTH_ORDER = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Jul
 const SHORT_MONTHS = MONTH_ORDER.map(m => m.slice(0, 3));
 const STORAGE_KEY = 'hotel_manager_db_v2';
 const HOTELS = { Guadiana: { rooms: 108 }, Cumbria: { rooms: 59 } };
-let historicalDB = {}, forecastDB = {}, segmentDB = {}, currentHotel = 'Guadiana', currentYear = '', currentMetric = 'revenue', charts = {};
+let historicalDB = {}, forecastDB = {}, segmentDB = {}, currentHotel = window.CapaState.activeHotel, currentYear = '', currentMetric = 'revenue', charts = {};
 let currentMode = 'historical';
 let currentSegment = '';
 function selectSegment(name) { currentSegment = name; renderDashboard(); }

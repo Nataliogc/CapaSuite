@@ -111,7 +111,9 @@ test('navigation reuses existing bars and restores hotel through the page change
         Event: function(type) { this.type = type; }, setTimeout: fn => fn()
     });
     vm.runInContext(fs.readFileSync('js/nav.js', 'utf8'), c);
-    documentEvents.DOMContentLoaded(); await events.load();
+    documentEvents.DOMContentLoaded(); await c.window.CapaNavReady;
+    assert.equal(selector.value, 'Cumbria', 'hotel restored before page load handlers run');
+    await events.load();
     assert.equal(fetches, 0);
     assert.equal(nav.id, 'mainNav');
     assert.equal(selector.value, 'Cumbria');
