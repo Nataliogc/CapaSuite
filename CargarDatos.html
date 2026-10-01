@@ -752,6 +752,7 @@
 
 
 
+        <p id="importVersionStatus" role="status" style="color:var(--primary);font-weight:600;margin-bottom:20px;"></p>
         <div id="db-summary-container" style="margin-bottom: 20px; display: none;">
             <h3 style="margin-bottom: 10px; color: var(--text-main);">Estado de la Base de Datos</h3>
             <div class="card" style="padding: 0; overflow: hidden;">
@@ -1356,12 +1357,12 @@
         function detectFileType(name) {
             const n = normalizeStr(name);
             // Segmentos de Previsión / OTB
-            if ((n.includes("SEGMENTO") || n.includes("CANAL") || n.includes("MERCADO")) && 
+            if ((n.includes("SEGMENT") || n.includes("CANAL") || n.includes("MERCADO")) &&
                 (n.includes("PREVISION") || n.includes("OTB") || n.includes("VALORADA"))) return 'Seg';
             // Previsiones / OTB
             if (n.includes("PREVISION") || n.includes("OTB") || n.includes("VALORADA")) return 'Otb';
             // Segmentos / Canales
-            if (n.includes("SEGMENTO") || n.includes("CANAL") || n.includes("MERCADO")) return 'Seg';
+            if (n.includes("SEGMENT") || n.includes("CANAL") || n.includes("MERCADO")) return 'Seg';
             // Histórico (Production/Segments from past years)
             if (n.includes("HISTORICO") || n.includes("YEARLY") || n.includes("ANUAL")) return 'Hist';
             // Calendario Estratégico / Eventos / Fiestas
@@ -1407,6 +1408,8 @@
         let pendingType = null;
 
         async function handleFile(file, type) {
+            if (!file) return;
+            document.querySelectorAll('input[type="file"]').forEach(input => { input.value = ''; });
             const detected = detectFileType(file.name);
             let finalType = type || detected;
 
@@ -1426,6 +1429,15 @@
 
             pendingFile = file;
             pendingType = finalType;
+
+            const versionHotel = /CUMBRIA/i.test(file.name) ? 'Cumbria' : /GUADIANA/i.test(file.name) ? 'Guadiana' : document.getElementById('hotelSelector').value;
+            const versionMode = /PREVISION|OTB|VALORADA/i.test(file.name) || ['Otb', 'Prevision'].includes(finalType) ? 'forecast' : 'actual';
+            try {
+                const version = await CapaRevenueHistory.inspectFile(file, { hotel: versionHotel, type: finalType, mode: versionMode });
+                document.getElementById('fileVersionNotice').textContent = version.message;
+                document.getElementById('importVersionStatus').textContent = version.message;
+                if (version.status === 'duplicate') { pendingFile = null; showToast(version.message, 'info'); return; }
+            } catch (error) { pendingFile = null; document.getElementById('importVersionStatus').textContent = error.message; showToast(error.message, 'error'); return; }
 
             const dateInfo = extractDateFromFilename(file.name);
             let period = dateInfo ? dateInfo.full : "";
@@ -3390,6 +3402,7 @@
             <!-- SMART DETECTION INFO -->
             <div id="smartDetectionInfo"
                 style="margin-bottom: 20px; padding: 15px; background: #f0f9ff; border-radius: 12px; border: 1.5px solid #bae6fd; text-align: left; font-size: 0.85rem; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
+                <p id="fileVersionNotice" role="status" style="color:var(--primary);font-weight:600;"></p>
                 <div id="detectFileName"
                     style="font-weight: 800; color: #0369a1; margin-bottom: 10px; word-break: break-all; font-size: 0.75rem; opacity: 0.8; font-family: monospace;">
                     Archivo: -</div>

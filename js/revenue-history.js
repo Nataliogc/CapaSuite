@@ -92,15 +92,40 @@
         const bytes = await root.crypto.subtle.digest('SHA-256', await file.arrayBuffer());
         return Array.from(new Uint8Array(bytes), n => n.toString(16).padStart(2, '0')).join('');
     }
-    function createService({ storage, repository, owner, now = () => new Date().toISOString(), hash = fingerprint, id = () => root.crypto?.randomUUID?.() || Date.now() + '-' + Math.random().toString(36).slice(2) }) {
+    async function contentFingerprint(file) {
+        if (!file?.arrayBuffer || !root.XLSX || !root.crypto?.subtle) return null;
+        const workbook = root.XLSX.read(await file.arrayBuffer(), { type: 'array' });
+        for (const name of workbook.SheetNames) {
+            if (Object.keys(workbook.Sheets[name]).some(key => !key.startsWith('!') && !/^[A-Z]+\d+$/.test(key))) {
+                throw new Error('El Excel contiene referencias de celda no válidas. Vuelve a exportarlo desde el PMS antes de importar; no se han modificado los datos.');
+            }
+        }
+        const content = workbook.SheetNames.map(name => root.XLSX.utils.sheet_to_json(workbook.Sheets[name], { header: 1, defval: null, blankrows: false }));
+        const bytes = await root.crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(content)));
+        return Array.from(new Uint8Array(bytes), n => n.toString(16).padStart(2, '0')).join('');
+    }
+    function createService({ storage, repository, owner, now = () => new Date().toISOString(), hash = fingerprint, contentHash = contentFingerprint, id = () => root.crypto?.randomUUID?.() || Date.now() + '-' + Math.random().toString(36).slice(2) }) {
         const read = () => Object.fromEntries(KEYS.map(key => [key, storage.getItem(key) ?? null]));
         const owned = row => { if (!row || row.owner !== owner()) throw new Error('La captura no pertenece a la cuenta activa.'); return row; };
+        async function inspectFile(file, metadata) {
+            const sha256 = await hash(file), contentSha256 = await contentHash(file);
+            if (!sha256) throw new Error('No se puede verificar el contenido del archivo. Abre CapaSuite en una conexión segura antes de importar.');
+            const records = (await repository.list(owner())).filter(r => r.hotel === metadata.hotel && r.status === 'committed' && r.source?.sha256);
+            const duplicate = records.find(r => r.source.sha256 === sha256 || contentSha256 && r.source.contentSha256 === contentSha256);
+            if (duplicate) return { status: 'duplicate', sha256, contentSha256, capturedAt: duplicate.capturedAt,
+                message: 'Estos mismos datos ya se cargaron el ' + new Date(duplicate.capturedAt).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }) + '. No se volverán a importar.' };
+            const prior = records.find(r => r.source.name === file.name && r.type === metadata.type && r.mode === metadata.mode);
+            return { status: prior ? 'changed' : 'new', sha256, contentSha256,
+                message: prior ? 'Versión distinta: el contenido ha cambiado respecto a la carga anterior. Revisa hotel y periodo antes de importar.' : 'Archivo sin una versión registrada comparable. Se comprobará de nuevo antes de importar.' };
+        }
         async function begin(file, metadata) {
             if (!['Guadiana', 'Cumbria'].includes(metadata.hotel)) throw new Error('Hotel no válido.');
+            const version = file ? await inspectFile(file, metadata) : null;
+            if (version?.status === 'duplicate') throw new Error(version.message);
             const row = { id: id(), owner: owner(), hotel: metadata.hotel, mode: metadata.mode || 'actual',
                 type: metadata.type || '', period: metadata.period || '', preferSegments: metadata.preferSegments !== false,
                 capturedAt: now(), status: 'prepared', before: read(),
-                source: { name: file?.name || (metadata.type === 'Restauración' ? 'Restauración de copia' : 'Captura manual'), size: file?.size ?? null, modifiedAt: file?.lastModified ? new Date(file.lastModified).toISOString() : null, sha256: await hash(file) } };
+                source: { name: file?.name || (metadata.type === 'Restauración' ? 'Restauración de copia' : 'Captura manual'), size: file?.size ?? null, modifiedAt: file?.lastModified ? new Date(file.lastModified).toISOString() : null, sha256: version?.sha256 || null, contentSha256: version?.contentSha256 || null } };
             await repository.put(row); // A checkpoint must exist before modifying imported data.
             return row.id;
         }
@@ -168,7 +193,7 @@
                 return await commit(checkpoint);
             } catch (error) { await fail(checkpoint, error); throw error; }
         }
-        return { begin, commit, fail, list, read, validateBackup,
+        return { begin, commit, fail, list, read, validateBackup, inspectFile,
             exportBackup: async () => ({ format: 'capasuite-revenue-backup', version: 1, exportedAt: now(), values: read(), records: await list() }),
             restore: async identifier => { const row = owned(await repository.get(identifier)); return restoreValues(row.before, row.hotel, row.mode); },
             restoreBackup: async (bundle, hotel, mode = 'actual') => {

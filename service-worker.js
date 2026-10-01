@@ -3,7 +3,7 @@
  * Gestiona el caché offline y las actualizaciones de la PWA.
  */
 
-const CACHE_NAME = 'capasuite-v12';
+const CACHE_NAME = 'capasuite-v13';
 
 // Recursos que se cachean en la instalación (shell de la app)
 const STATIC_ASSETS = [

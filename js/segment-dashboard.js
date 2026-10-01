@@ -246,6 +246,11 @@ async function handleFiles(files) {
 
     const detectedHotel = detectHotel(file.name);
     const detectedType = detectSegmentFileType(file.name);
+    try {
+        const version = await CapaRevenueHistory.inspectFile(file, { hotel: detectedHotel || currentHotel, type: detectedType, mode: detectedType === 'forecast' ? 'forecast' : 'actual' });
+        message(version.message);
+        if (version.status === 'duplicate') { pendingSegFile = null; showToast(version.message, 'info'); return; }
+    } catch (error) { pendingSegFile = null; showToast(error.message, 'error'); return; }
     const dateInfo = extractDateFromFilename(file.name);
     const periodStr = dateInfo ? dateInfo.full : '';
 
