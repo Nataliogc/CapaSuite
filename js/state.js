@@ -23,14 +23,15 @@
         // ── Hotel ──────────────────────────────────────────────────
         get activeHotel() {
             if (!this.hotel) {
-                this.hotel = localStorage.getItem('active_hotel_suite') || 'Guadiana';
+                try { this.hotel = localStorage.getItem('active_hotel_suite') || 'Guadiana'; } catch (e) { this.hotel = 'Guadiana'; }
             }
             return this.hotel;
         },
 
         setActiveHotel: function (hotel) {
+            if (!['Guadiana', 'Cumbria'].includes(hotel)) return;
             this.hotel = hotel;
-            localStorage.setItem('active_hotel_suite', hotel);
+            try { localStorage.setItem('active_hotel_suite', hotel); } catch (e) { }
 
             // Sincronizar el selector del nav si ya está en el DOM
             const sel = document.getElementById('hotelSelectorNav')

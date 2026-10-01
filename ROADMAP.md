@@ -29,9 +29,22 @@
 - **Filtro:** Por servicio (ocupación vs producción SPA, etc.)
 
 ### 4. Limpieza pendiente (Q1 2027)
-- Eliminar el bloque de migración de fechas `_dateShiftMigratedV4` en `storage.js` (marcado con TODO).
+- Migración automática de fechas eliminada: leer datos ya no desplaza ni reescribe fechas.
 - Evaluar migración de Firebase SDK v8 → v9 Modular.
 
 ---
 
 *Última actualización: Oct 2026 — Refactor estructural por Antigravity*
+
+
+## Correcciones de fiabilidad — 1 octubre 2026
+
+- Las previsiones reemplazan los días incluidos en la carga, incluidos ceros y segmentos retirados, conservando el resto del calendario y el snapshot anterior.
+- Las importaciones bloquean segmentos sin nombre y descuadres de habitaciones, ingresos desglosados y alojamiento. Agencias y Particulares siguen siendo segmentos admitidos, con prioridad de las correcciones explícitas.
+- El ADR queda sin valor cuando falta un desglose verificable de alojamiento. Los resúmenes de producción no sustituyen un desglose existente.
+- El almacenamiento conserva la versión nueva en sesión al superar la cuota persistente y avisa de la copia temporal.
+- La sincronización incluye previsiones y mapeos; conserva una copia local y los cambios pendientes al cambiar de cuenta.
+- El chat espera las respuestas asíncronas y escapa el texto antes de aplicar formato.
+- La navegación reutiliza barras existentes, completa la portada y conserva el hotel seleccionado. Las vistas con navegación cargada esperan a que esté disponible.
+- La PWA utiliza rutas relativas, conserva las cachés ajenas y excluye peticiones externas de su caché.
+- Verificación automatizada local; las reglas desplegadas de Firebase y la conexión real de Gemini requieren comprobación con los servicios configurados.

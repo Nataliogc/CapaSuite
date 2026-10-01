@@ -3,29 +3,36 @@
  * Gestiona el caché offline y las actualizaciones de la PWA.
  */
 
-const CACHE_NAME = 'capasuite-v6';
+const CACHE_NAME = 'capasuite-v7';
 
 // Recursos que se cachean en la instalación (shell de la app)
 const STATIC_ASSETS = [
-  '/index.html',
-  '/AnalisisSegmentos.html',
-  '/AnalisisCompetencia.html',
-  '/AnalisisIA.html',
-  '/AnalisisPersonal.html',
-  '/AnalisisProduccion.html',
-  '/CalculadoraPresupuesto.html',
-  '/CargarDatos.html',
-  '/manifest.json',
-  '/Imagen/icon-192.png',
-  '/Imagen/icon-512.png',
-  '/js/storage.js',
-  '/js/theme-manager.js',
-  '/js/state.js',
-  '/js/chart.js',
-  '/js/segment-analysis.js',
-  '/js/segment-dashboard.js',
-  '/js/segment-review.js',
-  '/js/production-groups.js',
+  './index.html',
+  './AnalisisSegmentos.html',
+  './AnalisisCompetencia.html',
+  './AnalisisIA.html',
+  './AnalisisPersonal.html',
+  './AnalisisProduccion.html',
+  './CalculadoraPresupuesto.html',
+  './CargarDatos.html',
+  './manifest.json',
+  './Imagen/icon-192.png',
+  './Imagen/icon-512.png',
+  './css/tokens.css',
+  './css/nav.css',
+  './partials/nav.html',
+  './js/nav.js',
+  './js/xlsx.full.min.js',
+  './Analisis360.html',
+  './AnalisisCalendario.html',
+  './js/storage.js',
+  './js/theme-manager.js',
+  './js/state.js',
+  './js/chart.js',
+  './js/segment-analysis.js',
+  './js/segment-dashboard.js',
+  './js/segment-review.js',
+  './js/production-groups.js',
 ];
 
 // ── Instalación: pre-cachear el shell ──────────────────────────────────────
@@ -54,7 +61,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) =>
       Promise.all(
         keys
-          .filter((key) => key !== CACHE_NAME)
+          .filter((key) => key.startsWith('capasuite-') && key !== CACHE_NAME)
           .map((key) => {
             console.log('[SW] Eliminando caché antigua:', key);
             return caches.delete(key);
@@ -73,28 +80,8 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
 
   const url = new URL(request.url);
-  const isExternal =
-    url.hostname.includes('googleapis.com') ||
-    url.hostname.includes('gstatic.com') ||
-    url.hostname.includes('firebaseio.com') ||
-    url.hostname.includes('firebaseapp.com');
-
-  if (isExternal) {
-    // Para recursos externos: stale-while-revalidate
-    event.respondWith(
-      caches.open(CACHE_NAME).then(async (cache) => {
-        const cached = await cache.match(request);
-        const fetchPromise = fetch(request)
-          .then((response) => {
-            if (response.ok) cache.put(request, response.clone());
-            return response;
-          })
-          .catch(() => null);
-        return cached || fetchPromise;
-      })
-    );
-    return;
-  }
+  // Cloud responses must not be stored as application assets.
+  if (url.origin !== self.location.origin) return;
 
   // Para recursos locales: Network-first con fallback a caché
   event.respondWith(

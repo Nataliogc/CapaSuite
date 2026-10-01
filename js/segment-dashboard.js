@@ -34,10 +34,11 @@ function buildMonthlyFromForecast(db) {
                 if (!yData.coverage[monthIdx].includes(dayNum)) yData.coverage[monthIdx].push(dayNum);
                 yData.segmentCoverage[monthIdx] = yData.coverage[monthIdx];
 
-                const seg = yData.segment[segName] ||= { name: segName, revenue: Array(12).fill(0), rooms: Array(12).fill(0), accommodation: Array(12).fill(0), concepts: {} };
+                const seg = yData.segment[segName] ||= { name: segName, revenue: Array(12).fill(0), rooms: Array(12).fill(0), accommodation: Array(12).fill(0), concepts: {}, accommodationVerified: Array(12).fill(true) };
                 seg.revenue[monthIdx] += daily.revenue || 0;
                 seg.rooms[monthIdx] += daily.rooms || 0;
                 seg.accommodation[monthIdx] += daily.accommodation || 0;
+                if (daily.accommodationVerified === false || daily.accommodation == null) seg.accommodationVerified[monthIdx] = false;
 
                 if (daily.concepts) {
                     for (const [cName, cVal] of Object.entries(daily.concepts)) {

@@ -2,12 +2,12 @@
   "name": "CapaSuite – Gestión Hotelera",
   "short_name": "CapaSuite",
   "description": "Suite completa de Revenue Management para hoteles.",
-  "start_url": "/index.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#6366f1",
   "orientation": "any",
-  "scope": "/",
+  "scope": "./",
   "lang": "es",
   "icons": [
     {
@@ -33,19 +33,19 @@
     {
       "name": "Análisis de Segmentos",
       "short_name": "Segmentos",
-      "url": "/AnalisisSegmentos.html",
+      "url": "./AnalisisSegmentos.html",
       "icons": [{ "src": "Imagen/icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Cargar Datos",
       "short_name": "Importar",
-      "url": "/CargarDatos.html",
+      "url": "./CargarDatos.html",
       "icons": [{ "src": "Imagen/icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Calculadora de Presupuesto",
       "short_name": "Presupuesto",
-      "url": "/CalculadoraPresupuesto.html",
+      "url": "./CalculadoraPresupuesto.html",
       "icons": [{ "src": "Imagen/icon-192.png", "sizes": "192x192" }]
     }
   ],

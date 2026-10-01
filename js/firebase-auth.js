@@ -85,11 +85,14 @@ function checkAuth() {
             const isHome = currentPath.endsWith('index.html') || currentPath.endsWith('/') || currentPath === "";
 
             if (!user) {
+                stopCloudListener();
+                window._initialDownloadDone = false;
                 if (!isHome) {
                     window.location.href = 'index.html';
                 }
                 resolve(null);
             } else {
+                prepareCloudAccount(user.uid);
                 console.log("👤 CapaSuite: Usuario identificado como " + user.email);
 
                 // Actualizar nombre de usuario en la barra de navegación si existe el elemento
@@ -121,7 +124,10 @@ window.addEventListener('load', checkAuth);
 const syncFields = {
     [SYNC_DB_KEY]: 'hotelData',
     [SYNC_CONFIG_KEY]: 'configData',
-    [SYNC_COMP_KEY]: 'compData'
+    [SYNC_COMP_KEY]: 'compData',
+    segment_forecast_v2: 'segmentForecast',
+    segment_mappings_Guadiana: 'segmentMappingsGuadiana',
+    segment_mappings_Cumbria: 'segmentMappingsCumbria'
 };
 const originalSetItem = CapaStorage.setItem.bind(CapaStorage);
 const originalRemoveItem = CapaStorage.removeItem.bind(CapaStorage);
@@ -215,6 +221,7 @@ async function uploadToCloud() {
     if (uploadInFlight) return uploadInFlight;
     const user = cloudAuth.currentUser;
     if (!user) throw new Error('Primero debes iniciar sesión.');
+    prepareCloudAccount(user.uid);
     if (!window._initialDownloadDone && !(await downloadFromCloud())) throw new Error('No se ha podido descargar la versión actual de la nube.');
     if (!pendingChanges.size) return true;
     if (window._syncTimer) clearTimeout(window._syncTimer);
@@ -234,6 +241,7 @@ async function uploadToCloud() {
                 return next;
             }, undefined, false);
             if (!result.committed) throw new Error('El servidor no confirmó el guardado.');
+            if (cloudAuth.currentUser?.uid !== user.uid) return false;
             const committed = result.snapshot.val() || {};
             for (const change of changes) {
                 const pending = pendingChanges.get(change.key);
@@ -261,11 +269,14 @@ async function uploadToCloud() {
 async function downloadFromCloud() {
     const user = cloudAuth.currentUser;
     if (!user) return false;
+    prepareCloudAccount(user.uid);
     syncStatus('Descargando datos…');
     try {
         const snapshot = await cloudDb.ref('users/' + user.uid).once('value');
+        if (cloudAuth.currentUser?.uid !== user.uid) return false;
         applyCloudData(snapshot.val() || {});
         window._initialDownloadDone = true;
+        startCloudListener(user.uid);
         syncStatus('Datos descargados de la nube');
         console.log('☁️ CapaSuite: descarga de la nube completada.');
         scheduleCloudUpload();
@@ -277,12 +288,46 @@ async function downloadFromCloud() {
     }
 }
 
+function stopCloudListener() {
+    if (cloudListener) cloudDb.ref('users/' + cloudListenerUid).off('value', cloudListener);
+    cloudListener = null;
+    cloudListenerUid = null;
+}
+
+function prepareCloudAccount(uid) {
+    const previous = CapaStorage.getItem('cloud_account_uid');
+    if (previous && previous !== uid) {
+        stopCloudListener();
+        if (window._syncTimer) clearTimeout(window._syncTimer);
+        window._syncTimer = null;
+        window._initialDownloadDone = false;
+        const backupKey = 'cloud_account_backup_' + previous;
+        const backup = JSON.stringify({ ...Object.fromEntries(Object.keys(syncFields).map(key => [key, CapaStorage.getItem(key)])), _pendingChanges: [...pendingChanges] });
+        originalSetItem(backupKey, backup);
+        if (CapaStorage.getItem(backupKey) !== backup) throw new Error('No se pudo conservar la copia de la cuenta anterior.');
+        const restored = JSON.parse(CapaStorage.getItem('cloud_account_backup_' + uid) || '{}');
+        pendingChanges.clear();
+        for (const [key, change] of restored._pendingChanges || []) {
+            if (Object.hasOwn(syncFields, key)) pendingChanges.set(key, change);
+        }
+        for (const key of Object.keys(syncFields)) {
+            if (restored[key] != null) originalSetItem(key, restored[key]);
+            else originalRemoveItem(key);
+        }
+    }
+    originalSetItem('cloud_account_uid', uid);
+}
+
+window.addEventListener('capasuite-storage-warning', () => {
+    syncStatus('Sin espacio para guardar de forma permanente. Copia temporal en esta pestaña.', true);
+});
+
 function startCloudListener(uid) {
     if (cloudListenerUid === uid) return;
     if (cloudListener) cloudDb.ref('users/' + cloudListenerUid).off('value', cloudListener);
     cloudListenerUid = uid;
     cloudListener = snapshot => {
-        if (uploadInFlight) return;
+        if (uploadInFlight || cloudAuth.currentUser?.uid !== uid) return;
         try {
             applyCloudData(snapshot.val() || {});
             syncStatus(pendingChanges.size ? 'Cambios pendientes de guardar' : 'Sincronizado con la nube');
@@ -312,10 +357,11 @@ function readLocalWithoutEcho(key) {
 }
 
 CapaStorage.setItem = function (key, value) {
-    if (applyingCloud) { originalSetItem(key, value); return; }
+    if (applyingCloud) return originalSetItem(key, value);
     const before = syncFields[key] ? readLocalWithoutEcho(key) : null;
-    originalSetItem(key, value);
+    const result = originalSetItem(key, value);
     recordSyncChange(key, before, value);
+    return result;
 };
 CapaStorage.removeItem = function (key) {
     if (applyingCloud) { originalRemoveItem(key); return; }

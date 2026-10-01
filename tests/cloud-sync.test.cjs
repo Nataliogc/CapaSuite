@@ -84,3 +84,29 @@ test('getUserDisplayName correctly maps all suite users and fallbacks', () => {
     assert.equal(s.run("window.getUserDisplayName({ email: 'unknown@hotel.com', displayName: 'Custom' })"), 'Custom');
 });
 
+test('segment forecasts and hotel mappings are included in cloud writes', async () => {
+    const s = setup({}); await s.run('downloadFromCloud()');
+    s.run("CapaStorage.setItem('segment_forecast_v2', JSON.stringify({Guadiana:{segment:{}}})); CapaStorage.setItem('segment_mappings_Cumbria', JSON.stringify({AGENCIAS:'OTA/AAVV'}))");
+    await s.run('uploadToCloud()');
+    assert.equal(s.writes(), 1);
+    assert.equal(s.run('pendingChanges.size'), 0);
+    assert.equal(s.run("syncFields.segment_forecast_v2"), 'segmentForecast');
+    assert.equal(JSON.parse(s.storage.segment_mappings_Cumbria).AGENCIAS, 'OTA/AAVV');
+});
+
+test('switching cloud accounts retains a backup and does not carry data or pending edits to the next user', async () => {
+    const s = setup({Guadiana:{2026:1}}); await s.run('downloadFromCloud()');
+    s.edit({Guadiana:{2026:2}});
+    s.run("prepareCloudAccount('other')");
+    assert.equal(s.storage[KEY], undefined);
+    assert.equal(s.run('pendingChanges.size'), 0);
+    const backup = JSON.parse(s.storage.cloud_account_backup_account);
+    assert.equal(JSON.parse(backup[KEY]).Guadiana[2026], 2);
+    s.run("prepareCloudAccount('account')");
+    assert.equal(JSON.parse(s.storage[KEY]).Guadiana[2026], 2);
+    await s.run('downloadFromCloud()');
+    assert.equal(JSON.parse(s.storage[KEY]).Guadiana[2026], 2);
+    await s.run('uploadToCloud()');
+    assert.equal(s.cloud().Guadiana[2026], 2);
+});
+

@@ -14,12 +14,13 @@
 
     <!-- Libraries -->
     <script src="js/chart.js"></script>
+    <script src="js/state.js"></script>
     <script src="js/storage.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="js/nav.js"></script>
-    <script src="js/firebase-auth.js?v=20260915-sync2"></script>
+    <script src="js/firebase-auth.js?v=20261001-sync3"></script>
     <script src="js/theme-manager.js"></script>
     <script src="js/production-groups.js?v=20260916"></script>
 
@@ -3926,7 +3927,8 @@
         Chart.defaults.plugins.tooltip.borderWidth = 1;
         Chart.defaults.plugins.tooltip.borderColor = 'rgba(255,255,255,0.1)';
 
-        window.onload = function() {
+        window.onload = async function() {
+            await window.CapaNavReady;
             setTimeout(() => {
                 document.getElementById('loadingOverlay').style.opacity = '0';
                 setTimeout(() => document.getElementById('loadingOverlay').style.display = 'none', 500);

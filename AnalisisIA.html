@@ -9,12 +9,13 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="js/state.js"></script>
     <script src="js/storage.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="js/nav.js"></script>
-    <script src="js/firebase-auth.js?v=20260915-sync2"></script>
+    <script src="js/firebase-auth.js?v=20261001-sync3"></script>
 
     <link rel="stylesheet" href="css/tokens.css">
     <link rel="stylesheet" href="css/nav.css">
@@ -514,6 +515,8 @@
             renderAIAnalysis();
         }
 
+        window.addEventListener('capasuite-data-synced', loadData);
+
         function loadData() {
             const data = CapaStorage.getItem(DB_KEY);
             if (data) {
@@ -806,9 +809,9 @@
             indicator.style.display = 'block';
 
             // Simulate "AI" processing time
-            setTimeout(() => {
+            setTimeout(async () => {
                 indicator.style.display = 'none';
-                const response = generateAIResponse(text);
+                const response = await generateAIResponse(text);
                 addMessage('ai', response);
             }, 800 + Math.random() * 1000);
         }
@@ -1055,7 +1058,8 @@
             div.className = `message ${sender}`;
 
             // Markdown parsing (bold)
-            let formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            let formatted = String(text).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+            formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
             // Line breaks
             formatted = formatted.replace(/\n/g, '<br>');
 

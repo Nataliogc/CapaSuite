@@ -77,7 +77,7 @@
                 habRows.push({ row: index + 1, index, original: String(row[0] ?? '').trim() });
             }
         });
-        return habRows.map((item, idx) => {
+        return habRows.map(item => {
             const cell = 'A' + item.row;
             const rawNorm = norm(item.original);
             let value = '';
@@ -96,16 +96,12 @@
             // An explicit choice in this import takes precedence over remembered mappings.
             let name = Object.hasOwn(corrections, cell) ? canonical(value)
                 : (hotelMappings && hotelMappings[rawNorm]) ? hotelMappings[rawNorm] : canonical(value);
-            const isLastHab = (idx === habRows.length - 1);
-            if (!name && !item.original) {
-                name = (hotelMappings && hotelMappings[cell]) || (isLastHab ? 'TOTAL GENERAL' : 'OTROS');
-            }
             const reason = !name ? 'Falta el segmento a la izquierda de Hab.' : !validSegments.includes(name) && !isTotalName(name) ? 'Segmento no válido. Debes asignarlo a un segmento correcto.' : '';
             return { cell, row: item.row, original: item.original, name, reason };
         });
     }
     const fields = ['revenue', 'rooms', 'accommodation', 'totalRevenue'];
-    const empty = name => ({ name, concepts: {}, ...Object.fromEntries(fields.map(k => [k, Array(12).fill(0)])) });
+    const empty = name => ({ name, concepts: {}, accommodationVerified: Array(12).fill(false), ...Object.fromEntries(fields.map(k => [k, Array(12).fill(0)])) });
     function number(value) {
         if (value == null || String(value).trim() === '' || value === '-') return 0;
         if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -215,7 +211,7 @@
                     target.concepts[safeMetric][c.month] += value;
                     
                     target.revenue[c.month] += value;
-                    if (isLodging) target.accommodation[c.month] += value;
+                    if (isLodging) { target.accommodation[c.month] += value; target.accommodationVerified[c.month] = true; }
                 }
                 if (totalBlock) y.controls.present = true;
             });
@@ -225,20 +221,9 @@
         for (const y of Object.values(years)) {
             const processFallback = (target) => {
                 if (!target) return;
-                const revSum = target.revenue.reduce((a, b) => a + b, 0);
-                const totSum = target.totalRevenue.reduce((a, b) => a + b, 0);
-                const accSum = target.accommodation.reduce((a, b) => a + b, 0);
-                
-                if (Math.abs(totSum) > Math.abs(revSum)) {
-                    for (let i = 0; i < 12; i++) {
-                        target.revenue[i] = target.totalRevenue[i];
-                    }
-                }
-                
-                if (accSum === 0 && target.revenue.reduce((a, b) => a + b, 0) !== 0) {
-                    for (let i = 0; i < 12; i++) {
-                        target.accommodation[i] = target.revenue[i];
-                    }
+                // A summary is a fallback only when the source has no monetary breakdown.
+                if (!Object.keys(target.concepts || {}).length) {
+                    target.revenue = target.totalRevenue.slice();
                 }
             };
             if (y.controls.present) processFallback(y.controls.values);
@@ -246,9 +231,9 @@
             
             for (const [m, days] of Object.entries(y.coverage)) {
                 days.sort((a, b) => a - b);
-                if (y.controls.present) for (const field of fields) {
+                if (y.controls.present) for (const field of ['rooms', 'revenue', 'accommodation']) {
                     const actual = Object.values(y.segment).reduce((s, seg) => s + seg[field][m], 0);
-                    if (Math.abs(actual - y.controls.values[field][m]) > (field === 'rooms' ? 0 : 0.05)) console.warn(`El total de ${field} no cuadra con los segmentos. Revisa el bloque de totales del archivo.`);
+                    if (Math.abs(actual - y.controls.values[field][m]) > (field === 'rooms' ? 0 : 0.05)) throw new Error(`El total de ${field} no cuadra con los segmentos. Revisa el bloque de totales del archivo.`);
                 }
             }
         }
@@ -268,6 +253,7 @@
             for (const m of Object.keys(incoming.coverage)) {
                 for (const seg of Object.values(target.segment)) {
                     for (const field of fields) if (seg[field]) seg[field][m] = 0;
+                    if (seg.accommodationVerified) seg.accommodationVerified[m] = false;
                     if (seg.concepts) {
                         for (const concept of Object.values(seg.concepts)) concept[m] = 0;
                     }
@@ -277,6 +263,8 @@
                     if (!Object.hasOwn(target.segment, name)) Object.defineProperty(target.segment, name, { value: empty(name), writable: true, enumerable: true, configurable: true });
                     for (const field of fields) { target.segment[name][field] ||= Array(12).fill(0); target.segment[name][field][m] = seg[field][m]; }
                     
+                    target.segment[name].accommodationVerified ||= Array(12).fill(false);
+                    target.segment[name].accommodationVerified[m] = seg.accommodationVerified[m];
                     target.segment[name].concepts ||= {};
                     if (seg.concepts) {
                         for (const [cName, cArr] of Object.entries(seg.concepts)) {
@@ -317,9 +305,12 @@
             if (!c) return null;
             if (lastMonth !== -1 && c.month < lastMonth) currentYear++;
             lastMonth = c.month;
+            column(`${c.day}/${c.month + 1}/${currentYear}`);
             return { iso: `${currentYear}-${String(c.month + 1).padStart(2, '0')}-${String(c.day).padStart(2, '0')}` };
         });
 
+        const dates = columns.filter(Boolean).map(c => c.iso);
+        if (new Set(dates).size !== dates.length) throw new Error('Fecha duplicada en la cabecera.');
         const blocks = reviewRows(rows, corrections, detectedHotel);
         if (blocks.some(b => b.reason)) {
             const error = new Error('Revisión requerida');
@@ -358,7 +349,6 @@
                 columns.forEach((c, i) => {
                     if (!c) return;
                     const value = number(row[i]);
-                    if (value === 0) return;
                     
                     const dt = target.days[c.iso] ||= { revenue: 0, rooms: 0, accommodation: 0, totalRevenue: 0 };
                     
@@ -374,17 +364,12 @@
                 });
             }
             
-            // Fallback for each day
             for (const dt of Object.values(target.days)) {
-                if (Math.abs(dt.totalRevenue) > Math.abs(dt.revenue)) {
-                    dt.revenue = dt.totalRevenue;
-                }
-                if (dt.accommodation === 0 && dt.revenue !== 0 && lodgingRows === 0) {
-                    dt.accommodation = dt.revenue;
-                }
+                dt.accommodationVerified = lodgingRows > 0;
+                if (!Object.keys(dt.concepts || {}).length) dt.revenue = dt.totalRevenue;
             }
         }
-        return { segmentData, source: fileName, startYear };
+        return { segmentData, coverage: columns.filter(Boolean).map(c => c.iso), source: fileName, startYear };
     }
 
     function mergeForecast(db, hotel, report) {
@@ -394,6 +379,10 @@
             target.segment_prev = JSON.parse(JSON.stringify(target.segment));
             target.prevUpdatedAt = target.updatedAt;
             target.prevSource = target.source;
+        }
+        const covered = new Set(report.coverage || Object.values(report.segmentData).flatMap(s => Object.keys(s.days)));
+        for (const seg of Object.values(target.segment || {})) {
+            for (const iso of covered) delete seg.days[iso];
         }
         for (const [name, incomingSeg] of Object.entries(report.segmentData)) {
             const seg = target.segment[name] ||= { name, days: {} };
@@ -413,7 +402,8 @@
         const detailed = selected.length > 0 && selected.every(m => data?.segmentCoverage?.[m]);
         const result = { revenue: 0, rooms: 0, accommodation: 0, days: detailed ? selected.reduce((n, m) => n + data.segmentCoverage[m].length, 0) : null };
         for (const s of segments(data)) { result.revenue += sum(s, 'revenue', selected); result.rooms += sum(s, 'rooms', selected); result.accommodation += sum(s, 'accommodation', selected); }
-        result.adr = result.rooms > 0 ? result.accommodation / result.rooms : null;
+        const verified = segments(data).every(s => selected.every(m => s.accommodation?.[m] != null && (s.accommodationVerified ? s.accommodationVerified[m] === true : (s.concepts == null || Object.keys(s.concepts).some(k => /HABITACI|ALOJAMIENTO|ALOJAM|SUITE|CAMA SUPLETORIA|LATE CHECK OUT|AMPLIACION|RECARGO|REGARGO|\b(DIA|NOCHE|INDIVIDUAL|DOBLE)\b/.test(k))))));
+        result.adr = verified && result.rooms > 0 ? result.accommodation / result.rooms : null;
         return result;
     }
     function comparable(a, b, selected) {

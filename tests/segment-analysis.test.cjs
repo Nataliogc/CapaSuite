@@ -104,8 +104,8 @@ test('missing left-hand segment is blocking and never inherits a previous segmen
     assert.equal(rows[1][0], '');
     assert.deepEqual(corrected.corrections[0], { cell: 'A2', original: '', segment: 'OTROS' });
 });
-test('Agencias, Particula and Particulares must be corrected even with zero activity', () => {
-    for (const invalid of ['Agencias', 'Particula', 'Particulares', 'SIN SEGMENTO', 'UNKNOWN']) {
+test('unknown segments must be corrected even with zero activity', () => {
+    for (const invalid of ['SIN SEGMENTO', 'UNKNOWN']) {
         const rows = source(); rows[1][0] = invalid;
         assert.throws(() => S.parse(rows), error => error.code === 'SEGMENT_REVIEW' && error.issues[0].cell === 'A2');
         assert.throws(() => S.parse(rows, '', undefined, { A2: invalid }), /Segmento no válido/);

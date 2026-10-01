@@ -2,7 +2,7 @@
  * CapaSuite Storage Manager (PRO Version)
  * Maneja el almacenamiento de datos con múltiples fallbacks:
  * 1. localStorage (Persistente)
- * 2. window.name (Persistente durante la sesión/navegación en la pestaña)
+ * 2. sessionStorage (Durante la sesión/navegación en la pestaña)
  * 3. Memory (Solo sesión actual)
  */
 
@@ -39,17 +39,17 @@
         sessionAvailable = true;
     } catch (e) { }
 
-    function saveToWindowName(key, value) {
-        if (!sessionAvailable) return;
-        try { sessionStorage.setItem('_cs_' + key, value); } catch (e) { }
+    function saveToSession(key, value) {
+        if (!sessionAvailable) return false;
+        try { sessionStorage.setItem('_cs_' + key, value); return true; } catch (e) { return false; }
     }
 
-    function getFromWindowName(key) {
+    function getFromSession(key) {
         if (!sessionAvailable) return null;
-        try { return sessionStorage.getItem('_cs_' + key) || null; } catch (e) { return null; }
+        try { return sessionStorage.getItem('_cs_' + key) ?? null; } catch (e) { return null; }
     }
 
-    function removeFromWindowName(key) {
+    function removeFromSession(key) {
         if (!sessionAvailable) return;
         try { sessionStorage.removeItem('_cs_' + key); } catch (e) { }
     }
@@ -58,100 +58,49 @@
         isAvailable: storageAvailable,
 
         getItem: function (key) {
+            if (Object.hasOwn(memoryStorage, key)) return memoryStorage[key];
+            try {
+                if (sessionAvailable && sessionStorage.getItem('_cs_dirty_' + key)) return getFromSession(key);
+            } catch (e) { }
             // Intentar localStorage con y sin versión por retrocompatibilidad
             let val = null;
             if (storageAvailable) {
-                val = localStorage.getItem(`${VERSION}_${key}`) || localStorage.getItem(key);
+                try { val = localStorage.getItem(`${VERSION}_${key}`) ?? localStorage.getItem(key); } catch (e) { }
             }
             
             // Fallbacks
-            if (!val) val = getFromWindowName(key);
-            if (!val) val = memoryStorage[key];
+            if (val == null) val = getFromSession(key);
+
 
             // Segment names belong to the source report. Reading storage must not delete them.
 
-            // --- CAPASUITE DATE SHIFT CORRECTION MIGRATION ---
-            // TODO: Eliminar este bloque completo tras Q1 2027.
-            // La migración ya se aplicó en todos los clientes (flag _dateShiftMigratedV4).
-            // El check db._dateShiftMigratedV4 garantiza que no se re-ejecute,
-            // pero el bloque sigue añadiendo coste en cada llamada a getItem.
-
-            if (key === "hotel_manager_db_v2" && val) {
-                try {
-                    const db = JSON.parse(val);
-                    const isReconciliationComplete = (window._capasuite_local_mode === true || window._initialDownloadDone === true);
-                    
-                    if (db && typeof db === 'object' && !db._dateShiftMigratedV4 && isReconciliationComplete) {
-                        const shiftDateString = (dateStr) => {
-                            const parts = dateStr.split('-');
-                            if (parts.length === 3) {
-                                const y = parseInt(parts[0]);
-                                const m = parseInt(parts[1]) - 1;
-                                const d = parseInt(parts[2]);
-                                const utcDate = new Date(Date.UTC(y, m, d));
-                                utcDate.setUTCDate(utcDate.getUTCDate() + 1);
-                                
-                                const newY = utcDate.getUTCFullYear();
-                                const newM = String(utcDate.getUTCMonth() + 1).padStart(2, '0');
-                                const newD = String(utcDate.getUTCDate()).padStart(2, '0');
-                                return `${newY}-${newM}-${newD}`;
-                            }
-                            return dateStr;
-                        };
-
-                        Object.keys(db).forEach(hotel => {
-                            if (hotel.startsWith('_') || typeof db[hotel] !== 'object') return;
-                            Object.keys(db[hotel]).forEach(year => {
-                                if (year.startsWith('_') || typeof db[hotel][year] !== 'object') return;
-                                const yearData = db[hotel][year];
-                                if (yearData && typeof yearData === 'object') {
-                                    if (yearData.daily && typeof yearData.daily === 'object') {
-                                        const newDaily = {};
-                                        Object.entries(yearData.daily).forEach(([dateStr, dayData]) => {
-                                            newDaily[shiftDateString(dateStr)] = dayData;
-                                        });
-                                        yearData.daily = newDaily;
-                                    }
-                                    if (yearData.daily_otb && typeof yearData.daily_otb === 'object') {
-                                        const newDailyOtb = {};
-                                        Object.entries(yearData.daily_otb).forEach(([dateStr, dayData]) => {
-                                            newDailyOtb[shiftDateString(dateStr)] = dayData;
-                                        });
-                                        yearData.daily_otb = newDailyOtb;
-                                    }
-                                    if (yearData.otb_prev && yearData.otb_prev.daily_otb && typeof yearData.otb_prev.daily_otb === 'object') {
-                                        const newDailyOtbPrev = {};
-                                        Object.entries(yearData.otb_prev.daily_otb).forEach(([dateStr, dayData]) => {
-                                            newDailyOtbPrev[shiftDateString(dateStr)] = dayData;
-                                        });
-                                        yearData.otb_prev.daily_otb = newDailyOtbPrev;
-                                    }
-                                }
-                            });
-                        });
-
-                        db._dateShiftMigratedV4 = true;
-                        val = JSON.stringify(db);
-                        this.setItem(key, val);
-                        console.log("🛠️ CapaSuite: Global Database Date Shift correction applied & marked in DB.");
-                    }
-                } catch(e) { console.warn("Date Shift Correction Fail", e); }
-            }
+            // Dates are source data. Reading storage must never rewrite them.
 
             return val;
         },
 
         setItem: function (key, value) {
             // Guardar en todas partes para máxima resiliencia usando prefix de versión
+            let persisted = false;
             if (storageAvailable) {
                 try { 
-                    localStorage.setItem(`${VERSION}_${key}`, value); 
+                    localStorage.setItem(`${VERSION}_${key}`, value);
+                    persisted = true;
                 } catch (e) { 
                     logError("Fallo guardando en localStorage (Posible límite de cuota excedido)", { key });
                 }
             }
-            saveToWindowName(key, value);
-            memoryStorage[key] = value;
+            const savedInSession = saveToSession(key, value);
+            try {
+                if (persisted) sessionStorage.removeItem('_cs_dirty_' + key);
+                else if (savedInSession) sessionStorage.setItem('_cs_dirty_' + key, '1');
+            } catch (e) { }
+            if (persisted) delete memoryStorage[key];
+            else {
+                memoryStorage[key] = value;
+                window.dispatchEvent?.(new CustomEvent('capasuite-storage-warning', { detail: { key } }));
+            }
+            return { persistent: persisted, session: savedInSession };
         },
 
         removeItem: function (key) {
@@ -159,13 +108,14 @@
                 localStorage.removeItem(`${VERSION}_${key}`);
                 localStorage.removeItem(key); // Limpiar versión antigua también
             }
-            removeFromWindowName(key);
+            removeFromSession(key);
+            try { sessionStorage.removeItem('_cs_dirty_' + key); } catch (e) { }
             delete memoryStorage[key];
         },
 
         showWarningIfNeeded: function () {
             if (!storageAvailable) {
-                console.info("CapaSuite funcionando en modo Sesión Avanzada (window.name/memory).");
+                console.info("CapaSuite funcionando en modo Sesión Avanzada (sessionStorage/memory).");
             }
         },
 
