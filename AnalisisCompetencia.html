@@ -1121,6 +1121,14 @@
             font-size: 0.75rem;
         }
 
+        .price-sold.unopened {
+            color: #64748b;
+            background: #f1f5f9;
+            border: 1px dashed #cbd5e1;
+            font-weight: 600;
+            cursor: help;
+        }
+
         .price-minstay {
             color: #2563eb;
             background: #dbeafe;
@@ -4041,7 +4049,20 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 const cMinBadge = cMinP > 0 
                     ? ` <span class="min-price-pill comp" onclick="openMinPriceModal()" title="Mínimo configurado: ${cMinP}€">Mín: ${cMinP}€</span>` 
                     : '';
-                h += `<th title="${c.name}" style="${opacityStyle}">${short}${cMinBadge}</th>`;
+
+                // Si el competidor no tiene ventas abiertas en este periodo analizado
+                const isCompAllClosed = data.length >= 5 && data.every(d => {
+                    const h = d.hotels && d.hotels[c.name];
+                    return !h || h.sold || h.status === 'sold' || h.status === 'noData' || h.isMonthClosed;
+                }) && data.some(d => {
+                    const h = d.hotels && d.hotels[c.name];
+                    return h && (h.sold || h.status === 'sold' || h.isMonthClosed);
+                });
+                const closedBadge = isCompAllClosed 
+                    ? ` <span class="min-price-pill" style="background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1; font-weight:600;" title="Mes cerrado: Sin ventas abiertas en este periodo (excluido de recomendaciones de precio)">Sin ventas</span>` 
+                    : '';
+
+                h += `<th title="${c.name}${isCompAllClosed ? ' (Ventas no abiertas para el mes)' : ''}" style="${opacityStyle}">${short}${cMinBadge}${closedBadge}</th>`;
             });
             thead.innerHTML = h;
 
@@ -4269,7 +4290,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         const closedWrap = `
                             <div class="manual-price-wrap">
                                 <button class="step-btn down" onclick="stepManualPrice(${d.dayIndex}, '${siblingName}', -1, event)" title="Reabrir ${siblingName} y bajar 1€">-</button>
-                                <span class="price-sold${pendingPriceClass(hData)}" onclick="openManualPriceInput(${d.dayIndex}, '${siblingName}', this.parentElement, event)" title="${siblingName} cerrado. Click para simular reapertura">S</span>
+                                <span class="price-sold${hData.isMonthClosed ? ' unopened' : ''}${pendingPriceClass(hData)}" onclick="openManualPriceInput(${d.dayIndex}, '${siblingName}', this.parentElement, event)" title="${siblingName} cerrado${hData.isMonthClosed ? ' (sin ventas abiertas este mes)' : ''}. Click para simular reapertura">S</span>
                                 <button class="step-btn up" onclick="stepManualPrice(${d.dayIndex}, '${siblingName}', 1, event)" title="Reabrir ${siblingName} y subir 1€">+</button>
                             </div>
                         `;
@@ -4336,7 +4357,12 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     const opacityStyle = isIgnored ? "opacity: 0.35; filter: grayscale(100%); background:var(--bg-surface);" : "";
 
                     if (!hData || hData.status === 'noData') return `<td style="${opacityStyle}">-</td>`;
-                    if (hData.sold || hData.status === 'sold') return `<td style="${opacityStyle}"><span class="price-sold">S</span></td>`;
+                    if (hData.sold || hData.status === 'sold') {
+                        if (hData.isMonthClosed) {
+                            return `<td style="${opacityStyle}"><span class="price-sold unopened" title="Mes cerrado: Este hotel no ha abierto ventas para este mes (no computa como lleno ni entra en recomendaciones)">S</span></td>`;
+                        }
+                        return `<td style="${opacityStyle}"><span class="price-sold" title="Completo / Sold out">S</span></td>`;
+                    }
                     if (hData.status === 'minStay') {
                         let displayText = "M";
                         if (hData.minStayDays) {
@@ -4621,7 +4647,49 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
         }
 
         function recalcMarketAverages(data) {
+            if (!Array.isArray(data) || data.length === 0) return;
+
+            // Detección de competidores con ventas no abiertas para el mes.
+            // Si un hotel de la competencia está todo el mes cerrado (cero días con venta abierta y días cerrados),
+            // no es que esté completo (sold out), sino que no ha abierto ventas para ese mes.
+            // En ese caso no debe tomarse en cuenta para las recomendaciones de precio (ni como soldComps ni en la media).
+            const monthStats = new Map();
             data.forEach(d => {
+                const mKey = d.month || (d.dateISO ? d.dateISO.slice(0, 7) : 'all');
+                if (!monthStats.has(mKey)) monthStats.set(mKey, new Map());
+                const compMap = monthStats.get(mKey);
+
+                if (d.hotels) {
+                    for (const [compName, hData] of Object.entries(d.hotels)) {
+                        if (!compMap.has(compName)) compMap.set(compName, { total: 0, open: 0, closed: 0 });
+                        const stat = compMap.get(compName);
+                        stat.total++;
+                        const isOpen = hData && !hData.sold && hData.price > 0 && hData.status !== 'sold' && hData.status !== 'noData';
+                        const isClosed = hData && (hData.sold || hData.status === 'sold');
+                        if (isOpen) stat.open++;
+                        if (isClosed) stat.closed++;
+                    }
+                }
+            });
+
+            const isCompMonthClosed = (mKey, compName) => {
+                const compMap = monthStats.get(mKey);
+                if (!compMap) return false;
+                let stat = compMap.get(compName);
+                if (!stat) {
+                    const norm = String(compName).toLowerCase().trim();
+                    for (const [k, v] of compMap.entries()) {
+                        if (String(k).toLowerCase().trim() === norm) { stat = v; break; }
+                    }
+                }
+                if (!stat) return false;
+                if (stat.open > 0) return false;
+                if (stat.closed === 0) return false;
+                return stat.total >= 5 ? (stat.closed >= 5 || stat.closed === stat.total) : stat.closed === stat.total;
+            };
+
+            data.forEach(d => {
+                const mKey = d.month || (d.dateISO ? d.dateISO.slice(0, 7) : 'all');
                 let compPrices = [];
                 let siblingName = activeHotel === "Guadiana" ? "Cumbria" : (activeHotel === "Cumbria" ? "Guadiana" : "");
 
@@ -4639,13 +4707,26 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     }
                 });
 
+                // Marcar estado isMonthClosed en todos los hoteles del día para reflejarlo en la interfaz
+                if (d.hotels) {
+                    for (const [hName, hObj] of Object.entries(d.hotels)) {
+                        if (hObj && typeof hObj === 'object') {
+                            hObj.isMonthClosed = isCompMonthClosed(mKey, hName);
+                        }
+                    }
+                }
+
                 let soldComps = 0;
 
                 activeComps.forEach(compName => {
-                    const hData = d.hotels[compName];
+                    const hData = d.hotels ? d.hotels[compName] : null;
                     if (hData) {
-                        if (hData.sold) soldComps++;
-                        if (hData.price > 0 && !hData.sold) {
+                        const monthClosed = isCompMonthClosed(mKey, compName);
+                        hData.isMonthClosed = monthClosed;
+
+                        // Si el hotel de la competencia no ha abierto ventas para el mes, no se cuenta como sold out ni en recomendaciones
+                        if (hData.sold && !monthClosed) soldComps++;
+                        if (hData.price > 0 && !hData.sold && !monthClosed) {
                             const compMin = getHotelMinPrice(compName);
                             if (ignoreCompetitorsBelowMin && compMin > 0 && hData.price < compMin) {
                                 // Omitir tarifa por estar por debajo del suelo mínimo configurado
@@ -5499,7 +5580,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         const cH = d.hotels[c.name];
                         let priceText = '-';
                         if (cH) {
-                            if (cH.sold || cH.status === 'sold') priceText = 'Cerrado';
+                            if (cH.sold || cH.status === 'sold') priceText = cH.isMonthClosed ? 'Sin ventas' : 'Cerrado';
                             else if (cH.status === 'minStay') priceText = cH.raw || 'M';
                             else if (cH.price > 0) priceText = `${Math.round(cH.price)}€`;
                         }
