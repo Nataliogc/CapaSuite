@@ -124,3 +124,21 @@ test('competitor with open sales and occasional sold out dates counts as real so
     assert.equal(data[9].activeSoldComps, 1);
     assert.equal(data[10].activeSoldComps, 1);
 });
+
+test('competition table layout fits 100% of the screen without horizontal scrolling', () => {
+    // 1. table is width 100% and table-layout: fixed
+    assert.match(html, /table\s*\{[\s\S]*width:\s*100%;/);
+    assert.match(html, /table\s*\{[\s\S]*table-layout:\s*fixed;/);
+
+    // 2. table-wrap does not show horizontal scrollbar on standard displays
+    assert.match(html, /\.table-wrap\s*\{[\s\S]*overflow-x:\s*hidden;/);
+
+    // 3. Columns use proportional classes
+    assert.match(html, /th-date/);
+    assert.match(html, /th-active-hotel/);
+    assert.match(html, /th-action/);
+    assert.match(html, /th-comp/);
+
+    // 4. Action text and date do not block column compaction
+    assert.match(html, /\.action-main-text\s*\{[\s\S]*white-space:\s*normal;/);
+});
