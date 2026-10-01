@@ -5,7 +5,7 @@
     const formatDate = iso => new Date(iso).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' });
     const numeric = n => n == null ? '—' : new Intl.NumberFormat('es-ES', { maximumFractionDigits: 2 }).format(n);
     const money = n => n == null ? 'No verificable' : new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n);
-    let records = [], busy = false;
+    let records = [], busy = false, activeComparison = { available: false };
     function status(text, error = false) { el('status').textContent = text; el('status').classList.toggle('error', error); }
     function confirmRecovery(message) {
         const dialog = el('restoreDialog'); el('restoreDescription').textContent = message;
@@ -26,7 +26,7 @@
         if (busy) return;
         busy = true; document.querySelectorAll('main button').forEach(b => b.disabled = true);
         try { await task(); } catch (error) { console.error(error); status(error.message, true); }
-        finally { busy = false; document.querySelectorAll('main button').forEach(b => b.disabled = false); }
+        finally { busy = false; document.querySelectorAll('main button').forEach(b => b.disabled = false); el('exportComparison').disabled = !activeComparison.available; }
     }
     async function refresh() {
         records = await history.list(el('historyHotel').value);
@@ -42,17 +42,38 @@
     function renderComparison() {
         const current = records.find(r => r.id === el('currentCapture').value), previous = records.find(r => r.id === el('previousCapture').value);
         const comparison = !current || !previous ? { available: false, reason: 'Importa dos capturas para comparar su evolución.' } : current.id === previous.id ? { available: false, reason: 'Necesitas dos capturas distintas para medir cambios.' } : history.compare(previous, current, el('stayMonth').value);
+        activeComparison = comparison;
+        el('exportComparison').disabled = !comparison.available;
+        el('attentionList').replaceChildren();
+        el('visibleDays').textContent = '';
         el('matchedDays').textContent = comparison.available ? numeric(comparison.matchedDays) : '—';
         el('roomsDelta').textContent = comparison.available ? (comparison.roomsDelta > 0 ? '+' : '') + numeric(comparison.roomsDelta) : '—';
         el('incomeDelta').textContent = comparison.available ? money(comparison.accommodationDelta) : '—';
         const body = el('pickupBody'); body.replaceChildren();
         if (!comparison.available) {
             el('coverageNote').textContent = comparison.reason || 'Importa previsiones en dos momentos distintos para empezar a comparar.';
+            el('attentionNote').textContent = 'Necesitas dos capturas comparables para identificar fechas con descensos.';
             empty(body, 'Todavía no hay una comparación disponible.', 5); return;
         }
         const issues = previous.observation.issues.length + current.observation.issues.length;
         el('coverageNote').textContent = `${comparison.matchedDays} fechas compartidas. ${comparison.fullCoverage ? 'Las capturas cubren las mismas fechas.' : `${comparison.missing.length} fechas están fuera de la comparación porque faltan en una captura; no se interpretan como cancelaciones.`} ${issues ? `Hay ${issues} incidencias de calidad en las capturas.` : ''} Cambio neto: las reservas nuevas y las cancelaciones no se pueden separar con estos informes.`;
-        for (const item of comparison.rows) {
+        const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Madrid' }).format(new Date());
+        const attention = window.CapaRevenueReview.attention(comparison, el('historyMode').value, today);
+        el('attentionNote').textContent = el('historyMode').value === 'forecast'
+            ? attention.length ? `${attention.length} ${attention.length === 1 ? 'fecha desde hoy con descenso' : 'fechas desde hoy con descenso'} de habitaciones o alojamiento; por orden de cercanía. Revisa reservas y modificaciones antes de decidir una tarifa. Se muestran hasta 8 fechas.` : 'No hay descensos en las próximas fechas comparables del periodo seleccionado. Las fechas sin cobertura no se evalúan.'
+            : 'La producción registrada muestra correcciones del histórico; este panel revisa únicamente previsiones futuras.';
+        for (const item of attention.slice(0, 8)) {
+            const entry = document.createElement('li');
+            const reasons = [];
+            if (item.roomsDelta < 0) reasons.push(`${numeric(item.roomsDelta)} habitaciones`);
+            if (item.accommodationDelta != null && item.accommodationDelta < 0) reasons.push(`${money(item.accommodationDelta)} de alojamiento`);
+            entry.textContent = `${new Date(item.iso + 'T12:00:00Z').toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' })}: ${reasons.join(' · ')}. Cambio neto; no acredita cancelaciones.`;
+            el('attentionList').append(entry);
+        }
+        const visible = comparison.rows.filter(item => !el('changesOnly').checked || item.roomsDelta !== 0 || item.accommodationDelta != null && item.accommodationDelta !== 0);
+        el('visibleDays').textContent = `${visible.length} de ${comparison.rows.length} fechas comparables en la tabla. Los totales superiores incluyen todas las fechas comparables del periodo.`;
+        if (!visible.length) empty(body, 'No hay días con cambios verificables en este periodo.', 5);
+        for (const item of visible) {
             const row = document.createElement('tr');
             textCell(row, new Date(item.iso + 'T12:00:00Z').toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' }));
             textCell(row, numeric(item.previousRooms)); textCell(row, numeric(item.rooms));
@@ -90,6 +111,16 @@
     el('historyMode').onchange = () => operation(refresh);
     ['previousCapture', 'currentCapture', 'stayMonth'].forEach(key => el(key).onchange = renderComparison);
     el('allMonths').onclick = () => { el('stayMonth').value = ''; renderComparison(); };
+    el('changesOnly').onchange = renderComparison;
+    el('exportComparison').onclick = () => {
+        if (!activeComparison.available || busy) return;
+        const current = records.find(r => r.id === el('currentCapture').value), previous = records.find(r => r.id === el('previousCapture').value);
+        const content = window.CapaRevenueReview.csv(activeComparison, previous, current, el('changesOnly').checked);
+        const url = URL.createObjectURL(new Blob([content], { type: 'text/csv;charset=utf-8' }));
+        const link = document.createElement('a'); link.href = url; link.download = `CapaSuite-comparacion-${current.hotel}-${el('stayMonth').value || 'todas-las-fechas'}.csv`;
+        document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+        status('Comparación descargada. El CSV contiene las fechas mostradas, las horas de las capturas y deja en blanco los ingresos no verificables.');
+    };
     el('captureNow').onclick = () => operation(async () => {
         const id = await history.begin(null, { hotel: el('historyHotel').value, mode: el('historyMode').value, type: 'Captura manual' });
         await history.commit(id); await refresh(); status('Captura guardada con la fecha y hora actuales.');

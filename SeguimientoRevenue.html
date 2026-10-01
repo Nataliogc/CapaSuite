@@ -11,6 +11,7 @@
     <script src="js/state.js"></script>
     <script src="js/storage.js"></script>
     <script src="js/revenue-history.js"></script>
+    <script src="js/revenue-review.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -50,6 +51,9 @@
                 <article><span>Pick-up de habitaciones</span><strong id="roomsDelta">—</strong></article>
                 <article><span>Cambio de ingresos de alojamiento</span><strong id="incomeDelta">—</strong></article>
             </div>
+            <div class="review-panel"><h2>Próximas fechas para revisar</h2><p id="attentionNote" class="note"></p><ul id="attentionList"></ul></div>
+            <div class="review-toolbar"><label class="check-label"><input type="checkbox" id="changesOnly">Ver solo días con cambios</label><button id="exportComparison">Descargar comparación CSV</button></div>
+            <p id="visibleDays" class="note"></p>
             <div class="table-scroll"><table><thead><tr><th>Fecha de estancia</th><th>Habitaciones antes</th><th>Habitaciones ahora</th><th>Pick-up neto</th><th>Cambio de alojamiento</th></tr></thead><tbody id="pickupBody"></tbody></table></div>
         </section>
         <section class="panel">

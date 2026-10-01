@@ -34,6 +34,14 @@ Disponible en **Seguimiento de Revenue**, desde Inicio y la navegación principa
 
 ## Siguientes fases
 
+### Revisión operativa disponible
+
+- Seguimiento muestra hasta ocho próximas fechas comparables con descenso neto de habitaciones o alojamiento, ordenadas por cercanía y desde la fecha actual en Madrid.
+- Las fechas pasadas y la producción registrada no generan avisos de demanda futura. Un descenso no se etiqueta como cancelación ni prescribe una tarifa.
+- El filtro «Ver solo días con cambios» reduce la tabla; los indicadores mantienen el total de todas las fechas comparables del periodo.
+- La descarga CSV incluye las filas visibles, hotel, tipo y fecha/hora de ambas capturas. Los ingresos no verificables quedan vacíos, separados del cero explícito.
+- Verificación: 83 pruebas correctas y prueba en navegador con descenso sintético de 8 a 6 habitaciones y de 200 € de alojamiento; filtro y archivo CSV comprobados.
+
 1. **Validación operativa**: contrastar importaciones reales de ambos hoteles contra ocupación e ingresos del PMS. Ajustar formatos y registrar cobertura específica de cada archivo.
 2. **Previsión diaria**: curvas por antelación, día de la semana, segmento y temporada; comparación homogénea con el año anterior; validación retrospectiva del error. Mostrar intervalos de incertidumbre y ausencia de histórico suficiente.
 3. **Decisiones de precio**: configurar tarifas mínimas/máximas, reglas de disponibilidad y restricciones. Proponer acciones justificadas, sin enviar precios automáticamente.
