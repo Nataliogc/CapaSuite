@@ -9,11 +9,15 @@
         if (!['Guadiana', 'Cumbria'].includes(hotel)) return;
         if (window.CapaState) window.CapaState.setActiveHotel(hotel);
         else { try { localStorage.setItem('active_hotel_suite', hotel); } catch (e) { } }
-        document.querySelectorAll('#hotelSelector, #hotelSelectorNav').forEach(sel => { sel.value = hotel; });
+        if (document.querySelectorAll) {
+            document.querySelectorAll('#hotelSelector, #hotelSelectorNav').forEach(sel => { sel.value = hotel; });
+        }
     }
     window.switchHotel = persistHotel;
     function decorate(nav) {
-        document.querySelectorAll('#hotelSelector, #hotelSelectorNav').forEach(sel => { sel.value = savedHotel(); });
+        if (document.querySelectorAll) {
+            document.querySelectorAll('#hotelSelector, #hotelSelectorNav').forEach(sel => { sel.value = savedHotel(); });
+        }
         const page = window.location.pathname.split('/').pop() || 'index.html';
         nav.querySelectorAll('.nav-links a').forEach(a => a.classList.toggle('active', a.getAttribute('href') === page));
         const links = nav.querySelector('.nav-links');
