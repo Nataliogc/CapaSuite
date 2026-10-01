@@ -87,6 +87,46 @@
         return { put: row => run('readwrite', store => store.put(row)), get: id => run('readonly', store => store.get(id)),
             list: owner => run('readonly', store => store.index('owner').getAll(owner)) };
     }
+    function repairSheetCells(sheet) {
+        if (!sheet) return;
+        if (typeof sheet['!ref'] === 'string') {
+            sheet['!ref'] = sheet['!ref'].replace(/([A-Z]*)([B-Z])@(\d+)/g, (_, pre, ch, row) =>
+                pre + String.fromCharCode(ch.charCodeAt(0) - 1) + 'Z' + row
+            );
+        }
+        for (const key of Object.keys(sheet)) {
+            if (key.startsWith('!')) continue;
+            const match = key.match(/^([A-Z]*)([B-Z])@(\d+)$/);
+            if (match) {
+                const prefix = match[1];
+                const prevChar = String.fromCharCode(match[2].charCodeAt(0) - 1);
+                const row = match[3];
+                const correctedKey = prefix + prevChar + 'Z' + row;
+                sheet[correctedKey] = sheet[key];
+                delete sheet[key];
+            }
+        }
+    }
+    function repairWorkbook(workbook) {
+        if (!workbook?.SheetNames || !workbook.Sheets) return workbook;
+        for (const name of workbook.SheetNames) {
+            repairSheetCells(workbook.Sheets[name]);
+        }
+        return workbook;
+    }
+    function ensureXLSXRepairs(XLSX) {
+        if (!XLSX || XLSX.__repaired_read) return;
+        const origRead = XLSX.read;
+        if (typeof origRead === 'function') {
+            XLSX.read = function (data, opts) {
+                if (data instanceof ArrayBuffer) data = new Uint8Array(data);
+                const wb = origRead.call(this, data, opts);
+                return repairWorkbook(wb);
+            };
+            XLSX.__repaired_read = true;
+        }
+    }
+    if (root.XLSX) ensureXLSXRepairs(root.XLSX);
     async function fingerprint(file) {
         if (!file?.arrayBuffer || !root.crypto?.subtle) return null;
         const bytes = await root.crypto.subtle.digest('SHA-256', await file.arrayBuffer());
@@ -94,7 +134,10 @@
     }
     async function contentFingerprint(file) {
         if (!file?.arrayBuffer || !root.XLSX || !root.crypto?.subtle) return null;
-        const workbook = root.XLSX.read(await file.arrayBuffer(), { type: 'array' });
+        ensureXLSXRepairs(root.XLSX);
+        const buffer = await file.arrayBuffer();
+        const data = buffer instanceof ArrayBuffer ? new Uint8Array(buffer) : buffer;
+        const workbook = repairWorkbook(root.XLSX.read(data, { type: 'array' }));
         for (const name of workbook.SheetNames) {
             if (Object.keys(workbook.Sheets[name]).some(key => !key.startsWith('!') && !/^[A-Z]+\d+$/.test(key))) {
                 throw new Error('El Excel contiene referencias de celda no válidas. Vuelve a exportarlo desde el PMS antes de importar; no se han modificado los datos.');
@@ -213,7 +256,7 @@
             }
         };
     }
-    const api = { observe, compare, validDate, createService, KEYS };
+    const api = { observe, compare, validDate, createService, KEYS, repairWorkbook, repairSheet: repairSheetCells, ensureXLSXRepairs };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else {
         root.CapaRevenueHistory = { ...api, ...createService({ storage: root.CapaStorage, repository: indexedRepository(),

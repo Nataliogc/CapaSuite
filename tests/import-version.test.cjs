@@ -53,9 +53,22 @@ test('Segmentacion names route to the segment parser for both production and for
         assert.equal(context.detectFileType(hotel + ' Produccion.xlsx'), 'Prod');
     }
 });
+test('PMS rollover cell references (like B@3) are automatically healed to valid references (AZ3)', async () => {
+    const sheet = { 'B@3': { v: '19/11' } };
+    const context = vm.createContext({ module: { exports: {} }, TextEncoder, crypto: require('node:crypto').webcrypto,
+        XLSX: { read: () => ({ SheetNames: ['Hoja1'], Sheets: { Hoja1: sheet } }), utils: { sheet_to_json: () => [['19/11']] } } });
+    vm.runInContext(fs.readFileSync('js/revenue-history.js', 'utf8'), context);
+    let writes = 0;
+    const service = context.module.exports.createService({ storage: { getItem: () => null }, repository: { list: async () => [], put: async () => writes++ }, owner: () => 'test', hash: async () => 'bytes' });
+    const id = await service.begin({ name: 'pms.xlsx', arrayBuffer: async () => new ArrayBuffer(0) }, meta);
+    assert.ok(id);
+    assert.equal(writes, 1);
+    assert.equal(sheet.AZ3?.v, '19/11');
+    assert.equal(sheet['B@3'], undefined);
+});
 test('malformed cell references fail before creating an import checkpoint', async () => {
     const context = vm.createContext({ module: { exports: {} }, TextEncoder, crypto: require('node:crypto').webcrypto,
-        XLSX: { read: () => ({ SheetNames: ['Hoja1'], Sheets: { Hoja1: { 'B@3': { v: '01/10' } } } }) } });
+        XLSX: { read: () => ({ SheetNames: ['Hoja1'], Sheets: { Hoja1: { 'BAD#3': { v: '01/10' } } } }) } });
     vm.runInContext(fs.readFileSync('js/revenue-history.js', 'utf8'), context);
     let writes = 0;
     const service = context.module.exports.createService({ storage: { getItem: () => null }, repository: { list: async () => [], put: async () => writes++ }, owner: () => 'test', hash: async () => 'bytes' });
