@@ -373,13 +373,13 @@ test('email HTML table centers all price columns and matches Image 2 card and ba
     assert.match(htmlOutput, /<th[^>]*text-align:center;[^>]*>Mercado<\/th>/);
 
     // 3. Centered price cells in tbody
-    assert.match(htmlOutput, /<td[^>]*text-align:center;[^>]*color:#64748b;[^>]*>[\s\S]*?<span style="text-decoration:line-through; font-weight:600; opacity:0.8;">65&euro;<\/span>/);
-    assert.match(htmlOutput, /<td[^>]*border:1\.5px solid #818cf8;\s*background:#eef2ff;\s*text-align:center;/);
-    assert.match(htmlOutput, /<td[^>]*text-align:center;\s*font-weight:800;\s*color:#4f46e5;\s*font-size:14px;/);
+    assert.match(htmlOutput, /<td[^>]*text-align:center;[^>]*color:#64748b;[^>]*>[\s\S]*?<span[^>]*text-decoration:line-through;[^>]*>65&euro;<\/span>/);
+    assert.match(htmlOutput, /<td[^>]*border:1\.5px solid #818cf8;[^>]*text-align:center;/);
+    assert.match(htmlOutput, /<td[^>]*text-align:center;[^>]*>[\s\S]*?<strong[^>]*color:#4f46e5;[^>]*font-size:14px;[^>]*>80&euro;<\/strong>/);
 
     // 4. Competitor pill badges: CERRADO and MIN 2N
-    assert.match(htmlOutput, /<span[^>]*color:#dc2626;[^>]*>CERRADO<\/span>/);
-    assert.match(htmlOutput, /<span[^>]*color:#d97706;[^>]*>MIN 2N<\/span>/);
+    assert.match(htmlOutput, /bgcolor="#fee2e2"[^>]*>[\s\S]*?CERRADO/);
+    assert.match(htmlOutput, /bgcolor="#fffbeb"[^>]*>[\s\S]*?MIN 2N/);
 });
 
 test('page layout adapts to full screen width without 1300px limitation', () => {
