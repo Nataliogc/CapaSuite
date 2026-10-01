@@ -75,41 +75,73 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 30px;
+            margin-bottom: 22px;
+            padding: 16px 24px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .header-brand-sep {
+            height: 36px;
+            width: 1px;
+            background: var(--border);
+            opacity: 0.8;
         }
 
         .app-title h1 {
-            font-size: 1.5rem;
-            font-weight: 700;
+            font-size: 1.35rem;
+            font-weight: 800;
             margin: 0;
             color: var(--text-main);
+            letter-spacing: -0.3px;
+            line-height: 1.2;
         }
 
         .app-title p {
-            margin: 4px 0 0 0;
+            margin: 3px 0 0 0;
             color: var(--text-muted);
-            font-size: 0.9rem;
+            font-size: 0.82rem;
+            font-weight: 500;
         }
 
         /* ACTIONS */
         .controls {
             display: flex;
-            gap: 12px;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
         }
 
         .form-select,
         .btn {
-            padding: 10px 16px;
-            border-radius: 8px;
+            height: 38px;
+            padding: 0 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            border-radius: 10px;
             border: 1px solid var(--border);
             background: var(--bg-surface);
             font-family: inherit;
-            font-size: 0.9rem;
+            font-size: 0.82rem;
+            font-weight: 700;
             color: var(--text-main);
-            box-shadow: var(--shadow-sm);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.2s ease;
             outline: none;
+            white-space: nowrap;
         }
 
         /* Force dark mode on native select options */
@@ -1295,30 +1327,28 @@
 
         <!-- HEADER -->
         <header class="app-header">
-            <div style="display: flex; align-items: center; gap: 20px;">
+            <div class="header-brand">
                 <a href="index.html" title="Volver al Inicio" style="display:flex; align-items:center;">
-                    <img src="Imagen/logo, CapaSuite.png" alt="CapaSuite" style="height: 45px; width: auto;">
+                    <img src="Imagen/logo, CapaSuite.png" alt="CapaSuite" style="height: 40px; width: auto;">
                 </a>
-                <img id="hotelLogo" src="Imagen/logo-cumbria.svg" alt="Hotel" style="height: 40px; width: auto;">
+                <div class="header-brand-sep"></div>
+                <img id="hotelLogo" src="Imagen/logo-cumbria.svg" alt="Hotel" style="height: 38px; width: auto; max-width: 120px; object-fit: contain;">
                 <div class="app-title">
                     <h1>Centro de Inteligencia de Precios</h1>
                     <p id="headerSubtitle">Análisis de competitividad y tendencias de mercado</p>
                 </div>
             </div>
             <div class="controls" id="dashboard-controls" style="display:none;">
-                <select id="monthSelector" class="form-select" onchange="renderAll()">
+                <select id="monthSelector" class="form-select" onchange="renderAll()" title="Filtrar por mes">
                     <option value="all">📅 Todo el Año</option>
                 </select>
                 <button class="btn"
-                    style="background:var(--bg-surface); border:1px solid var(--border); color:var(--text-main); font-weight:600;"
                     onclick="openMinPriceModal()" title="Configurar tarifas mínimas (suelo) para cada hotel">🏷️ Precios Mínimos</button>
                 <button class="btn"
-                    style="background:var(--bg-surface); border:1px solid var(--border); color:var(--text-main); font-weight:600;"
-                    onclick="openCompConfig()">⚙️ Competencia</button>
-                <button id="updateBtn" class="btn btn-primary" onclick="clearData()">↺ Nuevo Archivo</button>
+                    onclick="openCompConfig()" title="Configurar lista de competidores y parámetros">⚙️ Competencia</button>
+                <button id="updateBtn" class="btn btn-primary" onclick="clearData()" title="Subir nuevo archivo de datos">↺ Nuevo Archivo</button>
             </div>
-    </div>
-    </header>
+        </header>
 
     <!-- UPLOAD VIEW -->
     <div id="view-upload">
@@ -2038,13 +2068,15 @@
             };
         }
 
-        function countModifiedPrices() {
+        function countModifiedPrices(filterHotel) {
             let count = 0;
+            if (!Array.isArray(processedData)) return 0;
             processedData.forEach(d => {
-                if (!d.hotels) return;
-                ['Cumbria', 'Guadiana'].forEach(hName => {
+                if (!d || !d.hotels) return;
+                const hotelsToCheck = filterHotel ? [filterHotel] : ['Cumbria', 'Guadiana'];
+                hotelsToCheck.forEach(hName => {
                     const h = d.hotels[hName];
-                    if (h && (h.isModified || pendingManualPrices.has(h) || (h.savedPrice !== undefined && (h.price !== h.savedPrice || h.sold !== h.savedSold)))) {
+                    if (h && (h.isModified || (typeof pendingManualPrices !== 'undefined' && pendingManualPrices.has(h)) || (h.savedPrice !== undefined && (h.price !== h.savedPrice || (h.savedSold !== undefined && h.sold !== h.savedSold))))) {
                         count++;
                     }
                 });
@@ -2052,18 +2084,47 @@
             return count;
         }
 
-        function countSavedManualPrices() {
+        function countSavedManualPrices(filterHotel) {
             let count = 0;
+            if (!Array.isArray(processedData)) return 0;
             processedData.forEach(d => {
-                if (!d.hotels) return;
-                ['Cumbria', 'Guadiana'].forEach(hName => {
+                if (!d || !d.hotels) return;
+                const hotelsToCheck = filterHotel ? [filterHotel] : ['Cumbria', 'Guadiana'];
+                hotelsToCheck.forEach(hName => {
                     const h = d.hotels[hName];
-                    if (h && h.originalPrice !== undefined && h.savedPrice !== undefined && (h.savedPrice !== h.originalPrice || h.savedSold !== h.originalSold)) {
+                    if (h && h.originalPrice !== undefined && h.savedPrice !== undefined && (h.savedPrice !== h.originalPrice || (h.savedSold !== undefined && h.originalSold !== undefined && h.savedSold !== h.originalSold))) {
                         count++;
                     }
                 });
             });
             return count;
+        }
+
+        function getHotelModificationsSummary() {
+            const cumbriaUnsaved = countModifiedPrices('Cumbria');
+            const cumbriaSaved = countSavedManualPrices('Cumbria');
+            const cumbriaTotal = cumbriaUnsaved > 0 ? cumbriaUnsaved : cumbriaSaved;
+
+            const guadianaUnsaved = countModifiedPrices('Guadiana');
+            const guadianaSaved = countSavedManualPrices('Guadiana');
+            const guadianaTotal = guadianaUnsaved > 0 ? guadianaUnsaved : guadianaSaved;
+
+            // Detectar automáticamente el hotel donde se han producido modificaciones
+            let detectedHotel = activeHotel || 'Guadiana';
+            if (cumbriaTotal > 0 && guadianaTotal === 0) {
+                detectedHotel = 'Cumbria';
+            } else if (guadianaTotal > 0 && cumbriaTotal === 0) {
+                detectedHotel = 'Guadiana';
+            } else if (cumbriaTotal > 0 && guadianaTotal > 0) {
+                detectedHotel = (activeHotel === 'Cumbria' || activeHotel === 'Guadiana') ? activeHotel : 'Cumbria';
+            }
+
+            return {
+                Cumbria: { unsaved: cumbriaUnsaved, saved: cumbriaSaved, total: cumbriaTotal },
+                Guadiana: { unsaved: guadianaUnsaved, saved: guadianaSaved, total: guadianaTotal },
+                detectedHotel: detectedHotel,
+                totalModified: cumbriaTotal + guadianaTotal
+            };
         }
 
         function resetAllManualPrices() {
@@ -2170,14 +2231,20 @@
         }
 
         function buildSimulationBannerHtml(filteredCount = 0) {
+            const summary = getHotelModificationsSummary();
             const unsavedCount = countModifiedPrices();
             const savedCount = countSavedManualPrices();
             const applyBtnText = filteredCount > 0 ? `⚡ Aplicar a las ${filteredCount}` : '⚡ Aplicar recomendados';
             const totalModified = unsavedCount > 0 ? unsavedCount : savedCount;
 
+            const detectedHotel = summary.detectedHotel;
+            const isSingleHotel = (summary.Cumbria.total > 0 && summary.Guadiana.total === 0) || (summary.Guadiana.total > 0 && summary.Cumbria.total === 0);
+            const hotelLabel = isSingleHotel ? ` (Hotel ${detectedHotel})` : (summary.Cumbria.total > 0 && summary.Guadiana.total > 0 ? ' (Cumbria & Guadiana)' : '');
+            const btnHotelTag = isSingleHotel ? ` · ${detectedHotel}` : '';
+
             const emailBtn = totalModified > 0 ? `
-                <button class="sim-btn" onclick="openEmailRevenueModal()" style="background:linear-gradient(135deg, #0284c7, #2563eb); color:#fff; font-weight:700; border:none; display:inline-flex; align-items:center; gap:5px; box-shadow:0 2px 8px rgba(37,99,235,0.35); padding:4px 10px; border-radius:6px; cursor:pointer;" title="Enviar informe de tarifas modificadas por email a Mihail Stavila (Revenue Central Sercotel)">
-                    <span>✉️</span> Enviar a Central (${totalModified})
+                <button class="sim-btn" onclick="openEmailRevenueModal('${detectedHotel}')" style="background:linear-gradient(135deg, #0284c7, #2563eb); color:#fff; font-weight:700; border:none; display:inline-flex; align-items:center; gap:5px; box-shadow:0 2px 8px rgba(37,99,235,0.35); padding:4px 10px; border-radius:6px; cursor:pointer;" title="Enviar informe de tarifas modificadas de Hotel ${detectedHotel} a Revenue">
+                    <span>✉️</span> Enviar a Central${btnHotelTag} (${totalModified})
                 </button>
             ` : '';
 
@@ -2185,7 +2252,7 @@
                 return `
                     <span class="simulation-banner">
                         <button class="sim-btn sim-apply-all" onclick="saveManualPrices()" style="background:#4f46e5; color:#fff; font-weight:700;" title="Guardar las tarifas de ambos hoteles, incluidas las fechas ocultas por filtros">${manualPricesPending ? '💾 Guardar cambios' : '✓ Cambios guardados'}</button>
-                        <span class="sim-info" style="color:#d97706; font-weight:700;">💡 <b>${unsavedCount}</b> tarifa${unsavedCount !== 1 ? 's' : ''} simulada${unsavedCount !== 1 ? 's' : ''} (sin guardar)</span>
+                        <span class="sim-info" style="color:#d97706; font-weight:700;">💡 <b>${unsavedCount}</b> tarifa${unsavedCount !== 1 ? 's' : ''} simulada${unsavedCount !== 1 ? 's' : ''}${hotelLabel} (sin guardar)</span>
                         ${emailBtn}
                         <button class="sim-btn sim-apply-all" onclick="applyAllVisibleRecommendations()" title="Aplicar tarifas recomendadas a las fechas visibles">${applyBtnText}</button>
                         <button class="sim-btn sim-reset" onclick="resetAllManualPrices()" title="Restablecer solo las simulaciones no guardadas y volver a los precios guardados">↺ Restablecer</button>
@@ -2195,7 +2262,7 @@
                 return `
                     <span class="simulation-banner" style="background:rgba(16, 185, 129, 0.08); border:1px solid rgba(16, 185, 129, 0.3);">
                         <button class="sim-btn" disabled style="background:#10b981; color:#fff; font-weight:700; opacity:0.95; cursor:default;" title="Todas las modificaciones están guardadas en la base de datos">✓ Cambios guardados</button>
-                        <span class="sim-info" style="color:#059669; font-weight:700;">✓ <b>${savedCount}</b> tarifa${savedCount !== 1 ? 's' : ''} guardada${savedCount !== 1 ? 's' : ''}</span>
+                        <span class="sim-info" style="color:#059669; font-weight:700;">✓ <b>${savedCount}</b> tarifa${savedCount !== 1 ? 's' : ''} guardada${savedCount !== 1 ? 's' : ''}${hotelLabel}</span>
                         ${emailBtn}
                         <button class="sim-btn sim-apply-all" onclick="applyAllVisibleRecommendations()" title="Aplicar tarifas recomendadas a las fechas visibles">${applyBtnText}</button>
                         <button class="sim-btn sim-reset" disabled style="opacity:0.35; cursor:not-allowed;" title="Solo se pueden restablecer simulaciones no guardadas. Para volver al archivo original, usa 'Restablecer archivo'.">↺ Restablecer</button>
@@ -2236,14 +2303,9 @@
             const countEl = document.getElementById('record-count');
             if (!countEl) return;
             const simHtml = buildSimulationBannerHtml(0);
-            const savedCount = countSavedManualPrices();
-            const unsavedCount = countModifiedPrices();
-            const totalModified = unsavedCount > 0 ? unsavedCount : savedCount;
 
             let statusHtml = `<span>${count} días analizados</span>`;
-            statusHtml += `<button class="sim-btn" onclick="openMinPriceModal()" style="background:var(--bg-surface); border:1px solid var(--border); color:var(--text-main); font-size:0.75rem; padding:3px 9px; border-radius:12px; cursor:pointer;" title="Configurar tarifas mínimas para cada hotel">🏷️ Precios mín.</button>`;
-            statusHtml += `<button class="sim-btn" onclick="openEmailRevenueModal()" style="background:var(--bg-surface); border:1px solid ${totalModified > 0 ? '#0284c7' : 'var(--border)'}; color:${totalModified > 0 ? '#38bdf8' : 'var(--text-main)'}; font-size:0.75rem; padding:3px 10px; border-radius:12px; cursor:pointer; font-weight:700; display:inline-flex; align-items:center; gap:4px;" title="Revisar y enviar tarifas modificadas a Revenue Central (Mihail Stavila)">✉️ Enviar a Central ${totalModified > 0 ? `(${totalModified})` : ''}</button>`;
-            statusHtml += `<span onclick="diagnoseAllData()" style="font-size:0.6rem; color:#94a3b8; cursor:pointer; margin-left:10px; text-decoration:underline;">[Debug]</span>`;
+            statusHtml += `<span onclick="diagnoseAllData()" style="font-size:0.6rem; color:#94a3b8; cursor:pointer; margin-left:6px; text-decoration:underline;" title="Diagnóstico">[Debug]</span>`;
             countEl.innerHTML = `<div style="display:flex; align-items:center; gap:8px;">${simHtml} ${statusHtml}</div>`;
         }
 
@@ -5335,20 +5397,24 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             <!-- HEADER CORPORATIVO (Fijo) -->
             <div style="background:linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e293b 100%); padding:20px 28px; position:relative; border-radius:18px 18px 0 0; flex-shrink:0;">
                 <span class="close-modal" onclick="closeEmailRevenueModal()" style="position:absolute; top:14px; right:18px; color:#a5b4fc; font-size:1.5rem; cursor:pointer; line-height:1;">&times;</span>
-                <div style="display:flex; align-items:center; gap:14px;">
-                    <div style="background:rgba(165,180,252,0.15); width:48px; height:48px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:1.5rem; border:1px solid rgba(165,180,252,0.3); flex-shrink:0;">
-                        ✉️
-                    </div>
-                    <div>
-                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:3px;">
-                            <h3 style="margin:0; font-size:1.1rem; color:#ffffff; font-weight:800; letter-spacing:-0.3px;">Comunicación de Tarifas · Revenue Central</h3>
-                            <span id="revenueModalHotelBadge" style="background:rgba(99,102,241,0.4); color:#a5b4fc; font-size:0.65rem; font-weight:800; padding:2px 8px; border-radius:20px; text-transform:uppercase; letter-spacing:0.5px; border:1px solid rgba(165,180,252,0.3);">SERCOTEL RM</span>
+                <div style="display:flex; align-items:center; gap:14px; padding-right:32px; justify-content:space-between; flex-wrap:wrap;">
+                    <div style="display:flex; align-items:center; gap:14px;">
+                        <div style="background:rgba(165,180,252,0.15); width:48px; height:48px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:1.5rem; border:1px solid rgba(165,180,252,0.3); flex-shrink:0;">
+                            ✉️
                         </div>
-                        <div style="font-size:0.78rem; color:#94a3b8; display:flex; align-items:center; gap:6px;">
-                            <span>Para revisión de</span>
-                            <span id="revenueModalRecipientBadge" style="background:rgba(255,255,255,0.08); color:#c7d2fe; font-weight:700; padding:1px 8px; border-radius:4px; font-size:0.72rem;">Mihail Stavila · mstavila@sercotel.com</span>
+                        <div>
+                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:3px;">
+                                <h3 style="margin:0; font-size:1.1rem; color:#ffffff; font-weight:800; letter-spacing:-0.3px;">Comunicación de Tarifas · Revenue Central</h3>
+                                <span id="revenueModalHotelBadge" style="background:rgba(99,102,241,0.4); color:#a5b4fc; font-size:0.65rem; font-weight:800; padding:2px 8px; border-radius:20px; text-transform:uppercase; letter-spacing:0.5px; border:1px solid rgba(165,180,252,0.3);">SERCOTEL RM</span>
+                            </div>
+                            <div style="font-size:0.78rem; color:#94a3b8; display:flex; align-items:center; gap:6px;">
+                                <span>Para revisión de</span>
+                                <span id="revenueModalRecipientBadge" style="background:rgba(255,255,255,0.08); color:#c7d2fe; font-weight:700; padding:1px 8px; border-radius:4px; font-size:0.72rem;">Mihail Stavila · mstavila@sercotel.com</span>
+                            </div>
                         </div>
                     </div>
+                    <!-- Pestañas de Selección de Hotel en Modal -->
+                    <div id="revenueModalHotelTabs" style="display:flex; gap:6px; align-items:center;"></div>
                 </div>
             </div>
 
@@ -5573,8 +5639,12 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             return str;
         }
 
-        function getModifiedRatesReport() {
-            const targetHotel = activeHotel || "Guadiana";
+        let currentRevenueModalHotel = null;
+
+        function getModifiedRatesReport(hotelOverride) {
+            const summary = (typeof getHotelModificationsSummary === 'function') ? getHotelModificationsSummary() : null;
+            const autoDetected = summary?.detectedHotel;
+            const targetHotel = hotelOverride || currentRevenueModalHotel || autoDetected || activeHotel || "Guadiana";
             const items = [];
 
             processedData.forEach(d => {
@@ -5709,7 +5779,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
         }
 
         function saveCurrentHotelEmailConfig() {
-            const h = activeHotel || "Guadiana";
+            const h = currentRevenueModalHotel || activeHotel || "Guadiana";
             const toInput = document.getElementById('revenueEmailTo');
             const ccInput = document.getElementById('revenueEmailCc');
             if (!toInput) return;
@@ -5733,12 +5803,37 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             }
         }
 
-        function openEmailRevenueModal() {
-            const report = getModifiedRatesReport();
+        function switchRevenueModalHotel(hotelName) {
+            openEmailRevenueModal(hotelName);
+        }
+
+        function openEmailRevenueModal(hotelOverride) {
+            const summary = (typeof getHotelModificationsSummary === 'function') 
+                ? getHotelModificationsSummary() 
+                : { detectedHotel: activeHotel, Cumbria: { total: 0 }, Guadiana: { total: 0 } };
+            const targetHotel = hotelOverride || summary.detectedHotel || activeHotel || "Guadiana";
+            currentRevenueModalHotel = targetHotel;
+
+            const report = getModifiedRatesReport(targetHotel);
             const modal = document.getElementById('emailRevenueModal');
             if (!modal) return;
 
             const config = getHotelEmailConfig(report.hotel);
+
+            // Actualizar pestañas dinámicas de selección de hotel en cabecera del modal
+            const tabsEl = document.getElementById('revenueModalHotelTabs');
+            if (tabsEl) {
+                const cActive = report.hotel === 'Cumbria';
+                const gActive = report.hotel === 'Guadiana';
+                tabsEl.innerHTML = `
+                    <button type="button" onclick="switchRevenueModalHotel('Cumbria')" style="padding:5px 12px; border-radius:14px; font-size:0.75rem; font-weight:800; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:all 0.2s; ${cActive ? 'background:#38bdf8; color:#0f172a; box-shadow:0 2px 8px rgba(56,189,248,0.4);' : 'background:rgba(255,255,255,0.1); color:#cbd5e1;'}">
+                        🏨 Cumbria <span style="background:${cActive ? 'rgba(15,23,42,0.25)' : 'rgba(255,255,255,0.15)'}; padding:1px 6px; border-radius:10px; font-size:0.7rem; font-weight:800;">${summary.Cumbria?.total || 0}</span>
+                    </button>
+                    <button type="button" onclick="switchRevenueModalHotel('Guadiana')" style="padding:5px 12px; border-radius:14px; font-size:0.75rem; font-weight:800; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:all 0.2s; ${gActive ? 'background:#818cf8; color:#0f172a; box-shadow:0 2px 8px rgba(129,140,248,0.4);' : 'background:rgba(255,255,255,0.1); color:#cbd5e1;'}">
+                        🏨 Guadiana <span style="background:${gActive ? 'rgba(15,23,42,0.25)' : 'rgba(255,255,255,0.15)'}; padding:1px 6px; border-radius:10px; font-size:0.7rem; font-weight:800;">${summary.Guadiana?.total || 0}</span>
+                    </button>
+                `;
+            }
 
             // Actualizar cabecera del modal según el hotel
             const badgeTag = document.getElementById('revenueModalHotelBadge');
@@ -5801,25 +5896,25 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 const dColorText = dPos ? '#10b981' : '#ef4444';
                 const dIcon = dPos ? '📈' : '📉';
                 cardsEl.innerHTML = `
-                    <div style="background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.3); border-radius:10px; padding:8px 12px; display:flex; flex-direction:column; gap:2px;">
-                        <span style="font-size:0.65rem; color:#818cf8; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">🏨 Hotel</span>
-                        <div style="font-size:0.95rem; font-weight:800; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Hotel ${report.hotel}</div>
+                    <div style="background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.3); border-radius:10px; padding:10px 14px; display:flex; flex-direction:column; gap:2px;">
+                        <span style="font-size:0.7rem; color:#818cf8; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">🏨 Hotel</span>
+                        <div style="font-size:1.05rem; font-weight:800; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Hotel ${report.hotel}</div>
                     </div>
-                    <div style="background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.25); border-radius:10px; padding:8px 12px; display:flex; flex-direction:column; gap:2px;">
-                        <span style="font-size:0.65rem; color:#818cf8; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">📅 Cambios</span>
-                        <div style="font-size:1.15rem; font-weight:800; color:var(--primary); line-height:1.1;">${report.count} <span style="font-size:0.7rem; font-weight:normal; color:var(--text-muted);">días modif.</span></div>
+                    <div style="background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.25); border-radius:10px; padding:10px 14px; display:flex; flex-direction:column; gap:2px;">
+                        <span style="font-size:0.7rem; color:#818cf8; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">📅 Cambios</span>
+                        <div style="font-size:1.25rem; font-weight:800; color:var(--primary); line-height:1.1;">${report.count} <span style="font-size:0.75rem; font-weight:normal; color:var(--text-muted);">días modif.</span></div>
                     </div>
-                    <div style="background:var(--bg-deep); border:1px solid var(--border); border-radius:10px; padding:8px 12px; display:flex; flex-direction:column; gap:2px;">
-                        <span style="font-size:0.65rem; color:var(--text-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">Tarifa Anterior</span>
-                        <div style="font-size:1.15rem; font-weight:700; color:var(--text-muted); line-height:1.1; text-decoration:line-through; opacity:0.7;">${report.avgOld > 0 ? report.avgOld.toFixed(2) + ' €' : '-'}</div>
+                    <div style="background:var(--bg-deep); border:1px solid var(--border); border-radius:10px; padding:10px 14px; display:flex; flex-direction:column; gap:2px;">
+                        <span style="font-size:0.7rem; color:var(--text-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">Tarifa Anterior</span>
+                        <div style="font-size:1.25rem; font-weight:700; color:var(--text-muted); line-height:1.1; text-decoration:line-through; opacity:0.7;">${report.avgOld > 0 ? report.avgOld.toFixed(2) + ' €' : '-'}</div>
                     </div>
-                    <div style="background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); border-radius:10px; padding:8px 12px; display:flex; flex-direction:column; gap:2px;">
-                        <span style="font-size:0.65rem; color:#10b981; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">✅ Tarifa Aplicada</span>
-                        <div style="font-size:1.15rem; font-weight:800; color:#10b981; line-height:1.1;">${report.avgNew > 0 ? report.avgNew.toFixed(2) + ' €' : '-'}</div>
+                    <div style="background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); border-radius:10px; padding:10px 14px; display:flex; flex-direction:column; gap:2px;">
+                        <span style="font-size:0.7rem; color:#10b981; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">✅ Tarifa Aplicada</span>
+                        <div style="font-size:1.25rem; font-weight:800; color:#10b981; line-height:1.1;">${report.avgNew > 0 ? report.avgNew.toFixed(2) + ' €' : '-'}</div>
                     </div>
-                    <div style="background:${dColorBg}; border:1px solid ${dColorBorder}; border-radius:10px; padding:8px 12px; display:flex; flex-direction:column; gap:2px;">
-                        <span style="font-size:0.65rem; color:${dColorText}; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">${dIcon} Variación</span>
-                        <div style="font-size:1.15rem; font-weight:800; color:${dColorText}; line-height:1.1;">${report.count > 0 ? `${dSign}${report.avgDelta.toFixed(2)} €` : '-'} <span style="font-size:0.72rem; font-weight:700; opacity:0.85;">(${dSign}${report.avgDeltaPct.toFixed(1)}%)</span></div>
+                    <div style="background:${dColorBg}; border:1px solid ${dColorBorder}; border-radius:10px; padding:10px 14px; display:flex; flex-direction:column; gap:2px;">
+                        <span style="font-size:0.7rem; color:${dColorText}; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">${dIcon} Variación</span>
+                        <div style="font-size:1.25rem; font-weight:800; color:${dColorText}; line-height:1.1;">${report.count > 0 ? `${dSign}${report.avgDelta.toFixed(2)} €` : '-'} <span style="font-size:0.75rem; font-weight:700; opacity:0.85;">(${dSign}${report.avgDeltaPct.toFixed(1)}%)</span></div>
                     </div>
                 `;
             }
@@ -5828,21 +5923,21 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             const theadEl = document.getElementById('revenueEmailPreviewThead');
             if (theadEl) {
                 const sampleComps = (report.items[0]?.competitors || competitorsList);
-                const thBaseStyle = 'padding:9px 10px; font-size:0.68rem; font-weight:800; text-transform:uppercase; letter-spacing:0.4px; white-space:nowrap; border-bottom:2px solid var(--border);';
+                const thBaseStyle = 'padding:10px 10px; font-size:0.78rem; font-weight:800; text-transform:uppercase; letter-spacing:0.4px; white-space:nowrap; border-bottom:2px solid var(--border);';
                 let thHtml = `
                     <tr style="background:var(--bg-deep); color:var(--text-main); text-align:left;">
-                        <th style="${thBaseStyle} color:var(--primary); min-width:110px;">Fecha</th>
-                        <th style="${thBaseStyle} text-align:center; min-width:90px;">Ocup. / Libres</th>
-                        <th style="${thBaseStyle} text-align:right; min-width:75px; color:var(--text-muted);">Ant.</th>
-                        <th style="${thBaseStyle} text-align:right; min-width:90px; color:#4f46e5; background:rgba(99,102,241,0.12); font-weight:800;">▶ NUEVA</th>
-                        <th style="${thBaseStyle} text-align:right; min-width:75px;">Mercado</th>
+                        <th style="${thBaseStyle} color:var(--primary); min-width:115px;">Fecha</th>
+                        <th style="${thBaseStyle} text-align:center; min-width:100px;">Ocup. / Libres</th>
+                        <th style="${thBaseStyle} text-align:right; min-width:80px; color:var(--text-muted);">Ant.</th>
+                        <th style="${thBaseStyle} text-align:right; min-width:95px; color:#4f46e5; background:rgba(99,102,241,0.12); font-weight:900; font-size:0.82rem;">▶ NUEVA</th>
+                        <th style="${thBaseStyle} text-align:right; min-width:80px;">Mercado</th>
                 `;
                 sampleComps.forEach(c => {
                     const words = c.name.split(' ');
                     const short = words.length > 1 ? words.slice(0,2).join(' ') : (c.name.length > 14 ? c.name.substring(0,12) + '..' : c.name);
-                    thHtml += `<th style="${thBaseStyle} text-align:center; min-width:70px; font-size:0.62rem;" title="${c.name}">${short}</th>`;
+                    thHtml += `<th style="${thBaseStyle} text-align:center; min-width:75px; font-size:0.74rem;" title="${c.name}">${short}</th>`;
                 });
-                thHtml += `<th style="${thBaseStyle} min-width:120px;">Acción / Criterio</th></tr>`;
+                thHtml += `<th style="${thBaseStyle} min-width:130px;">Acción / Criterio</th></tr>`;
                 theadEl.innerHTML = thHtml;
             }
 
@@ -5852,10 +5947,10 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 if (report.items.length === 0) {
                     tbodyEl.innerHTML = `
                         <tr>
-                            <td colspan="15" style="text-align:center; padding:40px 15px; color:var(--text-muted); font-size:0.85rem; background:var(--bg-deep);">
+                            <td colspan="15" style="text-align:center; padding:40px 15px; color:var(--text-muted); font-size:0.9rem; background:var(--bg-deep);">
                                 <div style="font-size:2rem; margin-bottom:8px;">📭</div>
-                                <div style="font-weight:700; margin-bottom:4px;">Sin tarifas modificadas</div>
-                                <span style="font-size:0.75rem; color:var(--text-light);">
+                                <div style="font-weight:700; margin-bottom:4px;">Sin tarifas modificadas para Hotel ${report.hotel}</div>
+                                <span style="font-size:0.8rem; color:var(--text-light);">
                                     Haz clic sobre cualquier precio en la tabla principal para simular o cambiar una tarifa, o pulsa "Aplicar recomendados".
                                 </span>
                             </td>
@@ -5882,22 +5977,21 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
                         // Badge de ocupación
                         const occColor = item.occPct >= 75 ? '#10b981' : (item.occPct >= 50 ? '#818cf8' : '#f59e0b');
-                        const occBg = item.occPct >= 75 ? 'rgba(16,185,129,0.12)' : (item.occPct >= 50 ? 'rgba(129,140,248,0.12)' : 'rgba(245,158,11,0.12)');
 
                         // Celdas de competidores con badges para cerrado/min2nights
                         const compTds = item.competitors.map(c => {
                             const v = String(c.price || '').trim().toLowerCase();
                             let cellContent = '';
                             if (v === 'cerrado' || v === 'closed' || v === '—' || v === '-') {
-                                cellContent = `<span style="background:rgba(239,68,68,0.18); color:#ef4444; font-size:0.6rem; font-weight:800; padding:1px 5px; border-radius:4px; border:1px solid rgba(239,68,68,0.3); white-space:nowrap;">CERRADO</span>`;
+                                cellContent = `<span style="background:rgba(239,68,68,0.18); color:#ef4444; font-size:0.72rem; font-weight:800; padding:2px 6px; border-radius:4px; border:1px solid rgba(239,68,68,0.3); white-space:nowrap;">CERRADO</span>`;
                             } else if (v.includes('min') || v.includes('2n') || v.includes('noche')) {
-                                cellContent = `<span style="background:rgba(245,158,11,0.15); color:#f59e0b; font-size:0.6rem; font-weight:800; padding:1px 5px; border-radius:4px; border:1px solid rgba(245,158,11,0.3); white-space:nowrap;">MIN 2N</span>`;
+                                cellContent = `<span style="background:rgba(245,158,11,0.15); color:#f59e0b; font-size:0.72rem; font-weight:800; padding:2px 6px; border-radius:4px; border:1px solid rgba(245,158,11,0.3); white-space:nowrap;">MIN 2N</span>`;
                             } else if (v && v !== 'n/d' && v !== 'nd') {
-                                cellContent = `<span style="color:var(--text-main); font-weight:600;">${c.price}</span>`;
+                                cellContent = `<span style="color:var(--text-main); font-weight:700; font-size:0.88rem;">${c.price}</span>`;
                             } else {
-                                cellContent = `<span style="color:var(--text-light); opacity:0.5;">—</span>`;
+                                cellContent = `<span style="color:var(--text-light); opacity:0.5; font-size:0.85rem;">—</span>`;
                             }
-                            return `<td style="padding:6px 7px; text-align:center; font-size:0.71rem; border-bottom:1px solid var(--border);">${cellContent}</td>`;
+                            return `<td style="padding:8px 8px; text-align:center; border-bottom:1px solid var(--border);">${cellContent}</td>`;
                         }).join('');
 
                         // Pill de acción con color según tipo
@@ -5917,27 +6011,27 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
                         tbodyEl.innerHTML += `
                             <tr style="border-bottom:1px solid var(--border); background:${idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)'}; transition:background 0.15s;">
-                                <td style="padding:7px 10px; white-space:nowrap;">
-                                    <div style="font-weight:800; color:var(--text-main); font-size:0.8rem;">${item.dateDisplay}</div>
-                                    <span style="display:inline-block; margin-top:3px; background:${dowBg}; color:${dowColor}; border:1px solid ${dowBorder}; font-size:0.6rem; font-weight:800; padding:1px 6px; border-radius:10px; text-transform:uppercase;">${item.dayName}</span>
+                                <td style="padding:9px 10px; white-space:nowrap;">
+                                    <div style="font-weight:800; color:var(--text-main); font-size:0.92rem;">${item.dateDisplay}</div>
+                                    <span style="display:inline-block; margin-top:3px; background:${dowBg}; color:${dowColor}; border:1px solid ${dowBorder}; font-size:0.68rem; font-weight:800; padding:1px 7px; border-radius:10px; text-transform:uppercase;">${item.dayName}</span>
                                 </td>
-                                <td style="padding:7px 10px; text-align:center;">
-                                    <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">${item.rooms}/${item.capacity} &bull; <strong style="color:${occColor};">${item.occPct}%</strong></div>
-                                    <div style="font-size:1.05rem; font-weight:800; color:var(--text-main); margin-top:2px; line-height:1.2;">${available} <span style="font-size:0.68rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">libres</span></div>
+                                <td style="padding:9px 10px; text-align:center;">
+                                    <div style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">${item.rooms}/${item.capacity} &bull; <strong style="color:${occColor};">${item.occPct}%</strong></div>
+                                    <div style="font-size:1.15rem; font-weight:900; color:var(--text-main); margin-top:2px; line-height:1.2;">${available} <span style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">libres</span></div>
                                 </td>
-                                <td style="padding:7px 10px; text-align:right; color:var(--text-muted); font-size:0.78rem; text-decoration:line-through; opacity:0.6;">
+                                <td style="padding:9px 10px; text-align:right; color:var(--text-muted); font-size:0.88rem; text-decoration:line-through; opacity:0.75; font-weight:600;">
                                     ${Math.round(item.oldPrice)} €
                                 </td>
-                                <td style="padding:7px 10px; text-align:right; background:rgba(99,102,241,0.07);">
-                                    <div style="font-weight:800; color:var(--text-main); font-size:0.9rem;">${Math.round(item.newPrice)} €</div>
-                                    <span style="display:inline-block; margin-top:2px; background:${dBg}; color:${dColor}; font-size:0.63rem; font-weight:800; padding:1px 5px; border-radius:8px;">${dArrow} ${dSign}${Math.round(item.delta)}€ (${dSign}${item.deltaPct.toFixed(1)}%)</span>
+                                <td style="padding:9px 10px; text-align:right; background:rgba(99,102,241,0.07);">
+                                    <div style="font-weight:900; color:var(--text-main); font-size:1.05rem;">${Math.round(item.newPrice)} €</div>
+                                    <span style="display:inline-block; margin-top:2px; background:${dBg}; color:${dColor}; font-size:0.72rem; font-weight:800; padding:2px 6px; border-radius:8px;">${dArrow} ${dSign}${Math.round(item.delta)}€ (${dSign}${item.deltaPct.toFixed(1)}%)</span>
                                 </td>
-                                <td style="padding:7px 10px; text-align:right; font-weight:700; color:var(--primary); font-size:0.8rem;">
+                                <td style="padding:9px 10px; text-align:right; font-weight:800; color:var(--primary); font-size:0.92rem;">
                                     ${Math.round(item.marketAvg)} €
                                 </td>
                                 ${compTds}
-                                <td style="padding:7px 10px; font-size:0.7rem; max-width:160px;">
-                                    <span style="background:${pillBg}; color:${pillColor}; border:1px solid ${pillBorder}; padding:2px 7px; border-radius:6px; font-weight:700; display:inline-block; line-height:1.4; word-break:break-word;">${item.actionText}</span>
+                                <td style="padding:9px 10px; font-size:0.82rem; max-width:180px;">
+                                    <span style="background:${pillBg}; color:${pillColor}; border:1px solid ${pillBorder}; padding:3px 8px; border-radius:6px; font-weight:700; display:inline-block; line-height:1.4; word-break:break-word;">${item.actionText}</span>
                                 </td>
                             </tr>
                         `;
@@ -5974,7 +6068,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             const compsHeaders = (report.items[0]?.competitors || []).map(c => {
                 const words = c.name.split(' ');
                 const short = words.length >= 2 ? words[0] + ' ' + words[1] : c.name;
-                return `<th style="padding:7px 5px; border:1px solid #cbd5e1; background:#f1f5f9; color:#334155; font-size:9.5px; text-align:center; font-family:Calibri,Arial,sans-serif; font-weight:800; white-space:nowrap;">${short}</th>`;
+                return `<th style="padding:10px 8px; border:1px solid #cbd5e1; background:#f1f5f9; color:#334155; font-size:12px; text-align:center; font-family:Calibri,Arial,sans-serif; font-weight:800; white-space:nowrap;">${short}</th>`;
             }).join('');
 
             let rowsHtml = '';
@@ -5993,15 +6087,15 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     const v = String(c.price || '').trim().toLowerCase();
                     let cellHtml = '';
                     if (v === 'cerrado' || v === 'closed' || v === '—' || v === '-') {
-                        cellHtml = `<span style="color:#dc2626; font-size:9px; font-weight:700;">CERR.</span>`;
+                        cellHtml = `<span style="color:#dc2626; font-size:11px; font-weight:800; background:#fef2f2; border:1px solid #fecaca; padding:2px 6px; border-radius:4px; display:inline-block;">CERR.</span>`;
                     } else if (v.includes('min') || v.includes('2n') || v.includes('noche')) {
-                        cellHtml = `<span style="color:#d97706; font-size:9px; font-weight:700;">MIN 2N</span>`;
+                        cellHtml = `<span style="color:#d97706; font-size:11px; font-weight:800; background:#fffbeb; border:1px solid #fde68a; padding:2px 6px; border-radius:4px; display:inline-block;">MIN 2N</span>`;
                     } else if (v && v !== 'n/d' && v !== 'nd') {
-                        cellHtml = `<span style="color:#334155; font-weight:600; font-size:10px;">${c.price}</span>`;
+                        cellHtml = `<span style="color:#1e293b; font-weight:700; font-size:13px;">${c.price}</span>`;
                     } else {
-                        cellHtml = `<span style="color:#cbd5e1;">—</span>`;
+                        cellHtml = `<span style="color:#cbd5e1; font-size:13px;">—</span>`;
                     }
-                    return `<td style="padding:4px 3px; border:1px solid #cbd5e1; background:${bg}; text-align:center; font-size:10px; font-family:Calibri,Arial,sans-serif;">${cellHtml}</td>`;
+                    return `<td style="padding:9px 8px; border:1px solid #cbd5e1; background:${bg}; text-align:center; font-family:Calibri,Arial,sans-serif;">${cellHtml}</td>`;
                 }).join('');
 
                 const act = (item.actionText || '').toLowerCase();
@@ -6013,28 +6107,28 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
                 rowsHtml += `
                     <tr style="background:${bg};">
-                        <td style="padding:5px 6px; border:1px solid #cbd5e1; white-space:nowrap; font-family:Calibri,Arial,sans-serif;">
-                            <span style="font-weight:700; color:#0f172a; font-size:11px;">${item.dateDisplay}</span>
-                            <span style="color:#64748b; font-size:9px; font-weight:600; margin-left:2px;">${dayAbbr}</span>
+                        <td style="padding:9px 10px; border:1px solid #cbd5e1; white-space:nowrap; font-family:Calibri,Arial,sans-serif;">
+                            <div style="font-weight:800; color:#0f172a; font-size:13.5px; line-height:1.2;">${item.dateDisplay}</div>
+                            <div style="color:#475569; font-size:11.5px; font-weight:700; margin-top:3px; text-transform:uppercase;">${dayAbbr}</div>
                         </td>
-                        <td style="padding:4px 5px; border:1px solid #cbd5e1; text-align:center; font-family:Calibri,Arial,sans-serif; background:${bg};">
-                            <div style="font-size:9px; color:#64748b; font-weight:600; line-height:1.2;">${item.rooms}/${item.capacity} &bull; <strong style="color:${occColor}; font-size:9px;">${item.occPct}%</strong></div>
-                            <div style="font-size:13px; font-weight:800; color:#0f172a; line-height:1.2; margin-top:2px; text-align:center;">
-                                ${available} <span style="font-size:9px; font-weight:700; color:#475569; text-transform:uppercase;">libres</span>
+                        <td style="padding:9px 10px; border:1px solid #cbd5e1; text-align:center; font-family:Calibri,Arial,sans-serif; background:${bg};">
+                            <div style="font-size:11.5px; color:#475569; font-weight:700; line-height:1.2;">${item.rooms}/${item.capacity} &bull; <strong style="color:${occColor}; font-size:11.5px;">${item.occPct}%</strong></div>
+                            <div style="font-size:16px; font-weight:900; color:#0f172a; line-height:1.2; margin-top:3px; text-align:center;">
+                                ${available} <span style="font-size:11px; font-weight:800; color:#475569; text-transform:uppercase;">libres</span>
                             </div>
                         </td>
-                        <td style="padding:4px 5px; border:1px solid #cbd5e1; text-align:right; color:#94a3b8; font-size:10px; font-family:Calibri,Arial,sans-serif;">
-                            <span style="text-decoration:line-through;">${Math.round(item.oldPrice)}&euro;</span>
+                        <td style="padding:9px 10px; border:1px solid #cbd5e1; text-align:right; color:#64748b; font-size:13px; font-family:Calibri,Arial,sans-serif;">
+                            <span style="text-decoration:line-through; font-weight:600;">${Math.round(item.oldPrice)}&euro;</span>
                         </td>
-                        <td style="padding:4px 5px; border:1.5px solid #6366f1; background:#eef2ff; text-align:right; font-family:Calibri,Arial,sans-serif;">
-                            <span style="font-weight:800; color:#1e1b4b; font-size:12px;">${Math.round(item.newPrice)}&euro;</span>
-                            <span style="color:${dc}; font-size:9px; font-weight:700; margin-left:2px;">${dArr}${ds}${Math.round(item.delta)}&euro;</span>
+                        <td style="padding:9px 10px; border:1.5px solid #6366f1; background:#eef2ff; text-align:right; font-family:Calibri,Arial,sans-serif;">
+                            <div style="font-weight:900; color:#1e1b4b; font-size:16.5px; line-height:1.2;">${Math.round(item.newPrice)}&euro;</div>
+                            <div style="color:${dc}; font-size:11.5px; font-weight:800; margin-top:2px;">${dArr}${ds}${Math.round(item.delta)}&euro;</div>
                         </td>
-                        <td style="padding:4px 5px; border:1px solid #cbd5e1; text-align:center; font-weight:700; color:#4f46e5; font-size:10px; font-family:Calibri,Arial,sans-serif;">
+                        <td style="padding:9px 10px; border:1px solid #cbd5e1; text-align:center; font-weight:800; color:#4f46e5; font-size:13.5px; font-family:Calibri,Arial,sans-serif;">
                             ${Math.round(item.marketAvg)}&euro;
                         </td>
                         ${compCells}
-                        <td style="padding:4px 5px; border:1px solid #cbd5e1; background:${bg}; font-family:Calibri,Arial,sans-serif; font-size:9px; color:${actColor}; font-weight:700; max-width:130px; word-break:break-word;">
+                        <td style="padding:9px 10px; border:1px solid #cbd5e1; background:${bg}; font-family:Calibri,Arial,sans-serif; font-size:11.5px; color:${actColor}; font-weight:700; max-width:160px; line-height:1.35; word-break:break-word;">
                             ${item.actionText}
                         </td>
                     </tr>
@@ -6042,10 +6136,10 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             });
 
             const notesBlock = userNotes && userNotes.trim() ? `
-                <tr><td colspan="2" style="padding:0 0 10px 0;">
+                <tr><td colspan="2" style="padding:0 0 12px 0;">
                     <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-                        <td style="background:#eff6ff; border-left:3px solid #3b82f6; padding:8px 12px; font-size:11px; color:#1e40af; line-height:1.5; font-family:Calibri,Arial,sans-serif;">
-                            <strong>Observaciones:</strong> ${userNotes.trim().replace(/\n/g, '<br>')}
+                        <td style="background:#eff6ff; border-left:4px solid #3b82f6; padding:10px 14px; font-size:12px; color:#1e40af; line-height:1.5; font-family:Calibri,Arial,sans-serif;">
+                            <strong style="font-size:12.5px;">Observaciones:</strong> ${userNotes.trim().replace(/\n/g, '<br>')}
                         </td>
                     </tr></table>
                 </td></tr>
@@ -6057,59 +6151,59 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="font-family:Calibri,Arial,sans-serif; width:100%; border-collapse:collapse;">
 
                     <!-- HEADER COMPACTO -->
-                    <tr><td style="background:#1e293b; padding:12px 16px;">
+                    <tr><td style="background:#1e293b; padding:16px 20px;">
                         <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
                             <td>
-                                <div style="font-size:10px; color:#818cf8; font-weight:800; text-transform:uppercase; letter-spacing:1px; margin-bottom:3px;">${(config.bannerTitle || config.org).toUpperCase()}</div>
-                                <div style="font-size:14px; font-weight:700; color:#ffffff; line-height:1.3;">Cambios de Tarifas Realizados Hoy &mdash; Hotel ${hotel}</div>
-                                <div style="font-size:9px; color:#94a3b8; margin-top:2px;">${dateStr} &bull; CapaSuite</div>
+                                <div style="font-size:11px; color:#818cf8; font-weight:800; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">${(config.bannerTitle || config.org).toUpperCase()}</div>
+                                <div style="font-size:16px; font-weight:800; color:#ffffff; line-height:1.3;">Cambios de Tarifas Realizados Hoy &mdash; Hotel ${hotel}</div>
+                                <div style="font-size:11px; color:#94a3b8; margin-top:3px;">${dateStr} &bull; CapaSuite</div>
                             </td>
                             <td align="right" valign="top">
-                                <span style="color:#94a3b8; font-size:9px;">Para: <strong style="color:#c7d2fe;">${recipientLabel}</strong></span>
+                                <span style="color:#94a3b8; font-size:11px;">Para: <strong style="color:#c7d2fe; font-size:13px;">${recipientLabel}</strong></span>
                             </td>
                         </tr></table>
                     </td></tr>
 
                     <!-- CUERPO -->
-                    <tr><td style="border:1px solid #cbd5e1; border-top:none; padding:12px 16px; background:#ffffff;">
+                    <tr><td style="border:1px solid #cbd5e1; border-top:none; padding:16px 20px; background:#ffffff;">
 
                         <table width="100%" cellpadding="0" cellspacing="0" border="0">
                         ${notesBlock}
 
                         <!-- KPI COMPACTOS EN 1 LÍNEA -->
-                        <tr><td colspan="2" style="padding:0 0 10px 0;">
-                            <table width="100%" cellpadding="0" cellspacing="4" border="0"><tr>
-                                <td width="25%" style="background:#eef2ff; padding:6px 8px; border:1px solid #c7d2fe; vertical-align:top;">
-                                    <div style="font-size:8px; color:#4f46e5; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">&#128197; CAMBIOS REALIZADOS</div>
-                                    <div style="font-size:14px; font-weight:800; color:#1e1b4b; line-height:1.2; margin-top:1px;">${report.count} <span style="font-size:9px; font-weight:400; color:#6366f1;">(${report.count === 1 ? '1 d&iacute;a' : report.count + ' d&iacute;as'})</span></div>
+                        <tr><td colspan="2" style="padding:0 0 14px 0;">
+                            <table width="100%" cellpadding="0" cellspacing="6" border="0"><tr>
+                                <td width="25%" style="background:#eef2ff; padding:8px 12px; border:1px solid #c7d2fe; vertical-align:top;">
+                                    <div style="font-size:10px; color:#4f46e5; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">&#128197; CAMBIOS REALIZADOS</div>
+                                    <div style="font-size:18px; font-weight:900; color:#1e1b4b; line-height:1.2; margin-top:2px;">${report.count} <span style="font-size:11px; font-weight:600; color:#6366f1;">(${report.count === 1 ? '1 d&iacute;a' : report.count + ' d&iacute;as'})</span></div>
                                 </td>
-                                <td width="25%" style="background:#f8fafc; padding:6px 8px; border:1px solid #e2e8f0; vertical-align:top;">
-                                    <div style="font-size:8px; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">TARIFA ANTERIOR</div>
-                                    <div style="font-size:13px; font-weight:700; color:#94a3b8; text-decoration:line-through; line-height:1.2; margin-top:1px;">${report.avgOld.toFixed(2)} &euro;</div>
+                                <td width="25%" style="background:#f8fafc; padding:8px 12px; border:1px solid #e2e8f0; vertical-align:top;">
+                                    <div style="font-size:10px; color:#64748b; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">TARIFA ANTERIOR</div>
+                                    <div style="font-size:17px; font-weight:700; color:#64748b; text-decoration:line-through; line-height:1.2; margin-top:2px;">${report.avgOld.toFixed(2)} &euro;</div>
                                 </td>
-                                <td width="25%" style="background:#f0fdf4; padding:6px 8px; border:1px solid #bbf7d0; vertical-align:top;">
-                                    <div style="font-size:8px; color:#16a34a; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">&#9989; TARIFA APLICADA</div>
-                                    <div style="font-size:14px; font-weight:800; color:#166534; line-height:1.2; margin-top:1px;">${report.avgNew.toFixed(2)} &euro;</div>
+                                <td width="25%" style="background:#f0fdf4; padding:8px 12px; border:1px solid #bbf7d0; vertical-align:top;">
+                                    <div style="font-size:10px; color:#16a34a; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">&#9989; TARIFA APLICADA</div>
+                                    <div style="font-size:19px; font-weight:900; color:#15803d; line-height:1.2; margin-top:2px;">${report.avgNew.toFixed(2)} &euro;</div>
                                 </td>
-                                <td width="25%" style="background:${varBg}; padding:6px 8px; border:1px solid ${varBorder}; vertical-align:top;">
-                                    <div style="font-size:8px; color:${varColor}; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">${varArrow} VARIACI&Oacute;N MEDIA</div>
-                                    <div style="font-size:13px; font-weight:800; color:${varColor}; line-height:1.2; margin-top:1px;">${dSign}${report.avgDelta.toFixed(2)} &euro; <span style="font-size:10px;">(${dSign}${report.avgDeltaPct.toFixed(1)}%)</span></div>
+                                <td width="25%" style="background:${varBg}; padding:8px 12px; border:1px solid ${varBorder}; vertical-align:top;">
+                                    <div style="font-size:10px; color:${varColor}; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">${varArrow} VARIACI&Oacute;N MEDIA</div>
+                                    <div style="font-size:18px; font-weight:900; color:${varColor}; line-height:1.2; margin-top:2px;">${dSign}${report.avgDelta.toFixed(2)} &euro; <span style="font-size:12px; font-weight:800;">(${dSign}${report.avgDeltaPct.toFixed(1)}%)</span></div>
                                 </td>
                             </tr></table>
                         </td></tr>
 
                         <!-- TABLA DE TARIFAS COMPACTA -->
                         <tr><td colspan="2" style="padding:0;">
-                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; font-size:10px; font-family:Calibri,Arial,sans-serif; width:100%;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; font-size:12px; font-family:Calibri,Arial,sans-serif; width:100%;">
                                 <thead>
                                     <tr style="background:#f1f5f9;">
-                                        <th style="padding:7px 6px; border:1px solid #cbd5e1; background:#f1f5f9; color:#1e293b; text-align:left; font-size:10px; font-weight:800; white-space:nowrap; font-family:Calibri,Arial,sans-serif;">Fecha</th>
-                                        <th style="padding:7px 5px; border:1px solid #cbd5e1; background:#f1f5f9; color:#1e293b; text-align:center; font-size:10px; font-weight:800; font-family:Calibri,Arial,sans-serif;">Ocup. / Libres</th>
-                                        <th style="padding:7px 5px; border:1px solid #cbd5e1; background:#f1f5f9; color:#475569; text-align:right; font-size:10px; font-weight:800; font-family:Calibri,Arial,sans-serif;">Ant.</th>
-                                        <th style="padding:7px 5px; border:1.5px solid #6366f1; background:#e0e7ff; color:#312e81; text-align:right; font-size:11px; font-weight:800; font-family:Calibri,Arial,sans-serif;">&#9654; NUEVA</th>
-                                        <th style="padding:7px 5px; border:1px solid #cbd5e1; background:#f1f5f9; color:#475569; text-align:center; font-size:10px; font-weight:800; font-family:Calibri,Arial,sans-serif;">Mercado</th>
+                                        <th style="padding:10px 10px; border:1px solid #cbd5e1; background:#f1f5f9; color:#1e293b; text-align:left; font-size:12px; font-weight:800; white-space:nowrap; font-family:Calibri,Arial,sans-serif;">Fecha</th>
+                                        <th style="padding:10px 10px; border:1px solid #cbd5e1; background:#f1f5f9; color:#1e293b; text-align:center; font-size:12px; font-weight:800; font-family:Calibri,Arial,sans-serif;">Ocup. / Libres</th>
+                                        <th style="padding:10px 10px; border:1px solid #cbd5e1; background:#f1f5f9; color:#475569; text-align:right; font-size:12px; font-weight:800; font-family:Calibri,Arial,sans-serif;">Ant.</th>
+                                        <th style="padding:10px 10px; border:1.5px solid #6366f1; background:#e0e7ff; color:#312e81; text-align:right; font-size:13.5px; font-weight:900; font-family:Calibri,Arial,sans-serif;">&#9654; NUEVA</th>
+                                        <th style="padding:10px 10px; border:1px solid #cbd5e1; background:#f1f5f9; color:#475569; text-align:center; font-size:12px; font-weight:800; font-family:Calibri,Arial,sans-serif;">Mercado</th>
                                         ${compsHeaders}
-                                        <th style="padding:7px 6px; border:1px solid #cbd5e1; background:#f1f5f9; color:#1e293b; text-align:left; font-size:10px; font-weight:800; font-family:Calibri,Arial,sans-serif;">Acci&oacute;n</th>
+                                        <th style="padding:10px 10px; border:1px solid #cbd5e1; background:#f1f5f9; color:#1e293b; text-align:left; font-size:12px; font-weight:800; font-family:Calibri,Arial,sans-serif;">Acci&oacute;n</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -6121,7 +6215,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         </table>
 
                         <!-- FOOTER -->
-                        <div style="margin-top:10px; padding-top:8px; border-top:1px solid #e2e8f0; font-size:9px; color:#94a3b8; font-family:Calibri,Arial,sans-serif;">
+                        <div style="margin-top:12px; padding-top:10px; border-top:1px solid #e2e8f0; font-size:11px; color:#64748b; font-family:Calibri,Arial,sans-serif;">
                             Documento preparado para validaci&oacute;n de Revenue Management &bull; <strong>${config.org}</strong> &bull; CapaSuite
                         </div>
                     </td></tr>

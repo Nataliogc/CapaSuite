@@ -39,6 +39,13 @@ function setupEnvironment() {
     assert.ok(startHtml !== -1 && endHtml !== -1, 'Could not find generateRevenueEmailHtml in HTML');
     vm.runInContext(html.slice(startHtml, endHtml), context);
 
+    // Extract countModifiedPrices, countSavedManualPrices, getHotelModificationsSummary
+    const startCounts = html.indexOf('        function countModifiedPrices(');
+    const endCounts = html.indexOf('\n        function resetAllManualPrices(');
+    if (startCounts !== -1 && endCounts !== -1) {
+        vm.runInContext(html.slice(startCounts, endCounts), context);
+    }
+
     const startPlain = html.indexOf('        function generateRevenueEmailPlainText(');
     const endPlain = html.indexOf('\n        function sendRevenueEmailViaMailto(');
     assert.ok(startPlain !== -1 && endPlain !== -1, 'Could not find generateRevenueEmailPlainText in HTML');
@@ -258,5 +265,65 @@ test('email HTML renders hotel branding, clear table headers, and free rooms cor
 
     // Header label includes Ocup. / Libres
     assert.match(htmlCumbria, /Ocup\.\s*\/\s*Libres/);
+
+    // Scaled-up typography for generous table cell space
+    assert.match(htmlCumbria, /font-size:\s*12px/); // Headers in thead
+    assert.match(htmlCumbria, /font-size:\s*13\.5px/); // Date in tbody
+    assert.match(htmlCumbria, /font-size:\s*16\.5px/); // New price
+    assert.match(htmlCumbria, /16px;\s*font-weight:\s*900/); // Libres number
+    assert.match(htmlCumbria, /font-size:\s*13px/); // Competitor prices
+    assert.match(htmlCumbria, /font-size:\s*11\.5px/); // Action text & badges
 });
+
+test('getHotelModificationsSummary auto-detects the hotel where modifications occurred', () => {
+    const { context } = setupEnvironment();
+    context.processedData = [
+        {
+            dayIndex: 1,
+            hotels: {
+                Cumbria: { price: 80, originalPrice: 65, savedPrice: 80, sold: false, originalSold: false, savedSold: false },
+                Guadiana: { price: 70, originalPrice: 70, savedPrice: 70, sold: false, originalSold: false, savedSold: false }
+            }
+        },
+        {
+            dayIndex: 2,
+            hotels: {
+                Cumbria: { price: 95, originalPrice: 80, savedPrice: 95, sold: false, originalSold: false, savedSold: false },
+                Guadiana: { price: 75, originalPrice: 75, savedPrice: 75, sold: false, originalSold: false, savedSold: false }
+            }
+        }
+    ];
+
+    // Even if activeHotel is Guadiana, modifications are on Cumbria!
+    context.activeHotel = 'Guadiana';
+    const summaryCumbria = context.getHotelModificationsSummary();
+    assert.equal(summaryCumbria.Cumbria.saved, 2);
+    assert.equal(summaryCumbria.Guadiana.saved, 0);
+    assert.equal(summaryCumbria.detectedHotel, 'Cumbria');
+
+    // Switch modifications to Guadiana
+    context.processedData[0].hotels.Cumbria = { price: 65, originalPrice: 65, savedPrice: 65, sold: false, originalSold: false, savedSold: false };
+    context.processedData[1].hotels.Cumbria = { price: 80, originalPrice: 80, savedPrice: 80, sold: false, originalSold: false, savedSold: false };
+    context.processedData[0].hotels.Guadiana = { price: 90, originalPrice: 70, savedPrice: 90, sold: false, originalSold: false, savedSold: false };
+
+    context.activeHotel = 'Cumbria';
+    const summaryGuadiana = context.getHotelModificationsSummary();
+    assert.equal(summaryGuadiana.Guadiana.saved, 1);
+    assert.equal(summaryGuadiana.Cumbria.saved, 0);
+    assert.equal(summaryGuadiana.detectedHotel, 'Guadiana');
+});
+
+test('header and toolbar have zero duplicities for Precios Mínimos and Enviar a Central', () => {
+    // 1. In HTML, the table sub-bar statusHtml must NOT have duplicate "Precios mín." button
+    const updateDisplayMatch = html.match(/function updateRecordCountDisplay\([^{]*\{([\s\S]*?)\n        \}/);
+    assert.ok(updateDisplayMatch, 'updateRecordCountDisplay found');
+    const updateDisplayBody = updateDisplayMatch[1];
+    assert.doesNotMatch(updateDisplayBody, /Precios mín\./, 'updateRecordCountDisplay should not duplicate Precios mín.');
+    assert.doesNotMatch(updateDisplayBody, /openEmailRevenueModal/, 'updateRecordCountDisplay should not duplicate Enviar a Central');
+
+    // 2. Main header has .header-brand and .header-brand-sep
+    assert.match(html, /class="header-brand"/);
+    assert.match(html, /class="header-brand-sep"/);
+});
+
 
