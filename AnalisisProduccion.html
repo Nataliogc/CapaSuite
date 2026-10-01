@@ -23,6 +23,38 @@
     <link rel="stylesheet" href="css/tokens.css">
     <link rel="stylesheet" href="css/nav.css">
     <style>
+        #subMixModal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 11000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(15, 23, 42, 0.65);
+        }
+        #subMixModal .modal-content {
+            position: relative;
+            box-sizing: border-box;
+            width: min(760px, 100%);
+            max-height: 90vh;
+            overflow: auto;
+            padding: 28px;
+            border-radius: 20px;
+            background: var(--bg-surface, #fff);
+            color: var(--text-main, #1e293b);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        #subMixModal .close-modal {
+            position: absolute;
+            top: 10px;
+            right: 14px;
+            border: 0;
+            background: transparent;
+            color: inherit;
+            font-size: 28px;
+            cursor: pointer;
+        }
 
         /* TOP NAVIGATION */
         .top-nav {
@@ -492,8 +524,8 @@
     <!-- Modal para Drill-down -->
     <div id="subMixModal" class="modal">
         <div class="modal-content">
-            <span class="close-modal"
-                onclick="document.getElementById('subMixModal').style.display='none'">&times;</span>
+            <button type="button" class="close-modal" aria-label="Cerrar desglose"
+                onclick="document.getElementById('subMixModal').style.display='none'">&times;</button>
             <div class="modal-header">
                 <h3 id="subMixTitle" style="color: var(--primary);">Distribución Detallada</h3>
                 <p id="subMixSubtitle" style="font-size: 0.8rem; color: var(--text-muted);">Desglose por conceptos del
