@@ -326,4 +326,61 @@ test('header and toolbar have zero duplicities for Precios Mínimos and Enviar a
     assert.match(html, /class="header-brand-sep"/);
 });
 
+test('email HTML table centers all price columns and matches Image 2 card and badge styling', () => {
+    const { context } = setupEnvironment();
+
+    const sampleReport = {
+        hotel: 'Cumbria',
+        count: 6,
+        avgOld: 65.17,
+        avgNew: 76.00,
+        avgDelta: 10.83,
+        avgDeltaPct: 16.6,
+        items: [
+            {
+                dateDisplay: '02/10/2026',
+                dayName: 'viernes',
+                rooms: 40,
+                capacity: 59,
+                occPct: 68,
+                oldPrice: 65.17,
+                newPrice: 76.00,
+                delta: 10.83,
+                marketAvg: 80,
+                actionText: 'Demanda alta',
+                competitors: [
+                    { name: 'Hotel Guadiana', price: 'cerrado' },
+                    { name: 'Hotel Santa Cecilia', price: 'min 2n' },
+                    { name: 'Hotel Silken', price: '85€' }
+                ]
+            }
+        ]
+    };
+
+    const htmlOutput = context.generateRevenueEmailHtml(sampleReport, '');
+
+    // 1. 5 KPI cards with 20% width each
+    assert.match(htmlOutput, /width="20%"[^>]*>[\s\S]*?&#127976;\s*HOTEL/);
+    assert.match(htmlOutput, /Hotel Cumbria/);
+    assert.match(htmlOutput, /&#128197;\s*CAMBIOS/);
+    assert.match(htmlOutput, /TARIFA ANTERIOR/);
+    assert.match(htmlOutput, /&#9989;\s*TARIFA APLICADA/);
+    assert.match(htmlOutput, /VARIACI&Oacute;N/);
+
+    // 2. Centered amount headers in thead
+    assert.match(htmlOutput, /<th[^>]*color:#475569;\s*text-align:center;[^>]*>Ant\.<\/th>/);
+    assert.match(htmlOutput, /<th[^>]*text-align:center;[^>]*>&#9654;\s*NUEVA<\/th>/);
+    assert.match(htmlOutput, /<th[^>]*text-align:center;[^>]*>Mercado<\/th>/);
+
+    // 3. Centered price cells in tbody
+    assert.match(htmlOutput, /<td[^>]*text-align:center;[^>]*color:#64748b;[^>]*>[\s\S]*?<span style="text-decoration:line-through; font-weight:600; opacity:0.8;">65&euro;<\/span>/);
+    assert.match(htmlOutput, /<td[^>]*border:1\.5px solid #818cf8;\s*background:#eef2ff;\s*text-align:center;/);
+    assert.match(htmlOutput, /<td[^>]*text-align:center;\s*font-weight:800;\s*color:#4f46e5;\s*font-size:14px;/);
+
+    // 4. Competitor pill badges: CERRADO and MIN 2N
+    assert.match(htmlOutput, /<span[^>]*color:#dc2626;[^>]*>CERRADO<\/span>/);
+    assert.match(htmlOutput, /<span[^>]*color:#d97706;[^>]*>MIN 2N<\/span>/);
+});
+
+
 
