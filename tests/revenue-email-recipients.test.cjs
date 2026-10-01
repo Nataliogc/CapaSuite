@@ -22,11 +22,22 @@ function setupEnvironment() {
 
     vm.createContext(context);
 
-    // Extract DEFAULT_HOTEL_EMAIL_CONFIG, getHotelEmailConfig, saveCurrentHotelEmailConfig, generateRevenueEmailPlainText
+    // Extract formatSpanishDate
+    const startFmt = html.indexOf('        function formatSpanishDate(');
+    const endFmt = html.indexOf('\n        function getModifiedRatesReport(');
+    assert.ok(startFmt !== -1 && endFmt !== -1, 'Could not find formatSpanishDate in HTML');
+    vm.runInContext(html.slice(startFmt, endFmt), context);
+
+    // Extract DEFAULT_HOTEL_EMAIL_CONFIG, getHotelEmailConfig, saveCurrentHotelEmailConfig
     const startConf = html.indexOf('        const DEFAULT_HOTEL_EMAIL_CONFIG =');
     const endConf = html.indexOf('\n        function openEmailRevenueModal(');
     assert.ok(startConf !== -1 && endConf !== -1, 'Could not find email config in HTML');
     vm.runInContext(html.slice(startConf, endConf), context);
+
+    const startHtml = html.indexOf('        function generateRevenueEmailHtml(');
+    const endHtml = html.indexOf('\n        function generateRevenueEmailPlainText(');
+    assert.ok(startHtml !== -1 && endHtml !== -1, 'Could not find generateRevenueEmailHtml in HTML');
+    vm.runInContext(html.slice(startHtml, endHtml), context);
 
     const startPlain = html.indexOf('        function generateRevenueEmailPlainText(');
     const endPlain = html.indexOf('\n        function sendRevenueEmailViaMailto(');
@@ -105,3 +116,147 @@ test('generateRevenueEmailPlainText customizes greeting and signoff by hotel', (
     assert.doesNotMatch(textCumbria, /Mihail/);
     assert.doesNotMatch(textCumbria, /Sercotel/);
 });
+
+test('email HTML uses 100% full width and communicates changes made today without "propuesta"', () => {
+    const { context } = setupEnvironment();
+
+    const sampleReport = {
+        hotel: 'Cumbria',
+        count: 6,
+        avgOld: 65.17,
+        avgNew: 76.00,
+        avgDelta: 10.83,
+        avgDeltaPct: 16.6,
+        items: [
+            {
+                dateDisplay: '02/10/2026',
+                dayName: 'viernes',
+                rooms: 20,
+                capacity: 50,
+                occPct: 40,
+                oldPrice: 65.17,
+                newPrice: 76.00,
+                delta: 10.83,
+                marketAvg: 75,
+                actionText: 'Ajuste demanda',
+                competitors: [{ name: 'Exe Doña Carlota', price: '75€' }]
+            }
+        ]
+    };
+
+    const htmlOutput = context.generateRevenueEmailHtml(sampleReport, '');
+    const plainOutput = context.generateRevenueEmailPlainText(sampleReport, '');
+
+    // Full width verification: must have width 100%, and must NOT constrain to 780px
+    assert.match(htmlOutput, /width:\s*100%/);
+    assert.match(htmlOutput, /width="100%"/);
+    assert.doesNotMatch(htmlOutput, /width="780"/);
+    assert.doesNotMatch(htmlOutput, /max-width:\s*780px/);
+
+    // Communicates changes made today, no "propuesta"
+    assert.match(htmlOutput, /Cambios de Tarifas Realizados Hoy/);
+    assert.match(htmlOutput, /CAMBIOS REALIZADOS/);
+    assert.match(htmlOutput, /TARIFA APLICADA/);
+    assert.doesNotMatch(htmlOutput, /propuesta/i);
+
+    assert.match(plainOutput, /cambios de tarifas realizados hoy/i);
+    assert.match(plainOutput, /RESUMEN DE CAMBIOS EFECTUADOS/);
+    assert.match(plainOutput, /Precio medio nuevo aplicado/);
+    assert.doesNotMatch(plainOutput, /propuesta/i);
+});
+
+test('formatSpanishDate correctly converts various date formats to dd/mm/aaaa', () => {
+    const { context } = setupEnvironment();
+    const { formatSpanishDate } = context;
+
+    assert.equal(formatSpanishDate('2026-10-02'), '02/10/2026');
+    assert.equal(formatSpanishDate('2026-05-09'), '09/05/2026');
+    assert.equal(formatSpanishDate('2/10/2026'), '02/10/2026');
+    assert.equal(formatSpanishDate('02/10/2026'), '02/10/2026');
+    assert.equal(formatSpanishDate('2026-10-02T14:30:00Z'), '02/10/2026');
+    assert.equal(formatSpanishDate(''), '');
+    assert.equal(formatSpanishDate(null), '');
+});
+
+test('email HTML renders hotel branding, clear table headers, and free rooms correctly', () => {
+    const { context } = setupEnvironment();
+
+    const sampleReportCumbria = {
+        hotel: 'Cumbria',
+        count: 6,
+        avgOld: 65.17,
+        avgNew: 76.00,
+        avgDelta: 10.83,
+        avgDeltaPct: 16.6,
+        items: [
+            {
+                dateDisplay: '02/10/2026',
+                dayName: 'viernes',
+                rooms: 20,
+                capacity: 50,
+                occPct: 40,
+                oldPrice: 65.17,
+                newPrice: 76.00,
+                delta: 10.83,
+                marketAvg: 75,
+                actionText: 'Ajuste demanda',
+                competitors: [{ name: 'Exe Doña Carlota', price: '75€' }]
+            }
+        ]
+    };
+
+    const sampleReportGuadiana = {
+        hotel: 'Guadiana',
+        count: 3,
+        avgOld: 70.00,
+        avgNew: 82.00,
+        avgDelta: 12.00,
+        avgDeltaPct: 17.1,
+        items: [
+            {
+                dateDisplay: '03/10/2026',
+                dayName: 'sábado',
+                rooms: 45,
+                capacity: 50,
+                occPct: 90,
+                oldPrice: 70.00,
+                newPrice: 82.00,
+                delta: 12.00,
+                marketAvg: 80,
+                actionText: 'Alta demanda',
+                competitors: [{ name: 'Exe Doña Carlota', price: '80€' }]
+            }
+        ]
+    };
+
+    const htmlCumbria = context.generateRevenueEmailHtml(sampleReportCumbria, '');
+    const plainCumbria = context.generateRevenueEmailPlainText(sampleReportCumbria, '');
+
+    const htmlGuadiana = context.generateRevenueEmailHtml(sampleReportGuadiana, '');
+
+    // Cumbria branding
+    assert.match(htmlCumbria, /CUMBRIA - REVENUE/);
+    assert.doesNotMatch(htmlCumbria, /SERCOTEL - REVENUE MANAGEMENT CENTRAL/);
+    assert.match(htmlCumbria, /Cumbria Spa &amp; Hotel|Cumbria Spa & Hotel/);
+    assert.doesNotMatch(htmlCumbria, /Sercotel Hotel Group/);
+
+    // Guadiana branding
+    assert.match(htmlGuadiana, /SERCOTEL - REVENUE MANAGEMENT CENTRAL/);
+    assert.match(htmlGuadiana, /Sercotel Hotel Group/);
+
+    // Free rooms (libres): Cumbria has capacity 50 - 20 rooms = 30 libres
+    assert.match(htmlCumbria, /30\s*<span[^>]*>libres<\/span>/i);
+    assert.match(plainCumbria, /30 libres/);
+
+    // Guadiana has capacity 50 - 45 rooms = 5 libres
+    assert.match(htmlGuadiana, /5\s*<span[^>]*>libres<\/span>/i);
+
+    // Clear / light styling in table headers (no dark #334155 / #1e1b4b)
+    assert.match(htmlCumbria, /background:#f1f5f9;\s*color:#1e293b/);
+    assert.doesNotMatch(htmlCumbria, /background:#334155/);
+    assert.doesNotMatch(htmlCumbria, /background:#1e1b4b/);
+
+    // Header label includes Ocup. / Libres
+    assert.match(htmlCumbria, /Ocup\.\s*\/\s*Libres/);
+});
+

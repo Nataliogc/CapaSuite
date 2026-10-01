@@ -5341,7 +5341,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     </div>
                     <div>
                         <div style="display:flex; align-items:center; gap:8px; margin-bottom:3px;">
-                            <h3 style="margin:0; font-size:1.1rem; color:#ffffff; font-weight:800; letter-spacing:-0.3px;">Revisión de Tarifas · Revenue Central</h3>
+                            <h3 style="margin:0; font-size:1.1rem; color:#ffffff; font-weight:800; letter-spacing:-0.3px;">Comunicación de Tarifas · Revenue Central</h3>
                             <span id="revenueModalHotelBadge" style="background:rgba(99,102,241,0.4); color:#a5b4fc; font-size:0.65rem; font-weight:800; padding:2px 8px; border-radius:20px; text-transform:uppercase; letter-spacing:0.5px; border:1px solid rgba(165,180,252,0.3);">SERCOTEL RM</span>
                         </div>
                         <div style="font-size:0.78rem; color:#94a3b8; display:flex; align-items:center; gap:6px;">
@@ -5414,7 +5414,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             <!-- FOOTER / BOTONES DE ACCIÓN (FIJO SIEMPRE VISIBLE) -->
             <div style="flex-shrink:0; background:var(--bg-surface); padding:14px 24px; border-top:1px solid var(--border); border-radius:0 0 18px 18px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; z-index:10; box-shadow:0 -4px 12px rgba(0,0,0,0.06);">
                 <div style="font-size:0.68rem; color:var(--text-muted); font-style:italic;">
-                    🔒 Documento preparado por <strong style="color:var(--primary);">CapaSuite</strong> · Sercotel Hotel Group
+                    🔒 Documento preparado por <strong style="color:var(--primary);">CapaSuite</strong> · <span id="revenueModalFooterOrg">Sercotel Hotel Group</span>
                 </div>
                 <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
                     <button type="button" class="btn" onclick="closeEmailRevenueModal()" style="background:transparent; border:1px solid var(--border); color:var(--text-muted); font-weight:600; font-size:0.82rem; padding:8px 16px;">
@@ -5552,6 +5552,27 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
            REVISIÓN DE REVENUE CENTRAL (MIHAIL STAVILA - SERCOTEL)
            ========================================================================== */
 
+        function formatSpanishDate(dateInput) {
+            if (!dateInput) return '';
+            const str = String(dateInput).trim();
+            const dmyMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+            if (dmyMatch) {
+                return `${dmyMatch[1].padStart(2, '0')}/${dmyMatch[2].padStart(2, '0')}/${dmyMatch[3]}`;
+            }
+            const isoMatch = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+            if (isoMatch) {
+                return `${isoMatch[3].padStart(2, '0')}/${isoMatch[2].padStart(2, '0')}/${isoMatch[1]}`;
+            }
+            const d = new Date(str);
+            if (!isNaN(d.getTime())) {
+                const dd = String(d.getDate()).padStart(2, '0');
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const yyyy = d.getFullYear();
+                return `${dd}/${mm}/${yyyy}`;
+            }
+            return str;
+        }
+
         function getModifiedRatesReport() {
             const targetHotel = activeHotel || "Guadiana";
             const items = [];
@@ -5601,7 +5622,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
                     items.push({
                         dateISO: d.dateISO,
-                        dateDisplay: d.date || d.dateISO,
+                        dateDisplay: formatSpanishDate(d.date || d.dateISO),
                         dayName: d.dayName || '',
                         rooms: currentOcc,
                         occPct: occPct,
@@ -5642,6 +5663,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 cc: '',
                 name: 'Mihail Stavila',
                 badge: 'SERCOTEL RM',
+                bannerTitle: 'SERCOTEL - REVENUE MANAGEMENT CENTRAL',
                 org: 'Sercotel Hotel Group',
                 salutation: 'Hola Mihail,',
                 signoff: 'Hotel Guadiana · Sercotel',
@@ -5653,6 +5675,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 cc: '',
                 name: 'Dirección / Revenue Cumbria',
                 badge: 'CUMBRIA RM',
+                bannerTitle: 'CUMBRIA - REVENUE',
                 org: 'Cumbria Spa & Hotel',
                 salutation: 'Estimados,',
                 signoff: 'Hotel Cumbria',
@@ -5676,6 +5699,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 cc: custom.cc !== undefined ? custom.cc : def.cc,
                 name: custom.name || def.name,
                 badge: def.badge,
+                bannerTitle: def.bannerTitle,
                 org: def.org,
                 salutation: custom.salutation || def.salutation,
                 signoff: def.signoff,
@@ -5730,6 +5754,11 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 hotelLabel.innerText = `(Hotel ${report.hotel})`;
             }
 
+            const footerOrg = document.getElementById('revenueModalFooterOrg');
+            if (footerOrg) {
+                footerOrg.innerText = config.org;
+            }
+
             // Destinatarios según hotel
             const toInput = document.getElementById('revenueEmailTo');
             if (toInput) {
@@ -5753,7 +5782,8 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             if (subjInput) {
                 const now = new Date();
                 const dStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
-                subjInput.value = `[Revenue Central] Propuesta Tarifas · Hotel ${report.hotel} · ${report.count} fecha${report.count !== 1 ? 's' : ''} · ${dStr}`;
+                const tStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+                subjInput.value = `Modificación de Tarifas · Hotel ${report.hotel} · ${report.count} fecha${report.count !== 1 ? 's' : ''} · ${dStr} ${tStr}`;
             }
 
             const countBadge = document.getElementById('revenueEmailCountBadge');
@@ -5776,7 +5806,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         <div style="font-size:0.95rem; font-weight:800; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Hotel ${report.hotel}</div>
                     </div>
                     <div style="background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.25); border-radius:10px; padding:8px 12px; display:flex; flex-direction:column; gap:2px;">
-                        <span style="font-size:0.65rem; color:#818cf8; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">📅 Fechas</span>
+                        <span style="font-size:0.65rem; color:#818cf8; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">📅 Cambios</span>
                         <div style="font-size:1.15rem; font-weight:800; color:var(--primary); line-height:1.1;">${report.count} <span style="font-size:0.7rem; font-weight:normal; color:var(--text-muted);">días modif.</span></div>
                     </div>
                     <div style="background:var(--bg-deep); border:1px solid var(--border); border-radius:10px; padding:8px 12px; display:flex; flex-direction:column; gap:2px;">
@@ -5784,7 +5814,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         <div style="font-size:1.15rem; font-weight:700; color:var(--text-muted); line-height:1.1; text-decoration:line-through; opacity:0.7;">${report.avgOld > 0 ? report.avgOld.toFixed(2) + ' €' : '-'}</div>
                     </div>
                     <div style="background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); border-radius:10px; padding:8px 12px; display:flex; flex-direction:column; gap:2px;">
-                        <span style="font-size:0.65rem; color:#10b981; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">✅ Tarifa Propuesta</span>
+                        <span style="font-size:0.65rem; color:#10b981; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">✅ Tarifa Aplicada</span>
                         <div style="font-size:1.15rem; font-weight:800; color:#10b981; line-height:1.1;">${report.avgNew > 0 ? report.avgNew.toFixed(2) + ' €' : '-'}</div>
                     </div>
                     <div style="background:${dColorBg}; border:1px solid ${dColorBorder}; border-radius:10px; padding:8px 12px; display:flex; flex-direction:column; gap:2px;">
@@ -5794,17 +5824,17 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 `;
             }
 
-            // Encabezados de tabla — con fondo corporativo oscuro y mejor tipografía
+            // Encabezados de tabla — fondo claro y tipografía legible
             const theadEl = document.getElementById('revenueEmailPreviewThead');
             if (theadEl) {
                 const sampleComps = (report.items[0]?.competitors || competitorsList);
-                const thBaseStyle = 'padding:9px 10px; font-size:0.68rem; font-weight:800; text-transform:uppercase; letter-spacing:0.4px; white-space:nowrap; border-bottom:2px solid rgba(99,102,241,0.5);';
+                const thBaseStyle = 'padding:9px 10px; font-size:0.68rem; font-weight:800; text-transform:uppercase; letter-spacing:0.4px; white-space:nowrap; border-bottom:2px solid var(--border);';
                 let thHtml = `
-                    <tr style="background:linear-gradient(135deg, #1e1b4b, #1e293b); color:#94a3b8; text-align:left;">
-                        <th style="${thBaseStyle} color:#c7d2fe; min-width:110px;">Fecha</th>
-                        <th style="${thBaseStyle} text-align:center; min-width:80px;">Ocup.</th>
-                        <th style="${thBaseStyle} text-align:right; min-width:75px; color:#94a3b8;">Ant.</th>
-                        <th style="${thBaseStyle} text-align:right; min-width:90px; color:#a5b4fc; background:rgba(99,102,241,0.15);">▶ NUEVA</th>
+                    <tr style="background:var(--bg-deep); color:var(--text-main); text-align:left;">
+                        <th style="${thBaseStyle} color:var(--primary); min-width:110px;">Fecha</th>
+                        <th style="${thBaseStyle} text-align:center; min-width:90px;">Ocup. / Libres</th>
+                        <th style="${thBaseStyle} text-align:right; min-width:75px; color:var(--text-muted);">Ant.</th>
+                        <th style="${thBaseStyle} text-align:right; min-width:90px; color:#4f46e5; background:rgba(99,102,241,0.12); font-weight:800;">▶ NUEVA</th>
                         <th style="${thBaseStyle} text-align:right; min-width:75px;">Mercado</th>
                 `;
                 sampleComps.forEach(c => {
@@ -5883,6 +5913,8 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                             pillBg='rgba(245,158,11,0.12)'; pillColor='#f59e0b'; pillBorder='rgba(245,158,11,0.3)';
                         }
 
+                        const available = Math.max(0, item.capacity - item.rooms);
+
                         tbodyEl.innerHTML += `
                             <tr style="border-bottom:1px solid var(--border); background:${idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)'}; transition:background 0.15s;">
                                 <td style="padding:7px 10px; white-space:nowrap;">
@@ -5890,8 +5922,8 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                                     <span style="display:inline-block; margin-top:3px; background:${dowBg}; color:${dowColor}; border:1px solid ${dowBorder}; font-size:0.6rem; font-weight:800; padding:1px 6px; border-radius:10px; text-transform:uppercase;">${item.dayName}</span>
                                 </td>
                                 <td style="padding:7px 10px; text-align:center;">
-                                    <div style="font-weight:700; color:var(--text-main); font-size:0.78rem;">${item.rooms}/${item.capacity}</div>
-                                    <span style="display:inline-block; margin-top:3px; background:${occBg}; color:${occColor}; font-size:0.65rem; font-weight:800; padding:1px 6px; border-radius:10px;">${item.occPct}%</span>
+                                    <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">${item.rooms}/${item.capacity} &bull; <strong style="color:${occColor};">${item.occPct}%</strong></div>
+                                    <div style="font-size:1.05rem; font-weight:800; color:var(--text-main); margin-top:2px; line-height:1.2;">${available} <span style="font-size:0.68rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">libres</span></div>
                                 </td>
                                 <td style="padding:7px 10px; text-align:right; color:var(--text-muted); font-size:0.78rem; text-decoration:line-through; opacity:0.6;">
                                     ${Math.round(item.oldPrice)} €
@@ -5942,7 +5974,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             const compsHeaders = (report.items[0]?.competitors || []).map(c => {
                 const words = c.name.split(' ');
                 const short = words.length >= 2 ? words[0] + ' ' + words[1] : c.name;
-                return `<th style="padding:5px 4px; border:1px solid #cbd5e1; background:#f1f5f9; color:#475569; font-size:9px; text-align:center; font-family:Calibri,Arial,sans-serif; font-weight:700; white-space:nowrap;">${short}</th>`;
+                return `<th style="padding:7px 5px; border:1px solid #cbd5e1; background:#f1f5f9; color:#334155; font-size:9.5px; text-align:center; font-family:Calibri,Arial,sans-serif; font-weight:800; white-space:nowrap;">${short}</th>`;
             }).join('');
 
             let rowsHtml = '';
@@ -5955,6 +5987,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
                 const dayAbbr = (item.dayName || '').substring(0, 3).toUpperCase();
                 const occColor = item.occPct >= 75 ? '#16a34a' : (item.occPct >= 50 ? '#4f46e5' : '#d97706');
+                const available = Math.max(0, item.capacity - item.rooms);
 
                 const compCells = item.competitors.map(c => {
                     const v = String(c.price || '').trim().toLowerCase();
@@ -5968,7 +6001,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     } else {
                         cellHtml = `<span style="color:#cbd5e1;">—</span>`;
                     }
-                    return `<td style="padding:4px 3px; border:1px solid #e2e8f0; background:${bg}; text-align:center; font-size:10px; font-family:Calibri,Arial,sans-serif;">${cellHtml}</td>`;
+                    return `<td style="padding:4px 3px; border:1px solid #cbd5e1; background:${bg}; text-align:center; font-size:10px; font-family:Calibri,Arial,sans-serif;">${cellHtml}</td>`;
                 }).join('');
 
                 const act = (item.actionText || '').toLowerCase();
@@ -5980,26 +6013,28 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
                 rowsHtml += `
                     <tr style="background:${bg};">
-                        <td style="padding:4px 6px; border:1px solid #e2e8f0; white-space:nowrap; font-family:Calibri,Arial,sans-serif;">
+                        <td style="padding:5px 6px; border:1px solid #cbd5e1; white-space:nowrap; font-family:Calibri,Arial,sans-serif;">
                             <span style="font-weight:700; color:#0f172a; font-size:11px;">${item.dateDisplay}</span>
-                            <span style="color:#94a3b8; font-size:9px; font-weight:600; margin-left:2px;">${dayAbbr}</span>
+                            <span style="color:#64748b; font-size:9px; font-weight:600; margin-left:2px;">${dayAbbr}</span>
                         </td>
-                        <td style="padding:4px 5px; border:1px solid #e2e8f0; text-align:center; font-family:Calibri,Arial,sans-serif;">
-                            <span style="font-weight:600; color:#334155; font-size:10px;">${item.rooms}/${item.capacity}</span>
-                            <span style="color:${occColor}; font-size:9px; font-weight:700; margin-left:1px;">${item.occPct}%</span>
+                        <td style="padding:4px 5px; border:1px solid #cbd5e1; text-align:center; font-family:Calibri,Arial,sans-serif; background:${bg};">
+                            <div style="font-size:9px; color:#64748b; font-weight:600; line-height:1.2;">${item.rooms}/${item.capacity} &bull; <strong style="color:${occColor}; font-size:9px;">${item.occPct}%</strong></div>
+                            <div style="font-size:13px; font-weight:800; color:#0f172a; line-height:1.2; margin-top:2px; text-align:center;">
+                                ${available} <span style="font-size:9px; font-weight:700; color:#475569; text-transform:uppercase;">libres</span>
+                            </div>
                         </td>
-                        <td style="padding:4px 5px; border:1px solid #e2e8f0; text-align:right; color:#94a3b8; font-size:10px; font-family:Calibri,Arial,sans-serif;">
+                        <td style="padding:4px 5px; border:1px solid #cbd5e1; text-align:right; color:#94a3b8; font-size:10px; font-family:Calibri,Arial,sans-serif;">
                             <span style="text-decoration:line-through;">${Math.round(item.oldPrice)}&euro;</span>
                         </td>
-                        <td style="padding:4px 5px; border:1px solid #4f46e5; background:#eef2ff; text-align:right; font-family:Calibri,Arial,sans-serif;">
+                        <td style="padding:4px 5px; border:1.5px solid #6366f1; background:#eef2ff; text-align:right; font-family:Calibri,Arial,sans-serif;">
                             <span style="font-weight:800; color:#1e1b4b; font-size:12px;">${Math.round(item.newPrice)}&euro;</span>
                             <span style="color:${dc}; font-size:9px; font-weight:700; margin-left:2px;">${dArr}${ds}${Math.round(item.delta)}&euro;</span>
                         </td>
-                        <td style="padding:4px 5px; border:1px solid #e2e8f0; text-align:center; font-weight:700; color:#4f46e5; font-size:10px; font-family:Calibri,Arial,sans-serif;">
+                        <td style="padding:4px 5px; border:1px solid #cbd5e1; text-align:center; font-weight:700; color:#4f46e5; font-size:10px; font-family:Calibri,Arial,sans-serif;">
                             ${Math.round(item.marketAvg)}&euro;
                         </td>
                         ${compCells}
-                        <td style="padding:4px 5px; border:1px solid #e2e8f0; background:${bg}; font-family:Calibri,Arial,sans-serif; font-size:9px; color:${actColor}; font-weight:700; max-width:130px; word-break:break-word;">
+                        <td style="padding:4px 5px; border:1px solid #cbd5e1; background:${bg}; font-family:Calibri,Arial,sans-serif; font-size:9px; color:${actColor}; font-weight:700; max-width:130px; word-break:break-word;">
                             ${item.actionText}
                         </td>
                     </tr>
@@ -6017,16 +6052,16 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             ` : '';
 
             return `
-                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="font-family:Calibri,Arial,sans-serif; color:#0f172a;">
-                <tr><td align="center" style="padding:0;">
-                <table width="780" cellpadding="0" cellspacing="0" border="0" style="font-family:Calibri,Arial,sans-serif; max-width:780px;">
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="font-family:Calibri,Arial,sans-serif; color:#0f172a; width:100%; border-collapse:collapse;">
+                <tr><td align="left" style="padding:0; width:100%;">
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="font-family:Calibri,Arial,sans-serif; width:100%; border-collapse:collapse;">
 
                     <!-- HEADER COMPACTO -->
                     <tr><td style="background:#1e293b; padding:12px 16px;">
                         <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
                             <td>
-                                <div style="font-size:9px; color:#818cf8; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:3px;">${config.org.toUpperCase()} &middot; REVENUE MANAGEMENT</div>
-                                <div style="font-size:14px; font-weight:700; color:#ffffff; line-height:1.3;">Propuesta Tarifas &mdash; Hotel ${hotel}</div>
+                                <div style="font-size:10px; color:#818cf8; font-weight:800; text-transform:uppercase; letter-spacing:1px; margin-bottom:3px;">${(config.bannerTitle || config.org).toUpperCase()}</div>
+                                <div style="font-size:14px; font-weight:700; color:#ffffff; line-height:1.3;">Cambios de Tarifas Realizados Hoy &mdash; Hotel ${hotel}</div>
                                 <div style="font-size:9px; color:#94a3b8; margin-top:2px;">${dateStr} &bull; CapaSuite</div>
                             </td>
                             <td align="right" valign="top">
@@ -6036,7 +6071,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     </td></tr>
 
                     <!-- CUERPO -->
-                    <tr><td style="border:1px solid #e2e8f0; border-top:none; padding:12px 16px; background:#ffffff;">
+                    <tr><td style="border:1px solid #cbd5e1; border-top:none; padding:12px 16px; background:#ffffff;">
 
                         <table width="100%" cellpadding="0" cellspacing="0" border="0">
                         ${notesBlock}
@@ -6045,7 +6080,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         <tr><td colspan="2" style="padding:0 0 10px 0;">
                             <table width="100%" cellpadding="0" cellspacing="4" border="0"><tr>
                                 <td width="25%" style="background:#eef2ff; padding:6px 8px; border:1px solid #c7d2fe; vertical-align:top;">
-                                    <div style="font-size:8px; color:#4f46e5; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">&#128197; FECHAS REVISADAS</div>
+                                    <div style="font-size:8px; color:#4f46e5; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">&#128197; CAMBIOS REALIZADOS</div>
                                     <div style="font-size:14px; font-weight:800; color:#1e1b4b; line-height:1.2; margin-top:1px;">${report.count} <span style="font-size:9px; font-weight:400; color:#6366f1;">(${report.count === 1 ? '1 d&iacute;a' : report.count + ' d&iacute;as'})</span></div>
                                 </td>
                                 <td width="25%" style="background:#f8fafc; padding:6px 8px; border:1px solid #e2e8f0; vertical-align:top;">
@@ -6053,7 +6088,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                                     <div style="font-size:13px; font-weight:700; color:#94a3b8; text-decoration:line-through; line-height:1.2; margin-top:1px;">${report.avgOld.toFixed(2)} &euro;</div>
                                 </td>
                                 <td width="25%" style="background:#f0fdf4; padding:6px 8px; border:1px solid #bbf7d0; vertical-align:top;">
-                                    <div style="font-size:8px; color:#16a34a; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">&#9989; TARIFA PROPUESTA</div>
+                                    <div style="font-size:8px; color:#16a34a; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">&#9989; TARIFA APLICADA</div>
                                     <div style="font-size:14px; font-weight:800; color:#166534; line-height:1.2; margin-top:1px;">${report.avgNew.toFixed(2)} &euro;</div>
                                 </td>
                                 <td width="25%" style="background:${varBg}; padding:6px 8px; border:1px solid ${varBorder}; vertical-align:top;">
@@ -6065,16 +6100,16 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
                         <!-- TABLA DE TARIFAS COMPACTA -->
                         <tr><td colspan="2" style="padding:0;">
-                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; font-size:10px; font-family:Calibri,Arial,sans-serif;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; font-size:10px; font-family:Calibri,Arial,sans-serif; width:100%;">
                                 <thead>
-                                    <tr style="background:#334155;">
-                                        <th style="padding:5px 6px; border:1px solid #475569; color:#e2e8f0; text-align:left; font-size:9px; font-weight:700; white-space:nowrap;">Fecha</th>
-                                        <th style="padding:5px 4px; border:1px solid #475569; color:#94a3b8; text-align:center; font-size:9px; font-weight:700;">Ocup.</th>
-                                        <th style="padding:5px 4px; border:1px solid #475569; color:#94a3b8; text-align:right; font-size:9px; font-weight:700;">Ant.</th>
-                                        <th style="padding:5px 4px; border:1px solid #4f46e5; color:#c7d2fe; text-align:right; font-size:9px; font-weight:700; background:#1e1b4b;">&#9654; NUEVA</th>
-                                        <th style="padding:5px 4px; border:1px solid #475569; color:#94a3b8; text-align:center; font-size:9px; font-weight:700;">Mercado</th>
+                                    <tr style="background:#f1f5f9;">
+                                        <th style="padding:7px 6px; border:1px solid #cbd5e1; background:#f1f5f9; color:#1e293b; text-align:left; font-size:10px; font-weight:800; white-space:nowrap; font-family:Calibri,Arial,sans-serif;">Fecha</th>
+                                        <th style="padding:7px 5px; border:1px solid #cbd5e1; background:#f1f5f9; color:#1e293b; text-align:center; font-size:10px; font-weight:800; font-family:Calibri,Arial,sans-serif;">Ocup. / Libres</th>
+                                        <th style="padding:7px 5px; border:1px solid #cbd5e1; background:#f1f5f9; color:#475569; text-align:right; font-size:10px; font-weight:800; font-family:Calibri,Arial,sans-serif;">Ant.</th>
+                                        <th style="padding:7px 5px; border:1.5px solid #6366f1; background:#e0e7ff; color:#312e81; text-align:right; font-size:11px; font-weight:800; font-family:Calibri,Arial,sans-serif;">&#9654; NUEVA</th>
+                                        <th style="padding:7px 5px; border:1px solid #cbd5e1; background:#f1f5f9; color:#475569; text-align:center; font-size:10px; font-weight:800; font-family:Calibri,Arial,sans-serif;">Mercado</th>
                                         ${compsHeaders}
-                                        <th style="padding:5px 4px; border:1px solid #475569; color:#94a3b8; text-align:left; font-size:9px; font-weight:700;">Acci&oacute;n</th>
+                                        <th style="padding:7px 6px; border:1px solid #cbd5e1; background:#f1f5f9; color:#1e293b; text-align:left; font-size:10px; font-weight:800; font-family:Calibri,Arial,sans-serif;">Acci&oacute;n</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -6102,30 +6137,31 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             const hotel = report.hotel;
             const config = getHotelEmailConfig(hotel);
             let text = `${config.salutation}\n\n`;
-            text += `Te envío la propuesta de revisión de tarifas modificadas para Hotel ${hotel}:\n\n`;
+            text += `Te adjunto los cambios de tarifas realizados hoy para Hotel ${hotel}:\n\n`;
             if (userNotes && userNotes.trim()) {
                 text += `OBSERVACIONES DE LA DIRECCIÓN:\n${userNotes.trim()}\n\n`;
             }
-            text += `RESUMEN EJECUTIVO:\n`;
+            text += `RESUMEN DE CAMBIOS EFECTUADOS:\n`;
             text += `- Hotel: Hotel ${hotel}\n`;
-            text += `- Fechas revisadas: ${report.count} días\n`;
+            text += `- Fechas modificadas: ${report.count} días\n`;
             text += `- Precio medio anterior: ${report.avgOld.toFixed(2)} €\n`;
-            text += `- Precio medio propuesto: ${report.avgNew.toFixed(2)} €\n`;
+            text += `- Precio medio nuevo aplicado: ${report.avgNew.toFixed(2)} €\n`;
             text += `- Variación media: ${report.avgDelta >= 0 ? '+' : ''}${report.avgDelta.toFixed(2)} € (${report.avgDelta >= 0 ? '+' : ''}${report.avgDeltaPct.toFixed(1)}%)\n\n`;
 
             text += `DETALLE DE TARIFAS Y LÍNEA DE COMPETIDORES:\n`;
             text += `----------------------------------------------------------------------------------------------------\n`;
-            text += `Fecha | Ocupación | Ant. -> NUEVA (Var) | Mercado | Competidores | Criterio\n`;
+            text += `Fecha | Ocup. / Libres | Ant. -> NUEVA (Var) | Mercado | Competidores | Criterio\n`;
             text += `----------------------------------------------------------------------------------------------------\n`;
 
             report.items.forEach(item => {
                 const deltaSign = item.delta > 0 ? '+' : '';
+                const available = Math.max(0, item.capacity - item.rooms);
                 const compStr = item.competitors.map(c => `${c.name.split(' ')[0]}: ${c.price}`).join(' | ');
-                text += `${item.dateDisplay} (${item.dayName.substring(0,3)}) | ${item.rooms}/${item.capacity} (${item.occPct}%) | ${Math.round(item.oldPrice)}€ -> ${Math.round(item.newPrice)}€ (${deltaSign}${Math.round(item.delta)}€) | Mkt: ${Math.round(item.marketAvg)}€ | ${compStr} | ${item.actionText}\n`;
+                text += `${item.dateDisplay} (${item.dayName.substring(0,3)}) | ${item.rooms}/${item.capacity} (${item.occPct}% · ${available} libres) | ${Math.round(item.oldPrice)}€ -> ${Math.round(item.newPrice)}€ (${deltaSign}${Math.round(item.delta)}€) | Mkt: ${Math.round(item.marketAvg)}€ | ${compStr} | ${item.actionText}\n`;
             });
 
             text += `----------------------------------------------------------------------------------------------------\n\n`;
-            text += `Quedo a la espera de tus comentarios o confirmación.\n\nSaludos cordiales,\nNatalio\n${config.signoff}`;
+            text += `Quedo a tu disposición ante cualquier consulta.\n\nSaludos cordiales,\nNatalio\n${config.signoff}`;
             return text;
         }
 
@@ -6139,7 +6175,11 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             const config = getHotelEmailConfig(report.hotel);
             const to = document.getElementById('revenueEmailTo')?.value?.trim() || config.to || '';
             const cc = document.getElementById('revenueEmailCc')?.value?.trim() || config.cc || '';
-            const subject = document.getElementById('revenueEmailSubject')?.value || `[Revisión Revenue Central] Modificación de Tarifas - Hotel ${report.hotel}`;
+            const now = new Date();
+            const dStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
+            const tStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+            const fallbackSubject = `Modificación de Tarifas · Hotel ${report.hotel} · ${report.count} fecha${report.count !== 1 ? 's' : ''} · ${dStr} ${tStr}`;
+            const subject = document.getElementById('revenueEmailSubject')?.value || fallbackSubject;
             const notes = document.getElementById('revenueEmailNotes')?.value || '';
 
             // Siempre copiamos la tabla HTML profesional al portapapeles primero
@@ -6148,18 +6188,18 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             // Generamos un body corto y profesional para el mailto
             const dSign = report.avgDelta >= 0 ? '+' : '';
             let body = `${config.salutation}\n\n`;
-            body += `Te envío la propuesta de revisión de tarifas para Hotel ${report.hotel}.\n\n`;
+            body += `Te adjunto los cambios de tarifas realizados hoy para Hotel ${report.hotel}.\n\n`;
             if (notes && notes.trim()) {
                 body += `Observaciones: ${notes.trim()}\n\n`;
             }
-            body += `Resumen:\n`;
-            body += `• ${report.count} fecha${report.count !== 1 ? 's' : ''} revisada${report.count !== 1 ? 's' : ''}\n`;
+            body += `Resumen de cambios efectuados:\n`;
+            body += `• ${report.count} fecha${report.count !== 1 ? 's' : ''} modificada${report.count !== 1 ? 's' : ''}\n`;
             body += `• Tarifa media anterior: ${report.avgOld.toFixed(2)} €\n`;
-            body += `• Tarifa media propuesta: ${report.avgNew.toFixed(2)} €\n`;
+            body += `• Tarifa media nueva aplicada: ${report.avgNew.toFixed(2)} €\n`;
             body += `• Variación: ${dSign}${report.avgDelta.toFixed(2)} € (${dSign}${report.avgDeltaPct.toFixed(1)}%)\n\n`;
-            body += `▼ PEGA LA TABLA AQUÍ ▼\n`;
-            body += `(Ctrl+V — la tabla con formato profesional y detalle de competidores ya está copiada en tu portapapeles)\n\n\n\n`;
-            body += `Quedo a la espera de tus comentarios.\n\nSaludos cordiales,\nNatalio\n${config.signoff}`;
+            body += `▼ DETALLE DE CAMBIOS Y COMPETIDORES ▼\n`;
+            body += `(Ctrl+V — la tabla con formato completo ya está copiada en tu portapapeles)\n\n\n\n`;
+            body += `Quedo a tu disposición ante cualquier consulta.\n\nSaludos cordiales,\nNatalio\n${config.signoff}`;
 
             let mailtoUrl = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
             if (cc.trim()) {
