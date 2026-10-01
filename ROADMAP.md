@@ -1,26 +1,37 @@
-# 🚀 Hoja de Ruta - CapaSuite (Próximas Mejoras)
+# 🚀 Hoja de Ruta — CapaSuite
 
-Este documento contiene las funcionalidades propuestas y aprobadas para ser implementadas una vez que la base de datos de producción y segmentos sea 100% estable.
+## ✅ Completado (Refactor Estructural — Oct 2026)
 
-## 1. Cuadro de Mando Unificado (Vista 360º)
-*   **Concepto:** Cruzar datos de Producción (Servicios) con Segmentación (Canales).
-*   **Objetivo:** Identificar la rentabilidad total por tipo de cliente (Alojamiento + F&B + Otros servicios).
-*   **KPI clave:** Gasto medio por segmento en servicios complementarios.
-
-## 2. Monitor de Pick-up y Tendencias (Detección de Velocidad)
-*   **Concepto:** Análisis incremental (qué ha cambiado desde la última carga).
-*   **Objetivo:** Detectar aceleraciones o frenazos en la demanda por mes y segmento.
-*   **Alertas:** Indicadores visuales de "Acelera" / "Frena" y variaciones semanales.
-
-## 3. Integración con Objetivos (Budget vs Real)
-*   **Concepto:** Comparar la Producción Real actual contra el Presupuesto 2026 definido.
-*   **Objetivo:** Visualizar el cumplimiento de objetivos en tiempo real.
-*   **Visualización:** Barras de progreso y colores semafóricos (Rojo/Verde) en los KPIs principales.
-
-## 4. Mapa de Calor por Día de la Semana
-*   **Concepto:** Desglose de producción por día natural (Lunes a Domingo).
-*   **Objetivo:** Identificar patrones de consumo semanales para optimizar staff y ofertas.
-*   **Filtro:** Capacidad de filtrar por servicio (ej. ocupación vs producción SPA por día).
+- **CSS compartido**: `css/tokens.css` — fuente única de variables de diseño. Elimina 10 bloques `:root` duplicados.
+- **Nav compartida**: `partials/nav.html` + `js/nav.js` — elimina 10 bloques de nav copiados y pegados.
+- **Seguridad**: eliminadas credenciales hardcodeadas del formulario de login en `index.html`.
+- **CapaState mejorado**: `CapaState.activeHotel` y `CapaState.setActiveHotel()` como punto único de acceso al hotel activo; dispara evento `hotel-changed`.
+- **Storage**: reemplazado `window.name` (inseguro) por `sessionStorage` como fallback.
+- **Organización de archivos**: scripts Python → `tools/`, tests → `tests/`, debug files → `_backup/`.
 
 ---
-*Documento generado por Antigravity - 25/01/2026*
+
+## 📋 Funcionalidades Pendientes
+
+### 1. Monitor de Pick-up y Tendencias (Detección de Velocidad)
+- **Concepto:** Análisis incremental — qué ha cambiado desde la última carga.
+- **Objetivo:** Detectar aceleraciones o frenazos en la demanda por mes y segmento.
+- **Alertas:** Indicadores visuales de "Acelera" / "Frena" y variaciones semanales.
+
+### 2. Integración con Objetivos (Budget vs Real)
+- **Concepto:** Comparar la Producción Real actual contra el Presupuesto 2026.
+- **Objetivo:** Visualizar el cumplimiento de objetivos en tiempo real.
+- **Visualización:** Barras de progreso y colores semafóricos (Rojo/Verde).
+
+### 3. Mapa de Calor por Día de la Semana
+- **Concepto:** Desglose de producción por día natural (Lunes a Domingo).
+- **Objetivo:** Identificar patrones de consumo semanales.
+- **Filtro:** Por servicio (ocupación vs producción SPA, etc.)
+
+### 4. Limpieza pendiente (Q1 2027)
+- Eliminar el bloque de migración de fechas `_dateShiftMigratedV4` en `storage.js` (marcado con TODO).
+- Evaluar migración de Firebase SDK v8 → v9 Modular.
+
+---
+
+*Última actualización: Oct 2026 — Refactor estructural por Antigravity*

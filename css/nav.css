@@ -1,0 +1,187 @@
+/**
+ * CapaSuite — Estilos de Navegación Compartida
+ * Se usa junto con partials/nav.html (inyectado por js/nav.js)
+ * Depende de css/tokens.css para las variables de color.
+ */
+
+/* ─── BARRA NAV ──────────────────────────────────────────── */
+.top-nav {
+    background: rgba(15, 23, 42, 0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 0 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 10000;
+    height: 60px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+[data-theme="light"] .top-nav {
+    background: rgba(255, 255, 255, 0.97);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* ─── LINKS ──────────────────────────────────────────────── */
+.nav-links {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.nav-links a {
+    color: #94a3b8;
+    text-decoration: none;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 7px 11px;
+    border-radius: 8px;
+    transition: color 0.2s ease, background 0.2s ease;
+    white-space: nowrap;
+}
+
+.nav-links a:hover {
+    color: #f1f5f9;
+    background: rgba(255, 255, 255, 0.07);
+}
+
+.nav-links a.active {
+    color: #818cf8;
+    background: rgba(129, 140, 248, 0.12);
+}
+
+[data-theme="light"] .nav-links a {
+    color: #64748b;
+}
+
+[data-theme="light"] .nav-links a:hover {
+    color: #1e293b;
+    background: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .nav-links a.active {
+    color: var(--primary-dark);
+    background: rgba(79, 70, 229, 0.08);
+}
+
+/* ─── ZONA USUARIO ───────────────────────────────────────── */
+.nav-user {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.user-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 5px 14px;
+    border-radius: 50px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="light"] .user-chip {
+    background: #f8fafc;
+    border-color: rgba(0, 0, 0, 0.07);
+    color: #1e293b;
+}
+
+/* ─── SELECTOR DE HOTEL ──────────────────────────────────── */
+.nav-hotel-select {
+    background: transparent;
+    color: #f1f5f9;
+    border: none;
+    font-size: 0.78rem;
+    font-weight: 800;
+    outline: none;
+    cursor: pointer;
+    font-family: inherit;
+    padding: 2px 4px;
+    max-width: 130px;
+}
+
+[data-theme="light"] .nav-hotel-select {
+    color: #1e293b;
+}
+
+/* ─── DOT DE ESTADO ──────────────────────────────────────── */
+.dot {
+    width: 7px;
+    height: 7px;
+    background: #10b981;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* ─── USUARIO Y LOGOUT ───────────────────────────────────── */
+#userEmailNav {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-main);
+    white-space: nowrap;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.logout-btn {
+    color: #ef4444;
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    cursor: pointer;
+    opacity: 0.75;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.logout-btn:hover {
+    opacity: 1;
+}
+
+/* ─── SYNC STATUS ────────────────────────────────────────── */
+#capasuiteSyncStatus {
+    font-size: 10px;
+    color: #64748b;
+    white-space: nowrap;
+}
+
+/* ─── RESPONSIVE ─────────────────────────────────────────── */
+@media (max-width: 900px) {
+    .top-nav {
+        padding: 0 16px;
+        height: auto;
+        min-height: 60px;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding-top: 8px;
+        padding-bottom: 8px;
+    }
+
+    .nav-links {
+        gap: 2px;
+        flex-wrap: wrap;
+    }
+
+    .nav-links a {
+        font-size: 0.65rem;
+        padding: 5px 7px;
+    }
+}
+
+@media (max-width: 600px) {
+    .nav-links a span.label { display: none; }
+    #userEmailNav { display: none; }
+    .user-chip { padding: 5px 8px; gap: 6px; }
+}

@@ -29,36 +29,29 @@
         console.warn('CapaSuite: localStorage bloqueado. Usando modo de sesión avanzada.');
     }
 
-    // 2. Fallback de window.name (Persistencia entre páginas en la misma pestaña)
+    // 2. Fallback de sessionStorage (Persistencia entre páginas en la misma pestaña)
+    // Reemplaza el antiguo window.name que era legible por iframes/popups.
+    let sessionAvailable = false;
+    try {
+        const _t = '__cs_sess_test__';
+        sessionStorage.setItem(_t, _t);
+        sessionStorage.removeItem(_t);
+        sessionAvailable = true;
+    } catch (e) { }
+
     function saveToWindowName(key, value) {
-        try {
-            let data = {};
-            if (window.name && window.name.startsWith('{')) {
-                data = JSON.parse(window.name);
-            }
-            data[key] = value;
-            window.name = JSON.stringify(data);
-        } catch (e) { }
+        if (!sessionAvailable) return;
+        try { sessionStorage.setItem('_cs_' + key, value); } catch (e) { }
     }
 
     function getFromWindowName(key) {
-        try {
-            if (window.name && window.name.startsWith('{')) {
-                const data = JSON.parse(window.name);
-                return data[key] || null;
-            }
-        } catch (e) { }
-        return null;
+        if (!sessionAvailable) return null;
+        try { return sessionStorage.getItem('_cs_' + key) || null; } catch (e) { return null; }
     }
 
     function removeFromWindowName(key) {
-        try {
-            if (window.name && window.name.startsWith('{')) {
-                const data = JSON.parse(window.name);
-                delete data[key];
-                window.name = JSON.stringify(data);
-            }
-        } catch (e) { }
+        if (!sessionAvailable) return;
+        try { sessionStorage.removeItem('_cs_' + key); } catch (e) { }
     }
 
     window.CapaStorage = {
@@ -77,7 +70,12 @@
 
             // Segment names belong to the source report. Reading storage must not delete them.
 
-            // --- CAPASUITE DATE SHIFT CORRECTION MIGRATION (One-time correction) ---
+            // --- CAPASUITE DATE SHIFT CORRECTION MIGRATION ---
+            // TODO: Eliminar este bloque completo tras Q1 2027.
+            // La migración ya se aplicó en todos los clientes (flag _dateShiftMigratedV4).
+            // El check db._dateShiftMigratedV4 garantiza que no se re-ejecute,
+            // pero el bloque sigue añadiendo coste en cada llamada a getItem.
+
             if (key === "hotel_manager_db_v2" && val) {
                 try {
                     const db = JSON.parse(val);

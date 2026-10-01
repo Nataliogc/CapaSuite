@@ -13,33 +13,16 @@
     <script src="js/chart.js"></script>
     <script src="js/theme-manager.js"></script>
     <script src="js/storage.js"></script>
+    <script src="js/nav.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="js/firebase-auth.js?v=20260915-sync2"></script>
 
+    <link rel="stylesheet" href="css/tokens.css">
+    <link rel="stylesheet" href="css/nav.css">
     <style>
-        :root {
-            /* MODO NOCHE (DEFAULT) */
-            --bg-primary: #0f172a;
-            --bg-grad-start: rgba(79, 70, 229, 0.1);
-            --bg-grad-end: rgba(16, 185, 129, 0.05);
-            --bg-glass: rgba(30, 41, 59, 0.7);
-            --card-bg: rgba(30, 41, 59, 0.7);
-            --text-main: #f1f5f9;
-            --text-muted: #94a3b8;
-            --border-glass: rgba(255, 255, 255, 0.1);
-            --shadow-premium: 0 10px 30px -5px rgba(0, 0, 0, 0.3);
-            --table-header: rgba(15, 23, 42, 0.9);
-            --table-row: rgba(30, 41, 59, 0.4);
-            --table-row-hover: rgba(255, 255, 255, 0.05);
-            --primary: #818cf8;
-            --primary-dark: #4f46e5;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --radius: 16px;
-            --nav-bg: #1e293b;
-        }
+
         /* TOP NAVIGATION */
         .top-nav {
             background: rgba(15, 23, 42, 0.9);
@@ -127,26 +110,6 @@
         }
         .logout-btn:hover { opacity: 1; }
         .dot { width: 8px; height: 8px; background: #10b981; border-radius: 50%; }
-
-
-        [data-theme="light"] {
-            /* MODO CLARO PREMIUM */
-            --bg-primary: #f8fafc;
-            --bg-grad-start: rgba(79, 70, 229, 0.05);
-            --bg-grad-end: rgba(16, 185, 129, 0.03);
-            --bg-glass: rgba(255, 255, 255, 0.8);
-            --card-bg: #ffffff;
-            --text-main: #1e293b;
-            --text-muted: #64748b;
-            --border-glass: rgba(79, 70, 229, 0.1);
-            --shadow-premium: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
-            --table-header: #f1f5f9;
-            --table-row: #ffffff;
-            --table-row-hover: #f8fafc;
-            --primary: #4f46e5;
-            --primary-dark: #3730a3;
-            --nav-bg: #2d3748;
-        }
 
         * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
 

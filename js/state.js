@@ -1,29 +1,61 @@
 /**
- * CapaSuite Global State Manager (Fase 1 Refactor)
- * Centraliza el estado para evitar duplicidad y lecturas directas indiscriminadas
+ * CapaSuite Global State Manager
+ * Centraliza el estado de la aplicación.
+ * Todos los módulos deben leer/escribir el hotel activo a través de aquí.
  */
 
 (function () {
     'use strict';
 
     window.CapaState = {
-        hotel: null, // "Guadiana" o "Cumbria"
-        data: {},    // Producción por hotel: { guadiana: {...}, cumbria: {...} }
-        competencia: {}, // Datos de mercado
-        history: {}, // Snapshots y pick-up
-        
-        // Setter controlado
-        setHotel: function(hotelId) {
-            this.hotel = hotelId;
+        // Hotel activo: "Guadiana" | "Cumbria"
+        hotel: null,
+
+        // Datos por hotel y módulo: { guadiana: { produccion: {...}, segmentos: {...} }, ... }
+        data: {},
+
+        // Datos de mercado / competencia
+        competencia: {},
+
+        // Snapshots pick-up
+        history: {},
+
+        // ── Hotel ──────────────────────────────────────────────────
+        get activeHotel() {
+            if (!this.hotel) {
+                this.hotel = localStorage.getItem('active_hotel_suite') || 'Guadiana';
+            }
+            return this.hotel;
         },
-        
-        setHotelData: function(hotelId, moduleName, payload) {
+
+        setActiveHotel: function (hotel) {
+            this.hotel = hotel;
+            localStorage.setItem('active_hotel_suite', hotel);
+
+            // Sincronizar el selector del nav si ya está en el DOM
+            const sel = document.getElementById('hotelSelectorNav')
+                     || document.getElementById('hotelSelector');
+            if (sel) sel.value = hotel;
+
+            // Notificar a todos los módulos que escuchen
+            window.dispatchEvent(new CustomEvent('hotel-changed', { detail: hotel }));
+        },
+
+        // ── Datos por módulo ────────────────────────────────────────
+        setHotelData: function (hotelId, moduleName, payload) {
             if (!this.data[hotelId]) this.data[hotelId] = {};
             this.data[hotelId][moduleName] = payload;
         },
-        
-        getHotelData: function(hotelId, moduleName) {
+
+        getHotelData: function (hotelId, moduleName) {
             return this.data[hotelId] ? this.data[hotelId][moduleName] : null;
-        }
+        },
+
+        // ── Helpers ─────────────────────────────────────────────────
+        /** Devuelve los datos del hotel activo para un módulo dado */
+        current: function (moduleName) {
+            return this.getHotelData(this.activeHotel, moduleName);
+        },
     };
+
 })();

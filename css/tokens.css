@@ -1,0 +1,97 @@
+/**
+ * CapaSuite Design Tokens — Fuente única de verdad
+ * Incluir este archivo en todas las páginas en lugar de definir :root localmente.
+ * Las páginas pueden añadir tokens propios (específicos del módulo) en su propio <style>.
+ */
+
+/* ─── MODO NOCHE (default) ────────────────────────────────────── */
+:root {
+    /* Marca */
+    --primary:          #6366f1;
+    --primary-dark:     #4f46e5;
+    --primary-deeper:   #3730a3;
+    --primary-glow:     rgba(99, 102, 241, 0.4);
+    --primary-light:    rgba(99, 102, 241, 0.1);
+    --secondary:        #10b981;
+    --secondary-glow:   rgba(16, 185, 129, 0.4);
+    --accent:           #f59e0b;
+    --danger:           #ef4444;
+    --danger-bg:        rgba(239, 68, 68, 0.12);
+    --success:          #10b981;
+    --success-bg:       rgba(16, 185, 129, 0.12);
+    --warning:          #f59e0b;
+    --warning-bg:       rgba(245, 158, 11, 0.12);
+    --purple:           #8b5cf6;
+    --purple-glow:      rgba(139, 92, 246, 0.3);
+    --purple-bg:        rgba(139, 92, 246, 0.12);
+    --info-bg:          rgba(99, 102, 241, 0.12);
+
+    /* Fondos */
+    --bg-deep:          #0f172a;
+    --bg-surface:       #1e293b;
+    --bg-glass:         rgba(30, 41, 59, 0.7);
+    --bg-card:          rgba(30, 41, 59, 0.7);
+
+    /* Texto */
+    --text-main:        #f1f5f9;
+    --text-muted:       #94a3b8;
+
+    /* Bordes */
+    --border:           rgba(255, 255, 255, 0.1);
+
+    /* Radios */
+    --radius-xl:        28px;
+    --radius-lg:        24px;
+    --radius-md:        16px;
+    --radius-sm:        12px;
+    --radius:           16px;
+
+    /* Sombras */
+    --shadow-premium:   0 10px 30px -5px rgba(0, 0, 0, 0.3);
+    --shadow-heavy:     0 20px 40px -10px rgba(0, 0, 0, 0.5);
+
+    /* Transiciones */
+    --transition:       all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow:  all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Tabla */
+    --table-header:     rgba(15, 23, 42, 0.9);
+    --table-row:        rgba(30, 41, 59, 0.4);
+    --table-row-hover:  rgba(255, 255, 255, 0.05);
+}
+
+/* ─── MODO CLARO ──────────────────────────────────────────────── */
+[data-theme="light"] {
+    --primary:          #4f46e5;
+    --primary-dark:     #3730a3;
+    --primary-glow:     rgba(79, 70, 229, 0.2);
+    --primary-light:    rgba(79, 70, 229, 0.08);
+    --secondary:        #059669;
+    --secondary-glow:   rgba(5, 150, 105, 0.3);
+    --danger:           #b91c1c;
+    --danger-bg:        #fef2f2;
+    --success:          #059669;
+    --success-bg:       #f0fdf4;
+    --warning:          #d97706;
+    --warning-bg:       #fffbeb;
+    --purple:           #7c3aed;
+    --purple-bg:        #f5f3ff;
+    --info-bg:          #eff6ff;
+
+    --bg-deep:          #f8fafc;
+    --bg-surface:       #ffffff;
+    --bg-glass:         rgba(255, 255, 255, 0.85);
+    --bg-card:          rgba(255, 255, 255, 0.95);
+
+    --text-main:        #1e293b;
+    --text-muted:       #64748b;
+
+    --border:           #e2e8f0;
+
+    --shadow-premium:   0 10px 25px -5px rgba(0, 0, 0, 0.08);
+    --shadow-heavy:     0 20px 40px -10px rgba(0, 0, 0, 0.12);
+
+    --table-header:     #f1f5f9;
+    --table-row:        #ffffff;
+    --table-row-hover:  #f8fafc;
+}
