@@ -400,11 +400,12 @@
             padding: 16px 30px;
             font-size: 0.95rem;
             border-bottom: 1px solid var(--border);
-            color: #cbd5e1;
-            transition: var(--transition);
+            color: var(--text-main);
+            transition: background 0.15s ease;
         }
 
-        tr:hover td { background: rgba(255, 255, 255, 0.05); color: white; }
+        tr:hover td { background: rgba(255, 255, 255, 0.04); }
+        [data-theme="light"] tr:hover td { background: rgba(0, 0, 0, 0.03); }
 
         .tag {
             padding: 6px 14px;
@@ -1121,6 +1122,51 @@
             border-left: 3px solid var(--primary);
             font-weight: 800;
         }
+        .yield-table tr:hover td {
+            background: rgba(255, 255, 255, 0.045);
+        }
+        [data-theme="light"] .yield-table tr:hover td {
+            background: rgba(0, 0, 0, 0.035);
+        }
+        .yield-table tr.current-month-row:hover td {
+            background: rgba(99, 102, 241, 0.16);
+        }
+        .yield-table tr.month-closed-row:hover td {
+            background: rgba(16, 185, 129, 0.07);
+        }
+        [data-theme="light"] .yield-table tr.month-closed-row:hover td {
+            background: rgba(16, 185, 129, 0.09);
+        }
+        .tramo-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            letter-spacing: 0.2px;
+            box-sizing: border-box;
+        }
+        [data-theme="light"] .tramo-badge {
+            background: rgba(0, 0, 0, 0.04);
+            border-color: rgba(0, 0, 0, 0.1);
+            color: #1e293b;
+        }
+        .tramo-badge-closed {
+            background: rgba(16, 185, 129, 0.12);
+            color: #10b981;
+            border-color: rgba(16, 185, 129, 0.25);
+        }
+        [data-theme="light"] .tramo-badge-closed {
+            background: rgba(16, 185, 129, 0.14);
+            color: #047857;
+            border-color: rgba(16, 185, 129, 0.3);
+        }
         .tactical-pill {
             display: inline-flex;
             align-items: center;
@@ -1528,7 +1574,7 @@
                                 <th>Habitaciones (RN)</th>
                                 <th style="width: 130px;">% Ocupación</th>
                                 <th>Pick-up / Estado</th>
-                                <th>Tramo</th>
+                                <th style="white-space: nowrap; min-width: 95px; text-align: center;">Tramo</th>
                                 <th>Ajuste EBI</th>
                                 <th>Tarifa EBI / ADR</th>
                                 <th>Tarifa BAR / RevPAR</th>
@@ -3380,7 +3426,7 @@
                     if (isClosed) {
                         // FILA DE MES CERRADO (REAL)
                         const tierClosed = getMatchingTier(strat, mm.displayOcc);
-                        const tierLabel = tierClosed.minOcc === 90 ? '> 90 %' : `${tierClosed.minOcc}–${tierClosed.maxOcc} %`;
+                        const tierLabel = tierClosed.minOcc === 90 ? '> 90%' : `${tierClosed.minOcc}–${tierClosed.maxOcc}%`;
                         const revparMet = mm.displayRevpar >= mTargetRevpar;
 
                         let revparBadge = `<span style="font-weight:700; color:var(--text-main); font-size:0.82rem;">${mm.displayRevpar.toFixed(2).replace('.', ',')} €</span>`;
@@ -3394,7 +3440,7 @@
 
                         tbody.innerHTML += `
                             <tr class="month-closed-row ${isCurr ? 'current-month-row' : ''}">
-                                <td style="font-weight:700;">
+                                <td style="font-weight:700; color:var(--text-main); white-space:nowrap;">
                                     ${mm.monthName} ${isCurr ? '⭐' : ''}
                                     <span class="month-closed-badge">CERRADO</span>
                                 </td>
@@ -3403,7 +3449,7 @@
                                     <span style="font-size:0.62rem; color:#10b981; font-weight:800; display:block;">● REAL CERRADO</span>
                                 </td>
                                 <td>
-                                    <div style="display:flex; justify-content:space-between; font-size:0.7rem; font-weight:700; margin-bottom:2px;">
+                                    <div style="display:flex; justify-content:space-between; font-size:0.7rem; font-weight:700; margin-bottom:2px; color:var(--text-main);">
                                         <span>${mm.displayOcc.toFixed(1).replace('.', ',')}%</span>
                                     </div>
                                     <div style="width:100%; height:6px; background:rgba(0,0,0,0.25); border-radius:4px; overflow:hidden;">
@@ -3411,7 +3457,7 @@
                                     </div>
                                 </td>
                                 <td><span style="color:var(--text-muted); font-size:0.72rem; font-weight:700;">🔒 Consolidado</span></td>
-                                <td><span style="font-size:0.7rem; font-weight:700; background:rgba(16, 185, 129, 0.1); color:#10b981; padding:3px 8px; border-radius:6px; border:1px solid rgba(16, 185, 129, 0.2);">${tierLabel}</span></td>
+                                <td style="text-align:center; white-space:nowrap;"><span class="tramo-badge tramo-badge-closed">${tierLabel}</span></td>
                                 <td style="font-weight:600; color:var(--text-muted); font-size:0.75rem;">Cierre</td>
                                 <td>
                                     <span style="font-weight:700; color:var(--text-main); font-size:0.85rem;">${mm.displayAdr.toFixed(2).replace('.', ',')} €</span>
@@ -3432,7 +3478,7 @@
                     } else {
                         // FILA DE MES EN CURSO O FUTURO (YIELD PREDICTIVO)
                         const dec = evaluateYieldDecision(strat, mm.displayOcc, mm.pickupRms);
-                        const tierLabel = dec.tier.minOcc === 90 ? '> 90 %' : `${dec.tier.minOcc}–${dec.tier.maxOcc} %`;
+                        const tierLabel = dec.tier.minOcc === 90 ? '> 90%' : `${dec.tier.minOcc}–${dec.tier.maxOcc}%`;
 
                         let pickupTag = '<span style="color:var(--text-muted); font-size:0.7rem;">● 0 RN</span>';
                         if (mm.pickupRms > 0) {
@@ -3468,16 +3514,16 @@
 
                         tbody.innerHTML += `
                             <tr class="${isCurr ? 'current-month-row' : ''}">
-                                <td style="font-weight:700;">
+                                <td style="font-weight:700; color:var(--text-main); white-space:nowrap;">
                                     ${mm.monthName} ${isCurr ? '⭐' : ''}
                                     ${monthBadge}
                                 </td>
-                                <td style="font-weight:600;">
+                                <td style="font-weight:600; color:var(--text-main);">
                                     ${fmtNum(mm.displayRms)} RN
                                     ${rnSubLabel}
                                 </td>
                                 <td>
-                                    <div style="display:flex; justify-content:space-between; font-size:0.7rem; font-weight:700; margin-bottom:2px;">
+                                    <div style="display:flex; justify-content:space-between; font-size:0.7rem; font-weight:700; margin-bottom:2px; color:var(--text-main);">
                                         <span>${mm.displayOcc.toFixed(1).replace('.', ',')}%</span>
                                     </div>
                                     <div style="width:100%; height:6px; background:rgba(0,0,0,0.25); border-radius:4px; overflow:hidden;">
@@ -3485,7 +3531,7 @@
                                     </div>
                                 </td>
                                 <td>${pickupTag}</td>
-                                <td><span style="font-size:0.7rem; font-weight:700; background:rgba(255,255,255,0.05); padding:3px 8px; border-radius:6px; border:1px solid var(--border);">${tierLabel}</span></td>
+                                <td style="text-align:center; white-space:nowrap;"><span class="tramo-badge">${tierLabel}</span></td>
                                 <td style="font-weight:700; color:${dec.effectiveAdj > 0 ? '#10b981' : (dec.effectiveAdj < 0 ? '#818cf8' : 'var(--text-main)')};">${dec.effectiveAdj > 0 ? '+' : ''}${dec.effectiveAdj.toFixed(1).replace('.', ',')}%</td>
                                 <td style="font-weight:700; color:var(--text-main); font-size:0.85rem;">${dec.recEbi.toFixed(2).replace('.', ',')} €</td>
                                 <td style="font-weight:800; color:var(--primary); font-size:0.88rem;">

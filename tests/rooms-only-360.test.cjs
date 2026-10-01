@@ -32,3 +32,11 @@ test('segment totals and legacy accommodation fallback cannot introduce breakfas
  const result=c.segmentRoomRevenue({revenue:a(999),accommodation:a(999),concepts:{'HABITACION DOBLE':a(100),SUITE:a(200),DESAYUNO:a(400),SPA:a(299)}});
  assert.equal(result[0],300);
 });
+
+test('yield table rows and tramo badges retain visibility and layout without breaking on hover',()=>{
+ assert.doesNotMatch(html, /tr:hover td\s*\{[^}]*color:\s*white/i, 'tr:hover should never force color: white which hides text in light theme');
+ assert.match(html, /\.tramo-badge\s*\{[\s\S]*white-space:\s*nowrap;/, 'tramo-badge must have white-space: nowrap to avoid percentage splitting');
+ assert.match(html, /\.tramo-badge\s*\{[\s\S]*display:\s*inline-flex;/, 'tramo-badge must be inline-flex or inline-block');
+ assert.match(html, /<th[^>]*>Tramo<\/th>/, 'Tramo header exists and is styled');
+ assert.doesNotMatch(html, /tierLabel\s*=\s*[^;]*\s+%/, 'tierLabel should not have breaking space before %');
+});
