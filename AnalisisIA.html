@@ -142,7 +142,7 @@
             background: var(--bg-glass);
             padding: 40px;
             border-radius: var(--radius-lg);
-            color: white;
+            color: var(--text-main);
             margin-bottom: 30px;
             position: relative;
             overflow: hidden;
@@ -206,7 +206,7 @@
         .ai-title p {
             margin: 10px 0 0 0;
             font-size: 1.1rem;
-            opacity: 0.8;
+            color: var(--text-muted);
             font-weight: 300;
         }
 
@@ -252,7 +252,8 @@
             display: flex;
             gap: 15px;
             padding: 20px;
-            background: #f8fafc;
+            background: var(--bg-deep);
+            color: var(--text-main);
             border-radius: 12px;
             border-left: 4px solid var(--primary);
             transition: transform 0.2s;
@@ -260,7 +261,7 @@
 
         .insight-item:hover {
             transform: translateX(5px);
-            background: #f1f5f9;
+            background: var(--table-row-hover);
         }
 
         .insight-item.positive {
@@ -319,7 +320,7 @@
 
         .message.ai {
             background: var(--primary-light);
-            color: var(--primary-dark);
+            color: var(--text-main);
             align-self: flex-start;
             border-bottom-left-radius: 4px;
         }
@@ -337,6 +338,8 @@
         }
 
         .chat-input {
+            background: var(--bg-surface);
+            color: var(--text-main);
             flex: 1;
             padding: 12px 18px;
             border: 1px solid var(--border);
@@ -386,7 +389,8 @@
         .hotel-pill {
             padding: 8px 20px;
             border-radius: 99px;
-            background: white;
+            background: var(--bg-surface);
+            color: var(--text-main);
             border: 1px solid var(--border);
             cursor: pointer;
             font-weight: 600;
