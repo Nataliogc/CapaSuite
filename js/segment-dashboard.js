@@ -294,13 +294,16 @@ async function confirmSegUpload(targetHotel) {
     el('import-button').disabled = true;
     message('Procesando datos de segmentación…');
 
+    let historyId, successMessage;
     try {
+        const hotel = targetHotel || detectHotel(file.name);
+        historyId = await CapaRevenueHistory.begin(file, { hotel, type: selectedType, period: manualPeriod, mode: selectedType === 'forecast' ? 'forecast' : 'actual' });
         const book = XLSX.read(await file.arrayBuffer(), { type: 'array' });
         const rows = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { header: 1, defval: null, range: 0, blankrows: true });
         
-        const hotel = targetHotel || detectHotel(file.name);
         const report = await SegmentReview.read(rows, file.name, manualPeriod, selectedType, hotel);
         if (!report) {
+            await CapaRevenueHistory.fail(historyId, 'Importación cancelada');
             showToast('Importación cancelada por el usuario.', 'warning');
             return;
         }
@@ -348,7 +351,7 @@ async function confirmSegUpload(targetHotel) {
             currentHotel = hotel;
             currentYear = forecastYears[0] || '';
 
-            showToast(`🔮 Previsión OTB de Segmentación para Hotel ${hotel} cargada con éxito (${manualPeriod || currentYear}).`, 'success');
+            successMessage = `🔮 Previsión OTB de Segmentación para Hotel ${hotel} cargada con éxito (${manualPeriod || currentYear}).`;
         } else {
             const next = JSON.parse(JSON.stringify(historicalDB || {}));
             const years = SegmentAnalysis.merge(next, hotel, report);
@@ -360,14 +363,17 @@ async function confirmSegUpload(targetHotel) {
             currentHotel = hotel;
             currentYear = years[0] || '';
 
-            showToast(`📈 Producción Real de Segmentación para Hotel ${hotel} (${years.join(', ')} - ${manualPeriod || 'Periodo detectado'}) cargada correctamente.`, 'success');
+            successMessage = `📈 Producción Real de Segmentación para Hotel ${hotel} (${years.join(', ')} - ${manualPeriod || 'Periodo detectado'}) cargada correctamente.`;
         }
 
+        await CapaRevenueHistory.commit(historyId, { mode: report.segmentData ? 'forecast' : 'actual' });
+        showToast(successMessage, 'success');
         el('hotelSelector').value = currentHotel;
         el('hotelLogo').src = currentHotel === 'Guadiana' ? 'Imagen/logo-guadiana.svg' : 'Imagen/logo-cumbria.svg';
         initControls();
         message('');
     } catch (err) {
+        if (historyId) await CapaRevenueHistory.fail(historyId, err).catch(console.error);
         console.error('Error al procesar segmentación:', err);
         showToast(`❌ Error: ${err.message}`, 'error');
         message('Error: ' + err.message, true);

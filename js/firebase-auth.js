@@ -386,7 +386,7 @@ window.forceCloudUpload = async function () {
 };
 
 window.addEventListener('beforeunload', event => {
-    if (pendingChanges.size || uploadInFlight) {
+    if (cloudAuth.currentUser && (pendingChanges.size || uploadInFlight)) {
         // Do not initiate an unreliable full-database write while closing a tab.
         event.preventDefault();
         event.returnValue = '';

@@ -15,8 +15,14 @@
     function decorate(nav) {
         const page = window.location.pathname.split('/').pop() || 'index.html';
         nav.querySelectorAll('.nav-links a').forEach(a => a.classList.toggle('active', a.getAttribute('href') === page));
+        const links = nav.querySelector('.nav-links');
+        if (links && !links.querySelector('a[href="SeguimientoRevenue.html"]')) {
+            const link = document.createElement('a'); link.href = 'SeguimientoRevenue.html'; link.textContent = 'Seguimiento';
+            link.classList.toggle('active', page === 'SeguimientoRevenue.html'); links.append(link);
+        }
         const user = window.auth?.currentUser;
         const email = nav.querySelector('#userEmailNav');
+        if (email && window._capasuite_local_mode && !user) email.textContent = 'Modo local';
         if (email && user) email.textContent = window.getUserDisplayName ? window.getUserDisplayName(user) : user.email;
     }
     async function injectNav() {

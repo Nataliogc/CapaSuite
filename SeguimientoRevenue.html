@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Seguimiento de Revenue | CapaSuite</title>
+    <link rel="icon" href="Imagen/Icono_CapaSuite.png">
+    <link rel="stylesheet" href="css/tokens.css">
+    <link rel="stylesheet" href="css/nav.css">
+    <link rel="stylesheet" href="css/revenue-dashboard.css">
+    <script src="js/state.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/revenue-history.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="js/nav.js"></script>
+    <script src="js/firebase-auth.js?v=20261001-sync3"></script>
+    <script src="js/theme-manager.js"></script>
+    <script src="js/revenue-dashboard.js" defer></script>
+</head>
+<body>
+    <main>
+        <header class="hero">
+            <div><p class="eyebrow">CAPASUITE · CONTROL DE DATOS</p><h1>Seguimiento de Revenue</h1>
+                <p>Conoce el origen de tus datos y cómo cambia la previsión entre cargas.</p></div>
+            <a class="button primary" href="CargarDatos.html">Importar Excel</a>
+        </header>
+        <p id="status" role="status" aria-live="polite"></p>
+        <section class="panel toolbar" aria-label="Filtros y copias">
+            <label>Hotel<select id="historyHotel"><option>Guadiana</option><option>Cumbria</option></select></label>
+            <label>Datos<select id="historyMode"><option value="forecast">Previsión de reservas</option><option value="actual">Producción registrada</option></select></label>
+            <button id="captureNow">Guardar captura actual</button>
+            <button id="exportBackup">Descargar copia completa</button>
+            <button id="importBackup">Recuperar copia</button>
+            <input type="file" id="backupFile" accept=".json,application/json" hidden>
+        </section>
+        <p class="note">Las capturas se guardan al importar Excel en Cargar Datos o Segmentos. El histórico y sus copias se conservan en este navegador y cuenta; descarga una copia para trasladarlos a otro equipo. La fecha de captura indica cuándo se cargaron los datos, no cuándo se crearon las reservas.</p>
+        <section class="panel">
+            <div class="section-heading"><div><h2>Evolución entre capturas</h2><p>El pick-up muestra el cambio neto de habitaciones reservadas para las mismas fechas.</p></div></div>
+            <div class="comparison-controls">
+                <label>Captura anterior<select id="previousCapture"></select></label>
+                <label>Captura actual<select id="currentCapture"></select></label>
+                <label>Mes de estancia<input type="month" id="stayMonth"></label>
+                <button id="allMonths">Ver todas las fechas</button>
+            </div>
+            <p id="coverageNote" class="note"></p>
+            <div class="metrics">
+                <article><span>Fechas comparables</span><strong id="matchedDays">—</strong></article>
+                <article><span>Pick-up de habitaciones</span><strong id="roomsDelta">—</strong></article>
+                <article><span>Cambio de ingresos de alojamiento</span><strong id="incomeDelta">—</strong></article>
+            </div>
+            <div class="table-scroll"><table><thead><tr><th>Fecha de estancia</th><th>Habitaciones antes</th><th>Habitaciones ahora</th><th>Pick-up neto</th><th>Cambio de alojamiento</th></tr></thead><tbody id="pickupBody"></tbody></table></div>
+        </section>
+        <section class="panel">
+            <h2>Origen e historial de cargas</h2>
+            <p class="note">Cada registro conserva el nombre del archivo, la hora de carga, su huella cuando está disponible y una copia anterior a la operación. Una captura no certifica por sí sola que los datos coincidan con el PMS.</p>
+            <div class="table-scroll"><table><thead><tr><th>Captura</th><th>Archivo y periodo</th><th>Estado y cobertura</th><th>Acciones</th></tr></thead><tbody id="importsBody"></tbody></table></div>
+        </section>
+    </main>
+    <dialog id="restoreDialog" aria-labelledby="restoreTitle">
+        <h2 id="restoreTitle">Recuperar una copia</h2>
+        <p id="restoreDescription"></p>
+        <div class="dialog-actions"><button id="cancelRestore" autofocus>Cancelar</button><button id="confirmRestore" class="primary">Recuperar copia</button></div>
+    </dialog>
+</body>
+</html>

@@ -10,6 +10,7 @@
     <script src="js/xlsx.full.min.js"></script>
     <script src="js/state.js"></script>
     <script src="js/storage.js"></script>
+    <script src="js/revenue-history.js"></script>
     <script src="js/segment-analysis.js?v=20260929-corrections"></script>
     <script src="js/segment-review.js?v=3"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -1105,6 +1106,7 @@
             <div style="text-align: left;">
                 <h1>Carga de Datos</h1>
                 <p>Sube los informes de Producción y Previsión para actualizar el análisis.</p>
+                <p><a href="SeguimientoRevenue.html" style="color:var(--primary)">Ver histórico de cargas y comparar capturas →</a></p>
             </div>
         </header>
 
@@ -2160,12 +2162,17 @@
 
             const reader = new FileReader();
             reader.onload = async (e) => {
+                let historyId;
                 try {
+                    historyId = await CapaRevenueHistory.begin(file, { hotel, type, period: manualDate,
+                        mode: ['Otb', 'Prevision'].includes(type) || /PREVISION|OTB|VALORADA/i.test(file.name) ? 'forecast' : 'actual',
+                        preferSegments: type === 'Seg' });
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
 
                     if (type === 'Eventos') {
                         processEventsWorkbook(workbook, file.name, hotel);
+                        await CapaRevenueHistory.commit(historyId);
                         return;
                     }
 
@@ -2216,19 +2223,21 @@
                             let reviewed = null;
                             if (type === 'Seg') {
                                 reviewed = await SegmentReview.read(jsonData, file.name, manualDate, type, hotel);
-                                if (!reviewed) { document.getElementById('loader').style.display = 'none'; showToast('Importación cancelada.', 'info'); return; }
+                                if (!reviewed) { await CapaRevenueHistory.fail(historyId, 'Importación cancelada'); document.getElementById('loader').style.display = 'none'; showToast('Importación cancelada.', 'info'); return; }
                             } else if (type === 'Otb' || type === 'Prevision') {
                                 try {
                                     reviewed = await SegmentReview.read(jsonData, file.name, manualDate, type, hotel);
-                                    if (!reviewed) { document.getElementById('loader').style.display = 'none'; showToast('Importación cancelada.', 'info'); return; }
+                                    if (!reviewed) { await CapaRevenueHistory.fail(historyId, 'Importación cancelada'); document.getElementById('loader').style.display = 'none'; showToast('Importación cancelada.', 'info'); return; }
                                 } catch (e) {
-                                    console.warn("No segment structure detected or parsing failed, falling back to legacy parser.", e);
+                                    if (e.code === 'SEGMENT_REVIEW' || /Fecha no válida|duplicada|Importe no válido|no cuadra/.test(e.message)) throw e;
+                                    console.warn("No segment structure detected, falling back to legacy parser.", e);
                                     reviewed = null;
                                 }
                             }
                             processDataForDB(jsonData, file.name, hotel, type, manualDate, reviewed);
-                            finalizeUpload(type, hotel, period, year, file, manualDate, dateInfo);
+                            await finalizeUpload(type, hotel, period, year, file, manualDate, dateInfo, historyId, { preferSegments: !!reviewed?.segmentData, mode: reviewed?.segmentData || ['Otb', 'Prevision'].includes(type) ? 'forecast' : 'actual' });
                         } catch (pErr) {
+                            if (historyId) await CapaRevenueHistory.fail(historyId, pErr).catch(console.error);
                             console.error("❌ Fallo crítico en processDataForDB:", pErr);
                             showToast(`Error en el motor de procesamiento: ${pErr.message}`, "error");
                             document.getElementById('loader').style.display = 'none';
@@ -2236,6 +2245,7 @@
                     }, 50);
 
                 } catch (err) {
+                    if (historyId) await CapaRevenueHistory.fail(historyId, err).catch(console.error);
                     console.error("❌ Error profundo en processFileFinal:", err);
                     console.error("Stack trace:", err.stack);
                     showToast(`❌ Error al procesar el Excel: ${err.message || 'Verifica el formato'}`, "error");
@@ -2246,7 +2256,7 @@
         }
 
         // Helper para finalizar la carga
-        function finalizeUpload(type, hotel, period, year, file, manualDate, dateInfo) {
+        async function finalizeUpload(type, hotel, period, year, file, manualDate, dateInfo, historyId, metadata) {
             // Update config/logs
             if (!config[hotel]) config[hotel] = { logs: [] };
 
@@ -2333,6 +2343,7 @@
             }
 
             saveData();
+            if (historyId) await CapaRevenueHistory.commit(historyId, { ...metadata, period });
             document.getElementById('loader').style.display = 'none';
             showToast(`✅ Archivo de ${type === 'Hist' ? 'Histórico' : (type === 'Prod' ? 'Producción' : (type === 'Seg' ? 'Segmentos' : 'Previsión'))} cargado correctamente`, 'success');
             updateHistory();

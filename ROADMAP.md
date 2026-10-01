@@ -48,3 +48,11 @@
 - La navegación reutiliza barras existentes, completa la portada y conserva el hotel seleccionado. Las vistas con navegación cargada esperan a que esté disponible.
 - La PWA utiliza rutas relativas, conserva las cachés ajenas y excluye peticiones externas de su caché.
 - Verificación automatizada local; las reglas desplegadas de Firebase y la conexión real de Gemini requieren comprobación con los servicios configurados.
+
+## Revenue — primera fase con los Excel actuales
+
+- Nueva pantalla Seguimiento de Revenue: histórico de cargas, cobertura diaria y pick-up neto entre capturas.
+- Capturas por cuenta y copias previas locales al navegador, con descarga y recuperación del histórico.
+- Registro automático de cargas de Cargar Datos y Segmentos; capturas manuales para datos ya existentes.
+- 79 pruebas correctas y prueba en navegador con importación, recarga, descarga y recuperación de datos sintéticos.
+- Alcance, límites y próximas fases detallados en [REVENUE_PLAN.md](REVENUE_PLAN.md).
