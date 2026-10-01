@@ -47,7 +47,16 @@ test('pickup measures explicit cancellations while excluding dates missing in ei
 
 test('incompatible engines, hotels, modes and reversed observation dates cannot be compared', () => {
     const a = capture('Guadiana', serialize({ Guadiana: segment({ '2026-10-01': { rooms: 1 } }) }));
-    for (const b of [{ ...a, hotel: 'Cumbria' }, { ...a, mode: 'actual' }, { ...a, observation: { ...a.observation, engine: 'daily-otb' } }, { ...a, capturedAt: '2025-10-01T10:00:00Z' }]) assert.equal(H.compare(a, b).available, false);
+    for (const b of [{ ...a, hotel: 'Cumbria' }, { ...a, mode: 'actual' }, { ...a, observation: { ...a.observation, engine: 'daily-production' } }, { ...a, capturedAt: '2025-10-01T10:00:00Z' }]) assert.equal(H.compare(a, b).available, false);
+});
+
+test('compatible forecast engines (segment-forecast and daily-otb) can be compared', () => {
+    const a = capture('Guadiana', serialize({ Guadiana: segment({ '2026-10-01': { rooms: 1, accommodation: 100 } }) }));
+    const b = { ...a, capturedAt: '2026-10-02T10:00:00Z', observation: { ...a.observation, engine: 'daily-otb', days: { '2026-10-01': { rooms: 3, accommodation: 300 } } } };
+    const res = H.compare(a, b);
+    assert.equal(res.available, true);
+    assert.equal(res.roomsDelta, 2);
+    assert.equal(res.accommodationDelta, 200);
 });
 
 test('capture provenance includes immutable observation time and file identity', async () => {

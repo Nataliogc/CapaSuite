@@ -42,7 +42,13 @@
         return { days, engine, issues, coverage: Object.keys(days).sort() };
     }
     function compare(previous, current, month = '') {
-        if (!previous || !current || previous.hotel !== current.hotel || previous.mode !== current.mode || previous.observation.engine !== current.observation.engine) {
+        if (!previous || !current || previous.hotel !== current.hotel || previous.mode !== current.mode) {
+            return { available: false, reason: 'Selecciona dos capturas del mismo hotel, tipo y origen de datos.' };
+        }
+        const isForecast = e => e === 'segment-forecast' || e === 'daily-otb';
+        const compatible = previous.observation?.engine === current.observation?.engine ||
+            (isForecast(previous.observation?.engine) && isForecast(current.observation?.engine));
+        if (!compatible) {
             return { available: false, reason: 'Selecciona dos capturas del mismo hotel, tipo y origen de datos.' };
         }
         if (current.capturedAt < previous.capturedAt) return { available: false, reason: 'La captura actual debe ser posterior a la anterior.' };
