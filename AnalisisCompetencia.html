@@ -5330,10 +5330,10 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
     <!-- EMAIL REVENUE MODAL (REVISIÓN DE CENTRAL - MIHAIL STAVILA) -->
     <div id="emailRevenueModal" class="modal" style="z-index:999999;">
-        <div class="modal-content" style="max-width:980px; max-height:92vh; overflow-y:auto; background:var(--bg-surface); color:var(--text-main); border:1px solid var(--border); border-radius:18px; padding:0; box-shadow:0 24px 60px rgba(0,0,0,0.6); overflow:hidden;">
+        <div class="modal-content" style="max-width:980px; max-height:90vh; height:90vh; display:flex; flex-direction:column; background:var(--bg-surface); color:var(--text-main); border:1px solid var(--border); border-radius:18px; padding:0; box-shadow:0 24px 60px rgba(0,0,0,0.6); overflow:hidden; margin:5vh auto;">
 
-            <!-- HEADER CORPORATIVO -->
-            <div style="background:linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e293b 100%); padding:20px 28px; position:relative; border-radius:18px 18px 0 0;">
+            <!-- HEADER CORPORATIVO (Fijo) -->
+            <div style="background:linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e293b 100%); padding:20px 28px; position:relative; border-radius:18px 18px 0 0; flex-shrink:0;">
                 <span class="close-modal" onclick="closeEmailRevenueModal()" style="position:absolute; top:14px; right:18px; color:#a5b4fc; font-size:1.5rem; cursor:pointer; line-height:1;">&times;</span>
                 <div style="display:flex; align-items:center; gap:14px;">
                     <div style="background:rgba(165,180,252,0.15); width:48px; height:48px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:1.5rem; border:1px solid rgba(165,180,252,0.3); flex-shrink:0;">
@@ -5352,64 +5352,67 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 </div>
             </div>
 
-            <div style="padding:22px 28px;">
+            <!-- CUERPO CON SCROLL INDEPENDIENTE -->
+            <div style="flex:1 1 auto; min-height:0; overflow-y:auto; padding:22px 28px;">
 
-            <!-- FORMULARIO DE CORREO -->
-            <div style="background:var(--bg-deep); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:18px;">
-                <div style="font-size:0.7rem; font-weight:800; color:var(--primary); text-transform:uppercase; letter-spacing:0.6px; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
-                    <span>📧</span> Datos del Correo
-                </div>
-                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:12px; margin-bottom:12px;">
-                    <div>
-                        <label style="display:flex; justify-content:space-between; align-items:center; font-size:0.7rem; font-weight:800; color:var(--text-muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.4px;">
-                            <span>📨 Destinatario Principal</span>
-                            <span id="revenueEmailTargetHotelLabel" style="color:var(--primary); font-weight:800; text-transform:none; font-size:0.72rem;"></span>
-                        </label>
-                        <input type="email" id="revenueEmailTo" value="mstavila@sercotel.com" oninput="saveCurrentHotelEmailConfig()" style="width:100%; padding:9px 12px; border-radius:8px; background:var(--bg-card); color:var(--text-main); border:1px solid rgba(99,102,241,0.4); font-size:0.85rem; font-weight:700; box-sizing:border-box; outline:none;">
+                <!-- FORMULARIO DE CORREO -->
+                <div style="background:var(--bg-deep); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:18px;">
+                    <div style="font-size:0.7rem; font-weight:800; color:var(--primary); text-transform:uppercase; letter-spacing:0.6px; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+                        <span>📧</span> Datos del Correo
+                    </div>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:12px; margin-bottom:12px;">
+                        <div>
+                            <label style="display:flex; justify-content:space-between; align-items:center; font-size:0.7rem; font-weight:800; color:var(--text-muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.4px;">
+                                <span>📨 Destinatario Principal</span>
+                                <span id="revenueEmailTargetHotelLabel" style="color:var(--primary); font-weight:800; text-transform:none; font-size:0.72rem;"></span>
+                            </label>
+                            <input type="email" id="revenueEmailTo" value="mstavila@sercotel.com" oninput="saveCurrentHotelEmailConfig()" style="width:100%; padding:9px 12px; border-radius:8px; background:var(--bg-card); color:var(--text-main); border:1px solid rgba(99,102,241,0.4); font-size:0.85rem; font-weight:700; box-sizing:border-box; outline:none;">
+                        </div>
+                        <div>
+                            <label style="display:block; font-size:0.7rem; font-weight:800; color:var(--text-muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.4px;">📩 En copia (CC)</label>
+                            <input type="text" id="revenueEmailCc" placeholder="dirección@sercotel.com (opcional)" oninput="saveCurrentHotelEmailConfig()" style="width:100%; padding:9px 12px; border-radius:8px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border); font-size:0.85rem; box-sizing:border-box; outline:none;">
+                        </div>
+                    </div>
+                    <div style="margin-bottom:12px;">
+                        <label style="display:block; font-size:0.7rem; font-weight:800; color:var(--text-muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.4px;">📋 Asunto del Correo</label>
+                        <input type="text" id="revenueEmailSubject" style="width:100%; padding:9px 12px; border-radius:8px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border); font-size:0.85rem; font-weight:600; box-sizing:border-box; outline:none;">
                     </div>
                     <div>
-                        <label style="display:block; font-size:0.7rem; font-weight:800; color:var(--text-muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.4px;">📩 En copia (CC)</label>
-                        <input type="text" id="revenueEmailCc" placeholder="dirección@sercotel.com (opcional)" oninput="saveCurrentHotelEmailConfig()" style="width:100%; padding:9px 12px; border-radius:8px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border); font-size:0.85rem; box-sizing:border-box; outline:none;">
+                        <label style="display:block; font-size:0.7rem; font-weight:800; color:var(--text-muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.4px;">💬 Observaciones (opcional)</label>
+                        <textarea id="revenueEmailNotes" rows="2" placeholder="Ej: Hola Mihail, ajustamos tarifas por picos de ocupación y movimientos de la competencia..." style="width:100%; padding:9px 12px; border-radius:8px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border); font-size:0.83rem; resize:vertical; font-family:inherit; box-sizing:border-box; outline:none; line-height:1.5;"></textarea>
                     </div>
                 </div>
-                <div style="margin-bottom:12px;">
-                    <label style="display:block; font-size:0.7rem; font-weight:800; color:var(--text-muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.4px;">📋 Asunto del Correo</label>
-                    <input type="text" id="revenueEmailSubject" style="width:100%; padding:9px 12px; border-radius:8px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border); font-size:0.85rem; font-weight:600; box-sizing:border-box; outline:none;">
-                </div>
-                <div>
-                    <label style="display:block; font-size:0.7rem; font-weight:800; color:var(--text-muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.4px;">💬 Observaciones (opcional)</label>
-                    <textarea id="revenueEmailNotes" rows="2" placeholder="Ej: Hola Mihail, ajustamos tarifas por picos de ocupación y movimientos de la competencia..." style="width:100%; padding:9px 12px; border-radius:8px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border); font-size:0.83rem; resize:vertical; font-family:inherit; box-sizing:border-box; outline:none; line-height:1.5;"></textarea>
-                </div>
-            </div>
 
-            <!-- TARJETAS KPI RESUMEN EJECUTIVO -->
-            <div id="revenueEmailSummaryCards" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin-bottom:20px;">
-                <!-- Rellenado por JS -->
-            </div>
+                <!-- TARJETAS KPI RESUMEN EJECUTIVO -->
+                <div id="revenueEmailSummaryCards" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin-bottom:20px;">
+                    <!-- Rellenado por JS -->
+                </div>
 
-            <!-- TABLA PREVISUALIZACIÓN -->
-            <div style="margin-bottom:18px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <span style="font-size:0.78rem; font-weight:800; text-transform:uppercase; color:var(--primary); letter-spacing:0.5px;">📊 Detalle de Tarifas &amp; Línea de Competidores</span>
-                        <span id="revenueEmailCountBadge" style="background:rgba(99,102,241,0.15); color:var(--primary); font-size:0.68rem; font-weight:800; padding:2px 9px; border-radius:20px; border:1px solid rgba(99,102,241,0.3);">0 fechas</span>
+                <!-- TABLA PREVISUALIZACIÓN -->
+                <div style="margin-bottom:10px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="font-size:0.78rem; font-weight:800; text-transform:uppercase; color:var(--primary); letter-spacing:0.5px;">📊 Detalle de Tarifas &amp; Línea de Competidores</span>
+                            <span id="revenueEmailCountBadge" style="background:rgba(99,102,241,0.15); color:var(--primary); font-size:0.68rem; font-weight:800; padding:2px 9px; border-radius:20px; border:1px solid rgba(99,102,241,0.3);">0 fechas</span>
+                        </div>
+                        <span style="font-size:0.68rem; color:var(--text-muted); font-style:italic;">scroll horizontal si hay muchos competidores →</span>
                     </div>
-                    <span style="font-size:0.68rem; color:var(--text-muted); font-style:italic;">scroll horizontal si hay muchos competidores →</span>
+                    <div style="overflow-x:auto; border:1px solid var(--border); border-radius:12px; max-height:380px; box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+                        <table id="revenueEmailPreviewTable" style="width:100%; border-collapse:collapse; font-size:0.73rem;">
+                            <thead id="revenueEmailPreviewThead" style="position:sticky; top:0; z-index:2;">
+                                <!-- Encabezado dinámico -->
+                            </thead>
+                            <tbody id="revenueEmailPreviewTbody">
+                                <!-- Filas dinámicas -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-                <div style="overflow-x:auto; border:1px solid var(--border); border-radius:12px; max-height:380px; box-shadow:0 2px 8px rgba(0,0,0,0.15);">
-                    <table id="revenueEmailPreviewTable" style="width:100%; border-collapse:collapse; font-size:0.73rem;">
-                        <thead id="revenueEmailPreviewThead" style="position:sticky; top:0; z-index:2;">
-                            <!-- Encabezado dinámico -->
-                        </thead>
-                        <tbody id="revenueEmailPreviewTbody">
-                            <!-- Filas dinámicas -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
 
-            <!-- FOOTER / BOTONES DE ACCIÓN -->
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; padding-top:16px; border-top:1px solid var(--border);">
+            </div><!-- fin cuerpo con scroll -->
+
+            <!-- FOOTER / BOTONES DE ACCIÓN (FIJO SIEMPRE VISIBLE) -->
+            <div style="flex-shrink:0; background:var(--bg-surface); padding:14px 24px; border-top:1px solid var(--border); border-radius:0 0 18px 18px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; z-index:10; box-shadow:0 -4px 12px rgba(0,0,0,0.06);">
                 <div style="font-size:0.68rem; color:var(--text-muted); font-style:italic;">
                     🔒 Documento preparado por <strong style="color:var(--primary);">CapaSuite</strong> · Sercotel Hotel Group
                 </div>
@@ -5425,8 +5428,6 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     </button>
                 </div>
             </div>
-
-            </div><!-- fin padding wrapper -->
         </div>
     </div>
 
