@@ -266,13 +266,13 @@ test('email HTML renders hotel branding, clear table headers, and free rooms cor
     // Header label includes Ocup. / Libres
     assert.match(htmlCumbria, /Ocup\.\s*\/\s*Libres/);
 
-    // Scaled-up typography for generous table cell space
-    assert.match(htmlCumbria, /font-size:\s*12px/); // Headers in thead
-    assert.match(htmlCumbria, /font-size:\s*13\.5px/); // Date in tbody
-    assert.match(htmlCumbria, /font-size:\s*16\.5px/); // New price
-    assert.match(htmlCumbria, /16px;\s*font-weight:\s*900/); // Libres number
-    assert.match(htmlCumbria, /font-size:\s*13px/); // Competitor prices
-    assert.match(htmlCumbria, /font-size:\s*11\.5px/); // Action text & badges
+    // Compact typography suited for email client tables without excessive bloating
+    assert.match(htmlCumbria, /font-size:\s*11px/); // Headers in thead
+    assert.match(htmlCumbria, /font-size:\s*12px/); // Date in tbody
+    assert.match(htmlCumbria, /font-size:\s*13\.5px/); // New price
+    assert.match(htmlCumbria, /12px;\s*font-weight:\s*900/); // Libres number
+    assert.match(htmlCumbria, /font-size:\s*12px/); // Competitor prices
+    assert.match(htmlCumbria, /font-size:\s*10px/); // Action text & badges
 });
 
 test('getHotelModificationsSummary auto-detects the hotel where modifications occurred', () => {
@@ -368,14 +368,14 @@ test('email HTML table centers all price columns and matches Image 2 card and ba
     assert.match(htmlOutput, /VARIACI&Oacute;N/);
 
     // 2. Centered amount headers in thead
-    assert.match(htmlOutput, /<th[^>]*color:#475569;\s*text-align:center;[^>]*>Ant\.<\/th>/);
-    assert.match(htmlOutput, /<th[^>]*text-align:center;[^>]*>&#9654;\s*NUEVA<\/th>/);
-    assert.match(htmlOutput, /<th[^>]*text-align:center;[^>]*>Mercado<\/th>/);
+    assert.match(htmlOutput, /<th[^>]*color:#475569;[^>]*text-align:center;[^>]*>[\s\S]*?Ant\.[\s\S]*?<\/th>/);
+    assert.match(htmlOutput, /<th[^>]*text-align:center;[^>]*>[\s\S]*?&#9654;\s*NUEVA[\s\S]*?<\/th>/);
+    assert.match(htmlOutput, /<th[^>]*text-align:center;[^>]*>[\s\S]*?Mercado[\s\S]*?<\/th>/);
 
     // 3. Centered price cells in tbody
     assert.match(htmlOutput, /<td[^>]*text-align:center;[^>]*color:#64748b;[^>]*>[\s\S]*?<span[^>]*text-decoration:line-through;[^>]*>65&euro;<\/span>/);
     assert.match(htmlOutput, /<td[^>]*border:1\.5px solid #818cf8;[^>]*text-align:center;/);
-    assert.match(htmlOutput, /<td[^>]*text-align:center;[^>]*>[\s\S]*?<strong[^>]*color:#4f46e5;[^>]*font-size:14px;[^>]*>80&euro;<\/strong>/);
+    assert.match(htmlOutput, /<td[^>]*text-align:center;[^>]*>[\s\S]*?<strong[^>]*color:#4f46e5;[^>]*>80&euro;<\/strong>/);
 
     // 4. Competitor pill badges: CERRADO and MIN 2N
     assert.match(htmlOutput, /bgcolor="#fee2e2"[^>]*>[\s\S]*?CERRADO/);

@@ -5770,10 +5770,19 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         if (yieldInfo.rangeText) actionText += ` (${yieldInfo.rangeText})`;
                     }
 
+                    let dName = d.dayName || '';
+                    if (!dName && d.dateISO) {
+                        try {
+                            const dt = new Date(d.dateISO + 'T12:00:00');
+                            const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+                            dName = days[dt.getDay()];
+                        } catch(e) {}
+                    }
+
                     items.push({
                         dateISO: d.dateISO,
                         dateDisplay: formatSpanishDate(d.date || d.dateISO),
-                        dayName: d.dayName || '',
+                        dayName: dName,
                         rooms: currentOcc,
                         occPct: occPct,
                         capacity: capacity,
@@ -6148,7 +6157,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             const compsHeaders = (report.items[0]?.competitors || []).map(c => {
                 const words = c.name.split(' ');
                 const short = words.length >= 2 ? words[0] + ' ' + words[1] : c.name;
-                return `<th align="center" style="padding:10px 8px; border:1px solid #cbd5e1; background-color:#f1f5f9; color:#334155; font-size:12px; text-align:center; vertical-align:middle; font-family:Calibri,Arial,sans-serif; font-weight:800; white-space:nowrap;">${short}</th>`;
+                return `<th align="center" valign="middle" bgcolor="#f1f5f9" style="padding:6px 4px; border:1px solid #cbd5e1; background-color:#f1f5f9; color:#334155; font-size:11px; text-align:center; vertical-align:middle; font-family:Calibri,Arial,sans-serif; font-weight:800; white-space:nowrap;"><center><p align="center" style="margin:0; padding:0; text-align:center; font-size:11px; font-weight:800; color:#334155; font-family:Calibri,Arial,sans-serif;">${short}</p></center></th>`;
             }).join('');
 
             let rowsHtml = '';
@@ -6161,11 +6170,21 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 const dPillBg = isUp ? '#f0fdf4' : (isDown ? '#fef2f2' : '#f1f5f9');
                 const dPillBorder = isUp ? '#bbf7d0' : (isDown ? '#fecaca' : '#cbd5e1');
 
-                const dn = (item.dayName || '').toLowerCase();
+                let dNameShort = (item.dayName || '').trim();
+                if (!dNameShort && item.dateISO) {
+                    try {
+                        const dt = new Date(item.dateISO + 'T12:00:00');
+                        const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+                        dNameShort = days[dt.getDay()];
+                    } catch(e) {}
+                }
+                if (dNameShort.length > 3) dNameShort = dNameShort.substring(0, 3);
+
+                const dn = (item.dayName || dNameShort || '').toLowerCase();
                 let dowBg = '#f1f5f9', dowColor = '#64748b', dowBorder = '#cbd5e1';
-                if (dn.includes('sábado') || dn.includes('sabado') || dn.includes('viernes')) {
+                if (dn.includes('sáb') || dn.includes('sab') || dn.includes('vie')) {
                     dowBg = '#f0fdf4'; dowColor = '#16a34a'; dowBorder = '#bbf7d0';
-                } else if (dn.includes('domingo')) {
+                } else if (dn.includes('dom')) {
                     dowBg = '#fffbeb'; dowColor = '#d97706'; dowBorder = '#fde68a';
                 }
 
@@ -6176,17 +6195,17 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
                 const compCells = item.competitors.map(c => {
                     const v = String(c.price || '').trim().toLowerCase();
-                    let cellHtml = '';
+                    let cellContent = '';
                     if (v === 'cerrado' || v === 'closed' || v === '—' || v === '-') {
-                        cellHtml = `<table cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;"><tr><td bgcolor="#fee2e2" style="background-color:#fee2e2; border:1px solid #fca5a5; border-radius:4px; padding:2px 7px; font-size:10.5px; font-weight:800; color:#dc2626; text-align:center; font-family:Calibri,Arial,sans-serif; white-space:nowrap;">CERRADO</td></tr></table>`;
+                        cellContent = `<table cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;"><tr><td align="center" valign="middle" bgcolor="#fee2e2" style="background-color:#fee2e2; border:1px solid #fca5a5; border-radius:4px; padding:1px 5px; font-size:9px; font-weight:800; color:#dc2626; text-align:center; font-family:Calibri,Arial,sans-serif; white-space:nowrap;"><center><span style="color:#dc2626; font-size:9px; font-weight:800;">CERRADO</span></center></td></tr></table>`;
                     } else if (v.includes('min') || v.includes('2n') || v.includes('noche')) {
-                        cellHtml = `<table cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;"><tr><td bgcolor="#fffbeb" style="background-color:#fffbeb; border:1px solid #fde68a; border-radius:4px; padding:2px 7px; font-size:10.5px; font-weight:800; color:#d97706; text-align:center; font-family:Calibri,Arial,sans-serif; white-space:nowrap;">MIN 2N</td></tr></table>`;
+                        cellContent = `<table cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;"><tr><td align="center" valign="middle" bgcolor="#fffbeb" style="background-color:#fffbeb; border:1px solid #fde68a; border-radius:4px; padding:1px 5px; font-size:9px; font-weight:800; color:#d97706; text-align:center; font-family:Calibri,Arial,sans-serif; white-space:nowrap;"><center><span style="color:#d97706; font-size:9px; font-weight:800;">MIN 2N</span></center></td></tr></table>`;
                     } else if (v && v !== 'n/d' && v !== 'nd') {
-                        cellHtml = `<span style="color:#0f172a; font-weight:700; font-size:13px;">${c.price}</span>`;
+                        cellContent = `<p align="center" style="margin:0; padding:0; text-align:center; color:#0f172a; font-weight:700; font-size:12px; font-family:Calibri,Arial,sans-serif;">${c.price}</p>`;
                     } else {
-                        cellHtml = `<span style="color:#94a3b8; font-size:13px;">—</span>`;
+                        cellContent = `<p align="center" style="margin:0; padding:0; text-align:center; color:#94a3b8; font-size:12px; font-family:Calibri,Arial,sans-serif;">&mdash;</p>`;
                     }
-                    return `<td align="center" valign="middle" bgcolor="${bg}" style="padding:9px 8px; border:1px solid #cbd5e1; background-color:${bg}; text-align:center; vertical-align:middle; font-family:Calibri,Arial,sans-serif;">${cellHtml}</td>`;
+                    return `<td align="center" valign="middle" bgcolor="${bg}" style="padding:5px 4px; border:1px solid #cbd5e1; background-color:${bg}; text-align:center; vertical-align:middle; font-family:Calibri,Arial,sans-serif; white-space:nowrap;"><center>${cellContent}</center></td>`;
                 }).join('');
 
                 const act = (item.actionText || '').toLowerCase();
@@ -6203,113 +6222,140 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
                 rowsHtml += `
                     <tr bgcolor="${bg}" style="background-color:${bg};">
-                        <td align="center" valign="middle" bgcolor="${bg}" style="padding:9px 10px; border:1px solid #cbd5e1; text-align:center; vertical-align:middle; white-space:nowrap; font-family:Calibri,Arial,sans-serif; background-color:${bg};">
-                            <div style="font-weight:800; color:#0f172a; font-size:13.5px; line-height:1.2; text-align:center;">${item.dateDisplay}</div>
-                            <table cellpadding="0" cellspacing="0" border="0" align="center" style="margin:3px auto 0 auto;"><tr>
-                                <td bgcolor="${dowBg}" style="background-color:${dowBg}; border:1px solid ${dowBorder}; border-radius:10px; font-size:10px; font-weight:800; color:${dowColor}; padding:1px 7px; text-transform:uppercase; text-align:center; font-family:Calibri,Arial,sans-serif;">${item.dayName || ''}</td>
-                            </tr></table>
+                        <td align="center" valign="middle" bgcolor="${bg}" style="padding:5px 5px; border:1px solid #cbd5e1; text-align:center; vertical-align:middle; white-space:nowrap; font-family:Calibri,Arial,sans-serif; background-color:${bg};">
+                            <center>
+                                <p align="center" style="margin:0; padding:0; font-weight:800; color:#0f172a; font-size:12px; line-height:1.2; text-align:center; font-family:Calibri,Arial,sans-serif;">${item.dateDisplay}</p>
+                                ${dNameShort ? `
+                                <table cellpadding="0" cellspacing="0" border="0" align="center" style="margin:2px auto 0 auto;"><tr>
+                                    <td align="center" valign="middle" bgcolor="${dowBg}" style="background-color:${dowBg}; border:1px solid ${dowBorder}; border-radius:5px; font-size:9px; font-weight:800; color:${dowColor}; padding:1px 5px; text-transform:uppercase; text-align:center; font-family:Calibri,Arial,sans-serif;">
+                                        <center><span style="color:${dowColor}; font-size:9px; font-weight:800; text-align:center;">${dNameShort}</span></center>
+                                    </td>
+                                </tr></table>` : ''}
+                            </center>
                         </td>
-                        <td align="center" valign="middle" bgcolor="${bg}" style="padding:9px 10px; border:1px solid #cbd5e1; text-align:center; vertical-align:middle; font-family:Calibri,Arial,sans-serif; background-color:${bg};">
-                            <div style="font-size:11.5px; color:#475569; font-weight:700; line-height:1.2; text-align:center;">${item.rooms}/${item.capacity} &bull; <strong style="color:${occColor}; font-size:11.5px;">${item.occPct}%</strong></div>
-                            <div style="font-size:16px; font-weight:900; color:#0f172a; line-height:1.2; margin-top:3px; text-align:center;">
-                                ${available} <span style="font-size:11px; font-weight:800; color:#475569; text-transform:uppercase;">libres</span>
-                            </div>
+                        <td align="center" valign="middle" bgcolor="${bg}" style="padding:5px 5px; border:1px solid #cbd5e1; text-align:center; vertical-align:middle; font-family:Calibri,Arial,sans-serif; background-color:${bg}; white-space:nowrap;">
+                            <center>
+                                <p align="center" style="margin:0; padding:0; font-size:10.5px; color:#475569; font-weight:700; line-height:1.2; text-align:center; font-family:Calibri,Arial,sans-serif;">
+                                    ${item.rooms}/${item.capacity} &bull; <strong style="color:${occColor}; font-size:10.5px;">${item.occPct}%</strong>
+                                </p>
+                                <p align="center" style="margin:2px 0 0 0; padding:0; font-size:12px; font-weight:900; color:#0f172a; line-height:1.2; text-align:center; font-family:Calibri,Arial,sans-serif;">
+                                    ${available} <span style="font-size:9.5px; font-weight:800; color:#475569; text-transform:uppercase;">libres</span>
+                                </p>
+                            </center>
                         </td>
-                        <td align="center" valign="middle" bgcolor="${bg}" style="padding:9px 10px; border:1px solid #cbd5e1; text-align:center; vertical-align:middle; color:#64748b; font-size:13.5px; font-family:Calibri,Arial,sans-serif; background-color:${bg};">
-                            <span style="text-decoration:line-through; font-weight:600; opacity:0.8; color:#64748b;">${Math.round(item.oldPrice)}&euro;</span>
+                        <td align="center" valign="middle" bgcolor="${bg}" style="padding:5px 5px; border:1px solid #cbd5e1; text-align:center; vertical-align:middle; color:#64748b; font-size:12px; font-family:Calibri,Arial,sans-serif; background-color:${bg}; white-space:nowrap;">
+                            <center>
+                                <p align="center" style="margin:0; padding:0; text-align:center; color:#64748b; font-size:12px; font-family:Calibri,Arial,sans-serif;">
+                                    <span style="text-decoration:line-through; font-weight:600; opacity:0.85;">${Math.round(item.oldPrice)}&euro;</span>
+                                </p>
+                            </center>
                         </td>
-                        <td align="center" valign="middle" bgcolor="#eef2ff" style="padding:9px 10px; border:1.5px solid #818cf8; background-color:#eef2ff; text-align:center; vertical-align:middle; font-family:Calibri,Arial,sans-serif;">
-                            <div style="font-weight:900; color:#1e1b4b; font-size:16.5px; line-height:1.2; text-align:center;">${Math.round(item.newPrice)}&euro;</div>
-                            <table cellpadding="0" cellspacing="0" border="0" align="center" style="margin:3px auto 0 auto;"><tr>
-                                <td bgcolor="${dPillBg}" style="background-color:${dPillBg}; border:1px solid ${dPillBorder}; border-radius:6px; font-size:10.5px; font-weight:800; color:${dc}; padding:2px 7px; text-align:center; font-family:Calibri,Arial,sans-serif; white-space:nowrap;">${dArr} ${ds}${Math.round(item.delta)}&euro;${dPctStr}</td>
-                            </tr></table>
+                        <td align="center" valign="middle" bgcolor="#eef2ff" style="padding:5px 5px; border:1.5px solid #818cf8; background-color:#eef2ff; text-align:center; vertical-align:middle; font-family:Calibri,Arial,sans-serif; white-space:nowrap;">
+                            <center>
+                                <p align="center" style="margin:0; padding:0; font-weight:900; color:#1e1b4b; font-size:13.5px; line-height:1.2; text-align:center; font-family:Calibri,Arial,sans-serif;">
+                                    ${Math.round(item.newPrice)}&euro;
+                                </p>
+                                <table cellpadding="0" cellspacing="0" border="0" align="center" style="margin:2px auto 0 auto;"><tr>
+                                    <td align="center" valign="middle" bgcolor="${dPillBg}" style="background-color:${dPillBg}; border:1px solid ${dPillBorder}; border-radius:5px; font-size:9.5px; font-weight:800; color:${dc}; padding:1px 5px; text-align:center; font-family:Calibri,Arial,sans-serif; white-space:nowrap;">
+                                        <center><span style="color:${dc}; font-size:9.5px; font-weight:800; text-align:center;">${dArr} ${ds}${Math.round(item.delta)}&euro;${dPctStr}</span></center>
+                                    </td>
+                                </tr></table>
+                            </center>
                         </td>
-                        <td align="center" valign="middle" bgcolor="${bg}" style="padding:9px 10px; border:1px solid #cbd5e1; text-align:center; vertical-align:middle; font-weight:800; color:#4f46e5; font-size:14px; font-family:Calibri,Arial,sans-serif; background-color:${bg};">
-                            <strong style="color:#4f46e5; font-size:14px;">${Math.round(item.marketAvg)}&euro;</strong>
+                        <td align="center" valign="middle" bgcolor="${bg}" style="padding:5px 5px; border:1px solid #cbd5e1; text-align:center; vertical-align:middle; font-weight:800; color:#4f46e5; font-size:13px; font-family:Calibri,Arial,sans-serif; background-color:${bg}; white-space:nowrap;">
+                            <center>
+                                <p align="center" style="margin:0; padding:0; text-align:center; color:#4f46e5; font-size:13px; font-weight:800; font-family:Calibri,Arial,sans-serif;">
+                                    <strong style="color:#4f46e5; font-size:13px;">${Math.round(item.marketAvg)}&euro;</strong>
+                                </p>
+                            </center>
                         </td>
                         ${compCells}
-                        <td align="center" valign="middle" bgcolor="${bg}" style="padding:9px 10px; border:1px solid #cbd5e1; background-color:${bg}; font-family:Calibri,Arial,sans-serif; max-width:170px; line-height:1.35; text-align:center; vertical-align:middle;">
-                            <table cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;"><tr>
-                                <td bgcolor="${actBg}" style="background-color:${actBg}; border:1px solid ${actBorder}; border-radius:6px; padding:3px 8px; font-size:11px; font-weight:700; color:${actColor}; text-align:center; font-family:Calibri,Arial,sans-serif; line-height:1.3;">${item.actionText}</td>
-                            </tr></table>
+                        <td align="center" valign="middle" bgcolor="${bg}" style="padding:5px 6px; border:1px solid #cbd5e1; background-color:${bg}; font-family:Calibri,Arial,sans-serif; text-align:center; vertical-align:middle;">
+                            <center>
+                                <table cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;"><tr>
+                                    <td align="center" valign="middle" bgcolor="${actBg}" style="background-color:${actBg}; border:1px solid ${actBorder}; border-radius:5px; padding:2px 6px; font-size:10px; font-weight:700; color:${actColor}; text-align:center; font-family:Calibri,Arial,sans-serif; line-height:1.25; white-space:nowrap;">
+                                        <center><span style="color:${actColor}; font-size:10px; font-weight:700; text-align:center;">${item.actionText}</span></center>
+                                    </td>
+                                </tr></table>
+                            </center>
                         </td>
                     </tr>
                 `;
             });
 
             const notesBlock = userNotes && userNotes.trim() ? `
-                <tr><td colspan="2" style="padding:0 0 12px 0;">
+                <tr><td colspan="2" style="padding:0 0 10px 0;">
                     <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-                        <td bgcolor="#eff6ff" style="background-color:#eff6ff; border-left:4px solid #3b82f6; padding:10px 14px; font-size:12px; color:#1e40af; line-height:1.5; font-family:Calibri,Arial,sans-serif;">
-                            <strong style="font-size:12.5px;">Observaciones:</strong> ${userNotes.trim().replace(/\n/g, '<br>')}
+                        <td bgcolor="#eff6ff" style="background-color:#eff6ff; border-left:4px solid #3b82f6; padding:8px 12px; font-size:11.5px; color:#1e40af; line-height:1.45; font-family:Calibri,Arial,sans-serif;">
+                            <strong style="font-size:12px;">Observaciones:</strong> ${userNotes.trim().replace(/\n/g, '<br>')}
                         </td>
                     </tr></table>
                 </td></tr>
             ` : '';
 
             return `
-                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="font-family:Calibri,Arial,sans-serif; color:#0f172a; width:100%; border-collapse:collapse;">
-                <tr><td align="left" style="padding:0; width:100%;">
-                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="font-family:Calibri,Arial,sans-serif; width:100%; border-collapse:collapse;">
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" align="center" style="font-family:Calibri,Arial,sans-serif; color:#0f172a; width:100%; border-collapse:collapse;">
+                <tr><td align="center" valign="top" style="padding:0; width:100%;">
+                <table width="920" cellpadding="0" cellspacing="0" border="0" align="center" style="max-width:920px; width:100%; font-family:Calibri,Arial,sans-serif; border-collapse:collapse; margin:0 auto;">
 
                     <!-- HEADER COMPACTO -->
-                    <tr><td bgcolor="#1e293b" style="background-color:#1e293b; padding:16px 20px;">
+                    <tr><td bgcolor="#1e293b" style="background-color:#1e293b; padding:12px 16px;">
                         <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-                            <td>
-                                <div style="font-size:11px; color:#818cf8; font-weight:800; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">${(config.bannerTitle || config.org).toUpperCase()}</div>
-                                <div style="font-size:16px; font-weight:800; color:#ffffff; line-height:1.3;">Cambios de Tarifas Realizados Hoy &mdash; Hotel ${hotel}</div>
-                                <div style="font-size:11px; color:#94a3b8; margin-top:3px;">${dateStr} &bull; CapaSuite</div>
+                            <td valign="middle">
+                                <div style="font-size:10px; color:#818cf8; font-weight:800; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:2px;">${(config.bannerTitle || config.org).toUpperCase()}</div>
+                                <div style="font-size:15px; font-weight:800; color:#ffffff; line-height:1.25;">Cambios de Tarifas Realizados Hoy &mdash; Hotel ${hotel}</div>
+                                <div style="font-size:10.5px; color:#94a3b8; margin-top:2px;">${dateStr} &bull; CapaSuite</div>
                             </td>
-                            <td align="right" valign="top">
-                                <span style="color:#94a3b8; font-size:11px;">Para: <strong style="color:#c7d2fe; font-size:13px;">${recipientLabel}</strong></span>
+                            <td align="right" valign="middle">
+                                <span style="color:#94a3b8; font-size:10.5px;">Para: <strong style="color:#c7d2fe; font-size:12px;">${recipientLabel}</strong></span>
                             </td>
                         </tr></table>
                     </td></tr>
 
                     <!-- CUERPO -->
-                    <tr><td bgcolor="#ffffff" style="border:1px solid #cbd5e1; border-top:none; padding:16px 20px; background-color:#ffffff;">
+                    <tr><td bgcolor="#ffffff" style="border:1px solid #cbd5e1; border-top:none; padding:12px 14px; background-color:#ffffff;">
 
                         <table width="100%" cellpadding="0" cellspacing="0" border="0">
                         ${notesBlock}
 
                         <!-- KPI COMPACTOS EN 1 LÍNEA (5 TARJETAS) -->
-                        <tr><td colspan="2" style="padding:0 0 14px 0;">
-                            <table width="100%" cellpadding="0" cellspacing="6" border="0"><tr>
-                                <td width="20%" bgcolor="#eef2ff" style="background-color:#eef2ff; padding:10px 12px; border:1px solid #c7d2fe; vertical-align:top; border-radius:8px;">
-                                    <div style="font-size:10px; color:#4f46e5; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">&#127976; HOTEL</div>
-                                    <div style="font-size:15px; font-weight:900; color:#1e1b4b; line-height:1.2; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Hotel ${hotel}</div>
+                        <tr><td colspan="2" style="padding:0 0 10px 0;">
+                            <table width="100%" cellpadding="0" cellspacing="4" border="0"><tr>
+                                <td width="20%" bgcolor="#eef2ff" style="background-color:#eef2ff; padding:7px 9px; border:1px solid #c7d2fe; vertical-align:top; border-radius:6px;">
+                                    <div style="font-size:9px; color:#4f46e5; font-weight:800; text-transform:uppercase; letter-spacing:0.4px;">&#127976; HOTEL</div>
+                                    <div style="font-size:13px; font-weight:900; color:#1e1b4b; line-height:1.2; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Hotel ${hotel}</div>
                                 </td>
-                                <td width="20%" bgcolor="#f5f3ff" style="background-color:#f5f3ff; padding:10px 12px; border:1px solid #ddd6fe; vertical-align:top; border-radius:8px;">
-                                    <div style="font-size:10px; color:#7c3aed; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">&#128197; CAMBIOS REALIZADOS</div>
-                                    <div style="font-size:17px; font-weight:900; color:#5b21b6; line-height:1.2; margin-top:3px;">${report.count} <span style="font-size:11px; font-weight:700; color:#7c3aed;">(${report.count === 1 ? '1 d&iacute;a' : report.count + ' d&iacute;as'})</span></div>
+                                <td width="20%" bgcolor="#f5f3ff" style="background-color:#f5f3ff; padding:7px 9px; border:1px solid #ddd6fe; vertical-align:top; border-radius:6px;">
+                                    <div style="font-size:9px; color:#7c3aed; font-weight:800; text-transform:uppercase; letter-spacing:0.4px;">&#128197; CAMBIOS REALIZADOS</div>
+                                    <div style="font-size:14px; font-weight:900; color:#5b21b6; line-height:1.2; margin-top:2px;">${report.count} <span style="font-size:10px; font-weight:700; color:#7c3aed;">(${report.count === 1 ? '1 d&iacute;a' : report.count + ' d&iacute;as'})</span></div>
                                 </td>
-                                <td width="20%" bgcolor="#f8fafc" style="background-color:#f8fafc; padding:10px 12px; border:1px solid #e2e8f0; vertical-align:top; border-radius:8px;">
-                                    <div style="font-size:10px; color:#64748b; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">TARIFA ANTERIOR</div>
-                                    <div style="font-size:17px; font-weight:700; color:#64748b; text-decoration:line-through; line-height:1.2; margin-top:3px;">${report.avgOld > 0 ? report.avgOld.toFixed(2) + ' &euro;' : '-'}</div>
+                                <td width="20%" bgcolor="#f8fafc" style="background-color:#f8fafc; padding:7px 9px; border:1px solid #e2e8f0; vertical-align:top; border-radius:6px;">
+                                    <div style="font-size:9px; color:#64748b; font-weight:800; text-transform:uppercase; letter-spacing:0.4px;">TARIFA ANTERIOR</div>
+                                    <div style="font-size:14px; font-weight:700; color:#64748b; text-decoration:line-through; line-height:1.2; margin-top:2px;">${report.avgOld > 0 ? report.avgOld.toFixed(2) + ' &euro;' : '-'}</div>
                                 </td>
-                                <td width="20%" bgcolor="#f0fdf4" style="background-color:#f0fdf4; padding:10px 12px; border:1px solid #bbf7d0; vertical-align:top; border-radius:8px;">
-                                    <div style="font-size:10px; color:#16a34a; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">&#9989; TARIFA APLICADA</div>
-                                    <div style="font-size:17px; font-weight:900; color:#15803d; line-height:1.2; margin-top:3px;">${report.avgNew > 0 ? report.avgNew.toFixed(2) + ' &euro;' : '-'}</div>
+                                <td width="20%" bgcolor="#f0fdf4" style="background-color:#f0fdf4; padding:7px 9px; border:1px solid #bbf7d0; vertical-align:top; border-radius:6px;">
+                                    <div style="font-size:9px; color:#16a34a; font-weight:800; text-transform:uppercase; letter-spacing:0.4px;">&#9989; TARIFA APLICADA</div>
+                                    <div style="font-size:14px; font-weight:900; color:#15803d; line-height:1.2; margin-top:2px;">${report.avgNew > 0 ? report.avgNew.toFixed(2) + ' &euro;' : '-'}</div>
                                 </td>
-                                <td width="20%" bgcolor="${varBg}" style="background-color:${varBg}; padding:10px 12px; border:1px solid ${varBorder}; vertical-align:top; border-radius:8px;">
-                                    <div style="font-size:10px; color:${varColor}; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">${varArrow} VARIACI&Oacute;N</div>
-                                    <div style="font-size:17px; font-weight:900; color:${varColor}; line-height:1.2; margin-top:3px;">${report.count > 0 ? `${dSign}${report.avgDelta.toFixed(2)} &euro;` : '-'} <span style="font-size:11px; font-weight:800;">(${dSign}${report.avgDeltaPct.toFixed(1)}%)</span></div>
+                                <td width="20%" bgcolor="${varBg}" style="background-color:${varBg}; padding:7px 9px; border:1px solid ${varBorder}; vertical-align:top; border-radius:6px;">
+                                    <div style="font-size:9px; color:${varColor}; font-weight:800; text-transform:uppercase; letter-spacing:0.4px;">${varArrow} VARIACI&Oacute;N</div>
+                                    <div style="font-size:14px; font-weight:900; color:${varColor}; line-height:1.2; margin-top:2px;">${report.count > 0 ? `${dSign}${report.avgDelta.toFixed(2)} &euro;` : '-'} <span style="font-size:10px; font-weight:800;">(${dSign}${report.avgDeltaPct.toFixed(1)}%)</span></div>
                                 </td>
                             </tr></table>
                         </td></tr>
 
                         <!-- TABLA DE TARIFAS COMPACTA -->
                         <tr><td colspan="2" style="padding:0;">
-                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; font-size:12px; font-family:Calibri,Arial,sans-serif; width:100%;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; font-size:11.5px; font-family:Calibri,Arial,sans-serif; width:100%;">
                                 <thead>
                                     <tr bgcolor="#f1f5f9" style="background-color:#f1f5f9; background:#f1f5f9;">
-                                        <th align="center" style="padding:10px 10px; border:1px solid #cbd5e1; background-color:#f1f5f9; background:#f1f5f9; color:#1e293b; text-align:center; vertical-align:middle; font-size:12px; font-weight:800; white-space:nowrap; font-family:Calibri,Arial,sans-serif;">Fecha</th>
-                                        <th align="center" style="padding:10px 10px; border:1px solid #cbd5e1; background:#f1f5f9; background-color:#f1f5f9; color:#1e293b; text-align:center; vertical-align:middle; font-size:12px; font-weight:800; font-family:Calibri,Arial,sans-serif;">Ocup. / Libres</th>
-                                        <th align="center" style="padding:10px 10px; border:1px solid #cbd5e1; background:#f1f5f9; background-color:#f1f5f9; color:#475569; text-align:center; vertical-align:middle; font-size:12px; font-weight:800; font-family:Calibri,Arial,sans-serif;">Ant.</th>
-                                        <th align="center" bgcolor="#e0e7ff" style="padding:10px 10px; border:1.5px solid #6366f1; background:#e0e7ff; background-color:#e0e7ff; color:#312e81; text-align:center; vertical-align:middle; font-size:13.5px; font-weight:900; font-family:Calibri,Arial,sans-serif;">&#9654; NUEVA</th>
-                                        <th align="center" style="padding:10px 10px; border:1px solid #cbd5e1; background:#f1f5f9; background-color:#f1f5f9; color:#475569; text-align:center; vertical-align:middle; font-size:12px; font-weight:800; font-family:Calibri,Arial,sans-serif;">Mercado</th>
+                                        <th align="center" valign="middle" bgcolor="#f1f5f9" style="padding:6px 4px; border:1px solid #cbd5e1; background-color:#f1f5f9; background:#f1f5f9; color:#1e293b; text-align:center; vertical-align:middle; font-size:11px; font-weight:800; white-space:nowrap; font-family:Calibri,Arial,sans-serif;"><center><p align="center" style="margin:0; padding:0; text-align:center; font-size:11px; font-weight:800; color:#1e293b; font-family:Calibri,Arial,sans-serif;">Fecha</p></center></th>
+                                        <th align="center" valign="middle" bgcolor="#f1f5f9" style="padding:6px 4px; border:1px solid #cbd5e1; background:#f1f5f9; background-color:#f1f5f9; color:#1e293b; text-align:center; vertical-align:middle; font-size:11px; font-weight:800; font-family:Calibri,Arial,sans-serif;"><center><p align="center" style="margin:0; padding:0; text-align:center; font-size:11px; font-weight:800; color:#1e293b; font-family:Calibri,Arial,sans-serif;">Ocup. / Libres</p></center></th>
+                                        <th align="center" valign="middle" bgcolor="#f1f5f9" style="padding:6px 4px; border:1px solid #cbd5e1; background:#f1f5f9; background-color:#f1f5f9; color:#475569; text-align:center; vertical-align:middle; font-size:11px; font-weight:800; font-family:Calibri,Arial,sans-serif;"><center><p align="center" style="margin:0; padding:0; text-align:center; font-size:11px; font-weight:800; color:#475569; font-family:Calibri,Arial,sans-serif;">Ant.</p></center></th>
+                                        <th align="center" valign="middle" bgcolor="#e0e7ff" style="padding:6px 4px; border:1.5px solid #6366f1; background:#e0e7ff; background-color:#e0e7ff; color:#312e81; text-align:center; vertical-align:middle; font-size:11.5px; font-weight:900; font-family:Calibri,Arial,sans-serif;"><center><p align="center" style="margin:0; padding:0; text-align:center; font-size:11.5px; font-weight:900; color:#312e81; font-family:Calibri,Arial,sans-serif;">&#9654; NUEVA</p></center></th>
+                                        <th align="center" valign="middle" bgcolor="#f1f5f9" style="padding:6px 4px; border:1px solid #cbd5e1; background:#f1f5f9; background-color:#f1f5f9; color:#475569; text-align:center; vertical-align:middle; font-size:11px; font-weight:800; font-family:Calibri,Arial,sans-serif;"><center><p align="center" style="margin:0; padding:0; text-align:center; font-size:11px; font-weight:800; color:#475569; font-family:Calibri,Arial,sans-serif;">Mercado</p></center></th>
                                         ${compsHeaders}
-                                        <th align="center" style="padding:10px 10px; border:1px solid #cbd5e1; background-color:#f1f5f9; color:#1e293b; text-align:center; vertical-align:middle; font-size:12px; font-weight:800; font-family:Calibri,Arial,sans-serif;">Acci&oacute;n</th>
+                                        <th align="center" valign="middle" bgcolor="#f1f5f9" style="padding:6px 6px; border:1px solid #cbd5e1; background-color:#f1f5f9; color:#1e293b; text-align:center; vertical-align:middle; font-size:11px; font-weight:800; font-family:Calibri,Arial,sans-serif;"><center><p align="center" style="margin:0; padding:0; text-align:center; font-size:11px; font-weight:800; color:#1e293b; font-family:Calibri,Arial,sans-serif;">Acci&oacute;n</p></center></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -6321,7 +6367,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         </table>
 
                         <!-- FOOTER -->
-                        <div style="margin-top:12px; padding-top:10px; border-top:1px solid #e2e8f0; font-size:11px; color:#64748b; font-family:Calibri,Arial,sans-serif; text-align:center;">
+                        <div style="margin-top:10px; padding-top:8px; border-top:1px solid #e2e8f0; font-size:10.5px; color:#64748b; font-family:Calibri,Arial,sans-serif; text-align:center;">
                             Documento preparado para validaci&oacute;n de Revenue Management &bull; <strong>${config.org}</strong> &bull; CapaSuite
                         </div>
                     </td></tr>
