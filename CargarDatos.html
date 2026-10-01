@@ -3186,75 +3186,157 @@
         }
 
         function extractDateFromFilename(name) {
-            // Use raw uppercase to preserve hyphens and spaces
-            const upName = String(name).toUpperCase();
-            const n = normalizeStr(name); // Keep for legacy fallback if needed
+            const rawName = String(name || '');
+            const upName = rawName.toUpperCase().replace(/[_]/g, ' ');
             const months = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
-
-            // Caso 1: Formato con Nombre de Mes (ej: "ENERO - 23", "Diciembre 2025")
-            for (let i = months.length - 1; i >= 0; i--) {
-                const mes = months[i];
-                if (upName.includes(mes)) {
-                    let year = "2026";
-                    const year4Match = upName.match(/(20\d{2})/);
-                    if (year4Match) {
-                        year = year4Match[1];
-                    } else {
-                        const regexAfter = new RegExp(mes + "[^0-9]*(\\d{2})");
-                        const matchAfter = upName.match(regexAfter);
-                        if (matchAfter && matchAfter[1]) year = "20" + matchAfter[1];
-                    }
-                    const yNum = parseInt(year);
-                    if (yNum < 2015 || yNum > 2035) year = "2026";
-                    return { day: 1, month: i, year: year, full: months[i] + " " + year };
+            const toFullYear = (y) => {
+                if (!y) return null;
+                const s = String(y).trim();
+                if (s.length === 4) return s;
+                if (s.length === 2) {
+                    const n = parseInt(s, 10);
+                    return n > 50 ? '19' + s : '20' + s;
                 }
+                return s;
+            };
+
+            // 1. Rango explícito con fechas numéricas (ej: "01-09-26 hasta 26-09-26", "01/09/2026 al 26/09/2026")
+            const dateRegex = /(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})/g;
+            const matches = [...rawName.matchAll(dateRegex)];
+
+            if (matches.length >= 2) {
+                const start = matches[0];
+                const end = matches[matches.length - 1];
+                const sY = toFullYear(start[3]);
+                const eY = toFullYear(end[3]);
+                const startDateStr = `${String(start[1]).padStart(2, '0')}-${String(start[2]).padStart(2, '0')}-${sY}`;
+                const endDateStr = `${String(end[1]).padStart(2, '0')}-${String(end[2]).padStart(2, '0')}-${eY}`;
+                const fullRange = `${startDateStr} al ${endDateStr}`;
+                return {
+                    startDate: startDateStr,
+                    endDate: endDateStr,
+                    full: fullRange,
+                    year: sY,
+                    startYear: sY,
+                    endYear: eY,
+                    day: parseInt(start[1]),
+                    month: parseInt(start[2]) - 1,
+                    endDay: parseInt(end[1]),
+                    endMonth: parseInt(end[2]) - 1,
+                    isRange: true
+                };
             }
 
-            // Caso 2: Formato estándar DD-MM-YY o Rangos (ej: del 26-01 al 31-12)
-            const dateRegex = /(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})/g;
-            const matches = [...name.matchAll(dateRegex)];
+            if (matches.length === 1) {
+                const m = matches[0];
+                const y = toFullYear(m[3]);
+                const dStr = `${String(m[1]).padStart(2, '0')}-${String(m[2]).padStart(2, '0')}-${y}`;
+                return {
+                    startDate: dStr,
+                    endDate: dStr,
+                    full: dStr,
+                    year: y,
+                    startYear: y,
+                    endYear: y,
+                    day: parseInt(m[1]),
+                    month: parseInt(m[2]) - 1,
+                    endDay: parseInt(m[1]),
+                    endMonth: parseInt(m[2]) - 1,
+                    isRange: false
+                };
+            }
 
-            if (matches.length > 0) {
-                // Check if it's a RANGE (multiple dates)
-                if (matches.length >= 2) {
-                    const start = matches[0];
-                    const end = matches[matches.length - 1]; // Use first and last
-                    const sY = start[3].length === 2 ? "20" + start[3] : start[3];
-                    const eY = end[3].length === 2 ? "20" + end[3] : end[3];
-                    const startDateStr = `${String(start[1]).padStart(2, '0')}-${String(start[2]).padStart(2, '0')}-${sY}`;
-                    const endDateStr = `${String(end[1]).padStart(2, '0')}-${String(end[2]).padStart(2, '0')}-${eY}`;
-                    const fullRange = `${startDateStr} al ${endDateStr}`;
-                    return { 
-                        day: parseInt(start[1]), 
-                        month: parseInt(start[2]) - 1, 
-                        year: sY, 
-                        full: fullRange, 
-                        startDate: startDateStr, 
-                        endDate: endDateStr, 
-                        endDay: parseInt(end[1]), 
-                        endMonth: parseInt(end[2]) - 1, 
-                        endYear: eY, 
-                        isRange: true 
+            // 2. Nombres de meses (ej: "ENERO - 25 Hasta DICIEMBRE - 25", "Diciembre 2025", "DICIEMBRE - 25")
+            const monthPattern = /\b(ENERO|FEBRERO|MARZO|ABRIL|MAYO|JUNIO|JULIO|AGOSTO|SEPTIEMBRE|OCTUBRE|NOVIEMBRE|DICIEMBRE)\b/g;
+            const monthMatches = [...upName.matchAll(monthPattern)];
+
+            if (monthMatches.length >= 2) {
+                const m1Name = monthMatches[0][1];
+                const m2Name = monthMatches[monthMatches.length - 1][1];
+                const idx1 = months.indexOf(m1Name);
+                const idx2 = months.indexOf(m2Name);
+
+                const after1 = upName.slice(monthMatches[0].index + m1Name.length);
+                const y1Match = after1.match(/^\s*[-/ ]*\s*(\d{2,4})\b/);
+                const after2 = upName.slice(monthMatches[monthMatches.length - 1].index + m2Name.length);
+                const y2Match = after2.match(/^\s*[-/ ]*\s*(\d{2,4})\b/);
+
+                let y1 = y1Match ? toFullYear(y1Match[1]) : null;
+                let y2 = y2Match ? toFullYear(y2Match[1]) : null;
+
+                const anyYear4 = upName.match(/\b(20\d{2})\b/);
+                const anyYear2 = upName.match(/(?:[-_ ]|^)(2[0-9])(?:[^0-9]|$)/);
+                const fallbackYear = anyYear4 ? anyYear4[1] : (anyYear2 ? '20' + anyYear2[1] : '2026');
+                if (!y1) y1 = y2 || fallbackYear;
+                if (!y2) y2 = y1 || fallbackYear;
+
+                // Si abarca de ENERO a DICIEMBRE del mismo año, es el año completo
+                if (idx1 === 0 && idx2 === 11 && y1 === y2) {
+                    return {
+                        full: `Año ${y1}`,
+                        year: y1,
+                        startYear: y1,
+                        endYear: y2,
+                        month: 0,
+                        endMonth: 11,
+                        day: 1,
+                        endDay: 31,
+                        startDate: `01-01-${y1}`,
+                        endDate: `31-12-${y2}`,
+                        isRange: false
                     };
                 }
 
-                // Single date legacy logic
-                const targetMatch = matches[0];
-                const d = parseInt(targetMatch[1]);
-                const m = parseInt(targetMatch[2]) - 1;
-                let y = targetMatch[3];
-                if (y.length === 2) y = "20" + y;
-                const dStr = `${String(d).padStart(2, '0')}-${String(m + 1).padStart(2, '0')}-${y}`;
-
-                return { day: d, month: m, year: y, full: dStr, startDate: dStr, endDate: dStr, isRange: false };
+                return {
+                    full: `${m1Name} ${y1} al ${m2Name} ${y2}`,
+                    year: y1,
+                    startYear: y1,
+                    endYear: y2,
+                    month: idx1,
+                    endMonth: idx2,
+                    day: 1,
+                    endDay: 28,
+                    startDate: `01-${String(idx1 + 1).padStart(2, '0')}-${y1}`,
+                    endDate: `28-${String(idx2 + 1).padStart(2, '0')}-${y2}`,
+                    isRange: true
+                };
             }
 
-            // Caso 3: Solo Año (ej: "Historico 2024" o "Datos 2025")
-            const yearMatch = upName.match(/(20\d{2})/);
-            if (yearMatch) {
-                const y = yearMatch[1];
-                return { day: 1, month: 0, year: y, full: `01-01-${y}` };
+            if (monthMatches.length === 1) {
+                const mName = monthMatches[0][1];
+                const idx = months.indexOf(mName);
+                const after = upName.slice(monthMatches[0].index + mName.length);
+                const yMatch = after.match(/^\s*[-/ ]*\s*(\d{2,4})\b/);
+                const anyYear4 = upName.match(/\b(20\d{2})\b/);
+                const anyYear2 = upName.match(/(?:[-_ ]|^)(2[0-9])(?:[^0-9]|$)/);
+                let year = yMatch ? toFullYear(yMatch[1]) : (anyYear4 ? anyYear4[1] : (anyYear2 ? '20' + anyYear2[1] : '2026'));
+                return {
+                    full: `${mName} ${year}`,
+                    year: year,
+                    startYear: year,
+                    endYear: year,
+                    month: idx,
+                    endMonth: idx,
+                    day: 1,
+                    endDay: 28,
+                    startDate: `01-${String(idx + 1).padStart(2, '0')}-${year}`,
+                    endDate: `28-${String(idx + 1).padStart(2, '0')}-${year}`,
+                    isRange: false
+                };
             }
+
+            // 3. Solo año (ej: "2025" o "- 25")
+            const year4Match = upName.match(/\b(20\d{2})\b/);
+            if (year4Match) {
+                const y = year4Match[1];
+                return { full: `Año ${y}`, year: y, startYear: y, endYear: y, month: 0, endMonth: 11, day: 1, endDay: 31, startDate: `01-01-${y}`, endDate: `31-12-${y}`, isRange: false };
+            }
+            const year2Match = upName.match(/(?:[-_ ]|^)(2[0-9])(?:[^0-9]|$)/);
+            if (year2Match) {
+                const y = '20' + year2Match[1];
+                return { full: `Año ${y}`, year: y, startYear: y, endYear: y, month: 0, endMonth: 11, day: 1, endDay: 31, startDate: `01-01-${y}`, endDate: `31-12-${y}`, isRange: false };
+            }
+
             return null;
         }
 

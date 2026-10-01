@@ -158,6 +158,15 @@
     function parse(rows, fileName = '', hintYear, corrections = {}, hotel = '') {
         const detectedHotel = hotel || (fileName.toLowerCase().includes('cumbria') ? 'Cumbria' : 'Guadiana');
         const dateYears = [...fileName.matchAll(/\d{1,2}[-/]\d{1,2}[-/](\d{4}|\d{2})(?!\d)/g)].map(m => m[1].length === 2 ? (Number(m[1]) > 50 ? '19' : '20') + m[1] : m[1]);
+        if (!dateYears.length) {
+            const year4 = [...fileName.matchAll(/\b(20\d{2})\b/g)].map(m => m[1]);
+            if (year4.length) {
+                dateYears.push(...year4);
+            } else {
+                const year2 = [...fileName.matchAll(/(?:[-_ ]|^)(2[0-9])(?:[^0-9]|$)/g)].map(m => '20' + m[1]);
+                if (year2.length) dateYears.push(...year2);
+            }
+        }
         const periodYears = String(hintYear || '').match(/\b20\d{2}\b/g) || [];
         const uniqueYears = [...new Set(periodYears.length ? periodYears : dateYears)];
         hintYear = uniqueYears.length === 1 ? uniqueYears[0] : undefined;
@@ -416,8 +425,18 @@
         const detailed = selected.length > 0 && selected.every(m => data?.segmentCoverage?.[m]);
         const result = { revenue: 0, rooms: 0, accommodation: 0, days: detailed ? selected.reduce((n, m) => n + data.segmentCoverage[m].length, 0) : null };
         for (const s of segments(data)) { result.revenue += sum(s, 'revenue', selected); result.rooms += sum(s, 'rooms', selected); result.accommodation += sum(s, 'accommodation', selected); }
-        const verified = segments(data).every(s => selected.every(m => s.accommodation?.[m] != null && (s.accommodationVerified ? s.accommodationVerified[m] === true : (s.concepts == null || Object.keys(s.concepts).some(k => /HABITACI|ALOJAMIENTO|ALOJAM|SUITE|CAMA SUPLETORIA|LATE CHECK OUT|AMPLIACION|RECARGO|REGARGO|\b(DIA|NOCHE|INDIVIDUAL|DOBLE)\b/.test(k))))));
-        result.adr = verified && result.rooms > 0 ? result.accommodation / result.rooms : null;
+        const activeSegments = segments(data).filter(s => sum(s, 'rooms', selected) > 0);
+        const verified = activeSegments.length > 0 && activeSegments.every(s =>
+            s.accommodation != null && selected.every(m =>
+                (s.rooms?.[m] || 0) === 0 || (
+                    s.accommodation[m] != null &&
+                    (s.accommodationVerified
+                        ? s.accommodationVerified[m] !== false || s.accommodation[m] > 0
+                        : (s.concepts == null || Object.keys(s.concepts).length === 0 || Object.keys(s.concepts).some(k => /HABITACI|ALOJAMIENTO|ALOJAM|SUITE|CAMA SUPLETORIA|LATE CHECK OUT|AMPLIACION|RECARGO|REGARGO|\b(DIA|NOCHE|INDIVIDUAL|DOBLE)\b/.test(k))))
+                )
+            )
+        );
+        result.adr = verified && result.rooms > 0 && result.accommodation > 0 ? result.accommodation / result.rooms : null;
         return result;
     }
     function comparable(a, b, selected) {

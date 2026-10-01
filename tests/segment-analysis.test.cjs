@@ -90,6 +90,18 @@ test('legacy data does not invent coverage or verified ADR; zero rooms leaves AD
     assert.equal(S.aggregate({ segmentCoverage: { 0: [1] }, segment: {} }, [0]).adr, null);
     assert.deepEqual(S.availableMonths({ segment: { A: { name: 'A', rooms: [0, 0], revenue: [0, -10] } } }), [1]);
 });
+test('inactive segments with zero rooms do not suppress hotel accommodation ADR', () => {
+    const data = {
+        segment: {
+            'DIRECTO OFFLINE': { name: 'DIRECTO OFFLINE', rooms: [1100], accommodation: [68031], revenue: [68031], accommodationVerified: [true] },
+            'BONO ONLINE': { name: 'BONO ONLINE', rooms: [0], accommodation: [0], revenue: [0], accommodationVerified: [false] }
+        }
+    };
+    const agg = S.aggregate(data, [0]);
+    assert.equal(agg.rooms, 1100);
+    assert.equal(agg.accommodation, 68031);
+    assert.equal(agg.adr, 68031 / 1100);
+});
 test('monthly reports use actual leap-year calendar days', () => {
     const rows = [['Seg.', '', 'Feb.24'], ['GRUPOS', 'Hab', 2], ['', 'SUITE', 100], ['', 'DESAYUNO', 20]];
     const db = {}; S.merge(db, 'Hotel', S.parse(rows));
