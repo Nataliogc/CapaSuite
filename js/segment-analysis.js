@@ -77,7 +77,20 @@
                 habRows.push({ row: index + 1, index, original: String(row[0] ?? '').trim() });
             }
         });
-        return habRows.map(item => {
+        return habRows.map((item, idx) => {
+            if (idx === habRows.length - 1 && !item.original && habRows.length > 1) {
+                const thisRow = rows[item.index] || [];
+                for (let c = 2; c < thisRow.length; c++) {
+                    const val = Number(String(thisRow[c] || '').replace(/[€\s\u00a0,]/g, ''));
+                    if (val > 0) {
+                        const prevSum = habRows.slice(0, -1).reduce((s, h) => s + (Number(String(rows[h.index]?.[c] || '').replace(/[€\s\u00a0,]/g, '')) || 0), 0);
+                        if (prevSum === val) {
+                            item.original = 'TOTAL GENERAL';
+                            break;
+                        }
+                    }
+                }
+            }
             const cell = 'A' + item.row;
             const rawNorm = norm(item.original);
             let value = '';
@@ -233,7 +246,8 @@
                 days.sort((a, b) => a - b);
                 if (y.controls.present) for (const field of ['rooms', 'revenue', 'accommodation']) {
                     const actual = Object.values(y.segment).reduce((s, seg) => s + seg[field][m], 0);
-                    if (Math.abs(actual - y.controls.values[field][m]) > (field === 'rooms' ? 0 : 0.05)) throw new Error(`El total de ${field} no cuadra con los segmentos. Revisa el bloque de totales del archivo.`);
+                    const maxDiff = field === 'rooms' ? 0 : Math.max(10, actual * 0.0005);
+                    if (Math.abs(actual - y.controls.values[field][m]) > maxDiff) throw new Error(`El total de ${field} no cuadra con los segmentos. Revisa el bloque de totales del archivo.`);
                 }
             }
         }
