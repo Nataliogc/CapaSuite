@@ -14,6 +14,14 @@
 
         function getGroupID(name) {
             const norm = normalizeStr(name);
+            // Commercial segment headings are not billed production concepts.
+            const segmentName = norm.replace(/\./g, '').replace(/\s+/g, ' ');
+            if (['SEG', 'SEGMENTO', 'SEGMENTOS', 'AGENCIAS', 'CORPORATI', 'CORPORATIVO LINEAL',
+                'TTOO DINA', 'TTOO DINAMICA', 'GRUPOS', 'DIRECTO O', 'DIRECTO OFFLINE', 'D OFF LINE',
+                'DIRONLINE', 'DIR ONLINE', 'DIRECTO ONLINE', 'DIRECTO ON', 'D ON LINE', 'OTROS',
+                'OTA', 'OTA/AAVV', 'PARTICULA', 'PARTICULAR', 'PARTICULARES', 'GRTANTEO',
+                'GRUPO TANTEO', 'TARIFAS NEGOCIADAS', 'BONO LINE', 'BONO ONLINE', 'BONO LINEAL',
+                'BONO SPA', 'GRUPO AVORIS'].includes(segmentName)) return 'OMIT';
             // Omisiones de totales maestros
             if (norm === "PRODUCCION TOTAL" || norm === "TOTAL PRODUCCION" || norm === "TOTAL MASTER" || norm === "TOTAL") return "OMIT";
 
