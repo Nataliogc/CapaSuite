@@ -382,5 +382,15 @@ test('email HTML table centers all price columns and matches Image 2 card and ba
     assert.match(htmlOutput, /<span[^>]*color:#d97706;[^>]*>MIN 2N<\/span>/);
 });
 
+test('page layout adapts to full screen width without 1300px limitation', () => {
+    const liveHtml = fs.readFileSync(path.join(__dirname, '../AnalisisCompetencia.html'), 'utf8');
+
+    // .container must use 100% width and not constrain to 1300px
+    assert.match(liveHtml, /\.container\s*\{[^}]*width:\s*100%;/);
+    assert.match(liveHtml, /\.container\s*\{[^}]*max-width:\s*100%;/);
+    assert.doesNotMatch(liveHtml, /\.container\s*\{[^}]*max-width:\s*1300px;/);
+});
+
+
 
 

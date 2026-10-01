@@ -65,9 +65,17 @@
 
 
         .container {
-            max-width: 1300px;
-            margin: 0 auto;
-            width: 95%;
+            width: 100%;
+            max-width: 100%;
+            margin: 0;
+            padding: 20px 30px;
+            box-sizing: border-box;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 12px 10px;
+            }
         }
 
         /* HEADER */
@@ -1351,7 +1359,7 @@
 
 <body style="padding: 0;">
 
-    <div class="container" style="padding: 30px;">
+    <div class="container">
 
 
         <!-- HEADER -->
