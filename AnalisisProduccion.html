@@ -249,7 +249,7 @@
         }
 
         th, td {
-            padding: 12px 20px;
+            padding: 10px 12px;
             border-bottom: 1px solid var(--border-glass);
             text-align: right;
             font-size: 0.9rem;
@@ -543,7 +543,7 @@
         const SHORT_MONTHS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
         const HOTELS = { "Guadiana": { rooms: 108 }, "Cumbria": { rooms: 59 } };
         function fmtNum(n) { return new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }).format(n); }
-        function fmt(n) { return fmtNum(n) + " €"; }
+        function fmt(n) { return fmtNum(n) + "\u00A0€"; }
 
 
 
@@ -1474,11 +1474,11 @@
 
                     const daysTag = daysToShow > 0 ? `<span style="font-size:0.65rem; color:var(--success); font-weight:800; margin-right:4px;">${daysToShow}</span>` : '';
                     return `<th style="text-align:center;">${daysTag}${m}</th>`;
-                }).join('') + `<th style="cursor:help;" title="Ingresos Reales (Hasta hoy) + OTB (Previsión Futura)">Total Proyectado <span style="font-size:0.7rem; color:var(--primary);">(365)</span></th><th>% Mix Total</th></tr>`;
+                }).join('') + `<th style="text-align:center; cursor:help;" title="Ingresos Reales (Hasta hoy) + OTB (Previsión Futura)">Total Proyectado <span style="font-size:0.7rem; color:var(--primary);">(365)</span></th><th style="text-align:center;">% Mix Total</th></tr>`;
             } else {
                 const days = monthDays[midx];
                 const daysTag = days > 0 ? `<span style="font-size:0.65rem; color:var(--success); font-weight:700;"> (${days} DÍAS)</span>` : '';
-                thead.innerHTML = `<tr><th>Categoría / Concepto${daysTag}</th><th>Valor Ingreso</th><th>% Mix Total</th><th>% Contrib. Grupo</th></tr>`;
+                thead.innerHTML = `<tr><th>Categoría / Concepto${daysTag}</th><th style="text-align:center;">Valor Ingreso</th><th style="text-align:center;">% Mix Total</th><th style="text-align:center;">% Contrib. Grupo</th></tr>`;
             }
 
             const tbody = document.getElementById('tableBody'); tbody.innerHTML = '';
@@ -1679,7 +1679,7 @@
                 }
 
                 if (midx === -1) {
-                    row += `<td style="font-weight:700; font-size:0.85rem;">${fmt(gProjectedVal)}</td><td style="color:var(--text-muted); font-size:0.8rem;">${percTotal}%</td></tr>`;
+                    row += `<td style="font-weight:700; font-size:0.85rem; text-align:center; white-space:nowrap;">${fmt(gProjectedVal)}</td><td style="color:var(--text-muted); font-size:0.8rem; text-align:center;">${percTotal}%</td></tr>`;
                 }
 
                 // Add Details
@@ -1710,7 +1710,7 @@
 
 
             // 1.5 Add Real (Master) Row ONLY (Requested by User)
-            let realRow = `<tr style="background: #f1f5f9; border-top: 2px solid #cbd5e1;"><td style="font-weight:700; color:#475569;">DATOS REALES (Sin OTB)</td>`;
+            let realRow = `<tr style="background: #f1f5f9; border-top: 2px solid #cbd5e1;"><td style="font-weight:700; color:#475569; white-space:nowrap;">DATOS REALES (Sin OTB)</td>`;
             if (midx === -1) {
                 // Annual View
                 let grRev = 0;
@@ -1721,20 +1721,20 @@
                     grRev += r;
                     grRms += rms;
                     const txt = r > 0 ? fmt(r) : `<span style="color:#cbd5e1">-</span>`;
-                    realRow += `<td style="text-align:center; font-size:0.8rem; color:#475569;">${txt}</td>`;
+                    realRow += `<td style="text-align:center; font-size:0.8rem; color:#475569; white-space:nowrap; padding:6px 4px;">${txt}</td>`;
                 }
-                realRow += `<td style="font-weight:700; color:#475569;">${fmt(grRev)}<br><span style="font-size:0.7rem;">${grRms} RN</span></td><td>-</td>`;
+                realRow += `<td style="text-align:center; font-weight:700; color:#475569; white-space:nowrap; padding:6px 4px;"><div style="white-space:nowrap;">${fmt(grRev)}</div><div style="font-size:0.7rem; margin-top:2px;">${grRms} RN</div></td><td style="text-align:center; color:var(--text-muted);">-</td>`;
             } else {
                 // Month View
                 const r = masterTY.revenue[midx] || 0;
                 const rms = masterTY.rooms[midx] || 0;
-                realRow += `<td style="text-align:center; font-weight:700; color:#475569;">${fmt(r)}<br><span style="font-size:0.7rem;">${rms} RN</span></td><td>-</td><td>-</td>`;
+                realRow += `<td style="text-align:center; font-weight:700; color:#475569; white-space:nowrap; padding:6px 4px;"><div style="white-space:nowrap;">${fmt(r)}</div><div style="font-size:0.7rem; margin-top:2px;">${rms} RN</div></td><td style="text-align:center; color:var(--text-muted);">-</td><td style="text-align:center; color:var(--text-muted);">-</td>`;
             }
             realRow += `</tr>`;
             tbody.innerHTML += realRow;
 
             // 2. Add Grand Total footer row
-            let totalProjRow = `<tr style="background: var(--bg-surface); border-top: 2px solid var(--success);"><td style="font-weight:800; color:var(--success); border-top: 2px solid var(--success) !important;">🚀 TOTAL PROYECTADO (Real + Prev.)</td>`;
+            let totalProjRow = `<tr style="background: var(--bg-surface); border-top: 2px solid var(--success);"><td style="font-weight:800; color:var(--success); border-top: 2px solid var(--success) !important; white-space:nowrap;">🚀 TOTAL PROYECTADO (Real + Prev.)</td>`;
 
             // Helper to check if a month is fully passed
             const isMonthClosed = (mIndex) => {
@@ -1777,10 +1777,14 @@
                     if (isFreshData && !isClosed && Math.abs(pickup) > 1) {
                         const color = pickup > 0 ? '#16a34a' : '#dc2626';
                         const icon = pickup > 0 ? '▲' : '▼';
-                        pickupHtml = `<div style="font-size:0.7rem; color:${color}; margin-top:2px;">${icon} ${fmt(Math.abs(pickup))}€ (Pick-up)</div>`;
+                        pickupHtml = `<div style="font-size:0.7rem; color:${color}; margin-top:2px; white-space:nowrap;">${icon} ${fmt(Math.abs(pickup))} (Pick-up)</div>`;
                     }
 
-                    totalProjRow += `<td style="font-weight:800; font-size:0.9rem; color: #166534; vertical-align:top;">${fmt(rev)}<br><span style="font-size:0.7rem; color:var(--text-muted);">${rms} RN</span>${pickupHtml}</td>`;
+                    totalProjRow += `<td style="text-align:center; font-weight:800; font-size:0.85rem; color:#166534; vertical-align:middle; white-space:nowrap; padding:8px 4px;">
+                        <div style="white-space:nowrap;">${fmt(rev)}</div>
+                        <div style="font-size:0.7rem; color:var(--text-muted); font-weight:600; white-space:nowrap; margin-top:2px;">${rms} RN</div>
+                        ${pickupHtml}
+                    </td>`;
                 }
                 // For the Total Sum column, we sum the computed monthly totals
                 let totalRev = 0, totalRms = 0;
@@ -1795,10 +1799,14 @@
                 if (isFreshData && Math.abs(totalPickup) > 1) {
                     const color = totalPickup > 0 ? '#16a34a' : '#dc2626';
                     const icon = totalPickup > 0 ? '▲' : '▼';
-                    pickupTotalHtml = `<div style="font-size:0.75rem; color:${color}; margin-top:2px;">${icon} ${fmt(Math.abs(totalPickup))}€</div>`;
+                    pickupTotalHtml = `<div style="font-size:0.75rem; color:${color}; margin-top:2px; white-space:nowrap;">${icon} ${fmt(Math.abs(totalPickup))}</div>`;
                 }
 
-                totalProjRow += `<td style="font-weight:800; font-size:1rem; color:var(--success);">${fmt(totalRev)}<br><span style="font-size:0.8rem; color:var(--text-muted);">${totalRms} RN</span>${pickupTotalHtml}</td><td>100%</td>`;
+                totalProjRow += `<td style="text-align:center; font-weight:800; font-size:0.95rem; color:var(--success); vertical-align:middle; white-space:nowrap; padding:8px 6px;">
+                    <div style="white-space:nowrap;">${fmt(totalRev)}</div>
+                    <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600; white-space:nowrap; margin-top:2px;">${totalRms} RN</div>
+                    ${pickupTotalHtml}
+                </td><td style="text-align:center; font-weight:800; color:var(--success); vertical-align:middle;">100%</td>`;
             } else {
                 // Re-evaluate freshness here for footer scope
                 const todayStr = new Date().toLocaleDateString('es-ES');
@@ -1819,10 +1827,14 @@
                 if (isFreshData && !isClosed && Math.abs(pickup) > 1) {
                     const color = pickup > 0 ? '#16a34a' : '#dc2626';
                     const icon = pickup > 0 ? '▲' : '▼';
-                    pickupHtml = `<div style="font-size:0.7rem; color:${color}; margin-top:2px;">${icon} ${fmt(Math.abs(pickup))}€ (Pick-up)</div>`;
+                    pickupHtml = `<div style="font-size:0.7rem; color:${color}; margin-top:2px; white-space:nowrap;">${icon} ${fmt(Math.abs(pickup))} (Pick-up)</div>`;
                 }
 
-                totalProjRow += `<td style="font-weight:800; font-size:1.1rem; color:var(--success);">${fmt(rev)}<br><span style="font-size:0.8rem; color:var(--text-muted);">${rms} RN</span>${pickupHtml}</td><td>100%</td><td>-</td>`;
+                totalProjRow += `<td style="text-align:center; font-weight:800; font-size:1rem; color:var(--success); vertical-align:middle; white-space:nowrap; padding:8px 6px;">
+                    <div style="white-space:nowrap;">${fmt(rev)}</div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); font-weight:600; white-space:nowrap; margin-top:2px;">${rms} RN</div>
+                    ${pickupHtml}
+                </td><td style="text-align:center; font-weight:800; color:var(--success); vertical-align:middle;">100%</td><td style="text-align:center; color:var(--text-muted); vertical-align:middle;">-</td>`;
             }
             tbody.innerHTML += totalProjRow + '</tr>';
         }
