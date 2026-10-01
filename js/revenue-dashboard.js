@@ -30,7 +30,23 @@
     }
     async function refresh() {
         records = await history.list(el('historyHotel').value);
-        const captures = records.filter(r => r.status === 'committed' && r.mode === el('historyMode').value && r.observation);
+        // Synced segment versions are usable even when this browser has no local checkpoints.
+        if (el('historyMode').value === 'forecast' && records.filter(r => r.status === 'committed' && r.mode === 'forecast' && r.observation).length < 2) {
+            const hotel = el('historyHotel').value;
+            const saved = JSON.parse(window.CapaStorage.getItem('segment_forecast_v2') || '{}')[hotel];
+            if (saved?.segment_prev && saved.segment && Number.isFinite(Date.parse(saved.prevUpdatedAt)) && Number.isFinite(Date.parse(saved.updatedAt))) {
+                for (const [version, segment, date, source] of [
+                    ['current', saved.segment, saved.updatedAt, saved.source],
+                    ['previous', saved.segment_prev, saved.prevUpdatedAt, saved.prevSource]
+                ]) {
+                    const observation = history.observe({ segment_forecast_v2: JSON.stringify({ [hotel]: { segment } }) }, hotel, 'forecast');
+                    records.push({ id: 'synced-' + version, hotel, mode: 'forecast', status: 'committed', capturedAt: date,
+                        source: { name: source || 'Previsión de segmentos sincronizada' }, observation, syncedOnly: true });
+                }
+                el('currentCapture').value = ''; el('previousCapture').value = '';
+            }
+        }
+        const captures = records.filter(r => r.status === 'committed' && r.mode === el('historyMode').value && r.observation).sort((a, b) => Number(!!b.syncedOnly) - Number(!!a.syncedOnly) || b.capturedAt.localeCompare(a.capturedAt));
         const current = el('currentCapture').value, previous = el('previousCapture').value;
         for (const key of ['currentCapture', 'previousCapture']) {
             el(key).replaceChildren(...captures.map(r => new Option(formatDate(r.capturedAt) + ' · ' + r.source.name, r.id)));
@@ -94,6 +110,7 @@
             const details = [dates.length ? `${dates.length} fechas: ${dates[0]} a ${dates.at(-1)}` : 'Sin detalle diario comparable', record.error || '', record.persistence === false ? 'Datos activos guardados temporalmente; descarga una copia.' : '', ...(record.observation?.issues || [])];
             textCell(row, labels[record.status] || record.status, details.filter(Boolean).join(' · '));
             const actions = textCell(row, '');
+            if (record.syncedOnly) { actions.textContent = 'Versión sincronizada · sin copia de restauración local'; body.append(row); continue; }
             const restore = document.createElement('button'); restore.textContent = 'Recuperar copia anterior';
             restore.onclick = () => operation(async () => {
                 if (!await confirmRecovery(`Se recuperará la copia completa anterior a ${record.source.name} (${formatDate(record.capturedAt)}), incluidos los datos de ambos hoteles. Se guardará una copia del estado actual antes de restaurar.`)) return;
