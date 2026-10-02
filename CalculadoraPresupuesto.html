@@ -631,8 +631,8 @@
                 <!-- TABS INTEGRATED IN HEADER - COMPACT VERSION -->
                 <nav class="tabs"
                     style="margin-bottom: 0; margin-left: 20px; border-left: 1px solid #e2e8f0; padding-left: 20px;">
-                    <button class="tab-btn" onclick="switchTab('tab-dashboard')">📊 Panel</button>
-                    <button class="tab-btn active" onclick="switchTab('tab-detail')">📑 Detalle</button>
+                    <button class="tab-btn active" onclick="switchTab('tab-dashboard')">📊 Panel</button>
+                    <button class="tab-btn" onclick="switchTab('tab-detail')">📑 Detalle</button>
                     <button class="tab-btn" onclick="switchTab('tab-bonus')">💰 Incentivos</button>
                 </nav>
             </div>
@@ -700,7 +700,7 @@
         <!-- MAIN CONTENT -->
 
         <!-- DASHBOARD VIEW -->
-        <div id="tab-dashboard" class="section">
+        <div id="tab-dashboard" class="section active">
             <div class="charts-container">
                 <div class="chart-card">
                     <canvas id="mainChart"></canvas>
@@ -803,7 +803,7 @@
         </div>
 
         <!-- DETAILED TABLE VIEW -->
-        <div id="tab-detail" class="section active">
+        <div id="tab-detail" class="section">
             <div id="detailInfoTip" style="margin-bottom: 10px; font-size: 0.85rem; color: var(--text-muted); padding-left: 5px;">
                 💡 <b>VENDIDO 26:</b> Muestra la producción real de habitaciones (meses cerrados) + OTB actual (meses futuros).
             </div>
@@ -1417,6 +1417,7 @@
 
         function init() {
             switchHotel();
+            switchTab('tab-dashboard');
 
             // Sync from Cloud Listener
             window.addEventListener('capasuite-data-synced', () => {

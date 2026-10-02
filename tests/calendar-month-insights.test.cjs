@@ -72,3 +72,19 @@ test('CalculadoraPresupuesto modal is widened to prevent horizontal scroll', () 
     assert.match(html, /id="budgetPacingModalContent"[^>]*width:\s*96vw;\s*max-width:\s*1480px/);
 });
 
+test('CalculadoraPresupuesto defaults to PANEL tab', () => {
+    const html = fs.readFileSync('CalculadoraPresupuesto.html', 'utf8');
+
+    // Verify PANEL tab button has active class and DETALLE does not
+    assert.match(html, /<button class="tab-btn active" onclick="switchTab\('tab-dashboard'\)">📊 Panel<\/button>/);
+    assert.match(html, /<button class="tab-btn" onclick="switchTab\('tab-detail'\)">📑 Detalle<\/button>/);
+
+    // Verify tab-dashboard section has active class and tab-detail does not
+    assert.match(html, /<div id="tab-dashboard" class="section active">/);
+    assert.match(html, /<div id="tab-detail" class="section">/);
+
+    // Verify init() calls switchTab('tab-dashboard')
+    assert.match(html, /function init\(\)\s*\{[\s\S]*?switchTab\('tab-dashboard'\);/);
+});
+
+
