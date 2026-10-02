@@ -6039,8 +6039,8 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 const thBaseStyle = 'padding:10px 8px; font-size:0.74rem; font-weight:800; text-transform:uppercase; letter-spacing:0.3px; white-space:nowrap; border-bottom:2px solid var(--border); text-align:center; vertical-align:middle;';
                 let thHtml = `
                     <tr style="color:var(--text-main); text-align:center;">
-                        <th style="${thBaseStyle} color:var(--primary); min-width:85px;">Fecha</th>
-                        <th style="${thBaseStyle} min-width:85px;">Ocup. / Libres</th>
+                        <th style="${thBaseStyle} color:var(--primary); min-width:130px;">Fecha</th>
+                        <th style="${thBaseStyle} min-width:110px;">Ocup. / Libres</th>
                         <th style="${thBaseStyle} min-width:65px; color:var(--text-muted);">Ant.</th>
                         <th style="${thBaseStyle} min-width:85px; color:#4f46e5; background:rgba(99,102,241,0.12); font-weight:900; font-size:0.8rem;">▶ NUEVA</th>
                         <th style="${thBaseStyle} min-width:70px;">Mercado</th>
@@ -6088,8 +6088,15 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                             dowBg = 'rgba(245,158,11,0.15)'; dowColor = '#f59e0b'; dowBorder = 'rgba(245,158,11,0.3)';
                         }
 
-                        // Badge de ocupación
-                        const occColor = item.occPct >= 75 ? '#10b981' : (item.occPct >= 50 ? '#818cf8' : '#f59e0b');
+                        // Badge de ocupación con colores vivos
+                        let occColor = '#f59e0b', occBg = 'rgba(245,158,11,0.15)', occBorder = 'rgba(245,158,11,0.35)';
+                        if (item.occPct >= 80) {
+                            occColor = '#10b981'; occBg = 'rgba(16,185,129,0.15)'; occBorder = 'rgba(16,185,129,0.35)';
+                        } else if (item.occPct >= 60) {
+                            occColor = '#818cf8'; occBg = 'rgba(99,102,241,0.15)'; occBorder = 'rgba(99,102,241,0.35)';
+                        } else if (item.occPct >= 40) {
+                            occColor = '#38bdf8'; occBg = 'rgba(56,189,248,0.15)'; occBorder = 'rgba(56,189,248,0.35)';
+                        }
 
                         // Celdas de competidores con badges para cerrado/min2nights
                         const compTds = item.competitors.map(c => {
@@ -6121,15 +6128,21 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         }
 
                         const available = Math.max(0, item.capacity - item.rooms);
+                        const dNameShort = (item.dayName || '').substring(0,3);
 
                         tbodyEl.innerHTML += `
                             <tr style="border-bottom:1px solid var(--border); background:${idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)'}; transition:background 0.15s;">
-                                <td style="padding:9px 8px; text-align:center; vertical-align:middle; white-space:nowrap;">
-                                    <div style="font-weight:800; color:var(--text-main); font-size:0.92rem;">${item.dateDisplay}</div>
-                                    <span style="display:inline-block; margin-top:3px; background:${dowBg}; color:${dowColor}; border:1px solid ${dowBorder}; font-size:0.68rem; font-weight:800; padding:1px 7px; border-radius:10px; text-transform:uppercase;">${item.dayName}</span>
+                                <td style="padding:9px 8px; text-align:center; vertical-align:middle; white-space:nowrap; min-width:130px;">
+                                    <div style="display:inline-flex; align-items:center; justify-content:center; gap:6px; white-space:nowrap;">
+                                        <span style="font-weight:800; color:var(--text-main); font-size:0.92rem;">${item.dateDisplay}</span>
+                                        <span style="background:${dowBg}; color:${dowColor}; border:1px solid ${dowBorder}; font-size:0.68rem; font-weight:800; padding:1px 6px; border-radius:6px; text-transform:uppercase;">${dNameShort}</span>
+                                    </div>
                                 </td>
-                                <td style="padding:9px 8px; text-align:center; vertical-align:middle;">
-                                    <div style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">${item.rooms}/${item.capacity} &bull; <strong style="color:${occColor};">${item.occPct}%</strong></div>
+                                <td style="padding:9px 8px; text-align:center; vertical-align:middle; min-width:110px; white-space:nowrap;">
+                                    <div style="display:inline-flex; align-items:center; justify-content:center; gap:5px; font-size:0.8rem; color:var(--text-muted); font-weight:700;">
+                                        <span>${item.rooms}/${item.capacity}</span>
+                                        <span style="background:${occBg}; color:${occColor}; border:1px solid ${occBorder}; font-size:0.74rem; font-weight:800; padding:1px 5px; border-radius:4px;">${item.occPct}%</span>
+                                    </div>
                                     <div style="font-size:1.15rem; font-weight:900; color:var(--text-main); margin-top:2px; line-height:1.2;">${available} <span style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">libres</span></div>
                                 </td>
                                 <td style="padding:9px 8px; text-align:center; vertical-align:middle; color:var(--text-muted); font-size:0.88rem; text-decoration:line-through; opacity:0.75; font-weight:600;">
@@ -6204,6 +6217,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     } catch(e) {}
                 }
                 if (dNameShort.length > 3) dNameShort = dNameShort.substring(0, 3);
+                if (dNameShort) dNameShort = dNameShort.charAt(0).toUpperCase() + dNameShort.slice(1).toLowerCase();
 
                 const dn = (item.dayName || dNameShort || '').toLowerCase();
                 let dowBg = '#f1f5f9', dowColor = '#64748b', dowBorder = '#cbd5e1';
@@ -6213,7 +6227,17 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     dowBg = '#fffbeb'; dowColor = '#d97706'; dowBorder = '#fde68a';
                 }
 
-                const occColor = item.occPct >= 75 ? '#16a34a' : (item.occPct >= 50 ? '#4f46e5' : '#d97706');
+                let occColor = '#d97706', occBg = '#fffbeb', occBorder = '#fde68a';
+                if (item.occPct >= 80) {
+                    occColor = '#16a34a'; occBg = '#f0fdf4'; occBorder = '#bbf7d0';
+                } else if (item.occPct >= 60) {
+                    occColor = '#4f46e5'; occBg = '#eef2ff'; occBorder = '#c7d2fe';
+                } else if (item.occPct >= 40) {
+                    occColor = '#2563eb'; occBg = '#eff6ff'; occBorder = '#bfdbfe';
+                } else {
+                    occColor = '#d97706'; occBg = '#fffbeb'; occBorder = '#fde68a';
+                }
+
                 const available = Math.max(0, item.capacity - item.rooms);
                 const dPctVal = item.deltaPct !== undefined ? item.deltaPct : (item.oldPrice > 0 ? ((item.delta || 0) / item.oldPrice) * 100 : 0);
                 const dPctStr = (typeof dPctVal === 'number' && !isNaN(dPctVal)) ? ` (${ds}${dPctVal.toFixed(1)}%)` : '';
@@ -6247,30 +6271,33 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
                 rowsHtml += `
                     <tr bgcolor="${bg}" style="background-color:${bg};">
-                        <td align="center" valign="middle" bgcolor="${bg}" style="padding:4px 3px; border:1px solid #cbd5e1; text-align:center; vertical-align:middle; white-space:nowrap; font-family:Calibri,Arial,sans-serif; background-color:${bg};">
-                            <table width="100%" cellpadding="0" cellspacing="0" border="0" align="center">
+                        <td align="center" valign="middle" bgcolor="${bg}" style="padding:5px 6px; border:1px solid #cbd5e1; text-align:center; vertical-align:middle; white-space:nowrap; min-width:130px; font-family:Calibri,Arial,sans-serif; background-color:${bg};">
+                            <table cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;">
                                 <tr>
-                                    <td align="center" valign="middle" style="text-align:center; font-weight:800; color:#0f172a; font-size:12px; line-height:1.2; font-family:Calibri,Arial,sans-serif;">
-                                        ${item.dateDisplay}
+                                    <td align="center" valign="middle" style="text-align:center; font-weight:800; color:#0f172a; font-size:12px; font-family:Calibri,Arial,sans-serif; white-space:nowrap; padding-right:5px;">
+                                        <font color="#0f172a"><strong>${item.dateDisplay}</strong></font>
                                     </td>
+                                    ${dNameShort ? `
+                                    <td align="center" valign="middle" bgcolor="${dowBg}" style="background-color:${dowBg}; border:1px solid ${dowBorder}; border-radius:5px; font-size:9.5px; font-weight:800; color:${dowColor}; padding:1px 5px; text-transform:uppercase; text-align:center; font-family:Calibri,Arial,sans-serif; white-space:nowrap;">
+                                        <font color="${dowColor}"><strong>${dNameShort}</strong></font>
+                                    </td>` : ''}
                                 </tr>
-                                ${dNameShort ? `
-                                <tr>
-                                    <td align="center" valign="middle" style="padding-top:2px; text-align:center;">
-                                        <table cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;"><tr>
-                                            <td align="center" valign="middle" bgcolor="${dowBg}" style="background-color:${dowBg}; border:1px solid ${dowBorder}; border-radius:5px; font-size:9px; font-weight:800; color:${dowColor}; padding:1px 5px; text-transform:uppercase; text-align:center; font-family:Calibri,Arial,sans-serif;">
-                                                ${dNameShort}
-                                            </td>
-                                        </tr></table>
-                                    </td>
-                                </tr>` : ''}
                             </table>
                         </td>
-                        <td align="center" valign="middle" bgcolor="${bg}" style="padding:4px 3px; border:1px solid #cbd5e1; text-align:center; vertical-align:middle; font-family:Calibri,Arial,sans-serif; background-color:${bg}; white-space:nowrap;">
+                        <td align="center" valign="middle" bgcolor="${bg}" style="padding:5px 5px; border:1px solid #cbd5e1; text-align:center; vertical-align:middle; font-family:Calibri,Arial,sans-serif; background-color:${bg}; white-space:nowrap; min-width:110px;">
                             <table width="100%" cellpadding="0" cellspacing="0" border="0" align="center">
                                 <tr>
-                                    <td align="center" valign="middle" style="text-align:center; font-size:10.5px; color:#475569; font-weight:700; line-height:1.2; font-family:Calibri,Arial,sans-serif;">
-                                        ${item.rooms}/${item.capacity} &bull; <strong style="color:${occColor}; font-size:10.5px;">${item.occPct}%</strong>
+                                    <td align="center" valign="middle" style="text-align:center; font-family:Calibri,Arial,sans-serif;">
+                                        <table cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;">
+                                            <tr>
+                                                <td align="center" valign="middle" style="font-size:10.5px; color:#475569; font-weight:700; font-family:Calibri,Arial,sans-serif; padding-right:4px; white-space:nowrap;">
+                                                    <font color="#475569">${item.rooms}/${item.capacity}</font>
+                                                </td>
+                                                <td align="center" valign="middle" bgcolor="${occBg}" style="background-color:${occBg}; border:1px solid ${occBorder}; border-radius:4px; font-size:10px; font-weight:800; color:${occColor}; padding:1px 5px; font-family:Calibri,Arial,sans-serif; white-space:nowrap;">
+                                                    <font color="${occColor}"><strong>${item.occPct}%</strong></font>
+                                                </td>
+                                            </tr>
+                                        </table>
                                     </td>
                                 </tr>
                                 <tr>
@@ -6353,7 +6380,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             return `
                 <table width="100%" cellpadding="0" cellspacing="0" border="0" align="left" style="font-family:Calibri,Arial,sans-serif; color:#0f172a; width:100%; border-collapse:collapse; margin:0;">
                 <tr><td align="left" valign="top" style="padding:0; width:100%;">
-                <table width="920" cellpadding="0" cellspacing="0" border="0" align="left" style="max-width:920px; width:100%; font-family:Calibri,Arial,sans-serif; border-collapse:collapse; margin:0 0 12px 0;">
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" align="left" style="max-width:1050px; width:100%; font-family:Calibri,Arial,sans-serif; border-collapse:collapse; margin:0 0 12px 0;">
 
                     <!-- HEADER COMPACTO -->
                     <tr><td bgcolor="#1e293b" style="background-color:#1e293b; padding:12px 16px;">
@@ -6406,8 +6433,8 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                             <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; font-size:11.5px; font-family:Calibri,Arial,sans-serif; width:100%;">
                                 <thead>
                                     <tr bgcolor="#f1f5f9" style="background-color:#f1f5f9; background:#f1f5f9;">
-                                        <th align="center" valign="middle" bgcolor="#f1f5f9" style="padding:6px 4px; border:1px solid #cbd5e1; background-color:#f1f5f9; background:#f1f5f9; color:#1e293b; text-align:center; vertical-align:middle; font-size:11px; font-weight:800; white-space:nowrap; font-family:Calibri,Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" border="0" align="center"><tr><td align="center" valign="middle" style="text-align:center; font-size:11px; font-weight:800; color:#1e293b; font-family:Calibri,Arial,sans-serif;">Fecha</td></tr></table></th>
-                                        <th align="center" valign="middle" bgcolor="#f1f5f9" style="padding:6px 4px; border:1px solid #cbd5e1; background:#f1f5f9; background-color:#f1f5f9; color:#1e293b; text-align:center; vertical-align:middle; font-size:11px; font-weight:800; font-family:Calibri,Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" border="0" align="center"><tr><td align="center" valign="middle" style="text-align:center; font-size:11px; font-weight:800; color:#1e293b; font-family:Calibri,Arial,sans-serif;">Ocup. / Libres</td></tr></table></th>
+                                        <th align="center" valign="middle" bgcolor="#f1f5f9" style="padding:6px 6px; border:1px solid #cbd5e1; background:#f1f5f9; color:#1e293b; background-color:#f1f5f9; text-align:center; vertical-align:middle; font-size:11px; font-weight:800; white-space:nowrap; min-width:130px; font-family:Calibri,Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" border="0" align="center"><tr><td align="center" valign="middle" style="text-align:center; font-size:11px; font-weight:800; color:#1e293b; font-family:Calibri,Arial,sans-serif; white-space:nowrap;">Fecha</td></tr></table></th>
+                                        <th align="center" valign="middle" bgcolor="#f1f5f9" style="padding:6px 4px; border:1px solid #cbd5e1; background:#f1f5f9; color:#1e293b; background-color:#f1f5f9; text-align:center; vertical-align:middle; font-size:11px; font-weight:800; min-width:110px; font-family:Calibri,Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" border="0" align="center"><tr><td align="center" valign="middle" style="text-align:center; font-size:11px; font-weight:800; color:#1e293b; font-family:Calibri,Arial,sans-serif; white-space:nowrap;">Ocup. / Libres</td></tr></table></th>
                                         <th align="center" valign="middle" bgcolor="#f1f5f9" style="padding:6px 4px; border:1px solid #cbd5e1; background:#f1f5f9; background-color:#f1f5f9; color:#475569; text-align:center; vertical-align:middle; font-size:11px; font-weight:800; font-family:Calibri,Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" border="0" align="center"><tr><td align="center" valign="middle" style="text-align:center; font-size:11px; font-weight:800; color:#475569; font-family:Calibri,Arial,sans-serif;">Ant.</td></tr></table></th>
                                         <th align="center" valign="middle" bgcolor="#e0e7ff" style="padding:6px 4px; border:1.5px solid #6366f1; background:#e0e7ff; background-color:#e0e7ff; color:#312e81; text-align:center; vertical-align:middle; font-size:11.5px; font-weight:900; font-family:Calibri,Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" border="0" align="center"><tr><td align="center" valign="middle" style="text-align:center; font-size:11.5px; font-weight:900; color:#312e81; font-family:Calibri,Arial,sans-serif;">&#9654; NUEVA</td></tr></table></th>
                                         <th align="center" valign="middle" bgcolor="#f1f5f9" style="padding:6px 4px; border:1px solid #cbd5e1; background:#f1f5f9; background-color:#f1f5f9; color:#475569; text-align:center; vertical-align:middle; font-size:11px; font-weight:800; font-family:Calibri,Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" border="0" align="center"><tr><td align="center" valign="middle" style="text-align:center; font-size:11px; font-weight:800; color:#475569; font-family:Calibri,Arial,sans-serif;">Mercado</td></tr></table></th>

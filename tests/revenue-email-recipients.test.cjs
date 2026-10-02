@@ -498,3 +498,56 @@ test('Cumbria is branded and displayed everywhere as Cumbria Spa&Hotel in email 
     assert.match(plainOutput, /para Cumbria Spa&Hotel:/);
 });
 
+test('email HTML provides wider date column with side-by-side day badge and transfers colored occupancy badges', () => {
+    const { context } = setupEnvironment();
+
+    const sampleReport = {
+        hotel: 'Cumbria',
+        count: 2,
+        avgOld: 60,
+        avgNew: 70,
+        avgDelta: 10,
+        avgDeltaPct: 16.7,
+        items: [
+            {
+                dateDisplay: '11/10/2026',
+                dayName: 'domingo',
+                rooms: 40,
+                capacity: 59,
+                occPct: 68,
+                oldPrice: 60,
+                newPrice: 70,
+                delta: 10,
+                marketAvg: 65,
+                actionText: 'Subir',
+                competitors: []
+            },
+            {
+                dateDisplay: '12/10/2026',
+                dayName: 'lunes',
+                rooms: 7,
+                capacity: 59,
+                occPct: 12,
+                oldPrice: 56,
+                newPrice: 60,
+                delta: 4,
+                marketAvg: 60,
+                actionText: 'Mantener',
+                competitors: []
+            }
+        ]
+    };
+
+    const htmlOutput = context.generateRevenueEmailHtml(sampleReport, '');
+
+    // 1. Wider date column (min-width 130px) and unstacked date with side-by-side day badge
+    assert.match(htmlOutput, /min-width:\s*130px/);
+    assert.match(htmlOutput, /11\/10\/2026<\/strong><\/font>[\s\S]*?<font color="#d97706"><strong>Dom<\/strong><\/font>/);
+
+    // 2. Transferred colored occupancy badges to email with Outlook-compatible bgcolor & font
+    // 68% (medium-high occ) -> blue/indigo pill
+    assert.match(htmlOutput, /bgcolor="#eef2ff"[\s\S]*?<font color="#4f46e5"><strong>68%<\/strong><\/font>/);
+    // 12% (low occ) -> amber pill
+    assert.match(htmlOutput, /bgcolor="#fffbeb"[\s\S]*?<font color="#d97706"><strong>12%<\/strong><\/font>/);
+});
+
