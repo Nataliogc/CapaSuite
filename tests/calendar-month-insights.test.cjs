@@ -115,3 +115,25 @@ test('CalculadoraPresupuesto distinguishes closed, in-progress, and future month
     assert.match(html, /Real \+ OTB/);
     assert.match(html, /Cartera OTB/);
 });
+
+test('CalculadoraPresupuesto shows minimum required price per day to achieve budget in pacing modal', () => {
+    const html = fs.readFileSync('CalculadoraPresupuesto.html', 'utf8');
+
+    // 1. Verify "Precio Mín. Requerido" column header exists
+    assert.match(html, /Precio Mín\. Requerido/);
+
+    // 2. Verify minPrice calculation logic and floor price
+    assert.match(html, /d\.minPrice\s*=/);
+    assert.match(html, /targetTotalPickupRev/);
+    assert.match(html, /sumWeightedPickup/);
+
+    // 3. Verify average minimum price in table footer and top badge
+    assert.match(html, /Precio Mín\. Medio/);
+    assert.match(html, /avgMinPrice/);
+
+    // 4. Verify tactical revenue suggestions include minimum price
+    assert.match(html, /Tarifa Premium ≥ <b>\$\{d\.minPrice\} €<\/b>/);
+    assert.match(html, /Tarifa mín\. <b>\$\{d\.minPrice\} €<\/b>/);
+    assert.match(html, /Captar volumen a ≥ <b>\$\{d\.minPrice\} €<\/b>/);
+});
+

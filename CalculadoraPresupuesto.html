@@ -3282,6 +3282,96 @@
                 dailyBreakdown.forEach(d => { d.suggestedPickup = 0; });
             }
 
+            // Cargar tarifas publicadas de revenue_data_v2 si existen para contrastar
+            let revenueDataMap = {};
+            try {
+                const rawComp = CapaStorage.getItem('revenue_data_v2');
+                if (rawComp) {
+                    const parsedComp = (typeof rawComp === 'string') ? JSON.parse(rawComp) : rawComp;
+                    if (parsedComp && Array.isArray(parsedComp.data)) {
+                        parsedComp.data.forEach(item => { if (item.dateISO) revenueDataMap[item.dateISO] = item; });
+                    }
+                }
+            } catch (e) {
+                console.warn('Error al leer revenue_data_v2:', e);
+            }
+
+            // Obtener precio publicado/OTB por día
+            dailyBreakdown.forEach(d => {
+                let pubPrice = 0;
+                const dData = revenueDataMap[d.iso];
+                if (dData && dData.hotels && dData.hotels[currentHotel]) {
+                    const v = dData.hotels[currentHotel];
+                    pubPrice = (typeof v === 'object') ? (v.price || 0) : (Number(v) || 0);
+                }
+                if (pubPrice <= 0 && dData && dData.occupancyData && dData.occupancyData[currentHotel] && dData.occupancyData[currentHotel].adr > 0) {
+                    pubPrice = Math.round(dData.occupancyData[currentHotel].adr);
+                }
+                if (pubPrice <= 0 && d.booked > 0 && d.dayOtbRev > 0) {
+                    pubPrice = Math.round(d.dayOtbRev / d.booked);
+                }
+                d.publishedPrice = pubPrice;
+            });
+
+            // Cálculo del precio mínimo por habitación para alcanzar el presupuesto
+            const totalSuggestedPickup = dailyBreakdown.reduce((sum, d) => sum + d.suggestedPickup, 0);
+            const targetTotalPickupRev = Math.max(0, gapRev);
+            const floorPrice = (currentHotel === 'Guadiana' ? 60 : 50);
+
+            // Factor de ponderación por nivel de ocupación proyectada y día de la semana
+            dailyBreakdown.forEach(d => {
+                const finalOcc = d.capDay > 0 ? ((d.booked + d.suggestedPickup) / d.capDay * 100) : 0;
+                let w = 1.0;
+                if (finalOcc >= 85 || d.free <= 12) {
+                    w = 1.25; // Demanda muy alta / inventario escaso -> tarifa premium
+                } else if (finalOcc >= 70 || d.free <= 25) {
+                    w = 1.10; // Buena ocupación -> yield activo
+                } else if (finalOcc >= 50) {
+                    w = 1.00; // Demanda media
+                } else {
+                    w = 0.90; // Demanda baja / valles -> tarifa base competitiva
+                }
+
+                const dow = (d.dayOfWeek || '').toLowerCase();
+                if (dow.includes('vie') || dow.includes('sáb') || dow.includes('sab')) {
+                    w *= 1.08;
+                } else if (dow.includes('dom')) {
+                    w *= 0.94;
+                }
+                d.priceWeight = w;
+            });
+
+            const sumWeightedPickup = dailyBreakdown.reduce((sum, d) => sum + (d.suggestedPickup * d.priceWeight), 0);
+
+            if (sumWeightedPickup > 0 && targetTotalPickupRev > 0) {
+                const rawUnitRate = targetTotalPickupRev / sumWeightedPickup;
+                dailyBreakdown.forEach(d => {
+                    let p = Math.round(rawUnitRate * d.priceWeight);
+                    if (p < floorPrice) p = floorPrice;
+                    d.minPrice = p;
+                });
+
+                // Garantizar matemáticamente que la suma de ingresos alcance el gapRev
+                let totalGenRev = dailyBreakdown.reduce((sum, d) => sum + (d.suggestedPickup * d.minPrice), 0);
+                let diffRev = targetTotalPickupRev - totalGenRev;
+                if (diffRev > 0 && totalSuggestedPickup > 0) {
+                    const daysWithPickup = dailyBreakdown.filter(d => d.suggestedPickup > 0);
+                    if (daysWithPickup.length > 0) {
+                        const addPerDay = Math.ceil(diffRev / totalSuggestedPickup);
+                        daysWithPickup.forEach(d => {
+                            d.minPrice += addPerDay;
+                        });
+                    }
+                }
+            } else {
+                dailyBreakdown.forEach(d => {
+                    d.minPrice = Math.max(floorPrice, Math.round(targetAdr > 0 ? targetAdr : floorPrice));
+                });
+            }
+
+            const totalProjectedPickupRev = dailyBreakdown.reduce((sum, d) => sum + (d.suggestedPickup * d.minPrice), 0);
+            const avgMinPrice = totalSuggestedPickup > 0 ? (totalProjectedPickupRev / totalSuggestedPickup) : (dailyBreakdown.length > 0 ? (dailyBreakdown.reduce((sum, d) => sum + d.minPrice, 0) / dailyBreakdown.length) : 0);
+
             const freeInventoryConversionPct = totalFreeRoomsInRemainingDays > 0 ? (rnNeeded1 / totalFreeRoomsInRemainingDays * 100) : 0;
             const currentRemainingDaysOcc = (capRemaining > 0) ? (totalBookedInRemainingDays / capRemaining * 100) : 0;
             const finalRemainingDaysOcc = (capRemaining > 0) ? ((totalBookedInRemainingDays + Math.min(rnNeeded1, totalFreeRoomsInRemainingDays)) / capRemaining * 100) : 0;
@@ -3350,6 +3440,9 @@
                 freeInventoryConversionPct,
                 currentRemainingDaysOcc,
                 finalRemainingDaysOcc,
+                totalSuggestedPickup,
+                totalProjectedPickupRev,
+                avgMinPrice,
                 dailyBreakdown
             };
 
@@ -3510,13 +3603,25 @@
                     let tacticText = '';
                     if (d.free <= 10) {
                         statusBadge = `<span style="background:#fee2e2; color:#dc2626; font-size:0.7rem; font-weight:800; padding:2px 6px; border-radius:4px;">🔴 Casi Completo</span>`;
-                        tacticText = `<span style="color:#b91c1c; font-weight:700;">💎 Tarifa Alta / Últimas ${d.free} habs a precio premium (ADR > 110€)</span>`;
+                        tacticText = `<span style="color:#b91c1c; font-weight:700;">💎 Tarifa Premium ≥ <b>${d.minPrice} €</b> / Proteger últimas ${d.free} habs sin ceder precio</span>`;
                     } else if (d.free <= 20) {
                         statusBadge = `<span style="background:#fef3c7; color:#d97706; font-size:0.7rem; font-weight:800; padding:2px 6px; border-radius:4px;">🟡 Alta Ocup.</span>`;
-                        tacticText = `<span style="color:#b45309;">💎 Yielding activo / Proteger tarifa</span>`;
+                        tacticText = `<span style="color:#b45309; font-weight:700;">⚖️ Yielding Activo / Tarifa mín. <b>${d.minPrice} €</b></span>`;
                     } else {
                         statusBadge = `<span style="background:#dcfce7; color:#15803d; font-size:0.7rem; font-weight:800; padding:2px 6px; border-radius:4px;">🟢 Disponible</span>`;
-                        tacticText = `<span style="color:#15803d; font-weight:700;">🏷️ Concentrar volumen (${d.free} habs libres)</span>`;
+                        tacticText = `<span style="color:#15803d; font-weight:700;">🏷️ Captar volumen a ≥ <b>${d.minPrice} €</b> (${d.free} habs libres)</span>`;
+                    }
+
+                    // Comparativa con tarifa publicada o ADR en libros si existe
+                    let priceComparisonBadge = '';
+                    if (d.publishedPrice > 0) {
+                        if (d.publishedPrice >= d.minPrice) {
+                            priceComparisonBadge = `<span style="color:#15803d; font-weight:700; font-size:0.7rem; display:block;" title="Tarifa actual cubre el precio mínimo">Tarifa: ${d.publishedPrice}€ ✅</span>`;
+                        } else {
+                            priceComparisonBadge = `<span style="color:#dc2626; font-weight:800; font-size:0.7rem; background:#fee2e2; padding:1px 5px; border-radius:4px; display:inline-block; margin-top:2px;" title="Tarifa actual inferior al mínimo requerido">⚠️ Subir (hoy ${d.publishedPrice}€)</span>`;
+                        }
+                    } else {
+                        priceComparisonBadge = `<span style="color:#94a3b8; font-size:0.68rem; display:block;">mín. neto/día</span>`;
                     }
 
                     return `
@@ -3537,6 +3642,12 @@
                             <td style="padding: 8px 10px; text-align: center; font-weight: 700; color: ${finalOcc > 95 ? '#dc2626' : (finalOcc > 80 ? '#d97706' : '#15803d')};">
                                 ${finalOcc.toFixed(1)}% (${d.booked + d.suggestedPickup}/${d.capDay})
                             </td>
+                            <td style="padding: 8px 10px; text-align: center; background: #fefce8; border-left: 1px dashed #fef08a; border-right: 1px dashed #fef08a;">
+                                <div style="font-weight: 800; font-size: 0.95rem; color: #854d0e;">
+                                    ${d.minPrice} €
+                                </div>
+                                ${priceComparisonBadge}
+                            </td>
                             <td style="padding: 8px 10px; font-size: 0.78rem;">
                                 ${tacticText}
                             </td>
@@ -3552,11 +3663,15 @@
                                     <span>📅</span> Disponibilidad Real y Reparto Diario de Pick-up (Día a Día)
                                 </h4>
                                 <p style="margin: 2px 0 0 0; font-size: 0.8rem; color: #64748b;">
-                                    El hotel dispone de <b>${totalFreeRoomsInRemainingDays} habitaciones libres reales</b> en total. El reparto adapta las ventas a los días con inventario abierto.
+                                    El hotel dispone de <b>${totalFreeRoomsInRemainingDays} habitaciones libres reales</b> en total. El reparto fija el <b>precio mínimo por día</b> necesario para alcanzar los <b>${formatMoney(gapRev)}</b> pendientes.
                                 </p>
                             </div>
-                            <div style="font-size: 0.8rem; background: #f1f5f9; padding: 4px 10px; border-radius: 8px; color: #475569; font-weight: 700;">
-                                Total Libres: <b>${totalFreeRoomsInRemainingDays} habs</b> • Objetivo Pick-up: <b>${rnNeeded1} habs</b> (${freeInventoryConversionPct.toFixed(1)}% de las libres)
+                            <div style="font-size: 0.8rem; background: #f1f5f9; padding: 4px 10px; border-radius: 8px; color: #475569; font-weight: 700; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                <span>Total Libres: <b>${totalFreeRoomsInRemainingDays} habs</b></span>
+                                <span>•</span>
+                                <span>Pick-up Sugerido: <b>+${totalSuggestedPickup} habs</b></span>
+                                <span>•</span>
+                                <span style="background: #fef9c3; color: #854d0e; padding: 2px 8px; border-radius: 6px;">💰 Precio Mín. Medio: <b>${avgMinPrice.toFixed(2)} €</b></span>
                             </div>
                         </div>
                         
@@ -3569,6 +3684,7 @@
                                         <th style="padding: 8px 10px; text-align: center;">Hab. Libres</th>
                                         <th style="padding: 8px 10px; text-align: center; background: #e0e7ff; color: #4338ca;">Venta Sugerida</th>
                                         <th style="padding: 8px 10px; text-align: center;">Ocup. Proyectada</th>
+                                        <th style="padding: 8px 10px; text-align: center; background: #fef9c3; color: #854d0e; border-left: 1px dashed #fef08a; border-right: 1px dashed #fef08a;">Precio Mín. Requerido</th>
                                         <th style="padding: 8px 10px; text-align: left;">Táctica Revenue Sugerida</th>
                                     </tr>
                                 </thead>
@@ -3580,9 +3696,15 @@
                                         <td style="padding: 8px 10px; text-align: left;">TOTAL ${daysRemaining} DÍAS</td>
                                         <td style="padding: 8px 10px; text-align: center; color: #475569;">${totalBookedInRemainingDays}/${capRemaining} (${currentRemainingDaysOcc.toFixed(1)}%)</td>
                                         <td style="padding: 8px 10px; text-align: center; color: #15803d;">${totalFreeRoomsInRemainingDays} libres</td>
-                                        <td style="padding: 8px 10px; text-align: center; color: #4338ca; background: #e0e7ff;">+${rnNeeded1} habs</td>
+                                        <td style="padding: 8px 10px; text-align: center; color: #4338ca; background: #e0e7ff;">+${totalSuggestedPickup} habs</td>
                                         <td style="padding: 8px 10px; text-align: center; color: #4338ca;">${finalRemainingDaysOcc.toFixed(1)}% (${totalBookedInRemainingDays + Math.min(rnNeeded1, totalFreeRoomsInRemainingDays)}/${capRemaining})</td>
-                                        <td style="padding: 8px 10px; font-size: 0.75rem; color: #64748b;">${rnNeeded1 <= totalFreeRoomsInRemainingDays ? '✅ 100% viable con inventario físico real' : '🔴 Excede habitaciones libres (subir ADR)'}</td>
+                                        <td style="padding: 8px 10px; text-align: center; color: #854d0e; background: #fef9c3; border-left: 1px dashed #fef08a; border-right: 1px dashed #fef08a;">
+                                            <div style="font-size: 0.88rem; font-weight: 800;">${avgMinPrice.toFixed(2)} € / hab</div>
+                                            <div style="font-size: 0.7rem; color: #713f12; font-weight: 600;">(${formatMoney(totalProjectedPickupRev)})</div>
+                                        </td>
+                                        <td style="padding: 8px 10px; font-size: 0.75rem; color: #15803d; font-weight: 700;">
+                                            ${totalProjectedPickupRev >= gapRev ? `✅ Cubre los ${formatMoney(gapRev)} pendientes` : `⚠️ Déficit de ${formatMoney(gapRev - totalProjectedPickupRev)}`}
+                                        </td>
                                     </tr>
                                 </tfoot>
                             </table>
