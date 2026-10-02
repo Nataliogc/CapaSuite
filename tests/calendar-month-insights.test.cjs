@@ -189,4 +189,17 @@ test('AnalisisCalendario renders pick-up and average price (ADR) badges next to 
     assert.match(html, /habs/);
 });
 
+test('CalculadoraPresupuesto scenarioDetailModal and allScenariosMatrixModal are widened to 1400px for full table visibility', () => {
+    const html = fs.readFileSync('CalculadoraPresupuesto.html', 'utf8');
+
+    // 1. Verify scenarioDetailModal has 96vw width and max-width 1400px
+    const scModalMatch = html.match(/id="scenarioDetailModal"[\s\S]*?<div style="([^"]*max-width:\s*1400px[^"]*)"/);
+    assert.ok(scModalMatch, 'scenarioDetailModal content container has max-width: 1400px');
+    assert.ok(!html.includes('id="scenarioDetailModal"\n        style="display:none; position:fixed; z-index:9998; left:0; top:0; width:100%; height:100%; background:rgba(15,23,42,0.65); backdrop-filter:blur(4px); align-items:center; justify-content:center; padding: 20px;">\n        <div style="background:#fff; border-radius:20px; padding:24px; width:100%; max-width:920px;'));
+
+    // 2. Verify allScenariosMatrixModal has 96vw width and max-width 1400px
+    const matrixModalMatch = html.match(/id="allScenariosMatrixModal"[\s\S]*?<div style="([^"]*max-width:\s*1400px[^"]*)"/);
+    assert.ok(matrixModalMatch, 'allScenariosMatrixModal content container has max-width: 1400px');
+});
+
 
