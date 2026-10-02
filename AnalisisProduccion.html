@@ -165,10 +165,17 @@
         }
 
         .container {
-            max-width: 1600px;
-            margin: 0 auto;
             width: 100%;
-            padding: 20px;
+            max-width: 100%;
+            margin: 0;
+            padding: 20px 40px 60px;
+            box-sizing: border-box;
+        }
+
+        @media (max-width: 900px) {
+            .container {
+                padding: 15px 16px 40px;
+            }
         }
 
         .header {
@@ -367,8 +374,8 @@
         <div class="nav-user">
             <div class="user-chip">
                 <select id="hotelSelector" class="nav-hotel-select" onchange="switchHotel(this.value)">
-                    <option value="Guadiana">Hotel Guadiana</option>
-                    <option value="Cumbria">Hotel Cumbria</option>
+                    <option value="Guadiana">Sercotel Guadiana</option>
+                    <option value="Cumbria">Cumbria Spa & Hotel</option>
                 </select>
                 <div id="themeToggleBtn" onclick="toggleTheme()" style="cursor:pointer; font-size:1.1rem;" title="Cambiar Modo">🌙</div>
                 <span class="dot"></span>
@@ -377,7 +384,7 @@
             </div>
         </div>
     </nav>
-    <div class="container" style="padding: 15px;">
+    <div class="container">
         <header class="header">
             <div style="display: flex; align-items: center; gap: 20px;">
                 <a href="index.html"><img src="Imagen/logo, CapaSuite.png" alt="CapaSuite" style="height: 50px;"></a>

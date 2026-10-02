@@ -124,6 +124,15 @@ test('SeguimientoRevenue layout adapts to full screen width without 1380px limit
     assert.doesNotMatch(css, /main\s*\{[^}]*max-width:\s*1380px;/);
 });
 
+test('AnalisisProduccion layout adapts to full screen width without 1600px limitation', () => {
+    const html = fs.readFileSync('AnalisisProduccion.html', 'utf8');
+
+    // .container must use 100% width and not constrain to 1600px
+    assert.match(html, /\.container\s*\{[^}]*width:\s*100%;/);
+    assert.match(html, /\.container\s*\{[^}]*max-width:\s*100%;/);
+    assert.doesNotMatch(html, /\.container\s*\{[^}]*max-width:\s*1600px;/);
+});
+
 test('CalculadoraPresupuesto distinguishes closed, in-progress, and future months', () => {
     const html = fs.readFileSync('CalculadoraPresupuesto.html', 'utf8');
 
