@@ -648,39 +648,74 @@
         }
 
         /* INSIGHTS PREMIUM */
+        .insights-panel-container {
+            width: 100%;
+            max-width: 1700px;
+            margin: 0 auto 24px;
+            padding: 0 40px;
+            box-sizing: border-box;
+        }
+        .insights-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 12px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        @media (max-width: 1200px) {
+            .insights-cards-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+        }
+        @media (max-width: 768px) {
+            .insights-cards-grid {
+                grid-template-columns: repeat(1, minmax(0, 1fr));
+            }
+        }
         .insight-card-premium {
             background: var(--bg-glass);
             border: 1px solid var(--border);
             border-radius: var(--radius-lg);
-            padding: 20px 30px;
-            min-width: 240px;
+            padding: 14px 16px;
+            min-width: 0;
             backdrop-filter: blur(20px);
             box-shadow: var(--shadow-premium);
             transition: var(--transition);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
         .insight-card-premium:hover {
-            transform: translateY(-5px);
+            transform: translateY(-3px);
             border-color: var(--primary);
         }
         .insight-label {
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             font-weight: 800;
             color: var(--text-muted);
-            letter-spacing: 1px;
-            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .insight-value {
-            font-size: 1.8rem;
+            font-size: 1.55rem;
             font-weight: 800;
             font-family: 'Outfit', sans-serif;
             color: var(--text-main);
+            line-height: 1.15;
+            white-space: nowrap;
         }
         .insight-value.pos { color: var(--secondary); text-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
         .insight-value.neg { color: var(--danger); text-shadow: 0 0 20px rgba(239, 68, 68, 0.3); }
         .insight-sub {
-            font-size: 0.75rem;
+            font-size: 0.68rem;
             color: var(--text-muted);
             margin-top: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         /* TOOLTIP (Improved) */
@@ -1213,15 +1248,15 @@
             }
 
             const insightsContainer = document.createElement('div');
-            insightsContainer.style.cssText = 'display:flex; gap:16px; max-width:1700px; margin:0 auto 30px; padding:0 40px; flex-wrap:wrap;';
+            insightsContainer.className = 'insights-cards-grid';
 
-            // 1. Pick-up Total (€)
+            // 1. Pick-up Total (€) - Solo Alojamiento
             let totalPickupRev = 0;
             let totalPickupRooms = 0;
             if (hotelData.otb && hotelData.otb_prev) {
                 if (isMonthSelected) {
-                    const curRev = hotelData.otb.revenue?.[selectedMonth] || 0;
-                    const prevRev = hotelData.otb_prev.revenue?.[selectedMonth] || 0;
+                    const curRev = hotelData.otb.breakdown?.habitacion?.[selectedMonth] ?? hotelData.otb.revenue?.[selectedMonth] ?? 0;
+                    const prevRev = hotelData.otb_prev.breakdown?.habitacion?.[selectedMonth] ?? hotelData.otb_prev.revenue?.[selectedMonth] ?? 0;
                     totalPickupRev = curRev - prevRev;
                     if (hotelData.otb.rooms && hotelData.otb_prev.rooms) {
                         const curRooms = hotelData.otb.rooms?.[selectedMonth] || 0;
@@ -1229,7 +1264,10 @@
                         totalPickupRooms = curRooms - prevRooms;
                     }
                 } else {
-                    totalPickupRev = hotelData.otb.revenue.reduce((a, b, i) => a + (b - (hotelData.otb_prev.revenue[i] || 0)), 0);
+                    const getRevArr = (obj) => obj?.breakdown?.habitacion || obj?.revenue || [];
+                    const curRevArr = getRevArr(hotelData.otb);
+                    const prevRevArr = getRevArr(hotelData.otb_prev);
+                    totalPickupRev = curRevArr.reduce((a, b, i) => a + (b - (prevRevArr[i] || 0)), 0);
                     if (hotelData.otb.rooms && hotelData.otb_prev.rooms) {
                         totalPickupRooms = hotelData.otb.rooms.reduce((a, b, i) => a + (b - (hotelData.otb_prev.rooms[i] || 0)), 0);
                     }
@@ -1262,11 +1300,11 @@
                 : (isMonthSelected ? `▼ Bajada en ${months[selectedMonth]}` : '▼ Bajada vs última actualización');
 
             pickupCard.innerHTML = `
-                <div class="insight-label">PICK-UP INGRESOS (${periodLabel})</div>
+                <div class="insight-label" title="Pick-up de ingresos de solo alojamiento">PICK-UP ALOJAMIENTO (${periodLabel})</div>
                 <div class="insight-value ${totalPickupRev >= 0 ? 'pos' : 'neg'}">
                     ${totalPickupRev > 0 ? '+' : ''}${new Intl.NumberFormat('es-ES').format(Math.round(totalPickupRev))}€
                 </div>
-                <div class="insight-sub">${pickupRevSub}</div>
+                <div class="insight-sub" title="${pickupRevSub}">${pickupRevSub} (Solo Alojamiento)</div>
             `;
             insightsContainer.appendChild(pickupCard);
 

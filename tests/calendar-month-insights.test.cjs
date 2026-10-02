@@ -51,3 +51,24 @@ test('AnalisisCalendario.html has month-level interactive selection and insights
     assert.equal(context.selectedMonth, null);
     assert.equal(context.renderInsightsCalled, true);
 });
+
+test('AnalisisCalendario renders 5 KPI cards in a single row and uses accommodation-only pickup', () => {
+    const html = fs.readFileSync('AnalisisCalendario.html', 'utf8');
+
+    // 1. Grid of 5 columns on single row
+    assert.match(html, /grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\);/);
+    assert.match(html, /insightsContainer\.className\s*=\s*['"]insights-cards-grid['"]/);
+
+    // 2. Room revenue only (alojamiento)
+    assert.match(html, /PICK-UP ALOJAMIENTO/);
+    assert.match(html, /Solo Alojamiento/);
+    assert.match(html, /hotelData\.otb\.breakdown\?\.habitacion/);
+});
+
+test('CalculadoraPresupuesto modal is widened to prevent horizontal scroll', () => {
+    const html = fs.readFileSync('CalculadoraPresupuesto.html', 'utf8');
+
+    // Budget Pacing modal width
+    assert.match(html, /id="budgetPacingModalContent"[^>]*width:\s*96vw;\s*max-width:\s*1480px/);
+});
+
