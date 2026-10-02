@@ -51,6 +51,12 @@ function setupEnvironment() {
     assert.ok(startPlain !== -1 && endPlain !== -1, 'Could not find generateRevenueEmailPlainText in HTML');
     vm.runInContext(html.slice(startPlain, endPlain), context);
 
+    const startOcc = html.indexOf('        function hotelOccupancyLabel(');
+    const endOcc = html.indexOf('\n        function pendingPriceClass(');
+    if (startOcc !== -1 && endOcc !== -1) {
+        vm.runInContext('const HOTEL_CAPACITY = { "Guadiana": 108, "Cumbria": 59 };\n' + html.slice(startOcc, endOcc), context);
+    }
+
     return { context, storage };
 }
 
@@ -549,5 +555,21 @@ test('email HTML provides wider date column with side-by-side day badge and tran
     assert.match(htmlOutput, /bgcolor="#eef2ff"[\s\S]*?<font color="#4f46e5"><strong>68%<\/strong><\/font>/);
     // 12% (low occ) -> amber pill
     assert.match(htmlOutput, /bgcolor="#fffbeb"[\s\S]*?<font color="#d97706"><strong>12%<\/strong><\/font>/);
+});
+
+test('hotelOccupancyLabel calculates and shows free rooms (libres) alongside occupancy percentage', () => {
+    const { context } = setupEnvironment();
+
+    // Cumbria: Capacity 59, 29 rooms occupied -> 30 libres · 49%
+    const cumbriaLabel = context.hotelOccupancyLabel('Cumbria', 29, {}, '2026-10-02');
+    assert.match(cumbriaLabel, /30 libres · 49%/);
+
+    // Guadiana: Capacity 108, 107 rooms occupied -> 1 libre · 99%
+    const guadianaLabel = context.hotelOccupancyLabel('Guadiana', 107, {}, '2026-10-02');
+    assert.match(guadianaLabel, /1 libre · 99%/);
+
+    // Overbooking: 60 rooms on 59 capacity -> 0 libres · 102%
+    const overbookingLabel = context.hotelOccupancyLabel('Cumbria', 60, {}, '2026-10-02');
+    assert.match(overbookingLabel, /0 libres · 102%/);
 });
 

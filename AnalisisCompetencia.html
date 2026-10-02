@@ -1724,9 +1724,12 @@
 
         function hotelOccupancyLabel(hotelName, rooms, hData, dateISO) {
             if (rooms === null || rooms === undefined || rooms === '' || !Number.isFinite(Number(rooms))) return '';
-            const capacity = hotelName === 'Cumbria' ? 59 : hotelName === 'Guadiana' ? 108 : 0;
+            const capacity = HOTEL_CAPACITY[hotelName] || (hotelName && hotelName.includes('Cumbria') ? 59 : (hotelName && hotelName.includes('Guadiana') ? 108 : 0));
             if (!capacity) return '';
-            const percentage = Math.round(Number(rooms) / capacity * 100);
+            const numRooms = Number(rooms);
+            const percentage = Math.round(numRooms / capacity * 100);
+            const freeRooms = Math.max(0, capacity - numRooms);
+            const freeWord = freeRooms === 1 ? 'libre' : 'libres';
             let cuposBadge = '';
             if (hData && (hData.cupos > 0 || hData.isSoldOut)) {
                 if (hData.isSoldOut) {
@@ -1737,7 +1740,7 @@
             }
             const clickAttr = dateISO ? `onclick="openCuposModal('${hotelName}', '${dateISO}', event)"` : '';
             const cursorClass = dateISO ? 'occupancy-click-trigger' : '';
-            return `<div class="${cursorClass}" ${clickAttr} style="font-size:0.58rem; color:#8b5cf6; font-weight:700; margin-top:1px; line-height:1.1; white-space:nowrap;" title="Click para gestionar cupos o ajustar ocupación (${rooms} de ${capacity} habitaciones)">${rooms} hab · ${percentage}%${cuposBadge}</div>`;
+            return `<div class="${cursorClass}" ${clickAttr} style="font-size:0.58rem; color:#8b5cf6; font-weight:700; margin-top:1px; line-height:1.1; white-space:nowrap;" title="Click para gestionar cupos o ajustar ocupación (${freeRooms} ${freeWord} · ${numRooms} de ${capacity} ocupadas)">${freeRooms} ${freeWord} · ${percentage}%${cuposBadge}</div>`;
         }
 
         function pendingPriceClass(hotel) {
