@@ -223,5 +223,28 @@ test('CalculadoraPresupuesto Estado de Incentivos shows closed and in-course mon
     assert.match(html, /<th class="text-left" style="min-width:\s*200px;/);
 });
 
+test('AnalisisCalendario showTooltip renders comprehensive daily pick-up details and metrics', () => {
+    const html = fs.readFileSync('AnalisisCalendario.html', 'utf8');
+
+    // 1. Verify showTooltip calculates pick-up differences
+    assert.match(html, /function showTooltip\(e, iso, hData, dData, dayEvents\)/);
+    assert.match(html, /const diffRooms = hasPickup \? Math\.round\(otbCurrent - otbPrevious\) : 0;/);
+    assert.match(html, /const diffRev = hasPickup \? \(currentRev - prevRev\) : 0;/);
+    assert.match(html, /const diffAdr = \(hasPickup && prevAdr > 0 && curAdr > 0\) \? \(curAdr - prevAdr\) : null;/);
+
+    // 2. Verify tooltip renders DETALLE PICK-UP (DIARIO) section and badges
+    assert.match(html, /DETALLE PICK-UP \(DIARIO\):/);
+    assert.match(html, /Habitaciones/);
+    assert.match(html, /Ingresos OTB/);
+    assert.match(html, /PMP \/ ADR/);
+    assert.match(html, /headerPickupBadge/);
+
+    // 3. Verify enrichRevenueData saves snapshot pickup metrics
+    assert.match(html, /rev_prev:/);
+    assert.match(html, /adr_prev:/);
+    assert.match(html, /snapshotDate:/);
+});
+
+
 
 

@@ -786,10 +786,11 @@
             background: var(--bg-glass);
             border-radius: 16px;
             box-shadow: var(--shadow-premium);
-            padding: 20px;
+            padding: 18px 20px;
             pointer-events: none;
             display: none;
-            min-width: 320px;
+            min-width: 340px;
+            max-width: 390px;
             border: 1px solid var(--border);
             color: var(--text-main);
             backdrop-filter: blur(25px);
@@ -1522,7 +1523,8 @@
                             const hKey = hotelKeys[hName];
                             if (hKey && db[hKey][yearStr]) {
                                 const yearData = db[hKey][yearStr];
-                                let adr = 0, otb = 0, occ = 0, otb_prev = null;
+                                let adr = 0, otb = 0, occ = 0, otb_prev = null, rev = 0, rev_prev = 0, adr_prev = 0;
+                                let snapDate = '';
                                 if (yearData.daily_otb && yearData.daily_otb[iso]) {
                                     const v = yearData.daily_otb[iso];
                                     const baseR = Math.round((typeof v === 'object') ? (v.rooms || 0) : v);
@@ -1534,6 +1536,7 @@
                                     if ((mC?.isSoldOut || v?.isSoldOut) && otb < hCap) otb = hCap;
                                     if (typeof v === 'object' && v.rooms > 0) {
                                         adr = (v.revenue || 0) / v.rooms;
+                                        rev = v.revenue || 0;
                                     }
                                 }
                                 if (yearData.daily && yearData.daily[iso]) {
@@ -1541,10 +1544,19 @@
                                 }
                                 if (yearData.otb_prev && yearData.otb_prev.daily_otb && yearData.otb_prev.daily_otb[iso]) {
                                     if (yearData.otb_prev.snapshotDate !== '31-12-2027') {
+                                        snapDate = yearData.otb_prev.snapshotDate || '';
                                         const vPrev = yearData.otb_prev.daily_otb[iso];
                                         const pVal = Math.round((typeof vPrev === 'object') ? (vPrev.rooms || 0) : vPrev);
                                         if (!(hName === 'Cumbria' && iso === '2027-01-02' && pVal >= 50)) {
                                             otb_prev = pVal;
+                                            if (typeof vPrev === 'object') {
+                                                rev_prev = vPrev.revenue || 0;
+                                                if (vPrev.rooms > 0 && vPrev.revenue > 0) {
+                                                    adr_prev = vPrev.revenue / vPrev.rooms;
+                                                } else if (vPrev.adr > 0) {
+                                                    adr_prev = vPrev.adr;
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -1572,7 +1584,11 @@
                                     otb: Math.round(finalOtb), 
                                     occ: Math.round(finalOcc), 
                                     otb_prev: otb_prev !== null ? Math.round(otb_prev) : cleanNestedOtbPrev, 
-                                    adr: finalAdr 
+                                    adr: finalAdr,
+                                    revenue: rev || (finalOtb * finalAdr),
+                                    rev_prev: rev_prev || ((otb_prev !== null && adr_prev > 0) ? (otb_prev * adr_prev) : (nested.rev_prev || 0)),
+                                    adr_prev: adr_prev || nested.adr_prev || 0,
+                                    snapshotDate: snapDate || nested.snapshotDate || (yearData.otb_prev?.snapshotDate || '')
                                 };
                             }
                         });
@@ -1939,10 +1955,62 @@
                     (${diffMarket >= 0 ? '+' : ''}${diffMarket}€ vs media)
                 </span>` : '';
 
+            // --- DETALLES DE PICK-UP DIARIO ---
+            const otbCurrent = roomsSold;
+            const otbPrevious = (hData.otb_prev !== null && hData.otb_prev !== undefined) ? hData.otb_prev : null;
+            const hasPickup = (otbPrevious !== null);
+            const diffRooms = hasPickup ? Math.round(otbCurrent - otbPrevious) : 0;
+
+            const currentRev = Math.round(hData.revenue || (otbCurrent * (hotelADR || hotelPrice || 0)));
+            const prevRev = Math.round(hData.rev_prev || (hasPickup ? (otbPrevious * (hData.adr_prev || hotelADR || hotelPrice || 0)) : 0));
+            const diffRev = hasPickup ? (currentRev - prevRev) : 0;
+
+            const prevAdr = hData.adr_prev ? Math.round(hData.adr_prev) : 0;
+            const curAdr = Math.round(hotelADR);
+            const diffAdr = (hasPickup && prevAdr > 0 && curAdr > 0) ? (curAdr - prevAdr) : null;
+
+            let pickupColor = '#6366f1';
+            let pickupBg = 'rgba(99, 102, 241, 0.08)';
+            let pickupBorder = 'rgba(99, 102, 241, 0.25)';
+            let pickupBadgeText = '= Sin cambios';
+            let pickupIcon = '⏸️';
+            let pickupTactic = 'Demanda estable';
+
+            if (hasPickup && diffRooms > 0) {
+                pickupColor = '#10b981';
+                pickupBg = 'rgba(16, 185, 129, 0.08)';
+                pickupBorder = 'rgba(16, 185, 129, 0.25)';
+                pickupBadgeText = `▲ +${diffRooms} hab.`;
+                pickupIcon = '📈';
+                pickupTactic = occPct >= 90 ? 'Ocupación crítica: Elevar tarifa' : (occPct >= 75 ? 'Demanda firme: Optimizar ADR' : 'Captación activa de reservas');
+            } else if (hasPickup && diffRooms < 0) {
+                pickupColor = '#ef4444';
+                pickupBg = 'rgba(239, 68, 68, 0.08)';
+                pickupBorder = 'rgba(239, 68, 68, 0.25)';
+                pickupBadgeText = `▼ ${diffRooms} hab.`;
+                pickupIcon = '📉';
+                pickupTactic = 'Cancelaciones netas: Revisar precio';
+            } else if (!hasPickup) {
+                pickupColor = '#64748b';
+                pickupBg = 'rgba(241, 245, 249, 0.7)';
+                pickupBorder = '#cbd5e1';
+                pickupBadgeText = '1ª Lectura OTB';
+                pickupIcon = '📊';
+                pickupTactic = 'Cartera consolidada';
+            }
+
+            let headerPickupBadge = '';
+            if (hasPickup && diffRooms !== 0) {
+                headerPickupBadge = `<span style="font-size:0.75rem; font-weight:800; padding:2px 8px; border-radius:12px; background:${diffRooms > 0 ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)'}; color:${diffRooms > 0 ? '#10b981' : '#ef4444'}; border:1px solid ${diffRooms > 0 ? 'rgba(16,185,129,0.4)' : 'rgba(239,68,68,0.4)'};">${diffRooms > 0 ? '▲ +' : '▼ '}${diffRooms} habs</span>`;
+            }
+
             let html = `
                 <div class="tt-header">
                     <div class="tt-date">📅 ${dateStr}</div>
-                    <div class="tt-mkt">PMP OTB: ${Math.round(hotelADR)}€</div>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        ${headerPickupBadge}
+                        <div class="tt-mkt">PMP OTB: ${Math.round(hotelADR)}€</div>
+                    </div>
                 </div>
                 <div class="tt-main-hotel" style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
                     <div>
@@ -1956,6 +2024,47 @@
                             Ocupación: <b style="color:var(--text-main); font-size:0.85rem;">${occPct}%</b><br/>
                             <span style="font-size:0.65rem;">(${roomsSold} / ${cap} Hab)</span>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Detalle de Pick-up diario -->
+                <div style="background:${pickupBg}; border:1px solid ${pickupBorder}; border-radius:12px; padding:10px 12px; margin-bottom:12px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <span style="font-weight:800; font-size:0.78rem; color:${pickupColor}; display:flex; align-items:center; gap:5px;">
+                            <span>${pickupIcon}</span> DETALLE PICK-UP (DIARIO):
+                        </span>
+                        <span style="font-weight:800; font-size:0.72rem; padding:2px 8px; border-radius:12px; background:var(--bg-surface, #ffffff); color:${pickupColor}; border:1px solid ${pickupBorder}; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                            ${pickupBadgeText}
+                        </span>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:6px; background:var(--bg-surface, rgba(255,255,255,0.85)); padding:8px 6px; border-radius:8px; border:1px solid rgba(0,0,0,0.06); text-align:center;">
+                        <div>
+                            <div style="font-size:0.62rem; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Habitaciones</div>
+                            <div style="font-size:0.95rem; font-weight:800; color:var(--text-main); line-height:1.2; margin-top:2px;">${otbCurrent} hab.</div>
+                            <div style="font-size:0.65rem; color:${diffRooms > 0 ? '#10b981' : (diffRooms < 0 ? '#ef4444' : 'var(--text-muted)')}; font-weight:700; margin-top:2px;">
+                                ${hasPickup ? `${diffRooms > 0 ? '▲ +' : (diffRooms < 0 ? '▼ ' : '= ')}${diffRooms} hab.` : 'Cartera OTB'}
+                            </div>
+                        </div>
+                        <div>
+                            <div style="font-size:0.62rem; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Ingresos OTB</div>
+                            <div style="font-size:0.95rem; font-weight:800; color:var(--text-main); line-height:1.2; margin-top:2px;">${currentRev > 0 ? currentRev + '€' : '--€'}</div>
+                            <div style="font-size:0.65rem; color:${diffRev > 0 ? '#10b981' : (diffRev < 0 ? '#ef4444' : 'var(--text-muted)')}; font-weight:700; margin-top:2px;">
+                                ${hasPickup && diffRev !== 0 ? `${diffRev > 0 ? '+' : ''}${diffRev}€ rev.` : (hasPickup ? '= 0€' : '--')}
+                            </div>
+                        </div>
+                        <div>
+                            <div style="font-size:0.62rem; color:var(--text-muted); font-weight:700; text-transform:uppercase;">PMP / ADR</div>
+                            <div style="font-size:0.95rem; font-weight:800; color:var(--text-main); line-height:1.2; margin-top:2px;">${curAdr > 0 ? curAdr + '€' : '--€'}</div>
+                            <div style="font-size:0.65rem; color:${diffAdr && diffAdr > 0 ? '#10b981' : (diffAdr && diffAdr < 0 ? '#ef4444' : 'var(--text-muted)')}; font-weight:700; margin-top:2px;">
+                                ${diffAdr !== null && diffAdr !== 0 ? `${diffAdr > 0 ? '+' : ''}${diffAdr}€ ADR` : (hasPickup ? '= Tarifa OTB' : '--')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:6px; font-size:0.68rem; color:var(--text-muted); display:flex; justify-content:space-between; align-items:center;">
+                        <span>${hasPickup ? `Lectura previa: <b>${otbPrevious} hab.</b>` : 'Lectura inicial registrada'}</span>
+                        <span style="font-weight:700; color:${pickupColor};">${pickupTactic}</span>
                     </div>
                 </div>
 
@@ -2038,8 +2147,9 @@
             // Adjust position
             let x = e.clientX + 20;
             let y = e.clientY + 20;
-            if (x + 300 > window.innerWidth) x = e.clientX - 300;
-            if (y + 400 > window.innerHeight) y = e.clientY - 400;
+            if (x + 360 > window.innerWidth) x = Math.max(10, e.clientX - 360);
+            if (y + 460 > window.innerHeight) y = Math.max(10, window.innerHeight - 480);
+            if (y < 10) y = 10;
             
             t.style.left = x + 'px';
             t.style.top = y + 'px';
