@@ -202,4 +202,26 @@ test('CalculadoraPresupuesto scenarioDetailModal and allScenariosMatrixModal are
     assert.ok(matrixModalMatch, 'allScenariosMatrixModal content container has max-width: 1400px');
 });
 
+test('CalculadoraPresupuesto Estado de Incentivos shows closed and in-course month status badges and breakdown', () => {
+    const html = fs.readFileSync('CalculadoraPresupuesto.html', 'utf8');
+
+    // 1. Verify bonusSubtitle element exists
+    assert.match(html, /id="bonusSubtitle"/);
+
+    // 2. Verify renderBonusTable computes timing and displays closed / in-course badges
+    assert.match(html, /function renderBonusTable\(\)/);
+    assert.match(html, /const timing = getMonthTiming\(i, currentYear, currentHotel\);/);
+    assert.match(html, /timing\.isClosed/);
+    assert.match(html, /timing\.isCurrent/);
+    assert.match(html, /🔒<\/span> Cerrado/);
+    assert.match(html, /⚡<\/span> En curso/);
+    assert.match(html, /Real Cerrado/);
+    assert.match(html, /Real \+ OTB/);
+    assert.match(html, /Cartera OTB/);
+
+    // 3. Verify table header MES has adequate width for pills
+    assert.match(html, /<th class="text-left" style="min-width:\s*200px;/);
+});
+
+
 
