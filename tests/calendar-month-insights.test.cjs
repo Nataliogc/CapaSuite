@@ -106,6 +106,15 @@ test('Analisis360 layout adapts to full screen width without 1600px limitation',
     assert.match(html, /\.header-360\s*\{[^}]*width:\s*100%;/);
 });
 
+test('AnalisisIA layout adapts to full screen width without 1200px limitation', () => {
+    const html = fs.readFileSync('AnalisisIA.html', 'utf8');
+
+    // .container must use 100% width and not constrain to 1200px
+    assert.match(html, /\.container\s*\{[^}]*width:\s*100%;/);
+    assert.match(html, /\.container\s*\{[^}]*max-width:\s*100%;/);
+    assert.doesNotMatch(html, /\.container\s*\{[^}]*max-width:\s*1200px;/);
+});
+
 test('CalculadoraPresupuesto distinguishes closed, in-progress, and future months', () => {
     const html = fs.readFileSync('CalculadoraPresupuesto.html', 'utf8');
 

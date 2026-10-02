@@ -131,9 +131,20 @@
 
         /* MAIN LAYOUT */
         .container {
-            max-width: 1200px;
-            margin: 40px auto;
-            padding: 0 20px;
+            width: 100%;
+            max-width: 100%;
+            margin: 20px 0 60px;
+            padding: 0 40px;
+            box-sizing: border-box;
+        }
+
+        @media (max-width: 900px) {
+            .container {
+                padding: 0 20px;
+            }
+            .analysis-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         .ai-hero {
@@ -430,8 +441,8 @@
         <div class="nav-user">
             <div class="user-chip">
                 <select id="hotelSelector" class="nav-hotel-select" onchange="switchHotel(this.value)">
-                    <option value="Guadiana">Hotel Guadiana</option>
-                    <option value="Cumbria">Hotel Cumbria</option>
+                    <option value="Guadiana">Sercotel Guadiana</option>
+                    <option value="Cumbria">Cumbria Spa & Hotel</option>
                 </select>
                 <div id="themeToggleBtn" onclick="toggleTheme()" style="cursor:pointer; font-size:1.1rem;" title="Cambiar Modo">🌙</div>
                 <span class="dot"></span>
