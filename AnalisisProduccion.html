@@ -403,6 +403,112 @@
             margin-top: 4px;
             display: none;
         }
+
+        /* TABLA Y RESÚMENES DE OCUPACIÓN SEMANAL */
+        .weekday-occ-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+            background: var(--bg-surface, #ffffff);
+        }
+        .weekday-occ-table th {
+            background: rgba(99, 102, 241, 0.08) !important;
+            color: var(--text-muted);
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            letter-spacing: 0.5px;
+            padding: 10px 14px;
+            border-bottom: 2px solid var(--border);
+            text-align: right;
+            position: static !important;
+            z-index: 1 !important;
+        }
+        .weekday-occ-table th:first-child {
+            text-align: left;
+            min-width: 130px;
+            background: rgba(99, 102, 241, 0.08) !important;
+        }
+        .weekday-occ-table td {
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border);
+            text-align: right;
+            font-size: 0.82rem;
+            color: var(--text-main);
+            position: static !important;
+        }
+        .weekday-occ-table td:first-child {
+            text-align: left;
+            min-width: 130px;
+            background: transparent !important;
+            font-weight: 700;
+        }
+        .weekday-occ-table tr:hover td {
+            background: rgba(99, 102, 241, 0.04) !important;
+        }
+        .weekday-occ-table tfoot td {
+            font-weight: 800;
+            background: rgba(99, 102, 241, 0.07) !important;
+            border-top: 2px solid var(--border);
+            border-bottom: none;
+            color: var(--text-main);
+        }
+
+        .weekday-tranches-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+        .weekday-tranche-card {
+            background: var(--bg-surface, #ffffff);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md, 12px);
+            padding: 14px 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+        .weekday-tranche-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+        .weekday-tranche-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .weekday-tranche-title {
+            font-size: 0.82rem;
+            font-weight: 800;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .weekday-tranche-badge {
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 6px;
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary);
+        }
+        .weekday-tranche-value {
+            font-size: 1.45rem;
+            font-weight: 800;
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            margin-bottom: 6px;
+        }
+        .weekday-tranche-sub {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            line-height: 1.35;
+        }
     </style>
 </head>
 
@@ -509,22 +615,54 @@
                 </div>
             </div>
 
-            <!-- HEATMAP SECTION -->
+            <!-- SECCIÓN: ANÁLISIS DE OCUPACIÓN Y RENDIMIENTO POR DÍA DE LA SEMANA -->
             <div class="card" id="heatmap-section">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <div class="kpi-label" style="margin-bottom: 0;">
-                        Analítica por Día de la Semana (Mapa de Calor)
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+                    <div>
+                        <div class="kpi-label" style="margin-bottom: 4px; font-size: 1.05rem; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                            <span>📅</span> Ocupación Media por Día de la Semana (Lunes a Domingo)
+                        </div>
+                        <div id="weekday-meta-subtitle" style="font-size: 0.75rem; color: var(--text-muted);">
+                            Producción real cerrada analizada por día de la semana. Excluye estimaciones OTB.
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">Métrica Visual:</span>
+                        <select id="heatmapMetricSelector" onchange="renderHeatmap()"
+                            style="font-size: 0.78rem; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-main); cursor: pointer; font-weight: 600;">
+                            <option value="rn">Ocupación (RN)</option>
+                            <option value="rev">Producción (€)</option>
+                            <option value="adr">Prod. Total / Hab (TrevPOR)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Banner Informativo: Corte y Cobertura -->
+                <div id="weekday-cutoff-banner" style="background: rgba(99, 102, 241, 0.06); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 12px; padding: 10px 16px; margin-bottom: 16px; font-size: 0.78rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                    <!-- Rellenado dinámicamente -->
+                </div>
+
+                <!-- Tarjetas de Resumen por Tramos (Lunes-Jueves, Viernes-Sábado, Domingo, Total) -->
+                <div id="weekday-summary-cards" class="weekday-tranches-grid">
+                    <!-- Rellenado dinámicamente -->
+                </div>
+
+                <!-- Tabla Detallada Lunes a Domingo -->
+                <div class="weekday-table-container" style="overflow-x: auto; margin-bottom: 20px; border-radius: 12px; border: 1px solid var(--border);">
+                    <table id="weekday-occupancy-table" class="weekday-occ-table">
+                        <!-- Rellenado dinámicamente -->
+                    </table>
+                </div>
+
+                <!-- Distribución Visual Semanal -->
+                <div style="margin-top: 10px;">
+                    <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">
+                        Distribución Visual Semanal (Mapa de Calor)
                         <span id="heatmap-period-label" style="font-size: 0.7rem; color: #94a3b8; margin-left: 8px; font-weight: 500;"></span>
                     </div>
-                    <select id="heatmapMetricSelector" onchange="renderHeatmap()"
-                        style="font-size: 0.75rem; padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(30,41,59,0.5); color: white; cursor: pointer;">
-                        <option value="rev">Producción (€)</option>
-                        <option value="rn">Ocupación (RN)</option>
-                        <option value="adr">Prod. Total / Hab (TrevPOR)</option>
-                    </select>
-                </div>
-                <div id="weekday-heatmap" class="heatmap-grid">
-                    <!-- Dynamic -->
+                    <div id="weekday-heatmap" class="heatmap-grid">
+                        <!-- Dynamic -->
+                    </div>
                 </div>
             </div>
 
@@ -2311,96 +2449,354 @@
 
         function renderHeatmap() {
             const container = document.getElementById('weekday-heatmap');
-            const data = db[currentHotel]?.[currentYear];
-            container.innerHTML = '<p>Sin datos diarios para el periodo seleccionado.</p>';
-            if (!data || !data.daily) return;
+            const tableEl = document.getElementById('weekday-occupancy-table');
+            const summaryCardsEl = document.getElementById('weekday-summary-cards');
+            const bannerEl = document.getElementById('weekday-cutoff-banner');
+            const subtitleEl = document.getElementById('weekday-meta-subtitle');
 
-            const metric = document.getElementById('heatmapMetricSelector').value;
-            const weekStats = [
-                { name: "Lunes", rev: 0, rn: 0, count: 0 },
-                { name: "Martes", rev: 0, rn: 0, count: 0 },
-                { name: "Miércoles", rev: 0, rev: 0, rn: 0, count: 0 }, // Miércoles fix (redundant rev 0 ok)
-                { name: "Miércoles", rev: 0, rn: 0, count: 0 },
-                { name: "Jueves", rev: 0, rn: 0, count: 0 },
-                { name: "Viernes", rev: 0, rn: 0, count: 0 },
-                { name: "Sábado", rev: 0, rn: 0, count: 0 },
-                { name: "Domingo", rev: 0, rn: 0, count: 0 }
-            ];
-            // Fix Wednesday duplicate and logic
-            const weekNames = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
-            const weekData = weekNames.map(n => ({ name: n, rev: 0, rn: 0, count: 0 }));
+            const data = (typeof db !== 'undefined' && db[currentHotel]) ? db[currentHotel][currentYear] : null;
 
-            const midx = document.getElementById('monthSelector').value === "All" ? -1 : parseInt(document.getElementById('monthSelector').value);
+            if (container) container.innerHTML = '<p>Sin datos diarios para el periodo seleccionado.</p>';
+            if (tableEl) tableEl.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:20px; color:var(--text-muted);">Sin datos diarios de producción registrados para el periodo seleccionado.</td></tr>';
+            if (summaryCardsEl) summaryCardsEl.innerHTML = '';
+            if (bannerEl) bannerEl.innerHTML = '<div style="color:var(--text-muted);">Sin datos diarios de producción registrados. Cargue la producción en el módulo de Carga de Datos.</div>';
 
-            Object.entries(data.daily).forEach(([dateStr, dayData]) => {
-                // Robust date parsing for DD-MM-YYYY and YYYY-MM-DD to UTC
-                let parts = dateStr.split(/[\/-]/);
-                let date;
+            if (!data || !data.daily || Object.keys(data.daily).length === 0) return;
+
+            const metric = document.getElementById('heatmapMetricSelector') ? document.getElementById('heatmapMetricSelector').value : 'rn';
+            const midx = (document.getElementById('monthSelector') && document.getElementById('monthSelector').value !== "All")
+                ? parseInt(document.getElementById('monthSelector').value, 10)
+                : -1;
+
+            const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+            const periodLabel = midx === -1 ? `Año Completo ${currentYear}` : `${monthNames[midx]} ${currentYear}`;
+            const hotelDisplayName = currentHotel === 'Guadiana' ? 'Sercotel Guadiana' : (currentHotel === 'Cumbria' ? 'Cumbria Spa&Hotel' : currentHotel);
+
+            if (subtitleEl) {
+                subtitleEl.innerText = `Producción real cerrada para ${hotelDisplayName} · ${periodLabel}. Excluye estimaciones OTB.`;
+            }
+
+            // 1. Capacidad e Inventario del Hotel
+            let baseCap = (typeof HOTELS !== 'undefined' && HOTELS[currentHotel]?.rooms) || (currentHotel === 'Cumbria' ? 59 : 108);
+            let hasInventoryConfigured = baseCap > 0;
+
+            // Revisar configuración de cupos manuales o fuera de servicio
+            let manualCuposDB = {};
+            try {
+                if (typeof CapaStorage !== 'undefined') {
+                    manualCuposDB = JSON.parse(CapaStorage.getItem('manual_cupos_v1') || '{}');
+                } else if (typeof localStorage !== 'undefined') {
+                    manualCuposDB = JSON.parse(localStorage.getItem('manual_cupos_v1') || '{}');
+                }
+            } catch (e) {}
+            const hotelCupos = manualCuposDB[currentHotel] || {};
+
+            // 2. Normalizar e indexar data.daily a ISO YYYY-MM-DD
+            const dailyMap = new Map();
+            Object.entries(data.daily).forEach(([k, val]) => {
+                let parts = k.split(/[\/-]/);
+                let isoKey = null;
                 if (parts.length === 3) {
                     let y, m, d;
                     if (parts[0].length === 4) {
-                        y = parseInt(parts[0]);
-                        m = parseInt(parts[1]) - 1;
-                        d = parseInt(parts[2]);
+                        y = parseInt(parts[0], 10);
+                        m = parseInt(parts[1], 10);
+                        d = parseInt(parts[2], 10);
                     } else {
-                        y = parseInt(parts[2].length === 2 ? "20" + parts[2] : parts[2]);
-                        m = parseInt(parts[1]) - 1;
-                        d = parseInt(parts[0]);
+                        y = parseInt(parts[2].length === 2 ? "20" + parts[2] : parts[2], 10);
+                        m = parseInt(parts[1], 10);
+                        d = parseInt(parts[0], 10);
                     }
-                    date = new Date(Date.UTC(y, m, d));
-                } else {
-                    date = new Date(dateStr);
+                    if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+                        isoKey = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                    }
                 }
-
-                if (isNaN(date.getTime())) return;
-                if (date.getUTCFullYear() !== Number(currentYear)) return;
-                
-                // Filter by month if selected
-                if (midx !== -1 && date.getUTCMonth() !== midx) return;
-
-                let dayIdx = date.getUTCDay() - 1; // 0=Mon, ..., 6=Sun
-                if (dayIdx === -1) dayIdx = 6; // Sunday fix
-
-                const rev = (typeof dayData === 'object') ? (dayData.revenue || 0) : 0;
-                const rn = (typeof dayData === 'object') ? (dayData.rooms || 0) : (dayData || 0);
-
-                weekData[dayIdx].rev += rev;
-                weekData[dayIdx].rn += rn;
-                weekData[dayIdx].count++;
+                if (!isoKey) {
+                    const parsed = new Date(k);
+                    if (!isNaN(parsed.getTime())) {
+                        isoKey = parsed.toISOString().split('T')[0];
+                    }
+                }
+                if (isoKey) {
+                    dailyMap.set(isoKey, val);
+                }
             });
 
-            // Calculate Max for color scaling
-            let maxVal = 0;
+            // 3. Generar días de calendario del periodo seleccionado
+            const yearNum = parseInt(currentYear, 10) || new Date().getFullYear();
+            const startMonth = (midx === -1) ? 0 : midx;
+            const endMonth = (midx === -1) ? 11 : midx;
+
+            const weekNames = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+            const weekData = weekNames.map(name => ({
+                name,
+                realDays: 0,
+                missingDays: 0,
+                totalCalendarDays: 0,
+                zeroSalesDays: 0,
+                roomsSold: 0,
+                roomsAvailable: 0,
+                revenue: 0,
+                oooRooms: 0,
+                occupancy: null,
+                avg: 0,
+                adr: 0
+            }));
+
+            for (let m = startMonth; m <= endMonth; m++) {
+                const daysInM = new Date(yearNum, m + 1, 0).getDate();
+                for (let d = 1; d <= daysInM; d++) {
+                    const dt = new Date(Date.UTC(yearNum, m, d));
+                    const iso = `${yearNum}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                    
+                    let dayIdx = dt.getUTCDay() - 1;
+                    if (dayIdx === -1) dayIdx = 6; // Domingo
+
+                    weekData[dayIdx].totalCalendarDays++;
+
+                    const dayRecord = dailyMap.get(iso);
+                    if (dayRecord !== undefined && dayRecord !== null) {
+                        // Día CON datos reales (incluso si tiene 0 habitaciones vendidas)
+                        const rn = (typeof dayRecord === 'object') ? Number(dayRecord.rooms ?? dayRecord.rn ?? 0) : Number(dayRecord || 0);
+                        const rev = (typeof dayRecord === 'object') ? Number(dayRecord.revenue || 0) : 0;
+                        
+                        // Habitaciones fuera de servicio
+                        let ooo = 0;
+                        if (typeof dayRecord === 'object') {
+                            ooo = Number(dayRecord.out_of_order || dayRecord.ooo || dayRecord.fuera_servicio || dayRecord.bloqueadas || 0);
+                        }
+                        const cupo = hotelCupos[iso];
+                        if (!ooo && cupo) {
+                            ooo = Number(cupo.out_of_order || cupo.bloqueadas || cupo.bloqueo || 0);
+                        }
+
+                        const netAvailable = hasInventoryConfigured ? Math.max(0, baseCap - ooo) : 0;
+
+                        weekData[dayIdx].realDays++;
+                        weekData[dayIdx].roomsSold += rn;
+                        if (hasInventoryConfigured) {
+                            weekData[dayIdx].roomsAvailable += netAvailable;
+                            weekData[dayIdx].oooRooms += ooo;
+                        }
+                        weekData[dayIdx].revenue += rev;
+                        if (rn === 0) {
+                            weekData[dayIdx].zeroSalesDays++;
+                        }
+                    } else {
+                        // Día SIN datos reales (se excluye del cálculo)
+                        weekData[dayIdx].missingDays++;
+                    }
+                }
+            }
+
+            // 4. Calcular ocupación por día de la semana (suma vendidas / suma disponibles * 100)
             weekData.forEach(s => {
-                let val = 0;
-                if (metric === 'rev') val = s.rev / (s.count || 1);
-                else if (metric === 'rn') val = s.rn / (s.count || 1);
-                else if (metric === 'adr') val = s.rn > 0 ? (s.rev / s.rn) : 0;
-                s.avg = val;
-                if (val > maxVal) maxVal = val;
+                if (hasInventoryConfigured && s.roomsAvailable > 0) {
+                    s.occupancy = (s.roomsSold / s.roomsAvailable) * 100;
+                } else {
+                    s.occupancy = null;
+                }
+                s.adr = s.roomsSold > 0 ? (s.revenue / s.roomsSold) : 0;
+
+                // Para el heatmap visual
+                if (metric === 'rev') s.avg = s.realDays > 0 ? (s.revenue / s.realDays) : 0;
+                else if (metric === 'rn') s.avg = s.realDays > 0 ? (s.roomsSold / s.realDays) : 0;
+                else if (metric === 'adr') s.avg = s.adr;
+                else s.avg = s.occupancy || 0;
             });
 
-            if (!weekData.some(s => s.count > 0)) return;
-            container.innerHTML = weekData.map(s => {
-                const score = maxVal > 0 ? (s.avg / maxVal) : 0;
-                const opacity = 0.15 + (score * 0.55);
-                let color = "rgba(79, 70, 229, " + opacity + ")";
-                if (metric === 'rn') color = "rgba(16, 185, 129, " + opacity + ")";
-                if (metric === 'adr') color = "rgba(245, 158, 11, " + opacity + ")";
+            // 5. Agregación de tramos (Lunes–Jueves, Viernes–Sábado, Domingo, Total)
+            const aggregateTranche = (indices, label, badge, icon) => {
+                let realDays = 0, missingDays = 0, totalCalDays = 0, zeroSalesDays = 0;
+                let roomsSold = 0, roomsAvailable = 0, revenue = 0, oooRooms = 0;
 
-                let displayVal = "";
-                if (metric === 'rev') displayVal = fmt(s.avg);
-                else if (metric === 'rn') displayVal = s.avg.toFixed(1) + " RN";
-                else displayVal = s.avg.toFixed(1) + " €";
+                indices.forEach(idx => {
+                    const d = weekData[idx];
+                    realDays += d.realDays;
+                    missingDays += d.missingDays;
+                    totalCalDays += d.totalCalendarDays;
+                    zeroSalesDays += d.zeroSalesDays;
+                    roomsSold += d.roomsSold;
+                    roomsAvailable += d.roomsAvailable;
+                    revenue += d.revenue;
+                    oooRooms += d.oooRooms;
+                });
 
-                return `
-                    <div class="heatmap-cell" style="background: ${color}; border: 1px solid ${score > 0.8 ? 'rgba(255,255,255,0.3)' : 'transparent'};">
-                        <div class="day-name">${s.name}</div>
-                        <div class="day-value">${displayVal}</div>
-                        <div class="day-sub">${metric === 'rev' ? 'Media diaria' : (metric === 'rn' ? 'Hab. media' : 'Prod. por Hab')}</div>
+                const occupancy = (hasInventoryConfigured && roomsAvailable > 0)
+                    ? (roomsSold / roomsAvailable) * 100
+                    : null;
+                const adr = roomsSold > 0 ? (revenue / roomsSold) : 0;
+
+                return {
+                    label, badge, icon,
+                    realDays, missingDays, totalCalDays, zeroSalesDays,
+                    roomsSold, roomsAvailable, revenue, oooRooms,
+                    occupancy, adr
+                };
+            };
+
+            const trancheMonThu = aggregateTranche([0, 1, 2, 3], "Lunes – Jueves", "Midweek / Corporativo", "🏢");
+            const trancheFriSat = aggregateTranche([4, 5], "Viernes – Sábado", "Fin de Semana / Ocio", "🌴");
+            const trancheSun    = aggregateTranche([6], "Domingo", "Cierre Semanal", "☀️");
+            const trancheTotal  = aggregateTranche([0, 1, 2, 3, 4, 5, 6], "Total Periodo", "Semana Completa", "📊");
+
+            const formatNumber = (typeof fmtNum === 'function') ? fmtNum : (n) => new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }).format(Math.round(n));
+            const formatCurrency = (typeof fmt === 'function') ? fmt : (n) => formatNumber(n) + " €";
+
+            // 6. Fecha de corte y Cobertura
+            const prodCutoffDate = (data.updates && data.updates.prod && data.updates.prod !== "N/A") 
+                ? data.updates.prod 
+                : (data.lastProdDate || data.lastUpdate || "---");
+            const coveragePct = trancheTotal.totalCalDays > 0 
+                ? ((trancheTotal.realDays / trancheTotal.totalCalDays) * 100).toFixed(1) 
+                : "0.0";
+
+            if (bannerEl) {
+                bannerEl.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <span style="font-size: 1.15rem;">🔒</span>
+                        <span><b>Producción Real Consumida:</b> Corte al <b>${prodCutoffDate}</b> · Cobertura: <b>${trancheTotal.realDays} de ${trancheTotal.totalCalDays} días</b> (${coveragePct}% del periodo).</span>
+                        ${trancheTotal.missingDays > 0 ? `<span style="background: rgba(245, 158, 11, 0.12); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.3); padding: 2px 7px; border-radius: 6px; font-weight: 700; font-size: 0.73rem;">⚠️ ${trancheTotal.missingDays} días sin datos excluidos</span>` : ''}
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <span style="background: var(--bg-surface); border: 1px solid var(--border); padding: 3px 9px; border-radius: 6px; font-weight: 700; color: #4338ca;">
+                            🏨 ${hotelDisplayName} (${hasInventoryConfigured ? `${baseCap} hab./día` : 'Sin inventario'})
+                        </span>
+                        <span style="background: var(--bg-surface); border: 1px solid var(--border); padding: 3px 9px; border-radius: 6px; font-weight: 600; color: var(--text-muted);" title="La previsión OTB de reservas futuras se procesa por separado en el calendario">
+                            🔮 Previsión OTB excluida
+                        </span>
                     </div>
                 `;
-            }).join('');
+            }
+
+            // 7. Renderizar Tarjetas de Resumen por Tramos
+            if (summaryCardsEl) {
+                const tranches = [trancheMonThu, trancheFriSat, trancheSun, trancheTotal];
+                summaryCardsEl.innerHTML = tranches.map(t => {
+                    const occStr = t.occupancy !== null ? `${t.occupancy.toFixed(1)}%` : 'N/D';
+                    const occColor = t.occupancy === null ? 'var(--text-muted)' : (t.occupancy >= 75 ? '#10b981' : (t.occupancy >= 50 ? '#6366f1' : '#f59e0b'));
+                    return `
+                        <div class="weekday-tranche-card">
+                            <div class="weekday-tranche-header">
+                                <span class="weekday-tranche-title"><span>${t.icon}</span> ${t.label}</span>
+                                <span class="weekday-tranche-badge">${t.badge}</span>
+                            </div>
+                            <div class="weekday-tranche-value" style="color: ${occColor};">
+                                ${occStr}
+                            </div>
+                            <div class="weekday-tranche-sub">
+                                <div><b>${t.realDays}</b> días con datos ${t.missingDays > 0 ? `<span style="color:#d97706;">(${t.missingDays} sin datos)</span>` : ''}</div>
+                                <div><b>${formatNumber(t.roomsSold)}</b> vendidas / <b>${hasInventoryConfigured ? formatNumber(t.roomsAvailable) : 'N/D'}</b> disp.</div>
+                                <div>Prod: <b>${formatCurrency(t.revenue)}</b> ${t.adr > 0 ? `· ADR: <b>${formatCurrency(t.adr)}</b>` : ''}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // 8. Renderizar Tabla de Lunes a Domingo
+            if (tableEl) {
+                const rowsHtml = weekData.map(d => {
+                    const occStr = d.occupancy !== null ? `${d.occupancy.toFixed(1)}%` : 'N/D';
+                    const clampedOcc = d.occupancy !== null ? Math.min(100, Math.max(0, d.occupancy)) : 0;
+                    const occColor = d.occupancy === null ? 'var(--text-muted)' : (d.occupancy >= 75 ? '#10b981' : (d.occupancy >= 50 ? '#6366f1' : '#f59e0b'));
+                    const missingText = d.missingDays > 0 
+                        ? `<span style="color: #d97706; font-weight: 700;">${d.missingDays} excluidos</span>`
+                        : `<span style="color: var(--text-muted);">0</span>`;
+                    const realDaysDetail = d.zeroSalesDays > 0 
+                        ? `${d.realDays} <span style="font-size:0.7rem; color:var(--text-muted);" title="${d.zeroSalesDays} días cargados con 0 ventas">(${d.zeroSalesDays} con 0 vtas)</span>`
+                        : `${d.realDays}`;
+
+                    return `
+                        <tr>
+                            <td><b>${d.name}</b></td>
+                            <td>${realDaysDetail}</td>
+                            <td><b>${formatNumber(d.roomsSold)}</b> hab.</td>
+                            <td>${hasInventoryConfigured ? `${formatNumber(d.roomsAvailable)} hab.` : '<span style="color:var(--text-muted);">N/D</span>'}</td>
+                            <td>
+                                <div style="display:flex; align-items:center; justify-content:flex-end; gap:8px;">
+                                    <span style="font-weight:800; color:${occColor}; min-width:48px;">${occStr}</span>
+                                    <div style="width:50px; height:6px; background:rgba(0,0,0,0.08); border-radius:3px; overflow:hidden;">
+                                        <div style="width:${clampedOcc}%; height:100%; background:${occColor}; border-radius:3px;"></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>${missingText}</td>
+                            <td>${formatCurrency(d.revenue)}</td>
+                            <td>${d.adr > 0 ? formatCurrency(d.adr) : '--'}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+                const totalOccStr = trancheTotal.occupancy !== null ? `${trancheTotal.occupancy.toFixed(1)}%` : 'N/D';
+                const totalOccColor = trancheTotal.occupancy === null ? 'var(--text-muted)' : (trancheTotal.occupancy >= 75 ? '#10b981' : (trancheTotal.occupancy >= 50 ? '#6366f1' : '#f59e0b'));
+
+                tableEl.innerHTML = `
+                    <thead>
+                        <tr>
+                            <th>Día de la Semana</th>
+                            <th>Días con Datos Reales</th>
+                            <th>Hab.-Noche Vendidas</th>
+                            <th>Hab.-Noche Disponibles</th>
+                            <th>Ocupación Media</th>
+                            <th>Días sin Datos</th>
+                            <th>Producción (€)</th>
+                            <th>Prod. / Hab (ADR)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHtml}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td>TOTAL / MEDIA PONDERADA</td>
+                            <td>${trancheTotal.realDays} de ${trancheTotal.totalCalDays}</td>
+                            <td>${formatNumber(trancheTotal.roomsSold)} hab.</td>
+                            <td>${hasInventoryConfigured ? `${formatNumber(trancheTotal.roomsAvailable)} hab.` : 'N/D'}</td>
+                            <td>
+                                <span style="font-weight:800; color:${totalOccColor};">${totalOccStr}</span>
+                            </td>
+                            <td>${trancheTotal.missingDays > 0 ? `${trancheTotal.missingDays} excluidos` : '0'}</td>
+                            <td>${formatCurrency(trancheTotal.revenue)}</td>
+                            <td>${trancheTotal.adr > 0 ? formatCurrency(trancheTotal.adr) : '--'}</td>
+                        </tr>
+                    </tfoot>
+                `;
+            }
+
+            // 9. Renderizar Mapa de Calor de 7 Celdas (#weekday-heatmap)
+            let maxVal = 0;
+            weekData.forEach(s => {
+                if (s.avg > maxVal) maxVal = s.avg;
+            });
+
+            if (container) {
+                if (!weekData.some(s => s.realDays > 0)) {
+                    container.innerHTML = '<p>Sin datos diarios para el periodo seleccionado.</p>';
+                    return;
+                }
+                container.innerHTML = weekData.map(s => {
+                    const score = maxVal > 0 ? (s.avg / maxVal) : 0;
+                    const opacity = 0.15 + (score * 0.55);
+                    let color = "rgba(79, 70, 229, " + opacity + ")";
+                    if (metric === 'rn') color = "rgba(16, 185, 129, " + opacity + ")";
+                    if (metric === 'adr') color = "rgba(245, 158, 11, " + opacity + ")";
+
+                    let displayVal = "";
+                    if (metric === 'rev') displayVal = formatCurrency(s.avg);
+                    else if (metric === 'rn') displayVal = s.avg.toFixed(1) + " RN";
+                    else if (metric === 'adr') displayVal = formatCurrency(s.avg);
+                    else displayVal = (s.occupancy !== null ? s.occupancy.toFixed(1) + "%" : "--");
+
+                    return `
+                        <div class="heatmap-cell" style="background: ${color}; border: 1px solid ${score > 0.8 ? 'rgba(255,255,255,0.3)' : 'transparent'};">
+                            <div class="day-name">${s.name}</div>
+                            <div class="day-value">${displayVal}</div>
+                            <div class="day-sub">${metric === 'rev' ? 'Media diaria' : (metric === 'rn' ? 'Hab. media' : (metric === 'adr' ? 'Prod. por Hab' : 'Ocupación media'))}</div>
+                        </div>
+                    `;
+                }).join('');
+            }
         }
 
     </script>
