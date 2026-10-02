@@ -136,6 +136,9 @@
 
         /* HEADER */
         .header-360 {
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
             padding: 40px 40px 20px;
             display: flex;
             justify-content: space-between;
@@ -188,18 +191,20 @@
 
         /* MAIN CONTAINER */
         .main-container {
-            max-width: 1600px;
-            margin: 0 auto;
+            width: 100%;
+            max-width: 100%;
+            margin: 0;
             padding: 20px 40px 60px;
             display: flex;
             flex-direction: column;
             gap: 30px;
+            box-sizing: border-box;
         }
 
         /* KPI SECTION */
         .kpi-row {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
             gap: 24px;
         }
 
