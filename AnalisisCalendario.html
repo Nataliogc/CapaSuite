@@ -478,6 +478,59 @@
             box-sizing: border-box;
         }
 
+        .insights-dates-banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.06), rgba(16, 185, 129, 0.06));
+            border: 1px solid rgba(99, 102, 241, 0.22);
+            border-radius: 12px;
+            padding: 9px 18px;
+            margin: 0 auto 16px;
+            max-width: 1700px;
+            width: calc(100% - 80px);
+            font-size: 0.82rem;
+            color: var(--text-main);
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .insights-date-pill {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.78rem;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+            color: var(--text-main);
+        }
+
+        .insights-date-pill.current {
+            color: #4338ca;
+            border-color: rgba(99, 102, 241, 0.35);
+        }
+
+        [data-theme="dark"] .insights-date-pill.current {
+            color: #818cf8;
+            border-color: rgba(99, 102, 241, 0.5);
+        }
+
+        .insights-date-pill.pickup {
+            color: #059669;
+            border-color: rgba(16, 185, 129, 0.35);
+        }
+
+        [data-theme="dark"] .insights-date-pill.pickup {
+            color: #34d399;
+            border-color: rgba(16, 185, 129, 0.5);
+        }
+
         .insights-filter-reset-btn {
             background: var(--bg-surface);
             border: 1px solid var(--border);
@@ -1288,6 +1341,85 @@
             }).join('');
         }
 
+        function formatCleanDate(rawStr) {
+            if (!rawStr || rawStr === '---' || rawStr === 'Pendiente' || rawStr === 'N/A') return '---';
+            let s = String(rawStr).trim();
+            if (s.toLowerCase().includes(' al ')) {
+                s = s.split(/\s+al\s+/i)[0].trim();
+            }
+            if (s.includes('T')) {
+                try {
+                    const dt = new Date(s);
+                    if (!isNaN(dt.getTime())) {
+                        const d = dt.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                        const t = dt.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                        return `${d} ${t}`;
+                    }
+                } catch (e) {}
+            }
+            s = s.replace(/,(\s*\d{2}:\d{2}):\d{2}/, ' $1');
+            return s;
+        }
+
+        function getCalendarDatesInfo(hotelData, hotel, yearStr) {
+            let rawCurrent = null;
+            let rawPickup = null;
+
+            let uploadCfg = {};
+            try {
+                if (typeof CapaStorage !== 'undefined') {
+                    uploadCfg = JSON.parse(CapaStorage.getItem('upload_config_db_v2') || '{}');
+                } else if (typeof localStorage !== 'undefined') {
+                    uploadCfg = JSON.parse(localStorage.getItem('upload_config_db_v2') || '{}');
+                }
+            } catch (e) {}
+
+            const hotelCfg = uploadCfg[hotel] || {};
+
+            // 1. Current Loaded Date
+            if (hotelData?.updates?.otb && hotelData.updates.otb !== '---' && hotelData.updates.otb !== 'N/A') {
+                rawCurrent = hotelData.updates.otb;
+            } else if (hotelData?.lastOtbDate && hotelData.lastOtbDate !== '---') {
+                rawCurrent = hotelData.lastOtbDate;
+            } else if (hotelCfg.lastOtbDate && hotelCfg.lastOtbDate !== '---') {
+                rawCurrent = hotelCfg.lastOtbDate;
+            } else if (hotelData?.lastUpdate && hotelData.lastUpdate !== '---') {
+                rawCurrent = hotelData.lastUpdate;
+            } else if (hotelData?.updates?.prod && hotelData.updates.prod !== '---') {
+                rawCurrent = hotelData.updates.prod;
+            }
+
+            // 2. Compared Pickup Snapshot Date
+            if (hotelData?.otb_prev?.snapshotDate && hotelData.otb_prev.snapshotDate !== '---' && hotelData.otb_prev.snapshotDate !== '31-12-2027') {
+                rawPickup = hotelData.otb_prev.snapshotDate;
+            } else if (hotelData?.prod_prev?.snapshotDate && hotelData.prod_prev.snapshotDate !== '---') {
+                rawPickup = hotelData.prod_prev.snapshotDate;
+            } else if (hotelCfg.prevOtbDate && hotelCfg.prevOtbDate !== '---') {
+                rawPickup = hotelCfg.prevOtbDate;
+            } else {
+                if (typeof revenueData !== 'undefined' && revenueData) {
+                    const matchDay = Object.values(revenueData).find(d => {
+                        const dt = new Date(d.dateISO);
+                        return dt.getFullYear() === parseInt(yearStr) && d.occupancyData?.[hotel]?.snapshotDate && d.occupancyData[hotel].snapshotDate !== '31-12-2027';
+                    });
+                    if (matchDay) {
+                        rawPickup = matchDay.occupancyData[hotel].snapshotDate;
+                    }
+                }
+            }
+
+            const cleanCurrent = formatCleanDate(rawCurrent);
+            const cleanPickup = formatCleanDate(rawPickup);
+
+            return {
+                rawCurrent,
+                rawPickup,
+                currentDate: cleanCurrent !== '---' ? cleanCurrent : 'Actual',
+                pickupDate: cleanPickup !== '---' ? cleanPickup : (hotelData?.otb_prev ? 'Corte previo' : 'Sin histórico previo'),
+                hasPickupComparison: !!(hotelData?.otb_prev || (cleanPickup !== '---'))
+            };
+        }
+
         function renderInsights() {
             const panel = document.getElementById('calendarInsights');
             panel.innerHTML = '';
@@ -1305,6 +1437,10 @@
             const periodLabel = isMonthSelected ? `${months[selectedMonth]} ${yearStr}` : `${yearStr}`;
             const hotelDisplayName = hotel === 'Guadiana' ? 'Sercotel Guadiana' : (hotel === 'Cumbria' ? 'Cumbria Spa&Hotel' : hotel);
 
+            const datesInfo = getCalendarDatesInfo(hotelData, hotel, yearStr);
+            const cleanCurrentDate = datesInfo.currentDate;
+            const cleanPickupDate = datesInfo.pickupDate;
+
             if (isMonthSelected) {
                 const banner = document.createElement('div');
                 banner.className = 'insights-filter-banner';
@@ -1319,6 +1455,25 @@
                 `;
                 panel.appendChild(banner);
             }
+
+            // Referencia Temporal de Fechas de Pick-up
+            const datesBanner = document.createElement('div');
+            datesBanner.className = 'insights-dates-banner';
+            datesBanner.innerHTML = `
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-size:1.15rem;">📊</span>
+                    <span><b>Referencia Temporal de Pick-up:</b> Variación calculada entre la carga actual y el corte comparado.</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <span class="insights-date-pill current" title="Fecha en que se cargaron los datos activos de OTB">
+                        <span>📥</span> <b>Fecha Carga Actual:</b> <span>${cleanCurrentDate}</span>
+                    </span>
+                    <span class="insights-date-pill pickup" title="Fecha de corte o snapshot contra la que se calcula el pick-up">
+                        <span>🔄</span> <b>Fecha Comp. Pick-up:</b> <span>${cleanPickupDate}</span>
+                    </span>
+                </div>
+            `;
+            panel.appendChild(datesBanner);
 
             const insightsContainer = document.createElement('div');
             insightsContainer.className = 'insights-cards-grid';
@@ -1369,15 +1524,15 @@
             const pickupCard = document.createElement('div');
             pickupCard.className = 'insight-card-premium';
             const pickupRevSub = totalPickupRev >= 0 
-                ? (isMonthSelected ? `▲ Subida en ${months[selectedMonth]}` : '▲ Subida vs última actualización')
-                : (isMonthSelected ? `▼ Bajada en ${months[selectedMonth]}` : '▼ Bajada vs última actualización');
+                ? (isMonthSelected ? `▲ Subida en ${months[selectedMonth]}` : '▲ Subida')
+                : (isMonthSelected ? `▼ Bajada en ${months[selectedMonth]}` : '▼ Bajada');
 
             pickupCard.innerHTML = `
                 <div class="insight-label" title="Pick-up de ingresos de solo alojamiento">PICK-UP ALOJAMIENTO (${periodLabel})</div>
                 <div class="insight-value ${totalPickupRev >= 0 ? 'pos' : 'neg'}">
                     ${totalPickupRev > 0 ? '+' : ''}${new Intl.NumberFormat('es-ES').format(Math.round(totalPickupRev))}€
                 </div>
-                <div class="insight-sub" title="${pickupRevSub}">${pickupRevSub} (Solo Alojamiento)</div>
+                <div class="insight-sub" title="${pickupRevSub} vs ${cleanPickupDate} (Solo Alojamiento)">${pickupRevSub} vs <b>${cleanPickupDate}</b> (Solo Alojamiento)</div>
             `;
             insightsContainer.appendChild(pickupCard);
 
@@ -1385,15 +1540,15 @@
             const pickupRoomsCard = document.createElement('div');
             pickupRoomsCard.className = 'insight-card-premium';
             const pickupRoomsSub = totalPickupRooms >= 0
-                ? (isMonthSelected ? `🚀 Ganadas en ${months[selectedMonth]}` : '🚀 Ganadas vs última actualización')
-                : (isMonthSelected ? `📉 Cancelaciones en ${months[selectedMonth]}` : '📉 Cancelaciones vs última act.');
+                ? (isMonthSelected ? `🚀 Ganadas en ${months[selectedMonth]}` : '🚀 Ganadas')
+                : (isMonthSelected ? `📉 Cancelaciones en ${months[selectedMonth]}` : '📉 Cancelaciones');
 
             pickupRoomsCard.innerHTML = `
                 <div class="insight-label">PICK-UP ESTANCIAS (${periodLabel})</div>
                 <div class="insight-value ${totalPickupRooms >= 0 ? 'pos' : 'neg'}">
                     ${totalPickupRooms > 0 ? '+' : ''}${new Intl.NumberFormat('es-ES').format(Math.round(totalPickupRooms))} Hab.
                 </div>
-                <div class="insight-sub">${pickupRoomsSub}</div>
+                <div class="insight-sub" title="${pickupRoomsSub} vs ${cleanPickupDate}">${pickupRoomsSub} vs <b>${cleanPickupDate}</b></div>
             `;
             insightsContainer.appendChild(pickupRoomsCard);
 
@@ -1450,26 +1605,6 @@
             }
 
             // 4. Data Freshness & Occupancy
-            let updateDateStr = '---';
-            const otbSync = hotelData.updates?.otb;
-            const lastSync = hotelData.lastUpdate;
-            
-            if (otbSync && (otbSync.includes(' ') || otbSync.includes('T'))) updateDateStr = otbSync;
-            else if (lastSync && (lastSync.includes(' ') || lastSync.includes('T'))) updateDateStr = lastSync;
-            else updateDateStr = otbSync || lastSync || '---';
-            
-            if (updateDateStr !== '---' && updateDateStr.includes('T')) {
-                try {
-                    const dateObj = new Date(updateDateStr);
-                    const d = dateObj.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-                    const t = dateObj.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-                    updateDateStr = `${d} ${t}`;
-                } catch (e) {
-                    console.warn("Error formatting date", e);
-                }
-            }
-
-            // Ocupación media del periodo seleccionado
             let totalRoomsPeriod = 0, occDaysPeriod = 0;
             const cap = (hotel === 'Cumbria' ? 59 : 108);
             Object.values(revenueData).forEach(d => {
@@ -1491,14 +1626,17 @@
 
             const freshCard = document.createElement('div');
             freshCard.className = 'insight-card-premium';
-            const freshSub = isMonthSelected && avgOccPct > 0 
-                ? `Ocupación: <b>${avgOccPct}%</b> (${avgFreeRooms} lib/día) · Sinc: ${updateDateStr}`
-                : `Sincronización: ${updateDateStr}`;
+            const occInfo = (isMonthSelected && avgOccPct > 0) ? ` · Ocup: <b>${avgOccPct}%</b> (${avgFreeRooms} lib/d)` : '';
 
             freshCard.innerHTML = `
                 <div class="insight-label">ESTADO DE DATOS (${periodLabel})</div>
-                <div class="insight-value">${isMonthSelected && avgOccPct > 0 ? `${avgOccPct}% Ocup.` : 'Actualizado'}</div>
-                <div class="insight-sub">${freshSub}</div>
+                <div class="insight-value" style="font-size:1.05rem; display:flex; align-items:center; gap:6px;">
+                    <span>📅</span> ${cleanCurrentDate !== '---' ? cleanCurrentDate : 'Actualizado'}${isMonthSelected && avgOccPct > 0 ? ` <span style="font-size:0.82rem; color:var(--primary); font-weight:700;">(${avgOccPct}%)</span>` : ''}
+                </div>
+                <div class="insight-sub" style="display:flex; flex-direction:column; gap:2px; margin-top:4px; font-size:0.72rem; line-height:1.35;">
+                    <div>📥 <b>Carga actual:</b> ${cleanCurrentDate}${occInfo}</div>
+                    <div>🔄 <b>Comp. Pick-up:</b> <span style="color:#10b981; font-weight:700;">${cleanPickupDate}</span></div>
+                </div>
             `;
             insightsContainer.appendChild(freshCard);
 
@@ -2074,7 +2212,7 @@
                     </div>
 
                     <div style="margin-top:6px; font-size:0.68rem; color:var(--text-muted); display:flex; justify-content:space-between; align-items:center;">
-                        <span>${hasPickup ? `Lectura previa: <b>${otbPrevious} hab.</b>` : 'Lectura inicial registrada'}</span>
+                        <span>${hasPickup ? `Lectura previa${hData.snapshotDate ? ' (' + formatCleanDate(hData.snapshotDate) + ')' : ''}: <b>${otbPrevious} hab.</b>` : 'Lectura inicial registrada'}</span>
                         <span style="font-weight:700; color:${pickupColor};">${pickupTactic}</span>
                     </div>
                 </div>

@@ -266,6 +266,66 @@ test('AnalisisProduccion charts-row adapts to laptop screens without horizontal 
     assert.match(html, /\.charts-row > \*\s*\{\s*min-width:\s*0;/);
 });
 
+test('AnalisisCalendario renders current loaded date and compared pickup date in insights banner and cards', () => {
+    const html = fs.readFileSync('AnalisisCalendario.html', 'utf8');
+
+    // 1. Verify CSS styles for dates banner and pills
+    assert.match(html, /\.insights-dates-banner/);
+    assert.match(html, /\.insights-date-pill\.current/);
+    assert.match(html, /\.insights-date-pill\.pickup/);
+
+    // 2. Verify formatCleanDate and getCalendarDatesInfo helper functions
+    assert.match(html, /function formatCleanDate\(rawStr\)/);
+    assert.match(html, /function getCalendarDatesInfo\(hotelData,\s*hotel,\s*yearStr\)/);
+
+    // 3. Test formatCleanDate and getCalendarDatesInfo logic in VM context
+    const cleanDateMatch = html.match(/function formatCleanDate\(rawStr\)\s*\{([\s\S]*?)\n        \}/);
+    const getDatesMatch = html.match(/function getCalendarDatesInfo\(hotelData,\s*hotel,\s*yearStr\)\s*\{([\s\S]*?)\n        \}/);
+    assert.ok(cleanDateMatch, 'formatCleanDate found');
+    assert.ok(getDatesMatch, 'getCalendarDatesInfo found');
+
+    const vmContext = {
+        CapaStorage: {
+            getItem: (key) => JSON.stringify({ Guadiana: { lastOtbDate: '01-10-2026', prevOtbDate: '24-09-2026' } })
+        },
+        revenueData: {}
+    };
+
+    vm.runInNewContext(`
+        function formatCleanDate(rawStr) {
+            ${cleanDateMatch[1]}
+        }
+        function getCalendarDatesInfo(hotelData, hotel, yearStr) {
+            ${getDatesMatch[1]}
+        }
+    `, vmContext);
+
+    // Test formatCleanDate
+    assert.equal(vmContext.formatCleanDate('01-10-2026 al 30-09-2027'), '01-10-2026');
+    assert.equal(vmContext.formatCleanDate('24-09-2026'), '24-09-2026');
+    assert.equal(vmContext.formatCleanDate('---'), '---');
+
+    // Test getCalendarDatesInfo with hotelData
+    const mockHotelData = {
+        updates: { otb: '01-10-2026 al 30-09-2027' },
+        otb_prev: { snapshotDate: '24-09-2026' }
+    };
+    const info = vmContext.getCalendarDatesInfo(mockHotelData, 'Guadiana', '2026');
+    assert.equal(info.currentDate, '01-10-2026');
+    assert.equal(info.pickupDate, '24-09-2026');
+
+    // 4. Verify banner contains both date labels
+    assert.match(html, /Fecha Carga Actual:/);
+    assert.match(html, /Fecha Comp\. Pick-up:/);
+
+    // 5. Verify KPI cards display compared and current dates
+    assert.match(html, /vs <b>\$\{cleanPickupDate\}<\/b> \(Solo Alojamiento\)/);
+    assert.match(html, /vs <b>\$\{cleanPickupDate\}<\/b>/);
+    assert.match(html, /📥 <b>Carga actual:<\/b> \$\{cleanCurrentDate\}/);
+    assert.match(html, /🔄 <b>Comp\. Pick-up:<\/b> <span style="[^"]*">\$\{cleanPickupDate\}<\/span>/);
+});
+
+
 
 
 
