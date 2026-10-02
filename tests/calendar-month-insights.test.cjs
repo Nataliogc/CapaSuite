@@ -174,3 +174,19 @@ test('CalculadoraPresupuesto shows minimum required price per day to achieve bud
     assert.match(html, /Captar volumen a ≥ <b>\$\{d\.minPrice\} €<\/b>/);
 });
 
+test('AnalisisCalendario renders pick-up and average price (ADR) badges next to each month title', () => {
+    const html = fs.readFileSync('AnalisisCalendario.html', 'utf8');
+
+    // 1. Verify CSS styles for month metric badges
+    assert.match(html, /\.month-header-badges/);
+    assert.match(html, /\.month-metric-badge/);
+    assert.match(html, /\.month-metric-badge\.price/);
+
+    // 2. Verify month header renders badges with pickup and ADR
+    assert.match(html, /mPickupRooms/);
+    assert.match(html, /mAdr/);
+    assert.match(html, /\$\{mAdr\}\s*€/);
+    assert.match(html, /habs/);
+});
+
+

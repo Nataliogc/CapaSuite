@@ -400,6 +400,67 @@
             background: rgba(99, 102, 241, 0.16);
         }
 
+        .month-header-badges {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .month-metric-badge {
+            font-size: 0.73rem;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 8px;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            line-height: 1.25;
+            transition: all 0.2s ease;
+        }
+
+        .month-metric-badge.pos {
+            background: rgba(16, 185, 129, 0.12);
+            color: #059669;
+            border: 1px solid rgba(16, 185, 129, 0.28);
+        }
+
+        .month-metric-badge.neg {
+            background: rgba(239, 68, 68, 0.12);
+            color: #dc2626;
+            border: 1px solid rgba(239, 68, 68, 0.28);
+        }
+
+        .month-metric-badge.neutral {
+            background: rgba(148, 163, 184, 0.12);
+            color: #64748b;
+            border: 1px solid rgba(148, 163, 184, 0.25);
+        }
+
+        .month-metric-badge.price {
+            background: rgba(99, 102, 241, 0.1);
+            color: #4f46e5;
+            border: 1px solid rgba(99, 102, 241, 0.25);
+        }
+
+        [data-theme="light"] .month-metric-badge.pos {
+            background: #ecfdf5;
+            color: #047857;
+            border-color: #a7f3d0;
+        }
+
+        [data-theme="light"] .month-metric-badge.neg {
+            background: #fef2f2;
+            color: #b91c1c;
+            border-color: #fecaca;
+        }
+
+        [data-theme="light"] .month-metric-badge.price {
+            background: #eef2ff;
+            color: #4338ca;
+            border-color: #c7d2fe;
+        }
+
         .insights-filter-banner {
             display: flex;
             align-items: center;
@@ -1528,6 +1589,7 @@
             const hotel = document.getElementById('hotelSelector').value;
             const metric = document.getElementById('metricSelector').value;
             const capacity = (hotel === 'Cumbria' ? 59 : 108);
+            const hotelData = (db && db[hotel]) ? db[hotel][String(year)] : null;
 
             // Calculate Scale for Heatmap based on active metric
             let minVal = 9999, maxVal = -9999;
@@ -1586,9 +1648,92 @@
                 card.onclick = () => toggleMonthSelection(m);
                 card.title = isSelected ? `Haz clic para desmarcar ${months[m]} y ver el año completo` : `Haz clic para ver las estadísticas de ${months[m]} en el panel superior`;
 
+                // 1. Pick-up de habitaciones para el mes
+                let mPickupRooms = 0;
+                let hasPickupRooms = false;
+                if (hotelData && hotelData.otb && hotelData.otb_prev) {
+                    if (hotelData.otb.rooms && hotelData.otb_prev.rooms) {
+                        const curR = hotelData.otb.rooms[m] || 0;
+                        const prevR = hotelData.otb_prev.rooms[m] || 0;
+                        mPickupRooms = curR - prevR;
+                        hasPickupRooms = true;
+                    }
+                }
+
+                if (!hasPickupRooms || mPickupRooms === 0) {
+                    let dailyDiff = 0;
+                    let foundDaily = false;
+                    Object.values(revenueData).forEach(d => {
+                        const dt = new Date(d.dateISO);
+                        if (dt.getFullYear() === year && dt.getMonth() === m) {
+                            const h = d.occupancyData?.[hotel];
+                            if (h && h.otb_prev !== null && h.otb_prev !== undefined) {
+                                dailyDiff += (h.otb - h.otb_prev);
+                                foundDaily = true;
+                            }
+                        }
+                    });
+                    if (foundDaily) {
+                        mPickupRooms = dailyDiff;
+                        hasPickupRooms = true;
+                    }
+                }
+
+                // 2. Precio medio (ADR) para el mes
+                let mRooms = (hotelData?.otb?.rooms?.[m]) || 0;
+                let mRev = (hotelData?.otb?.breakdown?.habitacion?.[m]) ?? (hotelData?.otb?.revenue?.[m]) ?? 0;
+                let mAdr = (mRooms > 0 && mRev > 0) ? Math.round(mRev / mRooms) : 0;
+
+                if (mAdr <= 0) {
+                    let mPriceSum = 0;
+                    let mPriceCount = 0;
+                    let mDailyRoomsSum = 0;
+                    let mDailyRevSum = 0;
+                    Object.values(revenueData).forEach(d => {
+                        const dt = new Date(d.dateISO);
+                        if (dt.getFullYear() === year && dt.getMonth() === m) {
+                            const pm = getDayPriceMetrics(d.dateISO, d, hotel);
+                            if (pm.hotelPrice > 0) {
+                                mPriceSum += pm.hotelPrice;
+                                mPriceCount++;
+                            }
+                            const hData = d.occupancyData?.[hotel];
+                            if (hData) {
+                                if (hData.otb > 0 && hData.revenue > 0) {
+                                    mDailyRoomsSum += hData.otb;
+                                    mDailyRevSum += hData.revenue;
+                                } else if (hData.otb > 0 && hData.adr > 0) {
+                                    mDailyRoomsSum += hData.otb;
+                                    mDailyRevSum += (hData.otb * hData.adr);
+                                }
+                            }
+                        }
+                    });
+                    if (mDailyRoomsSum > 0 && mDailyRevSum > 0) {
+                        mAdr = Math.round(mDailyRevSum / mDailyRoomsSum);
+                    } else if (mPriceCount > 0) {
+                        mAdr = Math.round(mPriceSum / mPriceCount);
+                    }
+                }
+
+                const pickupBadgeClass = mPickupRooms > 0 ? 'pos' : (mPickupRooms < 0 ? 'neg' : 'neutral');
+                const pickupSign = mPickupRooms > 0 ? '▲ +' : (mPickupRooms < 0 ? '▼ ' : '');
+
                 card.innerHTML = `
                     <div class="month-title-wrap">
-                        <div class="month-title">${months[m]}</div>
+                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            <div class="month-title">${months[m]}</div>
+                            <div class="month-header-badges">
+                                <span class="month-metric-badge ${pickupBadgeClass}" title="Pick-up de habitaciones reservadas en ${months[m]}">
+                                    ${pickupSign}${mPickupRooms} habs
+                                </span>
+                                ${mAdr > 0 ? `
+                                <span class="month-metric-badge price" title="Precio Medio (ADR) en ${months[m]}">
+                                    ADR: ${mAdr} €
+                                </span>
+                                ` : ''}
+                            </div>
+                        </div>
                         <span class="month-select-pill ${isSelected ? 'active' : 'hint'}">
                             ${isSelected ? '✓ Seleccionado' : 'Ver datos del mes'}
                         </span>
