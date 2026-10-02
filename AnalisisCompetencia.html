@@ -2319,12 +2319,13 @@
             const totalModified = unsavedCount > 0 ? unsavedCount : savedCount;
 
             const detectedHotel = summary.detectedHotel;
+            const singleName = detectedHotel === 'Guadiana' ? 'Sercotel Guadiana' : `Hotel ${detectedHotel}`;
             const isSingleHotel = (summary.Cumbria.total > 0 && summary.Guadiana.total === 0) || (summary.Guadiana.total > 0 && summary.Cumbria.total === 0);
-            const hotelLabel = isSingleHotel ? ` (Hotel ${detectedHotel})` : (summary.Cumbria.total > 0 && summary.Guadiana.total > 0 ? ' (Cumbria & Guadiana)' : '');
-            const btnHotelTag = isSingleHotel ? ` · ${detectedHotel}` : '';
+            const hotelLabel = isSingleHotel ? ` (${singleName})` : (summary.Cumbria.total > 0 && summary.Guadiana.total > 0 ? ' (Cumbria & Sercotel Guadiana)' : '');
+            const btnHotelTag = isSingleHotel ? ` · ${singleName}` : '';
 
             const emailBtn = totalModified > 0 ? `
-                <button class="sim-btn" onclick="openEmailRevenueModal('${detectedHotel}')" style="background:linear-gradient(135deg, #0284c7, #2563eb); color:#fff; font-weight:700; border:none; display:inline-flex; align-items:center; gap:5px; box-shadow:0 2px 8px rgba(37,99,235,0.35); padding:4px 10px; border-radius:6px; cursor:pointer;" title="Enviar informe de tarifas modificadas de Hotel ${detectedHotel} a Revenue">
+                <button class="sim-btn" onclick="openEmailRevenueModal('${detectedHotel}')" style="background:linear-gradient(135deg, #0284c7, #2563eb); color:#fff; font-weight:700; border:none; display:inline-flex; align-items:center; gap:5px; box-shadow:0 2px 8px rgba(37,99,235,0.35); padding:4px 10px; border-radius:6px; cursor:pointer;" title="Enviar informe de tarifas modificadas de ${singleName} a Revenue">
                     <span>✉️</span> Enviar a Central${btnHotelTag} (${totalModified})
                 </button>
             ` : '';
@@ -5843,9 +5844,10 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 bannerTitle: 'SERCOTEL - REVENUE MANAGEMENT CENTRAL',
                 org: 'Sercotel Hotel Group',
                 salutation: 'Hola Mihail,',
-                signoff: 'Hotel Guadiana · Sercotel',
+                signoff: 'Sercotel Guadiana',
+                fullName: 'Sercotel Guadiana',
                 ccPlaceholder: 'dirección@sercotel.com (opcional)',
-                notesPlaceholder: 'Ej: Hola Mihail, ajustamos tarifas por picos de ocupación y movimientos de la competencia...'
+                notesPlaceholder: 'Ej: Hola Mihail, ajustamos tarifas para Sercotel Guadiana por picos de ocupación y movimientos de la competencia...'
             },
             Cumbria: {
                 to: '',
@@ -5856,6 +5858,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 org: 'Cumbria Spa & Hotel',
                 salutation: 'Estimados,',
                 signoff: 'Hotel Cumbria',
+                fullName: 'Hotel Cumbria',
                 ccPlaceholder: 'dirección@cumbriahotel.es (opcional)',
                 notesPlaceholder: 'Ej: Ajustamos tarifas para Hotel Cumbria por eventos y demanda de mercado...'
             }
@@ -5870,8 +5873,11 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 if (raw) saved = (typeof raw === 'string') ? JSON.parse(raw) : raw;
             } catch (e) {}
             const custom = saved[h] || {};
+            const displayName = def.fullName || (h === 'Guadiana' ? 'Sercotel Guadiana' : `Hotel ${h}`);
             return {
                 hotel: h,
+                displayName: displayName,
+                fullName: displayName,
                 to: custom.to !== undefined ? custom.to : def.to,
                 cc: custom.cc !== undefined ? custom.cc : def.cc,
                 name: custom.name || def.name,
@@ -5906,7 +5912,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             const recBadge = document.getElementById('revenueModalRecipientBadge');
             if (recBadge) {
                 const conf = getHotelEmailConfig(h);
-                recBadge.innerText = conf.to ? (conf.name ? `${conf.name} · ${conf.to}` : conf.to) : `Configurar destinatario (${h})`;
+                recBadge.innerText = conf.to ? (conf.name ? `${conf.name} · ${conf.to}` : conf.to) : `Configurar destinatario (${conf.displayName})`;
             }
         }
 
@@ -5936,8 +5942,8 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     <button type="button" onclick="switchRevenueModalHotel('Cumbria')" style="padding:5px 12px; border-radius:14px; font-size:0.75rem; font-weight:800; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:all 0.2s; ${cActive ? 'background:#38bdf8; color:#0f172a; box-shadow:0 2px 8px rgba(56,189,248,0.4);' : 'background:rgba(255,255,255,0.1); color:#cbd5e1;'}">
                         🏨 Cumbria <span style="background:${cActive ? 'rgba(15,23,42,0.25)' : 'rgba(255,255,255,0.15)'}; padding:1px 6px; border-radius:10px; font-size:0.7rem; font-weight:800;">${summary.Cumbria?.total || 0}</span>
                     </button>
-                    <button type="button" onclick="switchRevenueModalHotel('Guadiana')" style="padding:5px 12px; border-radius:14px; font-size:0.75rem; font-weight:800; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:all 0.2s; ${gActive ? 'background:#818cf8; color:#0f172a; box-shadow:0 2px 8px rgba(129,140,248,0.4);' : 'background:rgba(255,255,255,0.1); color:#cbd5e1;'}">
-                        🏨 Guadiana <span style="background:${gActive ? 'rgba(15,23,42,0.25)' : 'rgba(255,255,255,0.15)'}; padding:1px 6px; border-radius:10px; font-size:0.7rem; font-weight:800;">${summary.Guadiana?.total || 0}</span>
+                    <button type="button" onclick="switchRevenueModalHotel('Guadiana')" style="padding:5px 12px; border-radius:14px; font-size:0.75rem; font-weight:800; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:all 0.2s; ${gActive ? 'background:#818cf8; color:#0f172a; box-shadow:0 2px 8px rgba(129,140,248,0.4);' : 'background:rgba(255,255,255,0.1); color:#cbd5e1;'}" title="Sercotel Guadiana">
+                        🏨 Sercotel Guadiana <span style="background:${gActive ? 'rgba(15,23,42,0.25)' : 'rgba(255,255,255,0.15)'}; padding:1px 6px; border-radius:10px; font-size:0.7rem; font-weight:800;">${summary.Guadiana?.total || 0}</span>
                     </button>
                 `;
             }
@@ -5948,12 +5954,12 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
             const recBadge = document.getElementById('revenueModalRecipientBadge');
             if (recBadge) {
-                recBadge.innerText = config.to ? `${config.name} · ${config.to}` : `Configurar destinatario (${report.hotel})`;
+                recBadge.innerText = config.to ? `${config.name} · ${config.to}` : `Configurar destinatario (${config.displayName})`;
             }
 
             const hotelLabel = document.getElementById('revenueEmailTargetHotelLabel');
             if (hotelLabel) {
-                hotelLabel.innerText = `(Hotel ${report.hotel})`;
+                hotelLabel.innerText = `(${config.displayName})`;
             }
 
             const footerOrg = document.getElementById('revenueModalFooterOrg');
@@ -5985,7 +5991,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 const now = new Date();
                 const dStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
                 const tStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-                subjInput.value = `Modificación de Tarifas · Hotel ${report.hotel} · ${report.count} fecha${report.count !== 1 ? 's' : ''} · ${dStr} ${tStr}`;
+                subjInput.value = `Modificación de Tarifas · ${config.displayName} · ${report.count} fecha${report.count !== 1 ? 's' : ''} · ${dStr} ${tStr}`;
             }
 
             const countBadge = document.getElementById('revenueEmailCountBadge');
@@ -6005,7 +6011,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 cardsEl.innerHTML = `
                     <div style="background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.3); border-radius:10px; padding:10px 14px; display:flex; flex-direction:column; gap:2px;">
                         <span style="font-size:0.7rem; color:#818cf8; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">🏨 Hotel</span>
-                        <div style="font-size:1.05rem; font-weight:800; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Hotel ${report.hotel}</div>
+                        <div style="font-size:1.05rem; font-weight:800; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${config.displayName}</div>
                     </div>
                     <div style="background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.25); border-radius:10px; padding:10px 14px; display:flex; flex-direction:column; gap:2px;">
                         <span style="font-size:0.7rem; color:#818cf8; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">📅 Cambios</span>
@@ -6056,7 +6062,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         <tr>
                             <td colspan="15" style="text-align:center; padding:40px 15px; color:var(--text-muted); font-size:0.9rem; background:var(--bg-deep);">
                                 <div style="font-size:2rem; margin-bottom:8px;">📭</div>
-                                <div style="font-weight:700; margin-bottom:4px;">Sin tarifas modificadas para Hotel ${report.hotel}</div>
+                                <div style="font-weight:700; margin-bottom:4px;">Sin tarifas modificadas para ${config.displayName}</div>
                                 <span style="font-size:0.8rem; color:var(--text-light);">
                                     Haz clic sobre cualquier precio en la tabla principal para simular o cambiar una tarifa, o pulsa "Aplicar recomendados".
                                 </span>
@@ -6354,7 +6360,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
                             <td valign="middle">
                                 <div style="font-size:10px; color:#818cf8; font-weight:800; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:2px;">${(config.bannerTitle || config.org).toUpperCase()}</div>
-                                <div style="font-size:15px; font-weight:800; color:#ffffff; line-height:1.25;">Cambios de Tarifas Realizados Hoy &mdash; Hotel ${hotel}</div>
+                                <div style="font-size:15px; font-weight:800; color:#ffffff; line-height:1.25;">Cambios de Tarifas Realizados Hoy &mdash; ${config.displayName}</div>
                                 <div style="font-size:10.5px; color:#94a3b8; margin-top:2px;">${dateStr} &bull; CapaSuite</div>
                             </td>
                             <td align="right" valign="middle">
@@ -6374,7 +6380,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                             <table width="100%" cellpadding="0" cellspacing="4" border="0"><tr>
                                 <td width="20%" bgcolor="#eef2ff" style="background-color:#eef2ff; padding:7px 9px; border:1px solid #c7d2fe; vertical-align:top; border-radius:6px;">
                                     <div style="font-size:9px; color:#4f46e5; font-weight:800; text-transform:uppercase; letter-spacing:0.4px;">&#127976; HOTEL</div>
-                                    <div style="font-size:13px; font-weight:900; color:#1e1b4b; line-height:1.2; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Hotel ${hotel}</div>
+                                    <div style="font-size:13px; font-weight:900; color:#1e1b4b; line-height:1.2; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${config.displayName}</div>
                                 </td>
                                 <td width="20%" bgcolor="#f5f3ff" style="background-color:#f5f3ff; padding:7px 9px; border:1px solid #ddd6fe; vertical-align:top; border-radius:6px;">
                                     <div style="font-size:9px; color:#7c3aed; font-weight:800; text-transform:uppercase; letter-spacing:0.4px;">&#128197; CAMBIOS REALIZADOS</div>
@@ -6433,13 +6439,14 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
         function generateRevenueEmailPlainText(report, userNotes) {
             const hotel = report.hotel;
             const config = getHotelEmailConfig(hotel);
+            const hotelName = config.displayName || (hotel === 'Guadiana' ? 'Sercotel Guadiana' : `Hotel ${hotel}`);
             let text = `${config.salutation}\n\n`;
-            text += `Te adjunto los cambios de tarifas realizados hoy para Hotel ${hotel}:\n\n`;
+            text += `Te adjunto los cambios de tarifas realizados hoy para ${hotelName}:\n\n`;
             if (userNotes && userNotes.trim()) {
                 text += `OBSERVACIONES DE LA DIRECCIÓN:\n${userNotes.trim()}\n\n`;
             }
             text += `RESUMEN DE CAMBIOS EFECTUADOS:\n`;
-            text += `- Hotel: Hotel ${hotel}\n`;
+            text += `- Hotel: ${hotelName}\n`;
             text += `- Fechas modificadas: ${report.count} días\n`;
             text += `- Precio medio anterior: ${report.avgOld.toFixed(2)} €\n`;
             text += `- Precio medio nuevo aplicado: ${report.avgNew.toFixed(2)} €\n`;
@@ -6471,12 +6478,13 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             }
 
             const config = getHotelEmailConfig(report.hotel);
+            const hotelName = config.displayName || (report.hotel === 'Guadiana' ? 'Sercotel Guadiana' : `Hotel ${report.hotel}`);
             const to = document.getElementById('revenueEmailTo')?.value?.trim() || config.to || '';
             const cc = document.getElementById('revenueEmailCc')?.value?.trim() || config.cc || '';
             const now = new Date();
             const dStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
             const tStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-            const fallbackSubject = `Modificación de Tarifas · Hotel ${report.hotel} · ${report.count} fecha${report.count !== 1 ? 's' : ''} · ${dStr} ${tStr}`;
+            const fallbackSubject = `Modificación de Tarifas · ${hotelName} · ${report.count} fecha${report.count !== 1 ? 's' : ''} · ${dStr} ${tStr}`;
             const subject = document.getElementById('revenueEmailSubject')?.value || fallbackSubject;
             const notes = document.getElementById('revenueEmailNotes')?.value || '';
 
@@ -6486,7 +6494,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             // Generamos un body corto y profesional para el mailto
             const dSign = report.avgDelta >= 0 ? '+' : '';
             let body = `${config.salutation}\n\n`;
-            body += `Te adjunto los cambios de tarifas realizados hoy para Hotel ${report.hotel}.\n\n`;
+            body += `Te adjunto los cambios de tarifas realizados hoy para ${hotelName}.\n\n`;
             if (notes && notes.trim()) {
                 body += `Observaciones: ${notes.trim()}\n\n`;
             }

@@ -116,7 +116,7 @@ test('generateRevenueEmailPlainText customizes greeting and signoff by hotel', (
     const textCumbria = context.generateRevenueEmailPlainText(sampleReportCumbria, '');
 
     assert.match(textGuadiana, /Hola Mihail/);
-    assert.match(textGuadiana, /Hotel Guadiana - Sercotel|Hotel Guadiana · Sercotel/);
+    assert.match(textGuadiana, /Sercotel Guadiana/);
 
     assert.match(textCumbria, /Estimados|Hola/);
     assert.match(textCumbria, /Hotel Cumbria/);
@@ -440,4 +440,32 @@ test('email container aligns to the left and cells use nested centered tables fo
 
     // 4. Event in plain text
     assert.match(plainOutput, /\[🎉 Feria del Libro\]/);
+});
+
+test('Guadiana is branded and displayed everywhere as Sercotel Guadiana in email and modal cards', () => {
+    const { context } = setupEnvironment();
+
+    const sampleReportGuadiana = {
+        hotel: 'Guadiana',
+        count: 2,
+        avgOld: 72,
+        avgNew: 85,
+        avgDelta: 13,
+        avgDeltaPct: 18.1,
+        items: []
+    };
+
+    const htmlOutput = context.generateRevenueEmailHtml(sampleReportGuadiana, '');
+    const plainOutput = context.generateRevenueEmailPlainText(sampleReportGuadiana, '');
+
+    // KPI Card must say Sercotel Guadiana (not "Hotel Guadiana")
+    assert.match(htmlOutput, /&#127976;\s*HOTEL[\s\S]*?Sercotel Guadiana/);
+    assert.doesNotMatch(htmlOutput, /&#127976;\s*HOTEL[\s\S]*?Hotel Guadiana/);
+
+    // Header banner title
+    assert.match(htmlOutput, /Cambios de Tarifas Realizados Hoy &mdash; Sercotel Guadiana/);
+
+    // Plain text
+    assert.match(plainOutput, /- Hotel: Sercotel Guadiana/);
+    assert.match(plainOutput, /para Sercotel Guadiana:/);
 });
