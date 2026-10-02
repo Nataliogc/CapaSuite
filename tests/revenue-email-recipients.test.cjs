@@ -119,7 +119,7 @@ test('generateRevenueEmailPlainText customizes greeting and signoff by hotel', (
     assert.match(textGuadiana, /Sercotel Guadiana/);
 
     assert.match(textCumbria, /Estimados|Hola/);
-    assert.match(textCumbria, /Hotel Cumbria/);
+    assert.match(textCumbria, /Cumbria Spa&Hotel/);
     assert.doesNotMatch(textCumbria, /Mihail/);
     assert.doesNotMatch(textCumbria, /Sercotel/);
 });
@@ -244,7 +244,7 @@ test('email HTML renders hotel branding, clear table headers, and free rooms cor
     // Cumbria branding
     assert.match(htmlCumbria, /CUMBRIA - REVENUE/);
     assert.doesNotMatch(htmlCumbria, /SERCOTEL - REVENUE MANAGEMENT CENTRAL/);
-    assert.match(htmlCumbria, /Cumbria Spa &amp; Hotel|Cumbria Spa & Hotel/);
+    assert.match(htmlCumbria, /Cumbria Spa\s*&amp;\s*Hotel|Cumbria Spa\s*&\s*Hotel/i);
     assert.doesNotMatch(htmlCumbria, /Sercotel Hotel Group/);
 
     // Guadiana branding
@@ -361,7 +361,7 @@ test('email HTML table centers all price columns and matches Image 2 card and ba
 
     // 1. 5 KPI cards with 20% width each
     assert.match(htmlOutput, /width="20%"[^>]*>[\s\S]*?&#127976;\s*HOTEL/);
-    assert.match(htmlOutput, /Hotel Cumbria/);
+    assert.match(htmlOutput, /Cumbria Spa&Hotel/);
     assert.match(htmlOutput, /&#128197;\s*CAMBIOS/);
     assert.match(htmlOutput, /TARIFA ANTERIOR/);
     assert.match(htmlOutput, /&#9989;\s*TARIFA APLICADA/);
@@ -469,3 +469,32 @@ test('Guadiana is branded and displayed everywhere as Sercotel Guadiana in email
     assert.match(plainOutput, /- Hotel: Sercotel Guadiana/);
     assert.match(plainOutput, /para Sercotel Guadiana:/);
 });
+
+test('Cumbria is branded and displayed everywhere as Cumbria Spa&Hotel in email and modal cards', () => {
+    const { context } = setupEnvironment();
+
+    const sampleReportCumbria = {
+        hotel: 'Cumbria',
+        count: 2,
+        avgOld: 65,
+        avgNew: 75,
+        avgDelta: 10,
+        avgDeltaPct: 15.4,
+        items: []
+    };
+
+    const htmlOutput = context.generateRevenueEmailHtml(sampleReportCumbria, '');
+    const plainOutput = context.generateRevenueEmailPlainText(sampleReportCumbria, '');
+
+    // KPI Card must say Cumbria Spa&Hotel (not "Hotel Cumbria")
+    assert.match(htmlOutput, /&#127976;\s*HOTEL[\s\S]*?Cumbria Spa&Hotel/);
+    assert.doesNotMatch(htmlOutput, /&#127976;\s*HOTEL[\s\S]*?Hotel Cumbria/);
+
+    // Header banner title
+    assert.match(htmlOutput, /Cambios de Tarifas Realizados Hoy &mdash; Cumbria Spa&Hotel/);
+
+    // Plain text
+    assert.match(plainOutput, /- Hotel: Cumbria Spa&Hotel/);
+    assert.match(plainOutput, /para Cumbria Spa&Hotel:/);
+});
+

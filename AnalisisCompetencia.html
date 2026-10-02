@@ -2319,9 +2319,9 @@
             const totalModified = unsavedCount > 0 ? unsavedCount : savedCount;
 
             const detectedHotel = summary.detectedHotel;
-            const singleName = detectedHotel === 'Guadiana' ? 'Sercotel Guadiana' : `Hotel ${detectedHotel}`;
+            const singleName = detectedHotel === 'Guadiana' ? 'Sercotel Guadiana' : (detectedHotel === 'Cumbria' ? 'Cumbria Spa&Hotel' : `Hotel ${detectedHotel}`);
             const isSingleHotel = (summary.Cumbria.total > 0 && summary.Guadiana.total === 0) || (summary.Guadiana.total > 0 && summary.Cumbria.total === 0);
-            const hotelLabel = isSingleHotel ? ` (${singleName})` : (summary.Cumbria.total > 0 && summary.Guadiana.total > 0 ? ' (Cumbria & Sercotel Guadiana)' : '');
+            const hotelLabel = isSingleHotel ? ` (${singleName})` : (summary.Cumbria.total > 0 && summary.Guadiana.total > 0 ? ' (Cumbria Spa&Hotel & Sercotel Guadiana)' : '');
             const btnHotelTag = isSingleHotel ? ` · ${singleName}` : '';
 
             const emailBtn = totalModified > 0 ? `
@@ -5855,12 +5855,12 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 name: 'Dirección / Revenue Cumbria',
                 badge: 'CUMBRIA RM',
                 bannerTitle: 'CUMBRIA - REVENUE',
-                org: 'Cumbria Spa & Hotel',
+                org: 'Cumbria Spa&Hotel',
                 salutation: 'Estimados,',
-                signoff: 'Hotel Cumbria',
-                fullName: 'Hotel Cumbria',
+                signoff: 'Cumbria Spa&Hotel',
+                fullName: 'Cumbria Spa&Hotel',
                 ccPlaceholder: 'dirección@cumbriahotel.es (opcional)',
-                notesPlaceholder: 'Ej: Ajustamos tarifas para Hotel Cumbria por eventos y demanda de mercado...'
+                notesPlaceholder: 'Ej: Ajustamos tarifas para Cumbria Spa&Hotel por eventos y demanda de mercado...'
             }
         };
 
@@ -5873,7 +5873,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 if (raw) saved = (typeof raw === 'string') ? JSON.parse(raw) : raw;
             } catch (e) {}
             const custom = saved[h] || {};
-            const displayName = def.fullName || (h === 'Guadiana' ? 'Sercotel Guadiana' : `Hotel ${h}`);
+            const displayName = def.fullName || (h === 'Guadiana' ? 'Sercotel Guadiana' : (h === 'Cumbria' ? 'Cumbria Spa&Hotel' : `Hotel ${h}`));
             return {
                 hotel: h,
                 displayName: displayName,
@@ -5939,8 +5939,8 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 const cActive = report.hotel === 'Cumbria';
                 const gActive = report.hotel === 'Guadiana';
                 tabsEl.innerHTML = `
-                    <button type="button" onclick="switchRevenueModalHotel('Cumbria')" style="padding:5px 12px; border-radius:14px; font-size:0.75rem; font-weight:800; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:all 0.2s; ${cActive ? 'background:#38bdf8; color:#0f172a; box-shadow:0 2px 8px rgba(56,189,248,0.4);' : 'background:rgba(255,255,255,0.1); color:#cbd5e1;'}">
-                        🏨 Cumbria <span style="background:${cActive ? 'rgba(15,23,42,0.25)' : 'rgba(255,255,255,0.15)'}; padding:1px 6px; border-radius:10px; font-size:0.7rem; font-weight:800;">${summary.Cumbria?.total || 0}</span>
+                    <button type="button" onclick="switchRevenueModalHotel('Cumbria')" style="padding:5px 12px; border-radius:14px; font-size:0.75rem; font-weight:800; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:all 0.2s; ${cActive ? 'background:#38bdf8; color:#0f172a; box-shadow:0 2px 8px rgba(56,189,248,0.4);' : 'background:rgba(255,255,255,0.1); color:#cbd5e1;'}" title="Cumbria Spa&Hotel">
+                        🏨 Cumbria Spa&Hotel <span style="background:${cActive ? 'rgba(15,23,42,0.25)' : 'rgba(255,255,255,0.15)'}; padding:1px 6px; border-radius:10px; font-size:0.7rem; font-weight:800;">${summary.Cumbria?.total || 0}</span>
                     </button>
                     <button type="button" onclick="switchRevenueModalHotel('Guadiana')" style="padding:5px 12px; border-radius:14px; font-size:0.75rem; font-weight:800; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:all 0.2s; ${gActive ? 'background:#818cf8; color:#0f172a; box-shadow:0 2px 8px rgba(129,140,248,0.4);' : 'background:rgba(255,255,255,0.1); color:#cbd5e1;'}" title="Sercotel Guadiana">
                         🏨 Sercotel Guadiana <span style="background:${gActive ? 'rgba(15,23,42,0.25)' : 'rgba(255,255,255,0.15)'}; padding:1px 6px; border-radius:10px; font-size:0.7rem; font-weight:800;">${summary.Guadiana?.total || 0}</span>
