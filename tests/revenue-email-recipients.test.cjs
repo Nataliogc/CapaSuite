@@ -573,3 +573,8 @@ test('hotelOccupancyLabel calculates and shows free rooms (libres) alongside occ
     assert.match(overbookingLabel, /0 libres · 102%/);
 });
 
+test('AnalisisCompetencia date column width is widened to prevent badge and text stacking', () => {
+    assert.match(html, /thead th\.th-date, thead th:first-child\s*\{[\s\S]*?width:\s*118px;[\s\S]*?min-width:\s*110px;/);
+    assert.match(html, /tbody td:first-child\s*\{[\s\S]*?width:\s*118px;[\s\S]*?min-width:\s*110px;/);
+});
+

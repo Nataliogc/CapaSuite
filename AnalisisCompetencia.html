@@ -1051,10 +1051,10 @@
             z-index: 102;
             background: var(--bg-surface);
             border-right: 1px solid var(--border);
-            width: 82px;
-            min-width: 76px;
-            max-width: 86px;
-            padding: 6px 3px;
+            width: 118px;
+            min-width: 110px;
+            max-width: 130px;
+            padding: 6px 4px;
         }
 
         thead th.th-active-hotel {
@@ -1113,12 +1113,12 @@
             border-right: 1px solid var(--border);
             font-weight: 500;
             z-index: 5;
-            width: 82px;
-            min-width: 76px;
-            max-width: 86px;
+            width: 118px;
+            min-width: 110px;
+            max-width: 130px;
             overflow: visible;
             white-space: normal;
-            padding: 4px 3px;
+            padding: 4px 4px;
         }
 
         tbody tr:hover td {
@@ -3509,7 +3509,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 ` : '';
                 
                 metricsHtml = `
-                    <div style="display:flex; align-items:center; gap:4px; margin-top:3px;">
+                    <div style="display:flex; align-items:center; gap:4px; margin-top:3px; white-space:nowrap;">
                         <div class="occupancy-badge-wrap" onclick="openCuposModal('${hotel}', '${d.dateISO}', event)" style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); padding: 1px 4px; border-radius: 4px; display: flex; align-items: center; gap: 3px; cursor:pointer;" title="Click para gestionar cupos o ajustar ocupación (${otb} habs${hasCupos ? ` · ${hData.cupos || 0} en cupos` : ''})">
                             <span style="font-size:0.55rem; font-weight:800; color:#8b5cf6; opacity:0.8;">Hab.</span>
                             <span style="font-size: 0.7rem; color: #8b5cf6; font-weight: 800;">${otb}</span>
@@ -3520,7 +3520,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 `;
             } else if (d.dateISO && d.dateISO !== 'INV-DATE') {
                 metricsHtml = `
-                    <div style="display:flex; align-items:center; gap:4px; margin-top:3px;">
+                    <div style="display:flex; align-items:center; gap:4px; margin-top:3px; white-space:nowrap;">
                         <div class="occupancy-badge-wrap empty" onclick="openCuposModal('${hotel}', '${d.dateISO}', event)" style="background: rgba(255, 255, 255, 0.05); border: 1px dashed rgba(255, 255, 255, 0.2); padding: 1px 4px; border-radius: 4px; display: inline-flex; align-items: center; gap: 3px; cursor:pointer;" title="Click para introducir cupos o previsión manual">
                             <span style="font-size:0.55rem; font-weight:700; color:var(--text-muted);">+ Cupos</span>
                         </div>
@@ -4284,9 +4284,9 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                             </div>
                         `;
                     } else if (isOpen) {
-                        alertHtml = `<div style="margin-top:2px; background:#fee2e2; border:1px solid #ef4444; color:#b91c1c; font-size:0.65rem; font-weight:800; padding:1px 3px; border-radius:4px; text-align:center; cursor:pointer;" onclick="openCuposModal('${activeHotel}', '${d.dateISO}', event)" title="Ocupación muy alta (${occPct2.toFixed(0)}%). Considera cerrar tarifas bajas o subir precios.">⚠️ CERRAR? (${occPct2.toFixed(0)}%)</div>`;
+                        alertHtml = `<div style="margin-top:2px; background:#fee2e2; border:1px solid #ef4444; color:#b91c1c; font-size:0.65rem; font-weight:800; padding:1px 3px; border-radius:4px; text-align:center; white-space:nowrap; cursor:pointer;" onclick="openCuposModal('${activeHotel}', '${d.dateISO}', event)" title="Ocupación muy alta (${occPct2.toFixed(0)}%). Considera cerrar tarifas bajas o subir precios.">⚠️ CERRAR? (${occPct2.toFixed(0)}%)</div>`;
                     } else {
-                        alertHtml = `<div style="margin-top:2px; color:#ea580c; font-size:0.65rem; font-weight:800; text-align:center; cursor:pointer;" onclick="openCuposModal('${activeHotel}', '${d.dateISO}', event)">🔥 ${occPct2.toFixed(0)}%</div>`;
+                        alertHtml = `<div style="margin-top:2px; color:#ea580c; font-size:0.65rem; font-weight:800; text-align:center; white-space:nowrap; cursor:pointer;" onclick="openCuposModal('${activeHotel}', '${d.dateISO}', event)">🔥 ${occPct2.toFixed(0)}%</div>`;
                     }
                 }
 
