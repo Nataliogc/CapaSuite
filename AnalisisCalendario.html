@@ -316,10 +316,23 @@
             border-radius: var(--radius-xl);
             padding: 14px;
             box-shadow: var(--shadow-premium);
-            transition: var(--transition);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
             width: 100%;
+            cursor: pointer;
+        }
+
+        .month-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--primary);
+            box-shadow: 0 10px 25px rgba(99, 102, 241, 0.12);
+        }
+
+        .month-card.is-selected {
+            border: 2px solid var(--primary) !important;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2), 0 12px 30px rgba(99, 102, 241, 0.18) !important;
+            background: linear-gradient(180deg, rgba(99, 102, 241, 0.05) 0%, var(--bg-surface) 100%);
         }
 
         .month-card::before {
@@ -333,12 +346,20 @@
             opacity: 0.5;
         }
 
+        .month-title-wrap {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            user-select: none;
+        }
+
         .month-title {
             font-size: 1.25rem;
             font-family: 'Outfit', sans-serif;
             font-weight: 800;
             color: var(--text-main);
-            margin-bottom: 12px;
+            margin-bottom: 0;
             display: flex;
             align-items: center;
             gap: 10px;
@@ -351,6 +372,70 @@
             background: var(--primary);
             border-radius: 2px;
             box-shadow: 0 0 10px var(--primary-glow);
+        }
+
+        .month-select-pill {
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .month-select-pill.active {
+            background: var(--primary);
+            color: #ffffff;
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+        }
+
+        .month-select-pill.hint {
+            background: rgba(99, 102, 241, 0.08);
+            color: var(--primary);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            opacity: 0.7;
+        }
+
+        .month-card:hover .month-select-pill.hint {
+            opacity: 1;
+            background: rgba(99, 102, 241, 0.16);
+        }
+
+        .insights-filter-banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(99, 102, 241, 0.08);
+            border: 1px solid rgba(99, 102, 241, 0.25);
+            border-radius: 12px;
+            padding: 9px 18px;
+            margin: 0 auto 18px;
+            max-width: 1700px;
+            width: calc(100% - 80px);
+            font-size: 0.88rem;
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            box-sizing: border-box;
+        }
+
+        .insights-filter-reset-btn {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 5px 12px;
+            border-radius: 8px;
+            font-size: 0.76rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .insights-filter-reset-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-1px);
         }
 
         .days-header {
@@ -837,8 +922,8 @@
         <div class="nav-user">
             <div class="user-chip">
                 <select id="hotelSelector" class="nav-hotel-select" onchange="onFilterChange()">
-                    <option value="Guadiana">Hotel Guadiana</option>
-                    <option value="Cumbria">Hotel Cumbria</option>
+                    <option value="Guadiana">Sercotel Guadiana</option>
+                    <option value="Cumbria">Cumbria Spa&Hotel</option>
                 </select>
                 <div id="themeToggleBtn" onclick="toggleTheme()" style="cursor:pointer; font-size:1.1rem; margin-left:10px;" title="Cambiar Modo">🌙</div>
                 <span class="dot"></span>
@@ -941,6 +1026,7 @@
         let revenueData = {};
         let rawEvents = [];
         let db = {};
+        let selectedMonth = null;
 
         window.onload = async () => {
             loadAllData();
@@ -1060,9 +1146,21 @@
         }
 
         function onFilterChange() {
+            selectedMonth = null;
             enrichRevenueData();
             renderCalendar();
             renderInsights();
+            renderEventList();
+        }
+
+        function toggleMonthSelection(m) {
+            if (selectedMonth === m) {
+                selectedMonth = null;
+            } else {
+                selectedMonth = m;
+            }
+            renderInsights();
+            renderCalendar();
             renderEventList();
         }
 
@@ -1094,6 +1192,26 @@
 
             if (!hotelData) return;
 
+            const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+            const isMonthSelected = (selectedMonth !== null && selectedMonth >= 0 && selectedMonth < 12);
+            const periodLabel = isMonthSelected ? `${months[selectedMonth]} ${yearStr}` : `${yearStr}`;
+            const hotelDisplayName = hotel === 'Guadiana' ? 'Sercotel Guadiana' : (hotel === 'Cumbria' ? 'Cumbria Spa&Hotel' : hotel);
+
+            if (isMonthSelected) {
+                const banner = document.createElement('div');
+                banner.className = 'insights-filter-banner';
+                banner.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:1.15rem;">📅</span>
+                        <span>Estadísticas de <b>${months[selectedMonth]} ${yearStr}</b> (haz clic en cualquier mes para cambiar)</span>
+                    </div>
+                    <button class="insights-filter-reset-btn" onclick="toggleMonthSelection(${selectedMonth})" title="Ver estadísticas anuales completas">
+                        ↺ Ver todo el año (${yearStr})
+                    </button>
+                `;
+                panel.appendChild(banner);
+            }
+
             const insightsContainer = document.createElement('div');
             insightsContainer.style.cssText = 'display:flex; gap:16px; max-width:1700px; margin:0 auto 30px; padding:0 40px; flex-wrap:wrap;';
 
@@ -1101,66 +1219,105 @@
             let totalPickupRev = 0;
             let totalPickupRooms = 0;
             if (hotelData.otb && hotelData.otb_prev) {
-                totalPickupRev = hotelData.otb.revenue.reduce((a, b, i) => a + (b - (hotelData.otb_prev.revenue[i] || 0)), 0);
-                if (hotelData.otb.rooms && hotelData.otb_prev.rooms) {
-                    totalPickupRooms = hotelData.otb.rooms.reduce((a, b, i) => a + (b - (hotelData.otb_prev.rooms[i] || 0)), 0);
+                if (isMonthSelected) {
+                    const curRev = hotelData.otb.revenue?.[selectedMonth] || 0;
+                    const prevRev = hotelData.otb_prev.revenue?.[selectedMonth] || 0;
+                    totalPickupRev = curRev - prevRev;
+                    if (hotelData.otb.rooms && hotelData.otb_prev.rooms) {
+                        const curRooms = hotelData.otb.rooms?.[selectedMonth] || 0;
+                        const prevRooms = hotelData.otb_prev.rooms?.[selectedMonth] || 0;
+                        totalPickupRooms = curRooms - prevRooms;
+                    }
+                } else {
+                    totalPickupRev = hotelData.otb.revenue.reduce((a, b, i) => a + (b - (hotelData.otb_prev.revenue[i] || 0)), 0);
+                    if (hotelData.otb.rooms && hotelData.otb_prev.rooms) {
+                        totalPickupRooms = hotelData.otb.rooms.reduce((a, b, i) => a + (b - (hotelData.otb_prev.rooms[i] || 0)), 0);
+                    }
+                }
+            }
+
+            // Daily pickup fallback if monthly rooms pickup is 0
+            if (totalPickupRooms === 0) {
+                let dailyRoomsDiff = 0;
+                let hasDailyDiff = false;
+                Object.values(revenueData).forEach(d => {
+                    const dt = new Date(d.dateISO);
+                    if (dt.getFullYear() === year && (!isMonthSelected || dt.getMonth() === selectedMonth)) {
+                        const hData = d.occupancyData?.[hotel];
+                        if (hData && hData.otb_prev !== null && hData.otb_prev !== undefined) {
+                            dailyRoomsDiff += (hData.otb - hData.otb_prev);
+                            hasDailyDiff = true;
+                        }
+                    }
+                });
+                if (hasDailyDiff) {
+                    totalPickupRooms = dailyRoomsDiff;
                 }
             }
 
             const pickupCard = document.createElement('div');
             pickupCard.className = 'insight-card-premium';
+            const pickupRevSub = totalPickupRev >= 0 
+                ? (isMonthSelected ? `▲ Subida en ${months[selectedMonth]}` : '▲ Subida vs última actualización')
+                : (isMonthSelected ? `▼ Bajada en ${months[selectedMonth]}` : '▼ Bajada vs última actualización');
+
             pickupCard.innerHTML = `
-                <div class="insight-label">PICK-UP INGRESOS (${yearStr})</div>
+                <div class="insight-label">PICK-UP INGRESOS (${periodLabel})</div>
                 <div class="insight-value ${totalPickupRev >= 0 ? 'pos' : 'neg'}">
                     ${totalPickupRev > 0 ? '+' : ''}${new Intl.NumberFormat('es-ES').format(Math.round(totalPickupRev))}€
                 </div>
-                <div class="insight-sub">${totalPickupRev >= 0 ? '▲ Subida vs última actualización' : '▼ Bajada vs última actualización'}</div>
+                <div class="insight-sub">${pickupRevSub}</div>
             `;
             insightsContainer.appendChild(pickupCard);
 
             // 2. Pick-up Habitaciones / Estancias (RN)
             const pickupRoomsCard = document.createElement('div');
             pickupRoomsCard.className = 'insight-card-premium';
+            const pickupRoomsSub = totalPickupRooms >= 0
+                ? (isMonthSelected ? `🚀 Ganadas en ${months[selectedMonth]}` : '🚀 Ganadas vs última actualización')
+                : (isMonthSelected ? `📉 Cancelaciones en ${months[selectedMonth]}` : '📉 Cancelaciones vs última act.');
+
             pickupRoomsCard.innerHTML = `
-                <div class="insight-label">PICK-UP ESTANCIAS (${yearStr})</div>
+                <div class="insight-label">PICK-UP ESTANCIAS (${periodLabel})</div>
                 <div class="insight-value ${totalPickupRooms >= 0 ? 'pos' : 'neg'}">
                     ${totalPickupRooms > 0 ? '+' : ''}${new Intl.NumberFormat('es-ES').format(Math.round(totalPickupRooms))} Hab.
                 </div>
-                <div class="insight-sub">${totalPickupRooms >= 0 ? '🚀 Ganadas vs última actualización' : '📉 Cancelaciones vs última act.'}</div>
+                <div class="insight-sub">${pickupRoomsSub}</div>
             `;
             insightsContainer.appendChild(pickupRoomsCard);
 
-            // 3. Media Anual de Mercado (Todos los Hoteles) & Hotel Propio
-            let yearMarketSum = 0;
-            let yearMarketCount = 0;
-            let yearHotelSum = 0;
-            let yearHotelCount = 0;
+            // 3. Media de Mercado (Todos los Hoteles) & Hotel Propio
+            let periodMarketSum = 0;
+            let periodMarketCount = 0;
+            let periodHotelSum = 0;
+            let periodHotelCount = 0;
 
             Object.values(revenueData).forEach(d => {
-                if (new Date(d.dateISO).getFullYear() === year) {
+                const dt = new Date(d.dateISO);
+                if (dt.getFullYear() === year && (!isMonthSelected || dt.getMonth() === selectedMonth)) {
                     const m = getDayPriceMetrics(d.dateISO, d, hotel);
                     if (m.marketAvg > 0) {
-                        yearMarketSum += m.marketAvg;
-                        yearMarketCount++;
+                        periodMarketSum += m.marketAvg;
+                        periodMarketCount++;
                     }
                     if (m.hotelPrice > 0) {
-                        yearHotelSum += m.hotelPrice;
-                        yearHotelCount++;
+                        periodHotelSum += m.hotelPrice;
+                        periodHotelCount++;
                     }
                 }
             });
 
-            const avgMarketYear = yearMarketCount > 0 ? Math.round(yearMarketSum / yearMarketCount) : 0;
-            const avgHotelYear = yearHotelCount > 0 ? Math.round(yearHotelSum / yearHotelCount) : 0;
-            const diffYearAvg = (avgHotelYear > 0 && avgMarketYear > 0) ? (avgHotelYear - avgMarketYear) : 0;
+            const avgMarket = periodMarketCount > 0 ? Math.round(periodMarketSum / periodMarketCount) : 0;
+            const avgHotel = periodHotelCount > 0 ? Math.round(periodHotelSum / periodHotelCount) : 0;
+            const diffAvg = (avgHotel > 0 && avgMarket > 0) ? (avgHotel - avgMarket) : 0;
 
-            if (avgMarketYear > 0) {
+            if (avgMarket > 0) {
                 const marketCard = document.createElement('div');
                 marketCard.className = 'insight-card-premium';
                 marketCard.innerHTML = `
-                    <div class="insight-label">MEDIA MERCADO (${yearStr})</div>
+                    <div class="insight-label">MEDIA MERCADO (${periodLabel})</div>
                     <div class="insight-value" style="color:var(--primary);">
-                        ${avgMarketYear}€
+                        ${avgMarket}€
                     </div>
                     <div class="insight-sub">Todos los hoteles (incluida competencia)</div>
                 `;
@@ -1168,20 +1325,20 @@
 
                 const hotelPriceCard = document.createElement('div');
                 hotelPriceCard.className = 'insight-card-premium';
-                const diffPct = avgMarketYear > 0 ? ((diffYearAvg / avgMarketYear) * 100).toFixed(1) : '0';
+                const diffPct = avgMarket > 0 ? ((diffAvg / avgMarket) * 100).toFixed(1) : '0';
                 hotelPriceCard.innerHTML = `
-                    <div class="insight-label">PRECIO MEDIO HOTEL (${hotel})</div>
+                    <div class="insight-label">PRECIO MEDIO HOTEL (${hotelDisplayName}${isMonthSelected ? ' · ' + months[selectedMonth] : ''})</div>
                     <div class="insight-value">
-                        ${avgHotelYear > 0 ? avgHotelYear + '€' : '--€'}
+                        ${avgHotel > 0 ? avgHotel + '€' : '--€'}
                     </div>
-                    <div class="insight-sub" style="color:${diffYearAvg >= 0 ? 'var(--secondary)' : 'var(--danger)'}; font-weight:700;">
-                        ${diffYearAvg >= 0 ? '▲ +' : '▼ '}${Math.abs(diffYearAvg)}€ (${diffYearAvg >= 0 ? '+' : ''}${diffPct}%) vs Media Mercado
+                    <div class="insight-sub" style="color:${diffAvg >= 0 ? 'var(--secondary)' : 'var(--danger)'}; font-weight:700;">
+                        ${diffAvg >= 0 ? '▲ +' : '▼ '}${Math.abs(diffAvg)}€ (${diffAvg >= 0 ? '+' : ''}${diffPct}%) vs Media Mercado
                     </div>
                 `;
                 insightsContainer.appendChild(hotelPriceCard);
             }
 
-            // 4. Data Freshness
+            // 4. Data Freshness & Occupancy
             let updateDateStr = '---';
             const otbSync = hotelData.updates?.otb;
             const lastSync = hotelData.lastUpdate;
@@ -1200,13 +1357,37 @@
                     console.warn("Error formatting date", e);
                 }
             }
-            
+
+            // Ocupación media del periodo seleccionado
+            let totalRoomsPeriod = 0, occDaysPeriod = 0;
+            const cap = (hotel === 'Cumbria' ? 59 : 108);
+            Object.values(revenueData).forEach(d => {
+                const dt = new Date(d.dateISO);
+                if (dt.getFullYear() === year && (!isMonthSelected || dt.getMonth() === selectedMonth)) {
+                    const hData = d.occupancyData?.[hotel];
+                    if (hData) {
+                        const r = (hData.otb > 0) ? hData.otb : (hData.occ || 0);
+                        if (r > 0) {
+                            totalRoomsPeriod += r;
+                            occDaysPeriod++;
+                        }
+                    }
+                }
+            });
+            const avgOccRooms = occDaysPeriod > 0 ? Math.round(totalRoomsPeriod / occDaysPeriod) : 0;
+            const avgOccPct = (cap > 0 && avgOccRooms > 0) ? Math.round((avgOccRooms / cap) * 100) : 0;
+            const avgFreeRooms = Math.max(0, cap - avgOccRooms);
+
             const freshCard = document.createElement('div');
             freshCard.className = 'insight-card-premium';
+            const freshSub = isMonthSelected && avgOccPct > 0 
+                ? `Ocupación: <b>${avgOccPct}%</b> (${avgFreeRooms} lib/día) · Sinc: ${updateDateStr}`
+                : `Sincronización: ${updateDateStr}`;
+
             freshCard.innerHTML = `
-                <div class="insight-label">ESTADO DE DATOS (${yearStr})</div>
-                <div class="insight-value">Actualizado</div>
-                <div class="insight-sub">Sincronización: ${updateDateStr}</div>
+                <div class="insight-label">ESTADO DE DATOS (${periodLabel})</div>
+                <div class="insight-value">${isMonthSelected && avgOccPct > 0 ? `${avgOccPct}% Ocup.` : 'Actualizado'}</div>
+                <div class="insight-sub">${freshSub}</div>
             `;
             insightsContainer.appendChild(freshCard);
 
@@ -1360,9 +1541,22 @@
             for (let m = 0; m < 12; m++) {
                 if (year <= currentYear && m < currentMonth) continue;
 
+                const isSelected = (selectedMonth === m);
                 const card = document.createElement('div');
-                card.className = 'month-card';
-                card.innerHTML = `<div class="month-title">${months[m]}</div><div class="days-header">${['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(l => `<div class="day-label">${l}</div>`).join('')}</div>`;
+                card.className = `month-card${isSelected ? ' is-selected' : ''}`;
+                card.setAttribute('data-month', m);
+                card.onclick = () => toggleMonthSelection(m);
+                card.title = isSelected ? `Haz clic para desmarcar ${months[m]} y ver el año completo` : `Haz clic para ver las estadísticas de ${months[m]} en el panel superior`;
+
+                card.innerHTML = `
+                    <div class="month-title-wrap">
+                        <div class="month-title">${months[m]}</div>
+                        <span class="month-select-pill ${isSelected ? 'active' : 'hint'}">
+                            ${isSelected ? '✓ Seleccionado' : 'Ver datos del mes'}
+                        </span>
+                    </div>
+                    <div class="days-header">${['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(l => `<div class="day-label">${l}</div>`).join('')}</div>
+                `;
                 
                 const grid = document.createElement('div');
                 grid.className = 'days-grid';
@@ -1678,9 +1872,23 @@
             }
 
             const currentYear = document.getElementById('yearSelector').value;
-            const yearEvents = rawEvents.filter(e => (e.start && e.start.startsWith(currentYear)) || (e.end && e.end.startsWith(currentYear)));
-            const eventsToShow = yearEvents.length > 0 ? yearEvents : rawEvents;
-            const titleSuffix = yearEvents.length > 0 ? `(${currentYear}: ${yearEvents.length} eventos)` : `(Total: ${rawEvents.length} eventos)`;
+            const isMonthSelected = (selectedMonth !== null && selectedMonth >= 0 && selectedMonth < 12);
+            const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+            let yearEvents = rawEvents.filter(e => (e.start && e.start.startsWith(currentYear)) || (e.end && e.end.startsWith(currentYear)));
+            if (isMonthSelected) {
+                const mPadded = String(selectedMonth + 1).padStart(2, '0');
+                const mPrefix = `${currentYear}-${mPadded}`;
+                yearEvents = yearEvents.filter(e => {
+                    const startInMonth = e.start && e.start.startsWith(mPrefix);
+                    const endInMonth = e.end && e.end.startsWith(mPrefix);
+                    const spansMonth = e.start && e.end && e.start <= `${mPrefix}-31` && e.end >= `${mPrefix}-01`;
+                    return startInMonth || endInMonth || spansMonth;
+                });
+            }
+            const eventsToShow = yearEvents;
+            const periodStr = isMonthSelected ? `${months[selectedMonth]} ${currentYear}` : currentYear;
+            const titleSuffix = `(${periodStr}: ${eventsToShow.length} evento${eventsToShow.length === 1 ? '' : 's'})`;
             
             const titleEl = document.getElementById('eventListTitle');
             if (titleEl) titleEl.innerText = `Eventos del Periodo ${titleSuffix}`;
