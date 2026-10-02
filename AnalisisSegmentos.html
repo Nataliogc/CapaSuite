@@ -163,9 +163,17 @@
         }
 
         .container {
-            max-width: 1300px;
-            margin: 0 auto;
-            width: 95%;
+            width: 100%;
+            max-width: 100%;
+            margin: 0;
+            padding: 20px 30px;
+            box-sizing: border-box;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 12px 10px;
+            }
         }
 
         /* HEADER */
@@ -514,7 +522,7 @@
             </div>
         </div>
     </nav>
-    <div class="container" style="padding: 15px;">
+    <div class="container">
         <header class="header">
             <div style="display: flex; align-items: center; gap: 20px;">
                 <a href="index.html" title="Inicio"><img src="Imagen/logo, CapaSuite.png" alt="CapaSuite"

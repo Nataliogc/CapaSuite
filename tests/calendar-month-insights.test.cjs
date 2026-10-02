@@ -87,4 +87,14 @@ test('CalculadoraPresupuesto defaults to PANEL tab', () => {
     assert.match(html, /function init\(\)\s*\{[\s\S]*?switchTab\('tab-dashboard'\);/);
 });
 
+test('AnalisisSegmentos layout adapts to full screen width without 1300px limitation', () => {
+    const html = fs.readFileSync('AnalisisSegmentos.html', 'utf8');
+
+    // .container must use 100% width and not constrain to 1300px
+    assert.match(html, /\.container\s*\{[^}]*width:\s*100%;/);
+    assert.match(html, /\.container\s*\{[^}]*max-width:\s*100%;/);
+    assert.doesNotMatch(html, /\.container\s*\{[^}]*max-width:\s*1300px;/);
+});
+
+
 
