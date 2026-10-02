@@ -96,5 +96,22 @@ test('AnalisisSegmentos layout adapts to full screen width without 1300px limita
     assert.doesNotMatch(html, /\.container\s*\{[^}]*max-width:\s*1300px;/);
 });
 
+test('CalculadoraPresupuesto distinguishes closed, in-progress, and future months', () => {
+    const html = fs.readFileSync('CalculadoraPresupuesto.html', 'utf8');
 
+    // 1. Verify getMonthTiming function exists
+    assert.match(html, /function getMonthTiming\(mIdx,\s*yearStr,\s*hotel\)/);
 
+    // 2. Verify editorSubtitle exists in HTML
+    assert.match(html, /id="editorSubtitle"/);
+
+    // 3. Verify status badges are rendered (Cerrado, En curso, Futuro)
+    assert.match(html, /month-status-pill closed/);
+    assert.match(html, /month-status-pill current/);
+    assert.match(html, /month-status-pill future/);
+
+    // 4. Verify subtext in % Cumplimiento (Real Cerrado, Real \+ OTB, Cartera OTB)
+    assert.match(html, /Real Cerrado/);
+    assert.match(html, /Real \+ OTB/);
+    assert.match(html, /Cartera OTB/);
+});
