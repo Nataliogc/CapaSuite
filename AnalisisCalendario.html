@@ -779,25 +779,36 @@
             text-overflow: ellipsis;
         }
 
-        /* TOOLTIP (Improved) */
+        /* TOOLTIP (Improved & Adaptive) */
         #tooltip {
             position: fixed;
             z-index: 9999;
             background: var(--bg-glass);
             border-radius: 16px;
             box-shadow: var(--shadow-premium);
-            padding: 18px 20px;
+            padding: 16px 18px;
             pointer-events: none;
             display: none;
-            min-width: 340px;
-            max-width: 390px;
+            min-width: 320px;
+            max-width: 380px;
+            max-height: calc(100vh - 28px);
+            overflow-y: auto;
+            box-sizing: border-box;
             border: 1px solid var(--border);
             color: var(--text-main);
             backdrop-filter: blur(25px);
-            animation: tooltipAppear 0.2s ease-out;
+            animation: tooltipAppear 0.15s ease-out;
+            scrollbar-width: thin;
+        }
+        #tooltip::-webkit-scrollbar {
+            width: 4px;
+        }
+        #tooltip::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.4);
+            border-radius: 4px;
         }
         @keyframes tooltipAppear {
-            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            from { opacity: 0; transform: scale(0.96) translateY(6px); }
             to { opacity: 1; transform: scale(1) translateY(0); }
         }
         .tt-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 15px; }
@@ -2144,15 +2155,39 @@
             t.innerHTML = html;
             t.style.display = 'block';
             
-            // Adjust position
-            let x = e.clientX + 20;
-            let y = e.clientY + 20;
-            if (x + 360 > window.innerWidth) x = Math.max(10, e.clientX - 360);
-            if (y + 460 > window.innerHeight) y = Math.max(10, window.innerHeight - 480);
-            if (y < 10) y = 10;
+            // Medición real del tooltip para adaptación exacta al viewport
+            const pad = 12;
+            const tipW = t.offsetWidth || 360;
+            const tipH = t.offsetHeight || 460;
+            const viewW = window.innerWidth;
+            const viewH = window.innerHeight;
+
+            // Posición horizontal (x): preferir a la derecha del cursor, alternar a la izquierda si no cabe
+            let x = e.clientX + 16;
+            if (x + tipW > viewW - pad) {
+                x = e.clientX - tipW - 16;
+            }
+            if (x < pad) {
+                x = Math.max(pad, viewW - tipW - pad);
+            }
+
+            // Posición vertical (y):
+            // Si el cursor está en la mitad inferior de la pantalla o si se desbordaría hacia abajo, elevar el tooltip
+            let y = e.clientY - 30;
+            if (e.clientY > viewH * 0.5) {
+                y = e.clientY - tipH + 20;
+            }
+
+            // Clamping estricto: nunca permitir que sobresalga ni por arriba ni por abajo
+            if (y + tipH > viewH - pad) {
+                y = viewH - tipH - pad;
+            }
+            if (y < pad) {
+                y = pad;
+            }
             
-            t.style.left = x + 'px';
-            t.style.top = y + 'px';
+            t.style.left = Math.round(x) + 'px';
+            t.style.top = Math.round(y) + 'px';
         }
 
         function hideTooltip() { document.getElementById('tooltip').style.display = 'none'; }

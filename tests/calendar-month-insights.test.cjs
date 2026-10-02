@@ -243,7 +243,29 @@ test('AnalisisCalendario showTooltip renders comprehensive daily pick-up details
     assert.match(html, /rev_prev:/);
     assert.match(html, /adr_prev:/);
     assert.match(html, /snapshotDate:/);
+
+    // 4. Verify tooltip is bounded to viewport height and adapts position to prevent cutoff
+    assert.match(html, /max-height:\s*calc\(100vh\s*-\s*28px\);/);
+    assert.match(html, /overflow-y:\s*auto;/);
+    assert.match(html, /y \+ tipH > viewH - pad/);
+    assert.match(html, /y = viewH - tipH - pad/);
 });
+
+test('AnalisisProduccion charts-row adapts to laptop screens without horizontal cutoff', () => {
+    const html = fs.readFileSync('AnalisisProduccion.html', 'utf8');
+
+    // 1. Verify no rigid inline style forcing 3 columns on small laptop screens
+    assert.ok(!html.includes('<div class="charts-row" style="grid-template-columns: 1.5fr 1fr 1fr;">'));
+    assert.match(html, /<div class="charts-row">/);
+
+    // 2. Verify CSS media query for laptop screens (<= 1380px)
+    assert.match(html, /@media\s*\(max-width:\s*1380px\)\s*\{/);
+    assert.match(html, /\.charts-row > \.chart-card:first-child\s*\{\s*grid-column:\s*1\s*\/\s*-1;/);
+
+    // 3. Verify min-width: 0 on grid children to allow Chart.js canvases to shrink
+    assert.match(html, /\.charts-row > \*\s*\{\s*min-width:\s*0;/);
+});
+
 
 
 

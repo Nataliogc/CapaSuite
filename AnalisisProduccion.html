@@ -237,9 +237,56 @@
 
         .charts-row {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            grid-template-columns: 1.4fr 1fr 1fr;
             gap: 20px;
             margin-bottom: 24px;
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        .charts-row > * {
+            min-width: 0;
+            box-sizing: border-box;
+        }
+
+        .chart-card {
+            min-width: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+
+        .chart-container {
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+            height: 380px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Adaptación fluida para pantallas de portátil y escritorios medianos */
+        @media (max-width: 1380px) {
+            .charts-row {
+                grid-template-columns: 1fr 1fr;
+            }
+            .charts-row > .chart-card:first-child {
+                grid-column: 1 / -1;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .charts-row {
+                grid-template-columns: 1fr;
+            }
+            .charts-row > .chart-card:first-child {
+                grid-column: auto;
+            }
+            .chart-container {
+                height: 320px;
+            }
         }
 
         .table-container {
@@ -481,7 +528,7 @@
                 </div>
             </div>
 
-            <div class="charts-row" style="grid-template-columns: 1.5fr 1fr 1fr;">
+            <div class="charts-row">
                 <div class="card chart-card">
                     <div
                         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -2138,9 +2185,13 @@
                     type: 'doughnut',
                     data: { labels: mixLabels, datasets: [{ data: mixData, backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16', '#64748b', '#1e293b'] }] },
                     options: {
+                        responsive: true,
                         maintainAspectRatio: false,
                         plugins: {
-                            legend: { position: 'right' },
+                            legend: {
+                                position: window.innerWidth < 1200 ? 'bottom' : 'right',
+                                labels: { boxWidth: 10, font: { size: 10 }, padding: 6 }
+                            },
                             title: { display: true, text: 'Click para ver detalle', font: { size: 10 } },
                             tooltip: {
                                 callbacks: {
@@ -2200,7 +2251,7 @@
                             { label: 'LY (€)', data: lyPace, backgroundColor: '#cbd5e1' }
                         ]
                     },
-                    options: { maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
                 });
             }
 
