@@ -391,6 +391,53 @@ test('page layout adapts to full screen width without 1300px limitation', () => 
     assert.doesNotMatch(liveHtml, /\.container\s*\{[^}]*max-width:\s*1300px;/);
 });
 
+test('email container aligns to the left and cells use nested centered tables for Outlook compatibility', () => {
+    const { context } = setupEnvironment();
 
+    const sampleReport = {
+        hotel: 'Cumbria',
+        count: 1,
+        avgOld: 72,
+        avgNew: 106,
+        avgDelta: 34,
+        avgDeltaPct: 47.2,
+        items: [
+            {
+                dateDisplay: '11/10/2026',
+                dayName: 'domingo',
+                rooms: 40,
+                capacity: 59,
+                occPct: 68,
+                oldPrice: 72,
+                newPrice: 106,
+                delta: 34,
+                marketAvg: 95,
+                actionText: 'Subir precio',
+                eventText: 'Feria del Libro',
+                competitors: [
+                    { name: 'Hotel Guadiana', price: '112€' }
+                ]
+            }
+        ]
+    };
 
+    const htmlOutput = context.generateRevenueEmailHtml(sampleReport, '');
+    const plainOutput = context.generateRevenueEmailPlainText(sampleReport, '');
 
+    // 1. Left alignment of the outer container (matching plain text and user request)
+    assert.match(htmlOutput, /<table[^>]*align="left"[^>]*margin:\s*0\s+0\s+12px\s+0/);
+
+    // 2. Centering using nested tables for Outlook compatibility in cells
+    assert.match(htmlOutput, /<table\s+width="100%"\s+cellpadding="0"\s+cellspacing="0"\s+border="0"\s+align="center">/);
+
+    // 3. Event is rendered inside the action cell with 🎉 badge
+    assert.match(htmlOutput, /&#127881;\s*Feria del Libro/);
+    // Ensure no extra table row was created for the event (should have exactly 1 outer data row in tbody)
+    const tbodyMatch = htmlOutput.match(/<tbody>([\s\S]*?)<\/tbody>/);
+    assert.ok(tbodyMatch, 'tbody found');
+    const outerTrMatches = tbodyMatch[1].match(/<tr\s+bgcolor=/g) || [];
+    assert.equal(outerTrMatches.length, 1, 'Event must NOT create an extra table row');
+
+    // 4. Event in plain text
+    assert.match(plainOutput, /\[🎉 Feria del Libro\]/);
+});
