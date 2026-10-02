@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Seguimiento de Revenue | CapaSuite</title>
     <link rel="icon" href="Imagen/Icono_CapaSuite.png">
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/tokens.css">
     <link rel="stylesheet" href="css/nav.css">
     <link rel="stylesheet" href="css/revenue-dashboard.css">
@@ -25,15 +29,15 @@
         <header class="hero">
             <div><p class="eyebrow">CAPASUITE · CONTROL DE DATOS</p><h1>Seguimiento de Revenue</h1>
                 <p>Conoce el origen de tus datos y cómo cambia la previsión entre cargas.</p></div>
-            <a class="button primary" href="CargarDatos.html">Importar Excel</a>
+            <a class="button primary" href="CargarDatos.html">📊 Importar Excel</a>
         </header>
         <p id="status" role="status" aria-live="polite"></p>
         <section class="panel toolbar" aria-label="Filtros y copias">
-            <label>Hotel<select id="historyHotel"><option>Guadiana</option><option>Cumbria</option></select></label>
+            <label>Hotel<select id="historyHotel"><option value="Guadiana">Sercotel Guadiana</option><option value="Cumbria">Cumbria Spa & Hotel</option></select></label>
             <label>Datos<select id="historyMode"><option value="forecast">Previsión de reservas</option><option value="actual">Producción registrada</option></select></label>
-            <button id="captureNow">Guardar captura actual</button>
-            <button id="exportBackup">Descargar copia completa</button>
-            <button id="importBackup">Recuperar copia</button>
+            <button id="captureNow">📸 Guardar captura actual</button>
+            <button id="exportBackup">💾 Descargar copia completa</button>
+            <button id="importBackup">🔄 Recuperar copia</button>
             <input type="file" id="backupFile" accept=".json,application/json" hidden>
         </section>
         <p class="note">Las capturas se guardan al importar Excel en Cargar Datos o Segmentos. El histórico y sus copias se conservan en este navegador y cuenta; descarga una copia para trasladarlos a otro equipo. La fecha de captura indica cuándo se cargaron los datos, no cuándo se crearon las reservas.</p>
