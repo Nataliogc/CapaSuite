@@ -698,25 +698,41 @@
         let allGeneratedInsights = [];
         let currentActiveInsightDates = [];
 
-        function formatSpanishDate(dateInput) {
-            if (!dateInput) return '';
+        function parseDateRobust(dateInput) {
+            if (!dateInput) return null;
             const str = String(dateInput).trim();
-            const dmyMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-            if (dmyMatch) {
-                return `${dmyMatch[1].padStart(2, '0')}/${dmyMatch[2].padStart(2, '0')}/${dmyMatch[3]}`;
+            const isoM = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+            if (isoM) {
+                return new Date(parseInt(isoM[1], 10), parseInt(isoM[2], 10) - 1, parseInt(isoM[3], 10));
             }
-            const isoMatch = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-            if (isoMatch) {
-                return `${isoMatch[3].padStart(2, '0')}/${isoMatch[2].padStart(2, '0')}/${isoMatch[1]}`;
+            const dmyM = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+            if (dmyM) {
+                return new Date(parseInt(dmyM[3], 10), parseInt(dmyM[2], 10) - 1, parseInt(dmyM[1], 10));
             }
-            const d = new Date(str + (str.length === 10 ? 'T00:00:00' : ''));
-            if (!isNaN(d.getTime())) {
-                const dd = String(d.getDate()).padStart(2, '0');
-                const mm = String(d.getMonth() + 1).padStart(2, '0');
-                const yyyy = d.getFullYear();
-                return `${dd}/${mm}/${yyyy}`;
-            }
-            return str;
+            const d = new Date(str);
+            return isNaN(d.getTime()) ? null : d;
+        }
+
+        function formatSpanishDate(dateInput) {
+            const d = parseDateRobust(dateInput);
+            if (!d) return String(dateInput || '');
+            const dd = String(d.getDate()).padStart(2, '0');
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const yyyy = d.getFullYear();
+            return `${dd}/${mm}/${yyyy}`;
+        }
+
+        function getDayInfo(dateInput) {
+            const d = parseDateRobust(dateInput);
+            if (!d) return { dayOfWeek: '', isWeekend: false, dayLabel: 'Laboral' };
+            const dayNamesShort = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+            const dayOfWeek = dayNamesShort[d.getDay()];
+            const isWeekend = (d.getDay() === 0 || d.getDay() === 5 || d.getDay() === 6);
+            return {
+                dayOfWeek,
+                isWeekend,
+                dayLabel: isWeekend ? `${dayOfWeek} (Fin de Semana)` : `${dayOfWeek} (Laboral)`
+            };
         }
 
         function getHotelRoomsCount(h) {
@@ -839,7 +855,30 @@
 
             if (compData && compData.data && compData.data.length > 0) {
                 compData.data.forEach(d => {
-                    const my = d.hotels ? d.hotels[currentHotel] : null;
+                    if (!d.hotels) return;
+                    const dateStr = d.dateISO || d.date;
+                    const dayInfo = getDayInfo(dateStr);
+                    const my = d.hotels[currentHotel];
+
+                    // Extract competitors and calculate active compSet metrics
+                    const soldCompetitors = [];
+                    const openCompPrices = [];
+
+                    Object.keys(d.hotels).forEach(hKey => {
+                        if (hKey !== currentHotel && d.hotels[hKey]) {
+                            if (d.hotels[hKey].sold) {
+                                soldCompetitors.push(hKey);
+                            } else if (d.hotels[hKey].price > 0) {
+                                openCompPrices.push(d.hotels[hKey].price);
+                            }
+                        }
+                    });
+
+                    // Accurate average of open competitors
+                    let compAvg = (openCompPrices.length > 0)
+                        ? (openCompPrices.reduce((a, b) => a + b, 0) / openCompPrices.length)
+                        : (d.compAvg || 0);
+
                     if (my && !my.sold && my.price > 0) {
                         // Check flat rate consecutive
                         if (prevPrice !== null && Math.abs(my.price - prevPrice) < 0.5) {
@@ -850,34 +889,32 @@
                         }
                         prevPrice = my.price;
 
-                        if (d.compAvg > 0) {
-                            const diff = d.compAvg - my.price;
-                            const diffPct = (diff / d.compAvg) * 100;
-                            const dateStr = d.dateISO || d.date;
-                            const dObj = new Date((dateStr || '') + 'T00:00:00');
-                            const dayOfWeek = isNaN(dObj.getTime()) ? '' : dObj.toLocaleDateString('es-ES', { weekday: 'short' });
-                            const isWeekend = dayOfWeek.toLowerCase().includes('vie') || dayOfWeek.toLowerCase().includes('sáb') || dayOfWeek.toLowerCase().includes('sab');
+                        if (compAvg > 0) {
+                            const diff = compAvg - my.price;
+                            const diffPct = (diff / compAvg) * 100;
 
-                            if (my.price < d.compAvg * 0.85) {
+                            if (my.price < compAvg * 0.85) {
                                 underpricedDates.push({
                                     dateISO: dateStr,
-                                    dayOfWeek: dayOfWeek.charAt(0).toUpperCase() + dayOfWeek.slice(1),
-                                    isWeekend,
+                                    dayOfWeek: dayInfo.dayOfWeek,
+                                    dayLabel: dayInfo.dayLabel,
+                                    isWeekend: dayInfo.isWeekend,
                                     myPrice: my.price,
-                                    compAvg: Math.round(d.compAvg),
+                                    compAvg: Math.round(compAvg),
                                     diff: Math.round(diff),
                                     diffPct: diffPct.toFixed(1),
-                                    tactic: isWeekend ? '🔺 Subir tarifa +15€ a +20€ (Fin de semana)' : '🔺 Ajustar tarifa BAR +10€ (Paridad laboral)'
+                                    tactic: dayInfo.isWeekend ? '🔺 Subir tarifa +15€ a +20€ (Fin de semana)' : '🔺 Ajustar tarifa BAR +10€ (Paridad laboral)'
                                 });
                             }
 
-                            if (diff >= 25 || (isWeekend && diff >= 18)) {
+                            if (diff >= 25 || (dayInfo.isWeekend && diff >= 18)) {
                                 highDemandYieldDates.push({
                                     dateISO: dateStr,
-                                    dayOfWeek: dayOfWeek.charAt(0).toUpperCase() + dayOfWeek.slice(1),
-                                    isWeekend,
+                                    dayOfWeek: dayInfo.dayOfWeek,
+                                    dayLabel: dayInfo.dayLabel,
+                                    isWeekend: dayInfo.isWeekend,
                                     myPrice: my.price,
-                                    compAvg: Math.round(d.compAvg),
+                                    compAvg: Math.round(compAvg),
                                     diff: Math.round(diff),
                                     diffPct: diffPct.toFixed(1),
                                     tactic: '⚡ Compresión alta: Subir tramo +18% y cerrar tarifas con descuento'
@@ -886,26 +923,35 @@
                         }
                     }
 
-                    // Check if any competitor is sold out
-                    if (d.hotels) {
-                        Object.keys(d.hotels).forEach(hKey => {
-                            if (hKey !== currentHotel && d.hotels[hKey] && d.hotels[hKey].sold) {
-                                const dateStr = d.dateISO || d.date;
-                                if (!soldOutDates.some(x => x.dateISO === dateStr)) {
-                                    const dObj = new Date((dateStr || '') + 'T00:00:00');
-                                    const dayOfWeek = isNaN(dObj.getTime()) ? '' : dObj.toLocaleDateString('es-ES', { weekday: 'short' });
-                                    const isWeekend = dayOfWeek.toLowerCase().includes('vie') || dayOfWeek.toLowerCase().includes('sáb') || dayOfWeek.toLowerCase().includes('sab');
-                                    soldOutDates.push({
-                                        dateISO: dateStr,
-                                        dayOfWeek: dayOfWeek ? (dayOfWeek.charAt(0).toUpperCase() + dayOfWeek.slice(1)) : '',
-                                        isWeekend: isWeekend,
-                                        competitor: hKey,
-                                        myPrice: d.hotels[currentHotel]?.price || 0,
-                                        compAvg: d.compAvg ? Math.round(d.compAvg) : null,
-                                        tactic: '🚨 Competidor lleno: Subir BAR +25% de última hora'
-                                    });
-                                }
-                            }
+                    // Sold Out tracking for competitors
+                    if (soldCompetitors.length > 0) {
+                        const myPrice = (my && !my.sold && my.price > 0) ? my.price : 0;
+                        const roundedCompAvg = compAvg > 0 ? Math.round(compAvg) : null;
+                        const diff = (roundedCompAvg && myPrice > 0) ? (roundedCompAvg - myPrice) : null;
+                        const diffPct = (roundedCompAvg && diff !== null) ? ((diff / roundedCompAvg) * 100).toFixed(1) : null;
+                        const mainComp = soldCompetitors.join(', ');
+
+                        let tactic = '';
+                        if (myPrice > 0 && roundedCompAvg && myPrice < roundedCompAvg) {
+                            tactic = `🚨 ${mainComp} completo: Tu tarifa (${myPrice}€) está por debajo de los rivales disponibles (${roundedCompAvg}€). Subir BAR +25% de inmediato.`;
+                        } else if (myPrice > 0) {
+                            tactic = `🚨 ${mainComp} completo: Elevar BAR +20% a +35% para capturar demanda desplazada a precio premium.`;
+                        } else {
+                            tactic = `🚨 ${mainComp} en Sold Out: Oportunidad de venta a tarifa máxima.`;
+                        }
+
+                        soldOutDates.push({
+                            dateISO: dateStr,
+                            dayOfWeek: dayInfo.dayOfWeek,
+                            dayLabel: dayInfo.dayLabel,
+                            isWeekend: dayInfo.isWeekend,
+                            competitor: mainComp,
+                            competitorsList: soldCompetitors,
+                            myPrice: myPrice,
+                            compAvg: roundedCompAvg,
+                            diff: diff,
+                            diffPct: diffPct,
+                            tactic: tactic
                         });
                     }
                 });
@@ -961,19 +1007,30 @@
 
             // AUDIT 3: Competidores con Sold Out
             if (soldOutDates.length > 0) {
+                const soldSummaryMap = {};
+                soldOutDates.forEach(sd => {
+                    (sd.competitorsList || [sd.competitor]).forEach(c => {
+                        soldSummaryMap[c] = (soldSummaryMap[c] || 0) + 1;
+                    });
+                });
+                const soldSummaryList = Object.entries(soldSummaryMap)
+                    .sort((a,b) => b[1] - a[1])
+                    .map(([h, count]) => `<b>${h}</b> (${count} ${count === 1 ? 'fecha' : 'fechas'})`)
+                    .join(', ');
+
                 insights.push({
                     id: 'ins_soldout',
                     category: 'pricing',
                     priority: 'critical',
                     badge: '🚨 ALERTA COMPSET • LLENO TÉCNICO',
                     title: `Competidores completos en ${soldOutDates.length} fechas detectadas`,
-                    diagnostic: `Rivales directos del CompSet aparecen con el cartel de completo (Sold Out) en <b>${soldOutDates.length} fechas</b>.`,
+                    diagnostic: `Rivales directos del CompSet aparecen con el cartel de completo (Sold Out) en <b>${soldOutDates.length} fechas</b> (destacando ${soldSummaryList || 'hoteles del CompSet'}). Esto demuestra momentos de alta concentración de demanda y plazas agotadas en el mercado.`,
                     strategy: `<b>Estrategia Revenue Experta:</b><br>
 • <b>Captura de Demanda Desplazada:</b> Cuando los hoteles de la plaza se llenan, la demanda sobrante no es sensible al precio. Sube de inmediato tu tarifa BAR un <b>+20% a +35%</b> en esas fechas exactas.<br>
 • <b>Retención de Últimas Unidades:</b> Reserva las últimas 10-15 habitaciones únicamente para venta a tarifa completa en tu canal directo.`,
                     dates: soldOutDates,
                     datesTitle: 'Fechas con Rivales en Sold Out',
-                    datesSubtitle: 'Oportunidad de captura de demanda desplazada a tarifa máxima',
+                    datesSubtitle: `Detalle de los ${soldOutDates.length} días con competidores sin disponibilidad y oportunidad de Yield`,
                     actionUrl: 'AnalisisCompetencia.html'
                 });
             }
@@ -1354,30 +1411,95 @@
             if (titleEl) titleEl.innerText = title;
             if (subEl) subEl.innerText = subtitle;
 
+            const isSoldOut = (insightId === 'ins_soldout');
+
             if (tableContainer) {
-                const rowsHtml = targetInsight.dates.map((d, idx) => {
+                const headerHtml = isSoldOut ? `
+                    <thead>
+                        <tr style="background: rgba(0,0,0,0.03); border-bottom: 2px solid var(--border); font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted);">
+                            <th style="padding: 10px 12px;">Fecha</th>
+                            <th style="padding: 10px 12px; text-align: center;">Día</th>
+                            <th style="padding: 10px 12px;">Rival(es) en Sold Out</th>
+                            <th style="padding: 10px 12px; text-align: right;">Tu Tarifa</th>
+                            <th style="padding: 10px 12px; text-align: right;">Media Rivales Disp.</th>
+                            <th style="padding: 10px 12px; text-align: right;">Diferencial</th>
+                            <th style="padding: 10px 12px;">Estrategia Recomendada</th>
+                        </tr>
+                    </thead>
+                ` : `
+                    <thead>
+                        <tr style="background: rgba(0,0,0,0.03); border-bottom: 2px solid var(--border); font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted);">
+                            <th style="padding: 10px 12px;">Fecha</th>
+                            <th style="padding: 10px 12px; text-align: center;">Día</th>
+                            <th style="padding: 10px 12px; text-align: right;">Tu Tarifa</th>
+                            <th style="padding: 10px 12px; text-align: right;">CompSet Medio</th>
+                            <th style="padding: 10px 12px; text-align: right;">Diferencial</th>
+                            <th style="padding: 10px 12px;">Táctica Recomendada</th>
+                        </tr>
+                    </thead>
+                `;
+
+                const rowsHtml = targetInsight.dates.map(d => {
                     const displayDate = formatSpanishDate(d.dateISO || d.date);
+                    const dayBadge = `
+                        <span style="background: ${d.isWeekend ? '#fef3c7' : '#f1f5f9'}; color: ${d.isWeekend ? '#b45309' : '#475569'}; padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700; white-space: nowrap;">
+                            ${d.dayOfWeek || (d.isWeekend ? 'Sáb' : 'Laboral')} ${d.isWeekend ? '(Fin Sem)' : '(Laboral)'}
+                        </span>
+                    `;
+
+                    if (isSoldOut) {
+                        const compList = d.competitorsList || (d.competitor ? d.competitor.split(', ') : ['Rival CompSet']);
+                        const compBadges = compList.map(c => 
+                            `<span style="display:inline-flex; align-items:center; gap:4px; background:#fee2e2; color:#991b1b; padding:2px 8px; border-radius:6px; font-size:0.75rem; font-weight:700; border:1px solid #fecaca; margin: 1px 2px 1px 0;">🔴 ${c}</span>`
+                        ).join(' ');
+
+                        return `
+                            <tr style="border-bottom: 1px solid var(--border); font-size: 0.83rem;">
+                                <td style="padding: 10px 12px; font-weight: 700; white-space: nowrap;">
+                                    ${displayDate}
+                                </td>
+                                <td style="padding: 10px 12px; text-align: center;">
+                                    ${dayBadge}
+                                </td>
+                                <td style="padding: 10px 12px;">
+                                    ${compBadges}
+                                </td>
+                                <td style="padding: 10px 12px; text-align: right; font-weight: 800; color: #4338ca;">
+                                    ${d.myPrice ? d.myPrice + ' €' : '-'}
+                                </td>
+                                <td style="padding: 10px 12px; text-align: right; font-weight: 700; color: #64748b;">
+                                    ${d.compAvg ? d.compAvg + ' €' : '-'}
+                                </td>
+                                <td style="padding: 10px 12px; text-align: right; font-weight: 800; color: ${d.diff && d.diff > 0 ? '#dc2626' : (d.diff && d.diff < 0 ? '#16a34a' : '#64748b')};">
+                                    ${d.diff !== null && d.diff !== undefined ? (d.diff > 0 ? '-' : '+') + Math.abs(d.diff) + ' €' : '-'}
+                                    ${d.diffPct ? ` <span style="font-size:0.7rem; font-weight:600;">(${d.diffPct}%)</span>` : ''}
+                                </td>
+                                <td style="padding: 10px 12px; font-size: 0.78rem; color: #0f172a;">
+                                    ${d.tactic}
+                                </td>
+                            </tr>
+                        `;
+                    }
+
                     return `
                         <tr style="border-bottom: 1px solid var(--border); font-size: 0.83rem;">
-                            <td style="padding: 9px 12px; font-weight: 700; white-space: nowrap;">
+                            <td style="padding: 10px 12px; font-weight: 700; white-space: nowrap;">
                                 ${displayDate}
                             </td>
-                            <td style="padding: 9px 12px; text-align: center;">
-                                <span style="background: ${d.isWeekend ? '#fef3c7' : '#f1f5f9'}; color: ${d.isWeekend ? '#b45309' : '#475569'}; padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">
-                                    ${d.dayOfWeek || (d.isWeekend ? 'Fin Semana' : 'Laboral')}
-                                </span>
+                            <td style="padding: 10px 12px; text-align: center;">
+                                ${dayBadge}
                             </td>
-                            <td style="padding: 9px 12px; text-align: right; font-weight: 800; color: #4338ca;">
-                                ${d.myPrice} €
+                            <td style="padding: 10px 12px; text-align: right; font-weight: 800; color: #4338ca;">
+                                ${d.myPrice ? d.myPrice + ' €' : '-'}
                             </td>
-                            <td style="padding: 9px 12px; text-align: right; font-weight: 700; color: #64748b;">
+                            <td style="padding: 10px 12px; text-align: right; font-weight: 700; color: #64748b;">
                                 ${d.compAvg ? d.compAvg + ' €' : '-'}
                             </td>
-                            <td style="padding: 9px 12px; text-align: right; font-weight: 800; color: ${d.diff > 0 ? '#dc2626' : '#16a34a'};">
-                                ${d.diff ? (d.diff > 0 ? '-' : '+') + Math.abs(d.diff) + ' €' : '-'}
+                            <td style="padding: 10px 12px; text-align: right; font-weight: 800; color: ${d.diff > 0 ? '#dc2626' : '#16a34a'};">
+                                ${d.diff !== null && d.diff !== undefined ? (d.diff > 0 ? '-' : '+') + Math.abs(d.diff) + ' €' : '-'}
                                 ${d.diffPct ? ` <span style="font-size:0.7rem; font-weight:600;">(${d.diffPct}%)</span>` : ''}
                             </td>
-                            <td style="padding: 9px 12px; font-size: 0.78rem; color: #0f172a;">
+                            <td style="padding: 10px 12px; font-size: 0.78rem; color: #0f172a;">
                                 ${d.tactic || 'Ajustar tarifa BAR a paridad'}
                             </td>
                         </tr>
@@ -1386,16 +1508,7 @@
 
                 tableContainer.innerHTML = `
                     <table style="width: 100%; border-collapse: collapse; text-align: left;">
-                        <thead>
-                            <tr style="background: rgba(0,0,0,0.03); border-bottom: 2px solid var(--border); font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted);">
-                                <th style="padding: 9px 12px;">Fecha</th>
-                                <th style="padding: 9px 12px; text-align: center;">Día</th>
-                                <th style="padding: 9px 12px; text-align: right;">Tu Tarifa</th>
-                                <th style="padding: 9px 12px; text-align: right;">CompSet Medio</th>
-                                <th style="padding: 9px 12px; text-align: right;">Diferencial</th>
-                                <th style="padding: 9px 12px;">Táctica Recomendada</th>
-                            </tr>
-                        </thead>
+                        ${headerHtml}
                         <tbody>
                             ${rowsHtml}
                         </tbody>
@@ -1413,9 +1526,18 @@
 
         function copyDatesModalData() {
             if (!currentActiveInsightDates || currentActiveInsightDates.length === 0) return;
-            const text = "FECHA\tDÍA\tTU TARIFA\tCOMPSET\tDIFERENCIA\tTÁCTICA\n" + currentActiveInsightDates.map(d => {
+            const isSoldOut = currentActiveInsightDates[0] && currentActiveInsightDates[0].competitor !== undefined;
+            const header = isSoldOut
+                ? "FECHA\tDÍA\tRIVAL SOLD OUT\tTU TARIFA\tCOMPSET DISPONIBLE\tDIFERENCIA\tTÁCTICA\n"
+                : "FECHA\tDÍA\tTU TARIFA\tCOMPSET\tDIFERENCIA\tTÁCTICA\n";
+
+            const text = header + currentActiveInsightDates.map(d => {
                 const dateStr = formatSpanishDate(d.dateISO || d.date);
-                return `${dateStr}\t${d.dayOfWeek || ''}\t${d.myPrice} €\t${d.compAvg || ''} €\t${d.diff || ''} €\t${d.tactic || ''}`;
+                const dayStr = `${d.dayOfWeek || ''} ${d.isWeekend ? '(Fin Sem)' : '(Laboral)'}`;
+                if (isSoldOut) {
+                    return `${dateStr}\t${dayStr}\t${d.competitor || ''}\t${d.myPrice || 0} €\t${d.compAvg ? d.compAvg + ' €' : '-'}\t${d.diff ? (d.diff > 0 ? '-' : '+') + Math.abs(d.diff) + ' €' : '-'}\t${d.tactic || ''}`;
+                }
+                return `${dateStr}\t${dayStr}\t${d.myPrice || 0} €\t${d.compAvg ? d.compAvg + ' €' : '-'}\t${d.diff ? (d.diff > 0 ? '-' : '+') + Math.abs(d.diff) + ' €' : '-'}\t${d.tactic || ''}`;
             }).join("\n");
 
             if (navigator.clipboard && navigator.clipboard.writeText) {
