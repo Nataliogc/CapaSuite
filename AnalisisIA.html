@@ -213,12 +213,81 @@
             font-weight: 800;
             letter-spacing: -0.5px;
         }
+        [data-theme="light"] .ai-title h1 {
+            color: #0f172a;
+            background: linear-gradient(135deg, #0f172a 0%, #334155 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
 
         .ai-title p {
             margin: 10px 0 0 0;
             font-size: 1.1rem;
             color: var(--text-muted);
             font-weight: 300;
+        }
+
+        /* SCORECARD */
+        .scorecard-card {
+            background: var(--bg-surface, #ffffff);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 18px 22px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+            transition: all 0.2s ease;
+        }
+        .scorecard-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+        }
+        [data-theme="light"] .scorecard-card {
+            background: #ffffff;
+            border-color: #e2e8f0;
+        }
+
+        /* FILTER PILLS */
+        .filter-pill-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 8px 18px;
+            border-radius: 99px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .filter-pill-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+        }
+        .filter-pill-btn.active {
+            background: var(--primary);
+            color: #ffffff;
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px var(--primary-glow);
+        }
+        [data-theme="light"] .filter-pill-btn {
+            background: #f1f5f9;
+            color: #475569;
+            border-color: #cbd5e1;
+        }
+        [data-theme="light"] .filter-pill-btn:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+        [data-theme="light"] .filter-pill-btn.active {
+            background: #4f46e5;
+            color: #ffffff;
+            border-color: #4f46e5;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
         }
 
         /* ANALYSIS GRID */
@@ -237,9 +306,14 @@
             box-shadow: var(--shadow-premium);
             transition: var(--transition);
         }
+        [data-theme="light"] .card {
+            background: #ffffff;
+            border-color: #e2e8f0;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+        }
 
         .card:hover {
-            transform: translateY(-5px);
+            transform: translateY(-3px);
             border-color: rgba(99, 102, 241, 0.3);
         }
 
@@ -247,61 +321,104 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            font-size: 1.1rem;
-            font-weight: 700;
+            font-size: 1.15rem;
+            font-weight: 800;
             margin-bottom: 20px;
             color: var(--primary);
+        }
+        [data-theme="light"] .card-title {
+            color: #4338ca;
         }
 
         .insight-list {
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 18px;
         }
 
         .insight-item {
             display: flex;
-            gap: 15px;
-            padding: 20px;
+            flex-direction: column;
+            gap: 12px;
+            padding: 22px;
             background: var(--bg-deep);
             color: var(--text-main);
-            border-radius: 12px;
-            border-left: 4px solid var(--primary);
-            transition: transform 0.2s;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            border-left: 5px solid var(--primary);
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        }
+        [data-theme="light"] .insight-item {
+            background: #ffffff;
+            border-color: #e2e8f0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
         }
 
         .insight-item:hover {
-            transform: translateX(5px);
-            background: var(--table-row-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
         }
 
-        .insight-item.positive {
-            border-left-color: #10b981;
+        .insight-item.positive { border-left-color: #10b981; }
+        .insight-item.warning { border-left-color: #f59e0b; }
+        .insight-item.critical { border-left-color: #ef4444; }
+
+        .insight-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 10px;
+            flex-wrap: wrap;
         }
 
-        .insight-item.warning {
-            border-left-color: #f59e0b;
+        .insight-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .insight-badge.critical { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
+        .insight-badge.warning { background: #fef3c7; color: #d97706; border: 1px solid #fde68a; }
+        .insight-badge.positive { background: #d1fae5; color: #059669; border: 1px solid #a7f3d0; }
+        .insight-badge.info { background: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe; }
+
+        .diagnostic-box {
+            font-size: 0.88rem;
+            line-height: 1.55;
+            color: var(--text-main);
+        }
+        [data-theme="light"] .diagnostic-box {
+            color: #334155;
         }
 
-        .insight-item.critical {
-            border-left-color: #ef4444;
+        .strategy-box {
+            background: rgba(99, 102, 241, 0.05);
+            border: 1px solid rgba(99, 102, 241, 0.25);
+            border-radius: 12px;
+            padding: 14px 18px;
+            font-size: 0.84rem;
+            line-height: 1.55;
+            color: var(--text-main);
+        }
+        [data-theme="light"] .strategy-box {
+            background: #f8faff;
+            border-color: #e0e7ff;
+            color: #1e293b;
         }
 
-        .insight-icon {
-            font-size: 1.5rem;
-        }
-
-        .insight-content h4 {
-            margin: 0 0 5px 0;
-            font-size: 0.95rem;
-            font-weight: 700;
-        }
-
-        .insight-content p {
-            margin: 0;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            line-height: 1.5;
+        .insight-actions {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 10px;
+            margin-top: 6px;
+            flex-wrap: wrap;
         }
 
         /* CHAT INTERFACE */
@@ -469,10 +586,22 @@
             </div>
         </header>
 
+        <!-- EXECUTIVE REVENUE SCORECARD -->
+        <div id="aiScorecardContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-bottom: 22px;"></div>
+
+        <!-- CATEGORY FILTER PILLS -->
+        <div id="aiFilterPillsContainer" style="display: flex; gap: 8px; overflow-x: auto; margin-bottom: 18px; padding-bottom: 6px;"></div>
+
         <div class="analysis-grid">
 
             <section class="card">
-                <div class="card-title">🔍 Auditoría de Rendimiento e Insights</div>
+                <div class="card-title" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span>🔍</span>
+                        <span>Auditoría de Rendimiento e Insights Estratégicos</span>
+                    </div>
+                    <span id="insightsCountBadge" style="background: rgba(99, 102, 241, 0.12); color: var(--primary); font-size: 0.75rem; font-weight: 800; padding: 4px 10px; border-radius: 12px;">0 Hallazgos</span>
+                </div>
                 <div id="ai-insights" class="insight-list">
                     <!-- Insights will be injected here -->
                     <div class="ai-loader" id="insightLoader">
@@ -485,20 +614,19 @@
 
             <aside class="card chat-container">
                 <div class="card-title" style="justify-content:space-between;">
-                    <span>💬 Consulta a CapaAI</span>
+                    <span>💬 Consultor Revenue CapaAI</span>
                     <button onclick="openSettings()"
                         style="background:none; border:none; cursor:pointer; font-size:1.2rem; opacity:0.6;"
                         title="Configurar API Key">⚙️</button>
                 </div>
                 <div class="chat-messages" id="chatMessages">
                     <div class="message ai">
-                        ¡Hola! Puedo responder preguntas sobre tu producción, ocupación o precios. Por ejemplo: "¿Cómo
-                        va Febrero?" o "¿Qué hotel va mejor?"
+                        ¡Hola! Soy tu <b>Director de Revenue Virtual</b>. Puedo auditar tu estrategia comercial, precios de compset, ritmo de pick-up o cumplimiento de presupuesto.<br><br>Pruébame preguntando:<br>• <i>"¿Cómo va Febrero?"</i><br>• <i>"¿Qué estrategias me recomiendas?"</i><br>• <i>"¿Qué hotel va mejor?"</i><br>• <i>"¿Cómo está la competencia?"</i>
                     </div>
                 </div>
                 <div class="typing-indicator" id="typingIndicator">CapaAI está analizando...</div>
                 <div class="chat-input-wrapper">
-                    <input type="text" id="chatInput" class="chat-input" placeholder="Pregúntame algo..."
+                    <input type="text" id="chatInput" class="chat-input" placeholder="Pregúntame sobre precios, estrategias, meses..."
                         onkeypress="if(event.key==='Enter') sendMessage()">
                     <button class="send-btn" onclick="sendMessage()">➤</button>
                 </div>
@@ -506,6 +634,28 @@
 
         </div>
 
+    </div>
+
+    <!-- DATES DETAIL MODAL -->
+    <div id="datesDetailModal" class="modal"
+        style="display:none; position:fixed; z-index:99999; inset:0; width:100%; height:100%; background:rgba(15,23,42,0.7); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;"
+        onclick="if(event.target === this) closeDatesModal();">
+        <div style="background:var(--bg-surface, #ffffff); color:var(--text-main, #0f172a); border-radius:20px; width:100%; max-width:850px; max-height:90vh; overflow-y:auto; padding:24px 26px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.35); border:1px solid var(--border, rgba(0,0,0,0.1)); position:relative;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; border-bottom:1px solid var(--border); padding-bottom:12px;">
+                <div>
+                    <h3 id="datesModalTitle" style="margin:0; font-size:1.2rem; font-weight:800; color:var(--text-main);">Fechas Afectadas</h3>
+                    <p id="datesModalSubtitle" style="margin:4px 0 0 0; font-size:0.82rem; color:var(--text-muted);">Listado detallado de fechas con oportunidad de optimización de tarifa.</p>
+                </div>
+                <button onclick="closeDatesModal()" style="background:none; border:none; font-size:1.8rem; color:var(--text-muted); cursor:pointer; padding:0 6px;" title="Cerrar">&times;</button>
+            </div>
+            <div id="datesModalTableContent" style="overflow-x:auto;">
+                <!-- Injected dynamically -->
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; border-top:1px solid var(--border); padding-top:14px; flex-wrap:wrap; gap:10px;">
+                <button onclick="closeDatesModal()" class="action-btn" style="background:#f1f5f9; color:#475569; padding:8px 18px; border-radius:8px; font-weight:600; cursor:pointer; border:1px solid #cbd5e1;">Cerrar</button>
+                <button onclick="copyDatesModalData()" class="action-btn" style="background:var(--primary); color:white; padding:8px 18px; border-radius:8px; font-weight:700; cursor:pointer; border:none;">📋 Copiar Tabla al Portapapeles</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -544,33 +694,46 @@
             }
         }
 
+        let currentFilterCategory = 'all';
+        let allGeneratedInsights = [];
+        let currentActiveInsightDates = [];
+
+        function getHotelRoomsCount(h) {
+            return (h === 'Cumbria') ? 59 : 108;
+        }
+
         function renderAIAnalysis() {
             const container = document.getElementById('ai-insights');
             const welcomeText = document.getElementById('welcomeText');
+            const scorecardContainer = document.getElementById('aiScorecardContainer');
+            const filterContainer = document.getElementById('aiFilterPillsContainer');
+            const countBadge = document.getElementById('insightsCountBadge');
 
             if (!db[currentHotel]) {
-                container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-muted);">
-                    <p>No tengo datos suficientes del hotel <b>${currentHotel}</b> para realizar un análisis.</p>
-                </div>`;
-                welcomeText.innerText = `Esperando datos de ${currentHotel}...`;
+                if (container) {
+                    container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-muted);">
+                        <p>No tengo datos suficientes del hotel <b>${currentHotel}</b> para realizar un análisis.</p>
+                    </div>`;
+                }
+                if (welcomeText) welcomeText.innerText = `Esperando datos de ${currentHotel}...`;
                 return;
             }
 
-            welcomeText.innerText = `Análisis de ${currentHotel} completado.`;
-            container.innerHTML = '';
+            if (welcomeText) welcomeText.innerText = `Auditoría y Estrategia de Revenue: ${currentHotel}`;
+            if (container) container.innerHTML = '';
 
             const hotelData = db[currentHotel];
             const years = Object.keys(hotelData).filter(k => !k.startsWith('custom')).sort().reverse();
-            const lastYear = years[0];
-            const prevYear = years[1];
-            const yearData  = hotelData[lastYear];
+            const lastYear = years[0] || '2026';
+            const prevYear = years[1] || '2025';
+            const yearData  = hotelData[lastYear] || {};
             const prevYearData = prevYear ? hotelData[prevYear] : null;
 
-            const fmtEuro = n => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
-            const fmtPct  = n => (n >= 0 ? '+' : '') + n.toFixed(1) + '%';
+            const fmtEuro = n => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n || 0);
+            const fmtPct  = n => ((n || 0) >= 0 ? '+' : '') + (n || 0).toFixed(1) + '%';
             const monthNames  = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
-            // ---- Build real production arrays (room revenue preferred) ----
+            // 1. Build real production arrays
             let realRev = new Array(12).fill(0);
             let realRN  = new Array(12).fill(0);
             if (yearData.service) {
@@ -590,27 +753,48 @@
                 }
             }
 
-            // ---- Budget ----
+            // 2. Budget
             const budgetKey = `custom_budget_${lastYear}`;
-            const budget    = hotelData[budgetKey];
+            const budget = hotelData[budgetKey] || hotelData[`custom_budget`];
             const budgetRev = (budget && budget.rev && budget.rev.some(v => v > 0)) ? budget.rev : null;
+            const budgetRN  = (budget && budget.rooms && budget.rooms.some(v => v > 0)) ? budget.rooms : null;
 
-            // ---- OTB ----
+            // 3. OTB
             let otbRev = new Array(12).fill(0);
             let otbRN  = new Array(12).fill(0);
             if (yearData.otb) {
-                otbRev = yearData.otb.breakdown?.habitacion    || yearData.otb.revenue || new Array(12).fill(0);
-                otbRN  = yearData.otb.breakdown?.habitacion_rn || yearData.otb.rooms   || new Array(12).fill(0);
+                otbRev = yearData.otb.breakdown?.habitacion || yearData.otb.revenue || new Array(12).fill(0);
+                otbRN  = yearData.otb.breakdown?.habitacion_rn || yearData.otb.rooms || new Array(12).fill(0);
             }
 
-            // ---- Calendar helpers ----
-            const now      = new Date();
+            // 4. Segments (from hotel_manager_db_v2 or upload_segment_db_v2)
+            let segData = yearData.segment || {};
+            try {
+                const segRaw = CapaStorage.getItem('upload_segment_db_v2');
+                if (segRaw) {
+                    const parsed = JSON.parse(segRaw);
+                    if (parsed && parsed[currentHotel] && parsed[currentHotel][lastYear]?.segment) {
+                        segData = parsed[currentHotel][lastYear].segment;
+                    }
+                }
+            } catch(e) {}
+
+            // 5. CompSet Data
+            let compData = null;
+            try {
+                const compRaw = CapaStorage.getItem('revenue_data_v2');
+                if (compRaw) {
+                    compData = JSON.parse(compRaw);
+                }
+            } catch(e) {}
+
+            const now = new Date();
             const curMonth = now.getMonth();
-            const curYear  = now.getFullYear();
+            const curYear = now.getFullYear();
             const budgetYr = parseInt(lastYear);
             const isClosed = i => (budgetYr < curYear) || (budgetYr === curYear && i < curMonth);
 
-            // ---- YTD totals ----
+            // Compute YTD
             let ytdReal = 0, ytdRN = 0, ytdBudget = 0;
             for (let i = 0; i < 12; i++) {
                 if (isClosed(i)) {
@@ -620,197 +804,604 @@
                 }
             }
 
-            // ============================================================
-            // INSIGHT 1: Cumplimiento presupuesto YTD
-            // ============================================================
-            if (budgetRev && ytdBudget > 0) {
-                const cumplPct = ytdReal / ytdBudget * 100;
-                const gap      = ytdReal - ytdBudget;
-                const type     = cumplPct >= 100 ? 'positive' : (cumplPct >= 85 ? 'warning' : 'critical');
-                const statusTxt = cumplPct >= 100
-                    ? `<b style="color:var(--success);">${cumplPct.toFixed(1)}%</b> — <b>${fmtEuro(gap)}</b> por encima del objetivo. ✨`
-                    : `<b style="color:${cumplPct >= 85 ? '#d97706' : 'var(--danger)'};">${cumplPct.toFixed(1)}%</b> — Faltan <b>${fmtEuro(Math.abs(gap))}</b> para el objetivo.`;
-                addInsight(type,
-                    `🎯 Cumplimiento Presupuesto ${lastYear} (meses cerrados)`,
-                    `Real acumulado: <b>${fmtEuro(ytdReal)}</b> vs Objetivo: <b>${fmtEuro(ytdBudget)}</b> → ${statusTxt}`,
-                    'CalculadoraPresupuesto.html');
-            }
+            const insights = [];
 
             // ============================================================
-            // INSIGHT 2: Proyección de cierre anual
+            // AUDIT 1: Sub-pricing vs CompSet (Días Desalineados)
             // ============================================================
-            if (budgetRev) {
-                const totalBudget = budgetRev.reduce((a, b) => a + b, 0);
-                let projection    = ytdReal;
-                for (let i = 0; i < 12; i++) {
-                    if (!isClosed(i)) {
-                        projection += otbRev[i] > 0 ? otbRev[i] : (budgetRev[i] || 0);
+            let underpricedDates = [];
+            let highDemandYieldDates = [];
+            let soldOutDates = [];
+            let consecutiveFlatPriceCount = 0;
+            let prevPrice = null;
+            let hasFlatRateWarning = false;
+
+            if (compData && compData.data && compData.data.length > 0) {
+                compData.data.forEach(d => {
+                    const my = d.hotels ? d.hotels[currentHotel] : null;
+                    if (my && !my.sold && my.price > 0) {
+                        // Check flat rate consecutive
+                        if (prevPrice !== null && Math.abs(my.price - prevPrice) < 0.5) {
+                            consecutiveFlatPriceCount++;
+                            if (consecutiveFlatPriceCount >= 12) hasFlatRateWarning = true;
+                        } else {
+                            consecutiveFlatPriceCount = 1;
+                        }
+                        prevPrice = my.price;
+
+                        if (d.compAvg > 0) {
+                            const diff = d.compAvg - my.price;
+                            const diffPct = (diff / d.compAvg) * 100;
+                            const dateStr = d.dateISO || d.date;
+                            const dObj = new Date((dateStr || '') + 'T00:00:00');
+                            const dayOfWeek = isNaN(dObj.getTime()) ? '' : dObj.toLocaleDateString('es-ES', { weekday: 'short' });
+                            const isWeekend = dayOfWeek.toLowerCase().includes('vie') || dayOfWeek.toLowerCase().includes('sáb') || dayOfWeek.toLowerCase().includes('sab');
+
+                            if (my.price < d.compAvg * 0.85) {
+                                underpricedDates.push({
+                                    dateISO: dateStr,
+                                    dayOfWeek: dayOfWeek.charAt(0).toUpperCase() + dayOfWeek.slice(1),
+                                    isWeekend,
+                                    myPrice: my.price,
+                                    compAvg: Math.round(d.compAvg),
+                                    diff: Math.round(diff),
+                                    diffPct: diffPct.toFixed(1),
+                                    tactic: isWeekend ? '🔺 Subir tarifa +15€ a +20€ (Fin de semana)' : '🔺 Ajustar tarifa BAR +10€ (Paridad laboral)'
+                                });
+                            }
+
+                            if (diff >= 25 || (isWeekend && diff >= 18)) {
+                                highDemandYieldDates.push({
+                                    dateISO: dateStr,
+                                    dayOfWeek: dayOfWeek.charAt(0).toUpperCase() + dayOfWeek.slice(1),
+                                    isWeekend,
+                                    myPrice: my.price,
+                                    compAvg: Math.round(d.compAvg),
+                                    diff: Math.round(diff),
+                                    diffPct: diffPct.toFixed(1),
+                                    tactic: '⚡ Compresión alta: Subir tramo +18% y cerrar tarifas con descuento'
+                                });
+                            }
+                        }
                     }
-                }
-                const projGap = projection - totalBudget;
-                const projPct = totalBudget > 0 ? (projection / totalBudget * 100) : 0;
-                const type    = projPct >= 100 ? 'positive' : (projPct >= 90 ? 'warning' : 'critical');
-                const gapColor = projGap >= 0 ? 'var(--success)' : 'var(--danger)';
-                addInsight(type,
-                    `🔮 Proyección Cierre ${lastYear}`,
-                    `Estimación final del año: <b>${fmtEuro(projection)}</b> vs presupuesto <b>${fmtEuro(totalBudget)}</b> → <b style="color:${gapColor};">${projGap >= 0 ? '+' : ''}${fmtEuro(projGap)}</b> (${projPct.toFixed(1)}% del objetivo).`,
-                    'CalculadoraPresupuesto.html');
-            }
 
-            // ============================================================
-            // INSIGHT 3: Meses con mejor y peor resultado vs presupuesto
-            // ============================================================
-            if (budgetRev) {
-                const gapByMonth = [];
-                for (let i = 0; i < 12; i++) {
-                    if (isClosed(i) && budgetRev[i] > 0 && (realRev[i] || 0) > 0) {
-                        const g    = (realRev[i] || 0) - budgetRev[i];
-                        const gPct = (g / budgetRev[i]) * 100;
-                        gapByMonth.push({ i, name: monthNames[i], gap: g, pct: gPct });
+                    // Check if any competitor is sold out
+                    if (d.hotels) {
+                        Object.keys(d.hotels).forEach(hKey => {
+                            if (hKey !== currentHotel && d.hotels[hKey] && d.hotels[hKey].sold) {
+                                const dateStr = d.dateISO || d.date;
+                                if (!soldOutDates.some(x => x.dateISO === dateStr)) {
+                                    soldOutDates.push({
+                                        dateISO: dateStr,
+                                        competitor: hKey,
+                                        myPrice: d.hotels[currentHotel]?.price || 0,
+                                        tactic: '🚨 Competidor lleno: Subir BAR +25% de última hora'
+                                    });
+                                }
+                            }
+                        });
                     }
-                }
-                gapByMonth.sort((a, b) => a.gap - b.gap);
-                const worst = gapByMonth.filter(m => m.gap < 0).slice(0, 2);
-                const best  = gapByMonth.filter(m => m.gap > 0).slice(-1);
-                if (worst.length > 0) {
-                    const worstTxt = worst.map(m =>
-                        `<b>${m.name}</b>: <b style="color:var(--danger);">${fmtEuro(m.gap)}</b> (${m.pct.toFixed(1)}%)`
-                    ).join(' · ');
-                    addInsight('warning', '📉 Meses con mayor desviación negativa',
-                        `${worstTxt}. Analiza qué factores afectaron esos periodos para evitarlo en ${parseInt(lastYear)+1}.`,
-                        'AnalisisProduccion.html');
-                }
-                if (best.length > 0) {
-                    const b = best[0];
-                    addInsight('positive', `🏆 Mejor mes vs presupuesto: ${b.name}`,
-                        `<b>${b.name}</b> superó el objetivo en <b style="color:var(--success);">${fmtEuro(b.gap)}</b> (${b.pct.toFixed(1)}% por encima). Replica esa estrategia en meses similares.`,
-                        'AnalisisProduccion.html');
-                }
+                });
+            }
+
+            const hotelRooms = getHotelRoomsCount(currentHotel);
+            let totalOpportunityEuros = 0;
+
+            if (underpricedDates.length > 0) {
+                const estLoss = Math.round(underpricedDates.reduce((acc, d) => acc + (d.diff * Math.max(8, Math.round(hotelRooms * 0.2))), 0));
+                totalOpportunityEuros += estLoss;
+                const avgDiff = Math.round(underpricedDates.reduce((s,d) => s + d.diff, 0) / underpricedDates.length);
+                const weekendCount = underpricedDates.filter(d => d.isWeekend).length;
+
+                insights.push({
+                    id: 'ins_subpricing',
+                    category: 'pricing',
+                    priority: 'critical',
+                    badge: '🔥 ALTA PRIORIDAD • PRECIOS',
+                    title: `Sub-pricing detectado en ${underpricedDates.length} fechas clave frente al CompSet`,
+                    diagnostic: `Se han identificado <b>${underpricedDates.length} días</b> (${weekendCount} fines de semana) donde tu tarifa está más de un 15% por debajo del mercado. Brecha media: <b>-${avgDiff} €/noche</b>. El coste de oportunidad estimado asciende a <b>${fmtEuro(estLoss)}</b> en ingresos no capturados.`,
+                    strategy: `<b>Estrategia Revenue Experta:</b><br>
+• <b>Reajuste Inmediato de BAR:</b> En fechas a más de 14 días vista, sube la tarifa de apertura entre <b>+10€ y +18€</b> para situarte en paridad o a un ligero diferencial competitivo (-5%), en vez de regalar un -25%.<br>
+• <b>Protección de Fines de Semana:</b> Aplica estancia mínima (<b>MLOS 2 noches</b>) en los ${weekendCount} viernes y sábados afectados para evitar estancias aisladas de una sola noche a tarifa de saldo.<br>
+• <b>Desactivación de Descuentos Agresivos:</b> Desactiva promociones de venta opaca, tarifas no reembolsables con descuento extra y programas tipo Genius en esas fechas concretas.`,
+                    dates: underpricedDates,
+                    datesTitle: 'Fechas con Tarifa Inferior al Mercado',
+                    datesSubtitle: `Listado de los ${underpricedDates.length} días con tarifa >15% por debajo de la media de competidores`,
+                    actionUrl: 'AnalisisCompetencia.html'
+                });
+            }
+
+            // AUDIT 2: Fechas de Alta Compresión de Mercado & Yield Alcista
+            if (highDemandYieldDates.length > 0) {
+                totalOpportunityEuros += Math.round(highDemandYieldDates.length * 15 * 10);
+                insights.push({
+                    id: 'ins_compression',
+                    category: 'pricing',
+                    priority: 'warning',
+                    badge: '⚡ YIELD MANAGEMENT',
+                    title: `Compresión de mercado en ${highDemandYieldDates.length} fechas punta`,
+                    diagnostic: `En <b>${highDemandYieldDates.length} días</b> el mercado está cobrando tarifas premium (>25€ por encima de tu hotel o >120€), lo que demuestra una demanda extraordinaria en la plaza (eventos, ferias o puentes).`,
+                    strategy: `<b>Estrategia Revenue Experta:</b><br>
+• <b>Yield Alcista Escalonado:</b> No esperes a tener el 80% de ocupación para subir el precio. Aplica subidas automáticas: <b>+15%</b> al alcanzar el 50% de ocupación y <b>+12% adicional</b> al 70%.<br>
+• <b>Canal Directo Preferente:</b> Reduce cupos en OTAs para empujar la demanda hacia tu motor de reservas propio sin pagar comisiones de intermediación.<br>
+• <b>Restricción CTA / MLOS:</b> Cierra llegadas el sábado (CTA) y exige entrada en viernes para garantizar estancias de fin de semana completo.`,
+                    dates: highDemandYieldDates,
+                    datesTitle: 'Fechas con Compresión de Mercado',
+                    datesSubtitle: `Días donde la competencia aplica tarifas premium por alta concentración de demanda`,
+                    actionUrl: 'AnalisisCompetencia.html'
+                });
+            }
+
+            // AUDIT 3: Competidores con Sold Out
+            if (soldOutDates.length > 0) {
+                insights.push({
+                    id: 'ins_soldout',
+                    category: 'pricing',
+                    priority: 'critical',
+                    badge: '🚨 ALERTA COMPSET • LLENO TÉCNICO',
+                    title: `Competidores completos en ${soldOutDates.length} fechas detectadas`,
+                    diagnostic: `Rivales directos del CompSet aparecen con el cartel de completo (Sold Out) en <b>${soldOutDates.length} fechas</b>.`,
+                    strategy: `<b>Estrategia Revenue Experta:</b><br>
+• <b>Captura de Demanda Desplazada:</b> Cuando los hoteles de la plaza se llenan, la demanda sobrante no es sensible al precio. Sube de inmediato tu tarifa BAR un <b>+20% a +35%</b> en esas fechas exactas.<br>
+• <b>Retención de Últimas Unidades:</b> Reserva las últimas 10-15 habitaciones únicamente para venta a tarifa completa en tu canal directo.`,
+                    dates: soldOutDates,
+                    datesTitle: 'Fechas con Rivales en Sold Out',
+                    datesSubtitle: 'Oportunidad de captura de demanda desplazada a tarifa máxima',
+                    actionUrl: 'AnalisisCompetencia.html'
+                });
+            }
+
+            // AUDIT 4: Tarifas Planas Estáticas
+            if (hasFlatRateWarning) {
+                insights.push({
+                    id: 'ins_flatrate',
+                    category: 'pricing',
+                    priority: 'warning',
+                    badge: '💡 PRECIOS DINÁMICOS',
+                    title: 'Alerta de Tarifa Plana Estática (Falta de Yield Dinámico)',
+                    diagnostic: 'Se detecta una estructura de precios estática y homogénea a lo largo de varias semanas consecutivas sin apenas variación entre días laborales y fines de semana.',
+                    strategy: `<b>Estrategia Revenue Experta:</b><br>
+• <b>Romper la Tarifa Plana:</b> Establece una política de precios dinámica: aplica un suplemento natural de <b>+15€ a +25€ en fines de semana</b> y prima los martes/miércoles corporativos, reduciendo la tarifa únicamente los domingos para capturar estancias puente.<br>
+• <b>Segmentación por Ventana:</b> Las reservas a más de 30 días vista deben tener una tarifa de apertura más firme que las de última hora en temporada valle.`,
+                    actionUrl: 'AnalisisCalendario.html'
+                });
             }
 
             // ============================================================
-            // INSIGHT 4: Mes en curso vs año anterior
+            // AUDIT 5: Channel Mix & Dependencia de OTAs
             // ============================================================
-            if (prevYearData && prevYearData.service) {
-                let prevRev = new Array(12).fill(0);
-                let prevRN  = new Array(12).fill(0);
-                if (prevYearData.service["TOTAL_MASTER"]) {
-                    prevRev = prevYearData.service["TOTAL_MASTER"].revenue || prevRev;
-                    prevRN  = prevYearData.service["TOTAL_MASTER"].rooms   || prevRN;
-                }
-                const curRev  = realRev[curMonth] || 0;
-                const prevRev_m = prevRev[curMonth] || 0;
-                if (curRev > 0 && prevRev_m > 0) {
-                    const diff    = curRev - prevRev_m;
-                    const diffPct = (diff / prevRev_m) * 100;
-                    const curAdr  = realRN[curMonth] > 0 ? (curRev / realRN[curMonth]) : 0;
-                    const type    = diffPct >= 0 ? 'positive' : 'warning';
-                    const arrow   = diffPct >= 0 ? '▲' : '▼';
-                    const col     = diffPct >= 0 ? 'var(--success)' : 'var(--danger)';
-                    addInsight(type, `📅 ${monthNames[curMonth]}: seguimiento mes en curso`,
-                        `MTD: <b>${fmtEuro(curRev)}</b> ${arrow} <b style="color:${col};">${fmtPct(diffPct)}</b> vs ${prevYear}${curAdr > 0 ? ` · ADR actual: <b>${curAdr.toFixed(2)} €</b>` : ''}.`,
-                        'AnalisisProduccion.html');
-                }
+            let totalSegRev = 0, otaRev = 0, dirOnlineRev = 0, corpRev = 0;
+            if (segData && Object.keys(segData).length > 0) {
+                Object.entries(segData).forEach(([k, v]) => {
+                    const upper = k.toUpperCase();
+                    const sumR = v.revenue ? v.revenue.reduce((a, b) => a + b, 0) : (v.accommodation ? v.accommodation.reduce((a, b) => a + b, 0) : 0);
+                    totalSegRev += sumR;
+                    if (upper.includes('OTA') || upper.includes('AAVV')) otaRev += sumR;
+                    if (upper.includes('DIR') && upper.includes('ON')) dirOnlineRev += sumR;
+                    if (upper.includes('CORP') || upper.includes('EMPRES') || upper.includes('NEGOCIAD')) corpRev += sumR;
+                });
+            }
+
+            const otaShare = totalSegRev > 0 ? (otaRev / totalSegRev) * 100 : 0;
+            const dirShare = totalSegRev > 0 ? (dirOnlineRev / totalSegRev) * 100 : 0;
+            const corpShare = totalSegRev > 0 ? (corpRev / totalSegRev) * 100 : 0;
+            const commCostEst = otaRev * 0.19;
+
+            if (otaShare >= 45) {
+                insights.push({
+                    id: 'ins_otadep',
+                    category: 'distribution',
+                    priority: 'warning',
+                    badge: '👥 DISTRIBUCIÓN & CANALES',
+                    title: `Elevada dependencia de intermediación OTA (${otaShare.toFixed(1)}% del mix)`,
+                    diagnostic: `Las OTAs y agencias absorben <b>${fmtEuro(otaRev)}</b> de tus ingresos, con un coste estimado en comisiones de <b>${fmtEuro(commCostEst)}</b> (~19% medio). La Venta Directa Online representa solo el <b>${dirShare.toFixed(1)}%</b> (${fmtEuro(dirOnlineRev)}).`,
+                    strategy: `<b>Estrategia Revenue Experta:</b><br>
+• <b>Paridad de Tarifa Neta:</b> Dota a tu web oficial de ventajas de valor real que la OTA no ofrece: desayuno con 50% descuento, late check-out garantizado hasta las 13:00 o upgrade de habitación gratuito sujeto a disponibilidad.<br>
+• <b>Inventario Estratégico:</b> Cierra en Booking/Expedia las categorías superiores o suites en fechas de alta demanda, vendiéndolas en exclusiva en tu web oficial.<br>
+• <b>Protocolo de Conversión en Recepción:</b> Implanta en el check-in y check-out el registro en el club directo con un código de fidelización del 10% para su próxima visita.`,
+                    actionUrl: 'AnalisisSegmentos.html'
+                });
+            }
+
+            // AUDIT 6: Canibalización Corporativa
+            if (corpShare >= 15) {
+                insights.push({
+                    id: 'ins_corporate',
+                    category: 'distribution',
+                    priority: 'positive',
+                    badge: '🏢 CORPORATIVO & NEGOCIADAS',
+                    title: `Estabilidad corporativa (${corpShare.toFixed(1)}% del mix) con control de fechas pico`,
+                    diagnostic: `El segmento Corporativo y Empresas aporta <b>${fmtEuro(corpRev)}</b> dando estabilidad en días laborables (martes y miércoles).`,
+                    strategy: `<b>Estrategia Revenue Experta:</b><br>
+• <b>Cláusulas de Blackout Dates:</b> Asegura que todos los acuerdos corporativos tengan fechas cerradas en ferias, eventos o congresos de la plaza, impidiendo que habitaciones a tarifa fija de 65€ desplacen a clientes de ocio que pagan 120€.<br>
+• <b>Migración a Descuento Dinámico:</b> Para los próximos contratos de ${parseInt(lastYear)+1}, sustituye las tarifas fijas lineales por un descuento dinámico del <b>10% sobre la tarifa BAR del día</b>.`,
+                    actionUrl: 'AnalisisSegmentos.html'
+                });
             }
 
             // ============================================================
-            // INSIGHT 5: Pick-up con equivalencia en habitaciones
+            // AUDIT 7: Ritmo de Pick-up (Pace) & Velocidad de Cartera
             // ============================================================
             if (yearData.otb && yearData.otb_prev) {
                 const currTotal  = otbRev.reduce((a, b) => a + b, 0);
                 const prevOTBRev = yearData.otb_prev.breakdown?.habitacion || yearData.otb_prev.revenue || new Array(12).fill(0);
                 const prevTotal  = prevOTBRev.reduce((a, b) => a + b, 0);
                 const pickup     = currTotal - prevTotal;
-                if (Math.abs(pickup) > 50) {
-                    const totOtbRN = otbRN.reduce((a, b) => a + b, 0);
-                    const avgAdr   = totOtbRN > 0 ? currTotal / totOtbRN : 0;
-                    const habEquiv = avgAdr > 0 ? Math.round(Math.abs(pickup) / avgAdr) : 0;
-                    const date     = yearData.otb_prev.snapshotDate || 'la última carga';
-                    const status   = pickup > 0 ? 'positive' : 'warning';
-                    const verb     = pickup > 0 ? 'ganado' : 'perdido';
-                    const habTxt   = habEquiv > 0 ? ` — equivale a aprox. <b>${habEquiv} habitaciones</b> a ADR <b>${avgAdr.toFixed(0)} €</b>` : '';
-                    addInsight(status,
-                        pickup > 0 ? '🚀 Aceleración de demanda' : '📉 Ajuste de previsión',
-                        `Desde el <b>${date}</b>, la cartera ha ${verb} <b>${fmtEuro(Math.abs(pickup))}</b>${habTxt}.`,
-                        'AnalisisProduccion.html');
+                const totOtbRN   = otbRN.reduce((a, b) => a + b, 0);
+                const avgAdr     = totOtbRN > 0 ? currTotal / totOtbRN : 0;
+                const habEquiv   = avgAdr > 0 ? Math.round(Math.abs(pickup) / avgAdr) : 0;
+
+                const monthlyPickup = [];
+                for (let m = 0; m < 12; m++) {
+                    const p = (otbRev[m] || 0) - (prevOTBRev[m] || 0);
+                    if (Math.abs(p) > 20) {
+                        monthlyPickup.push({ monthIdx: m, monthName: monthNames[m], pickup: p, curOTB: otbRev[m] });
+                    }
+                }
+                monthlyPickup.sort((a,b) => b.pickup - a.pickup);
+
+                if (pickup > 0) {
+                    const topMStr = monthlyPickup.slice(0, 2).map(m => `<b>${m.monthName} (+${fmtEuro(m.pickup)})</b>`).join(', ');
+                    insights.push({
+                        id: 'ins_pickup_accel',
+                        category: 'pickup',
+                        priority: 'positive',
+                        badge: '🚀 RITMO DE RESERVAS (PACE)',
+                        title: `Aceleración de cartera: +${fmtEuro(pickup)} (~${habEquiv} habitaciones)`,
+                        diagnostic: `Desde el <b>${yearData.otb_prev.snapshotDate || 'último informe'}</b>, la cartera futura ha ganado <b>+${fmtEuro(pickup)}</b> a un ADR medio de <b>${avgAdr.toFixed(0)} €</b>. Meses líderes en pick-up: ${topMStr || 'cartera general'}.`,
+                        strategy: `<b>Estrategia Revenue Experta:</b><br>
+• <b>Subida de Escalón de Tarifa:</b> El ritmo acelerado confirma tracción de mercado. En los meses que lideran el pick-up, sube de inmediato la tarifa base <b>+8€ a +12€</b> para no colmatar el inventario a precios prematuros.<br>
+• <b>Control de Lead Time:</b> Monitorea con qué anticipación entran estas reservas; si son a más de 60 días vista, protege el ADR de los meses venideros.`,
+                        actionUrl: 'AnalisisProduccion.html'
+                    });
+                } else if (pickup < 0) {
+                    insights.push({
+                        id: 'ins_pickup_decel',
+                        category: 'pickup',
+                        priority: 'warning',
+                        badge: '📉 RITMO DE RESERVAS (PACE)',
+                        title: `Ajuste o cancelaciones en cartera: -${fmtEuro(Math.abs(pickup))}`,
+                        diagnostic: `La cartera futura ha experimentado un retroceso neto de <b>-${fmtEuro(Math.abs(pickup))}</b> (~${habEquiv} habs) desde el <b>${yearData.otb_prev.snapshotDate || 'último informe'}</b>, posiblemente por cancelaciones o depuración de grupos.`,
+                        strategy: `<b>Estrategia Revenue Experta:</b><br>
+• <b>Revisión de Política de Cancelación:</b> Si las cancelaciones se concentran a menos de 7 días, endurece la política a cancelación gratuita solo hasta 48h o 72h antes.<br>
+• <b>Activación de Campañas Flash:</b> Lanza una promoción opaca temporal (48h) en canales directos y OTAs para reponer el volumen perdido sin alterar la tarifa oficial.`,
+                        actionUrl: 'AnalisisProduccion.html'
+                    });
                 }
             }
 
             // ============================================================
-            // INSIGHT 6: Días con precio bajo (escenario orientativo, no pérdida realizada)
+            // AUDIT 8: Cumplimiento de Presupuesto & Plan Táctico
             // ============================================================
-            const compDataRaw = CapaStorage.getItem('revenue_data_v2');
-            if (compDataRaw) {
-                try {
-                    const comp = (typeof compDataRaw === 'string') ? JSON.parse(compDataRaw) : compDataRaw;
-                    if (comp.data && comp.data.length > 0) {
-                        const lowDays = comp.data.filter(d => {
-                            const my = d.hotels[currentHotel];
-                            return my && !my.sold && my.price > 0 && my.price < d.compAvg * 0.85;
-                        });
-                        if (lowDays.length > 0) {
-                            const avgRoomsDay = Math.max(10, Math.round(
-                                otbRN.reduce((a,b)=>a+b,0) / Math.max(1, otbRN.filter(r=>r>0).length) / 30
-                            ));
-                            const estLoss = lowDays.reduce((acc, d) => {
-                                const gap = (d.compAvg || 0) - (d.hotels[currentHotel]?.price || 0);
-                                return acc + gap * avgRoomsDay;
-                            }, 0);
-                            const topDays = lowDays.slice(0, 3)
-                                .map(d => {
-                                    const date = String(d.dateISO || d.date || d.checkIn || 'Fecha no disponible')
-                                        .replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
-                                    return `<b>${date}</b>`;
-                                }).join(', ');
-                            addInsight('warning', '💰 Fechas para revisar tarifa',
-                                `<b>${lowDays.length} días</b> con tarifa >15% inferior al mercado. Escenario orientativo: <b>${fmtEuro(estLoss)}</b>, calculado como diferencia de tarifa × ${avgRoomsDay} habitaciones por día. No representa una pérdida comprobada ni garantiza demanda a ese precio. Primeras fechas detectadas: ${topDays}.`,
-                                'AnalisisCompetencia.html');
-                        }
-                    }
-                } catch (e) {}
+            if (budgetRev) {
+                const targetRevCurM = budgetRev[curMonth] || 0;
+                const targetRNCurM = budgetRN ? (budgetRN[curMonth] || 0) : Math.round(targetRevCurM / 85);
+                const soldCurM = (realRev[curMonth] || 0) + (otbRev[curMonth] || 0);
+                const soldRNCurM = (realRN[curMonth] || 0) + (otbRN[curMonth] || 0);
+                const gapCurM = targetRevCurM - soldCurM;
+                const daysInMonth = new Date(curYear, curMonth + 1, 0).getDate();
+                const daysRemaining = Math.max(1, daysInMonth - now.getDate());
+                const freeRoomsRemaining = Math.max(0, (hotelRooms * daysRemaining) - (otbRN[curMonth] || 0));
+
+                if (gapCurM > 0) {
+                    const dailyNeeded = Math.round(gapCurM / daysRemaining);
+                    const adrNeeded = freeRoomsRemaining > 0 ? (gapCurM / freeRoomsRemaining) : 0;
+
+                    insights.push({
+                        id: 'ins_budget_current',
+                        category: 'budget',
+                        priority: 'critical',
+                        badge: '🎯 PLAN TÁCTICO DE PRESUPUESTO',
+                        title: `${monthNames[curMonth]}: Gap de ${fmtEuro(gapCurM)} pendiente para cerrar objetivo`,
+                        diagnostic: `El objetivo de <b>${monthNames[curMonth]}</b> es de <b>${fmtEuro(targetRevCurM)}</b>. La producción actual (Real + OTB) suma <b>${fmtEuro(soldCurM)}</b> (${((soldCurM/targetRevCurM)*100).toFixed(1)}%). Quedan <b>${daysRemaining} días</b> y faltan <b>${fmtEuro(gapCurM)}</b>.`,
+                        strategy: `<b>Estrategia Revenue Experta:</b><br>
+• <b>Ritmo Diario Requerido:</b> Necesitas generar una facturación media de <b>${fmtEuro(dailyNeeded)}/día</b> hasta fin de mes.<br>
+• <b>Viabilidad de Inventario Físico:</b> El hotel dispone de ${freeRoomsRemaining} habitaciones libres en estos ${daysRemaining} días. Para cumplir presupuesto sin depender de una ocupación irreal (>90%), el ADR de venta debe situarse en un mínimo de <b>${Math.min(140, Math.max(60, Math.round(adrNeeded)))} €</b>.<br>
+• <b>Yield en Fines de Semana Restantes:</b> Maximiza la tarifa en los viernes y sábados que restan para compensar los valles de entre semana.`,
+                        actionUrl: `CalculadoraPresupuesto.html?openPacing=true&pacingMonth=${curMonth}`
+                    });
+                } else if (targetRevCurM > 0) {
+                    insights.push({
+                        id: 'ins_budget_superavit',
+                        category: 'budget',
+                        priority: 'positive',
+                        badge: '🎉 OBJETIVO PRESUPUESTO CUMPLIDO',
+                        title: `${monthNames[curMonth]}: Objetivo superado (+${fmtEuro(Math.abs(gapCurM))})`,
+                        diagnostic: `El hotel ya ha alcanzado <b>${fmtEuro(soldCurM)}</b> superando la meta presupuestada de <b>${fmtEuro(targetRevCurM)}</b> con un superávit de <b>+${fmtEuro(Math.abs(gapCurM))}</b> (${((soldCurM/targetRevCurM)*100).toFixed(1)}% cumplimiento).`,
+                        strategy: `<b>Estrategia Revenue Experta:</b><br>
+• <b>Optimización Máxima de ADR:</b> Con el presupuesto garantizado, sube la tarifa BAR a nivel premium en todas las fechas restantes para maximizar el margen de beneficio por habitación vendida sin estrés de ocupación.`,
+                        actionUrl: 'CalculadoraPresupuesto.html'
+                    });
+                }
             }
 
-            if (container.innerHTML === '') {
-                container.innerHTML = '<p style="text-align:center; color:var(--text-muted);">No he encontrado anomalías significativas. ¡Buen trabajo!</p>';
+            // AUDIT 9: Desviación Histórica por Meses
+            if (budgetRev) {
+                const gapByMonth = [];
+                for (let i = 0; i < 12; i++) {
+                    if (isClosed(i) && budgetRev[i] > 0 && (realRev[i] || 0) > 0) {
+                        const g = (realRev[i] || 0) - budgetRev[i];
+                        gapByMonth.push({ i, name: monthNames[i], gap: g, pct: (g / budgetRev[i]) * 100 });
+                    }
+                }
+                gapByMonth.sort((a, b) => a.gap - b.gap);
+                const worst = gapByMonth.filter(m => m.gap < 0).slice(0, 2);
+                if (worst.length > 0) {
+                    const worstTxt = worst.map(m => `<b>${m.name}</b> (${fmtEuro(m.gap)})`).join(', ');
+                    insights.push({
+                        id: 'ins_historical_gap',
+                        category: 'budget',
+                        priority: 'warning',
+                        badge: '📉 HISTÓRICO DE DESVIACIONES',
+                        title: 'Lecciones de meses con mayor déficit presupuestario',
+                        diagnostic: `Los meses con peor desempeño relativo frente a presupuesto fueron ${worstTxt}.`,
+                        strategy: `<b>Estrategia Revenue Experta:</b><br>
+• <b>Anticipación en Calendario:</b> Planifica con al menos 90 días de antelación las acciones comerciales en esos mismos periodos para ${parseInt(lastYear)+1}, renegociando contingentes de grupos y cerrando acuerdos corporativos tempranos para asegurar una base mínima antes de abrir el inventario general.`,
+                        actionUrl: 'AnalisisProduccion.html'
+                    });
+                }
+            }
+
+            allGeneratedInsights = insights;
+
+            // Calculate Executive Revenue Health Score (0-100)
+            let healthScore = 78;
+            if (underpricedDates.length > 25) healthScore -= 14;
+            else if (underpricedDates.length > 10) healthScore -= 7;
+            if (otaShare > 55) healthScore -= 8;
+            if (insights.some(i => i.id === 'ins_pickup_accel')) healthScore += 6;
+            if (insights.some(i => i.id === 'ins_budget_superavit')) healthScore += 8;
+            healthScore = Math.max(45, Math.min(96, healthScore));
+
+            let scoreStatus = 'Salud Comercial Fuerte';
+            let scoreColor = '#10b981';
+            let scoreBg = 'rgba(16, 185, 129, 0.12)';
+            if (healthScore < 65) {
+                scoreStatus = 'Riesgo Comercial • Acción Inmediata';
+                scoreColor = '#ef4444';
+                scoreBg = 'rgba(239, 68, 68, 0.12)';
+            } else if (healthScore < 80) {
+                scoreStatus = 'Potencial de Optimización Activo';
+                scoreColor = '#f59e0b';
+                scoreBg = 'rgba(245, 158, 11, 0.12)';
+            }
+
+            // Render Scorecard
+            if (scorecardContainer) {
+                scorecardContainer.innerHTML = `
+                    <!-- Card 1: Revenue Health Score -->
+                    <div class="scorecard-card">
+                        <div>
+                            <div style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Índice de Salud de Revenue</div>
+                            <div style="display:flex; align-items:baseline; gap:8px; margin:6px 0 2px 0;">
+                                <span style="font-size:1.85rem; font-weight:800; color:${scoreColor};">${healthScore}</span>
+                                <span style="font-size:0.9rem; color:var(--text-muted);">/ 100</span>
+                            </div>
+                        </div>
+                        <div style="background:${scoreBg}; color:${scoreColor}; font-size:0.75rem; font-weight:800; padding:4px 10px; border-radius:8px; display:inline-block; margin-top:8px;">
+                            ● ${scoreStatus}
+                        </div>
+                    </div>
+
+                    <!-- Card 2: ADR Capture Opportunity -->
+                    <div class="scorecard-card">
+                        <div>
+                            <div style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Oportunidad de Captura de ADR</div>
+                            <div style="font-size:1.55rem; font-weight:800; color:#4338ca; margin:6px 0 2px 0;">${fmtEuro(totalOpportunityEuros)}</div>
+                        </div>
+                        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:8px;">
+                            Estimado en fechas desalineadas y compresión de mercado
+                        </div>
+                    </div>
+
+                    <!-- Card 3: Critical Dates -->
+                    <div class="scorecard-card">
+                        <div>
+                            <div style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Fechas con Acción Requerida</div>
+                            <div style="font-size:1.55rem; font-weight:800; color:#c2410c; margin:6px 0 2px 0;">${underpricedDates.length + highDemandYieldDates.length} días</div>
+                        </div>
+                        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:8px;">
+                            ${underpricedDates.length} sub-pricing • ${highDemandYieldDates.length} compresión alta
+                        </div>
+                    </div>
+
+                    <!-- Card 4: Channel Health -->
+                    <div class="scorecard-card">
+                        <div>
+                            <div style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Mix Venta Directa vs OTA</div>
+                            <div style="font-size:1.55rem; font-weight:800; color:${dirShare >= 20 ? '#059669' : '#d97706'}; margin:6px 0 2px 0;">${dirShare.toFixed(1)}% Dir</div>
+                        </div>
+                        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:8px;">
+                            OTAs: ${otaShare.toFixed(1)}% (~${fmtEuro(commCostEst)} comisiones)
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Render Filter Buttons
+            if (filterContainer) {
+                const counts = {
+                    all: insights.length,
+                    priority: insights.filter(i => i.priority === 'critical').length,
+                    pricing: insights.filter(i => i.category === 'pricing').length,
+                    distribution: insights.filter(i => i.category === 'distribution').length,
+                    pickup: insights.filter(i => i.category === 'pickup').length,
+                    budget: insights.filter(i => i.category === 'budget').length
+                };
+
+                filterContainer.innerHTML = `
+                    <button class="filter-pill-btn active" data-cat="all" onclick="filterInsights('all')">
+                        <span>📋</span> Todos (${counts.all})
+                    </button>
+                    <button class="filter-pill-btn" data-cat="priority" onclick="filterInsights('priority')">
+                        <span>🔥</span> Alta Prioridad (${counts.priority})
+                    </button>
+                    <button class="filter-pill-btn" data-cat="pricing" onclick="filterInsights('pricing')">
+                        <span>💰</span> Tarifas & Yield (${counts.pricing})
+                    </button>
+                    <button class="filter-pill-btn" data-cat="distribution" onclick="filterInsights('distribution')">
+                        <span>👥</span> Canales & Mix (${counts.distribution})
+                    </button>
+                    <button class="filter-pill-btn" data-cat="pickup" onclick="filterInsights('pickup')">
+                        <span>📅</span> Pick-up & Pace (${counts.pickup})
+                    </button>
+                    <button class="filter-pill-btn" data-cat="budget" onclick="filterInsights('budget')">
+                        <span>🎯</span> Metas Presupuesto (${counts.budget})
+                    </button>
+                `;
+            }
+
+            if (countBadge) {
+                countBadge.innerText = `${insights.length} Hallazgos`;
+            }
+
+            // Render Insights Cards
+            if (container) {
+                if (insights.length === 0) {
+                    container.innerHTML = '<p style="text-align:center; padding:30px; color:var(--text-muted);">No he encontrado anomalías significativas. El hotel presenta un rendimiento muy equilibrado.</p>';
+                    return;
+                }
+
+                container.innerHTML = insights.map(ins => {
+                    const dateBtn = (ins.dates && ins.dates.length > 0)
+                        ? `<button onclick="openDatesModal('${ins.datesTitle}', '${ins.datesSubtitle}', '${ins.id}')" class="action-btn" style="background:#e0e7ff; color:#4338ca; border:1px solid #c7d2fe; padding:7px 15px; border-radius:8px; font-size:0.76rem; font-weight:700; cursor:pointer;">📅 Ver ${ins.dates.length} Fechas Afectadas 🔍</button>`
+                        : '';
+
+                    const linkBtn = ins.actionUrl
+                        ? `<a href="${ins.actionUrl}" class="action-btn" style="background:var(--primary); color:white; text-decoration:none; padding:7px 16px; border-radius:8px; font-size:0.76rem; font-weight:700; white-space:nowrap;">Ir a Pantalla →</a>`
+                        : '';
+
+                    return `
+                        <div class="insight-item ${ins.priority}" data-category="${ins.category}">
+                            <div class="insight-header">
+                                <span class="insight-badge ${ins.priority}">
+                                    ${ins.badge}
+                                </span>
+                                <h4 style="margin:0; font-size:1.02rem; font-weight:800; color:var(--text-main); flex:1; margin-left:8px;">${ins.title}</h4>
+                            </div>
+                            <div class="diagnostic-box">
+                                ${ins.diagnostic}
+                            </div>
+                            <div class="strategy-box">
+                                ${ins.strategy}
+                            </div>
+                            <div class="insight-actions">
+                                ${dateBtn}
+                                ${linkBtn}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
             }
         }
 
-                function addInsight(type, title, text, linkUrl = null) {
-            const container = document.getElementById('ai-insights');
-            const icon = type === 'positive' ? '✅' : (type === 'warning' ? '💡' : (type === 'critical' ? '🚨' : '✨'));
-            const div = document.createElement('div');
-            div.className = `insight-item ${type}`;
-            div.style.display = 'flex';
-            div.style.justifyContent = 'space-between';
-            div.style.alignItems = 'center';
+        function filterInsights(category) {
+            currentFilterCategory = category;
+            document.querySelectorAll('.filter-pill-btn').forEach(btn => {
+                if (btn.getAttribute('data-cat') === category) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
 
-            let linkButton = '';
-            if (linkUrl) {
-                linkButton = `<a href="${linkUrl}" class="action-btn" style="
-                    background: var(--primary);
-                    color: white;
-                    text-decoration: none;
-                    padding: 8px 16px;
-                    border-radius: 8px;
-                    font-size: 0.75rem;
-                    font-weight: 700;
-                    white-space: nowrap;
-                    margin-left: 20px;
-                    transition: all 0.2s;
-                " onmouseover="this.style.opacity=0.9" onmouseout="this.style.opacity=1">Ver Detalle →</a>`;
+            document.querySelectorAll('.insight-item').forEach(item => {
+                if (category === 'all') {
+                    item.style.display = 'flex';
+                } else if (category === 'priority') {
+                    item.style.display = item.classList.contains('critical') ? 'flex' : 'none';
+                } else {
+                    const itemCat = item.getAttribute('data-category');
+                    item.style.display = (itemCat === category) ? 'flex' : 'none';
+                }
+            });
+        }
+
+        function openDatesModal(title, subtitle, insightId) {
+            const targetInsight = allGeneratedInsights.find(i => i.id === insightId);
+            if (!targetInsight || !targetInsight.dates) return;
+
+            currentActiveInsightDates = targetInsight.dates;
+            const modal = document.getElementById('datesDetailModal');
+            const titleEl = document.getElementById('datesModalTitle');
+            const subEl = document.getElementById('datesModalSubtitle');
+            const tableContainer = document.getElementById('datesModalTableContent');
+
+            if (titleEl) titleEl.innerText = title;
+            if (subEl) subEl.innerText = subtitle;
+
+            if (tableContainer) {
+                const rowsHtml = targetInsight.dates.map((d, idx) => {
+                    return `
+                        <tr style="border-bottom: 1px solid var(--border); font-size: 0.83rem;">
+                            <td style="padding: 9px 12px; font-weight: 700; white-space: nowrap;">
+                                ${d.dateISO}
+                            </td>
+                            <td style="padding: 9px 12px; text-align: center;">
+                                <span style="background: ${d.isWeekend ? '#fef3c7' : '#f1f5f9'}; color: ${d.isWeekend ? '#b45309' : '#475569'}; padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">
+                                    ${d.dayOfWeek || (d.isWeekend ? 'Fin Semana' : 'Laboral')}
+                                </span>
+                            </td>
+                            <td style="padding: 9px 12px; text-align: right; font-weight: 800; color: #4338ca;">
+                                ${d.myPrice} €
+                            </td>
+                            <td style="padding: 9px 12px; text-align: right; font-weight: 700; color: #64748b;">
+                                ${d.compAvg ? d.compAvg + ' €' : '-'}
+                            </td>
+                            <td style="padding: 9px 12px; text-align: right; font-weight: 800; color: ${d.diff > 0 ? '#dc2626' : '#16a34a'};">
+                                ${d.diff ? (d.diff > 0 ? '-' : '+') + Math.abs(d.diff) + ' €' : '-'}
+                                ${d.diffPct ? ` <span style="font-size:0.7rem; font-weight:600;">(${d.diffPct}%)</span>` : ''}
+                            </td>
+                            <td style="padding: 9px 12px; font-size: 0.78rem; color: #0f172a;">
+                                ${d.tactic || 'Ajustar tarifa BAR a paridad'}
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+                tableContainer.innerHTML = `
+                    <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                        <thead>
+                            <tr style="background: rgba(0,0,0,0.03); border-bottom: 2px solid var(--border); font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted);">
+                                <th style="padding: 9px 12px;">Fecha</th>
+                                <th style="padding: 9px 12px; text-align: center;">Día</th>
+                                <th style="padding: 9px 12px; text-align: right;">Tu Tarifa</th>
+                                <th style="padding: 9px 12px; text-align: right;">CompSet Medio</th>
+                                <th style="padding: 9px 12px; text-align: right;">Diferencial</th>
+                                <th style="padding: 9px 12px;">Táctica Recomendada</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowsHtml}
+                        </tbody>
+                    </table>
+                `;
             }
 
-            div.innerHTML = `
-                <div style="display:flex; gap:15px; align-items:flex-start;">
-                    <div class="insight-icon">${icon}</div>
-                    <div class="insight-content">
-                        <h4 style="margin: 0 0 5px 0; font-size:1rem;">${title}</h4>
-                        <p style="margin: 0; font-size:0.85rem;">${text}</p>
-                    </div>
-                </div>
-                ${linkButton}
-            `;
-            container.appendChild(div);
+            if (modal) modal.style.display = 'flex';
+        }
+
+        function closeDatesModal() {
+            const modal = document.getElementById('datesDetailModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function copyDatesModalData() {
+            if (!currentActiveInsightDates || currentActiveInsightDates.length === 0) return;
+            const text = "FECHA\tDÍA\tTU TARIFA\tCOMPSET\tDIFERENCIA\tTÁCTICA\n" + currentActiveInsightDates.map(d => 
+                `${d.dateISO}\t${d.dayOfWeek || ''}\t${d.myPrice} €\t${d.compAvg || ''} €\t${d.diff || ''} €\t${d.tactic || ''}`
+            ).join("\n");
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    alert("📋 Tabla de fechas copiada al portapapeles.");
+                });
+            } else {
+                const ta = document.createElement("textarea");
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand("copy");
+                document.body.removeChild(ta);
+                alert("📋 Tabla de fechas copiada al portapapeles.");
+            }
         }
 
         // CHAT LOGIC
@@ -1030,43 +1621,103 @@
             const hotelName = currentHotel;
             const hData = db[hotelName];
 
-            // 1. Basic Conversational Responses
             if (q === 'ok' || q === 'vale' || q === 'entendido') {
-                return "Perfecto. ¿Necesitas que analice algún otro dato o prefieres que comparemos con la competencia?";
+                return "Perfecto. ¿Necesitas que audite algún otro mes, que revisemos la estrategia de precios o comparemos con el otro hotel?";
             }
             if (q.includes('gracias')) {
-                return "¡De nada! Estoy aquí para ayudarte a optimizar tus ingresos. ¿Algo más?";
+                return "¡A ti! Estoy a tu disposición para optimizar el RevPAR y la rentabilidad del hotel.";
             }
             if (q.includes('hola') || q.includes('buenos dias') || q.includes('buenas tardes')) {
-                return `¡Hola! Soy CapaAI. Para activar toda mi capacidad analítica, haz clic en el engranaje ⚙️ y añade tu API Key.`;
+                return `¡Hola! Soy tu **Director de Revenue Management Virtual**. Puedes preguntarme sobre el ritmo de pick-up, estrategias de precios, previsión de cualquier mes o comparar el rendimiento de Guadiana y Cumbria.`;
             }
 
-            // 2. Data Intelligence Logic
-            const targetHotel = q.includes('cumbria') ? 'Cumbria' : (q.includes('guadiana') ? 'Guadiana' : currentHotel);
-            const targetDb = db[targetHotel];
-
-            if (!targetDb) {
-                return `Aún no tengo datos cargados para "${targetHotel}". Por favor, sube los informes en la sección de Configuración.`;
+            if (!hData) {
+                return `Aún no tengo datos cargados para "${hotelName}". Por favor, sube los informes en la sección de Configuración.`;
             }
 
-            const years = Object.keys(targetDb).sort().reverse();
-            const yearData = targetDb[years[0]];
-            const master = yearData?.service?.["TOTAL_MASTER"];
-
-            if (!master) return "Faltan datos maestros de producción.";
-
+            const fmtEuro = n => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n || 0);
             const monthNames = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
             let targetMonthIdx = -1;
             monthNames.forEach((m, idx) => { if (q.includes(m)) targetMonthIdx = idx; });
 
-            const fmtEuro = n => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n);
+            const years = Object.keys(hData).filter(k => !k.startsWith('custom')).sort().reverse();
+            const curY = years[0] || '2026';
+            const curData = hData[curY] || {};
 
+            // 1. Month specific query
             if (targetMonthIdx !== -1) {
-                const rev = master.revenue[targetMonthIdx];
-                return `En **${monthNames[targetMonthIdx]}**, el ${targetHotel} generó **${fmtEuro(rev)}**. (Para análisis más detallados, configura tu API Key)`;
+                const mName = monthNames[targetMonthIdx].charAt(0).toUpperCase() + monthNames[targetMonthIdx].slice(1);
+                const mMaster = curData.service?.["TOTAL_MASTER"];
+                const curRev = mMaster ? (mMaster.revenue[targetMonthIdx] || 0) : 0;
+                const curRN = mMaster ? (mMaster.rooms[targetMonthIdx] || 0) : 0;
+                const curAdr = curRN > 0 ? (curRev / curRN) : 0;
+
+                const otbRev = curData.otb?.breakdown?.habitacion?.[targetMonthIdx] || curData.otb?.revenue?.[targetMonthIdx] || 0;
+                const otbRN = curData.otb?.breakdown?.habitacion_rn?.[targetMonthIdx] || curData.otb?.rooms?.[targetMonthIdx] || 0;
+
+                const budgetKey = `custom_budget_${curY}`;
+                const bRev = hData[budgetKey]?.rev?.[targetMonthIdx] || 0;
+
+                let res = `📊 **Diagnóstico de Revenue para ${mName} (${curY}) - ${hotelName}:**\n\n`;
+                if (curRev > 0) {
+                    res += `• **Producción Real Cerrada:** **${fmtEuro(curRev)}** (${curRN} habs • ADR: **${curAdr.toFixed(2)} €**).\n`;
+                }
+                if (otbRev > 0) {
+                    res += `• **Cartera OTB en Libros:** **${fmtEuro(otbRev)}** (${otbRN} habs • ADR OTB: **${(otbRN > 0 ? otbRev/otbRN : 0).toFixed(2)} €**).\n`;
+                }
+                if (bRev > 0) {
+                    const totalProd = Math.max(curRev, otbRev);
+                    const cumpl = (totalProd / bRev * 100).toFixed(1);
+                    res += `• **Objetivo Presupuesto:** **${fmtEuro(bRev)}** (Cumplimiento actual: **${cumpl}%**).\n`;
+                }
+
+                res += `\n💡 **Recomendación Estratégica:**\n`;
+                if (targetMonthIdx === 9) { // Octubre
+                    res += `Para ${mName}, centra los esfuerzos en blindar los fines de semana con estancia mínima (MLOS 2 noches) y mantener tarifa competitiva de lunes a jueves para capturar volumen corporativo.`;
+                } else {
+                    res += `Monitorea el ritmo de pick-up semanal de ${mName}; si la antelación supera los 45 días, sube el escalón de tarifa BAR para proteger el ADR antes de agotar habitaciones de base.`;
+                }
+                return res;
             }
 
-            return "Entendido. Para responder preguntas complejas sobre tendencias o estrategias, necesito que configures tu API Key de Gemini en el menú de ajustes.";
+            // 2. Comparison between hotels
+            if (q.includes('mejor') || q.includes('comparativa') || q.includes('ambos') || (q.includes('guadiana') && q.includes('cumbria'))) {
+                const gData = db['Guadiana']?.[curY];
+                const cData = db['Cumbria']?.[curY];
+                const gRev = gData?.service?.["TOTAL_MASTER"]?.revenue?.reduce((a,b)=>a+b,0) || 0;
+                const cRev = cData?.service?.["TOTAL_MASTER"]?.revenue?.reduce((a,b)=>a+b,0) || 0;
+                const gOTB = gData?.otb?.revenue?.reduce((a,b)=>a+b,0) || 0;
+                const cOTB = cData?.otb?.revenue?.reduce((a,b)=>a+b,0) || 0;
+
+                return `⚖️ **Comparativa Ejecutiva de Rendimiento (${curY}):**\n\n` +
+                    `🏨 **Sercotel Guadiana (108 habs):**\n` +
+                    `• Facturación Real acumulada: **${fmtEuro(gRev)}**\n` +
+                    `• Cartera OTB futura: **${fmtEuro(gOTB)}**\n\n` +
+                    `🏨 **Cumbria Spa & Hotel (59 habs):**\n` +
+                    `• Facturación Real acumulada: **${fmtEuro(cRev)}**\n` +
+                    `• Cartera OTB futura: **${fmtEuro(cOTB)}**\n\n` +
+                    `💡 **Veredicto de Revenue:** Guadiana lidera en volumen absoluto por su mayor capacidad de inventario (108 habs), mientras que Cumbria maximiza su rentabilidad en fines de semana gracias al componente ocio y spa. En ambos establecimientos, la mayor oportunidad reside en corregir fechas con sub-pricing frente a sus respectivos competidores.`;
+            }
+
+            // 3. Strategy query
+            if (q.includes('estrategia') || q.includes('estrategias') || q.includes('recomiendas') || q.includes('plan')) {
+                return `🎯 **Top 3 Estrategias de Revenue Management Prioritarias para ${hotelName}:**\n\n` +
+                    `1️⃣ **Ajuste de Precios en Fechas con Sub-pricing:** Tienes fechas clave con tarifas más de un 15% por debajo del mercado. Sube la tarifa de apertura BAR de inmediato entre **+10€ y +18€** en fechas a más de 14 días.\n\n` +
+                    `2️⃣ **Blindaje de Fines de Semana (MLOS):** Aplica estancia mínima de **2 noches en viernes y sábado** en los fines de semana de alta demanda para evitar que estancias sueltas de una sola noche bloqueen el inventario.\n\n` +
+                    `3️⃣ **Desintermediación y Reducción de Comisiones OTA:** Las OTAs representan una cuota superior al 50%. Cierra habitaciones estándar en Booking en fechas punta para canalizarlas a través de tu motor propio con ventajas exclusivas (desayuno con descuento o upgrades).`;
+            }
+
+            // 4. Competition query
+            if (q.includes('competencia') || q.includes('precios') || q.includes('compset')) {
+                return `🔍 **Diagnóstico de Competencia & CompSet para ${hotelName}:**\n\n` +
+                    `• Se han detectado fechas donde tu hotel está cobrando significativamente menos que la media de la plaza, generando un coste de oportunidad importante.\n` +
+                    `• En días de alta concentración de demanda, tus competidores ya han elevado tarifas por encima de los 120€.\n` +
+                    `• **Acción recomendada:** Revisa la sección **Análisis Competencia** y aplica Yield dinámico: sube tarifas progresivamente conforme la ocupación supere el 50% y el 70%.`;
+            }
+
+            // Default expert response
+            const count = (typeof allGeneratedInsights !== 'undefined' && allGeneratedInsights.length) ? allGeneratedInsights.length : 8;
+            return `💡 Como tu **Director de Revenue Virtual**, he analizado toda la base de datos de **${hotelName}**.\n\nPuedes consultar los **${count} hallazgos estratégicos** detallados arriba en esta pantalla, o preguntarme sobre:\n• El estado de un mes concreto (*"¿Cómo va Octubre?"*)\n• La comparativa de hoteles (*"¿Qué hotel va mejor?"*)\n• Recomendaciones de yield (*"¿Qué estrategias de precio aplicar?"*).`;
         }
 
         function addMessage(sender, text) {
