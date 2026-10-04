@@ -598,6 +598,9 @@
             display: inline-flex;
             align-items: center;
             gap: 6px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            line-height: 1.2;
         }
         .pacing-tab-btn:hover {
             background: rgba(255, 255, 255, 0.12);
@@ -3817,7 +3820,7 @@
                 }).join('');
 
                 dailyTableHtml = `
-                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px; margin-top: 14px;">
+                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px; margin-top: 0;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
                             <div>
                                 <h4 style="margin: 0; font-size: 1rem; color: #0f172a; font-weight: 800; display: flex; align-items: center; gap: 6px;">
@@ -3876,7 +3879,7 @@
 
             // Strategic Levers Grid HTML
             const leversSectionHtml = `
-                <div style="margin-top: 14px;">
+                <div style="margin-top: 0;">
                     <h4 style="margin: 0 0 10px 0; font-size: 1rem; color: #1e293b; font-weight: 800; display: flex; align-items: center; gap: 6px;">
                         <span>⚖️</span> 3 Estrategias Tácticas para Alcanzar el Objetivo
                     </h4>
@@ -4107,7 +4110,7 @@
                     ${heroSectionHtml}
 
                     <!-- Tabs Navigation Bar -->
-                    <div style="display: flex; gap: 8px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-top: 14px; margin-bottom: 12px; overflow-x: auto;">
+                    <div style="display: flex; gap: 8px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-top: 18px; margin-bottom: 16px; overflow-x: auto; flex-shrink: 0; position: relative; z-index: 2;">
                         <button id="pacingTabBtn_segments" class="pacing-tab-btn ${activePacingTab === 'segments' ? 'active' : ''}" onclick="switchPacingModalTab('segments')">
                             <span>👥</span> Objetivos por Segmento
                         </button>
@@ -4417,42 +4420,48 @@
                         </td>
 
                         <!-- Target Actual (Editable) -->
-                        <td style="padding: 8px 8px; text-align: right; background: #fdf4ff;">
-                            <input type="number" step="100" min="0" value="${seg.targetRev}" 
-                                style="width: 105px; padding: 5px 8px; text-align: right; font-weight: 800; font-size: 0.85rem; color: #6b21a8; background: #ffffff; border: 1px solid #d8b4fe; border-radius: 6px;"
-                                onchange="onSegmentTargetInputChange(${idx}, 'targetRev', this.value)"
-                                title="Modificar ingresos objetivo de este segmento"> €
+                        <td style="padding: 8px 8px; text-align: right; background: #fdf4ff; white-space: nowrap;">
+                            <div style="display: inline-flex; align-items: center; justify-content: flex-end; gap: 4px;">
+                                <input type="number" step="100" min="0" value="${seg.targetRev}" 
+                                    style="width: 105px; padding: 5px 8px; text-align: right; font-weight: 800; font-size: 0.85rem; color: #6b21a8; background: #ffffff; border: 1px solid #d8b4fe; border-radius: 6px;"
+                                    onchange="onSegmentTargetInputChange(${idx}, 'targetRev', this.value)"
+                                    title="Modificar ingresos objetivo de este segmento">
+                                <span style="font-weight: 700; color: #6b21a8; font-size: 0.82rem;">€</span>
+                            </div>
                         </td>
-                        <td style="padding: 8px 8px; text-align: right; background: #fdf4ff;">
-                            <input type="number" step="5" min="0" value="${seg.targetRN}" 
-                                style="width: 75px; padding: 5px 8px; text-align: right; font-weight: 700; font-size: 0.85rem; color: #581c87; background: #ffffff; border: 1px solid #d8b4fe; border-radius: 6px;"
-                                onchange="onSegmentTargetInputChange(${idx}, 'targetRN', this.value)"
-                                title="Modificar habitaciones objetivo de este segmento"> habs
+                        <td style="padding: 8px 8px; text-align: right; background: #fdf4ff; white-space: nowrap;">
+                            <div style="display: inline-flex; align-items: center; justify-content: flex-end; gap: 4px;">
+                                <input type="number" step="5" min="0" value="${seg.targetRN}" 
+                                    style="width: 75px; padding: 5px 8px; text-align: right; font-weight: 700; font-size: 0.85rem; color: #581c87; background: #ffffff; border: 1px solid #d8b4fe; border-radius: 6px;"
+                                    onchange="onSegmentTargetInputChange(${idx}, 'targetRN', this.value)"
+                                    title="Modificar habitaciones objetivo de este segmento">
+                                <span style="font-weight: 700; color: #581c87; font-size: 0.8rem;">habs</span>
+                            </div>
                         </td>
-                        <td style="padding: 10px 8px; text-align: center; font-weight: 800; color: #4338ca; background: #fdf4ff;">
+                        <td style="padding: 10px 8px; text-align: center; font-weight: 800; color: #4338ca; background: #fdf4ff; white-space: nowrap;">
                             ${seg.targetAdr.toFixed(2)} €
                         </td>
-                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #6b21a8; background: #fdf4ff;">
+                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #6b21a8; background: #fdf4ff; white-space: nowrap;">
                             ${sharePct}%
                         </td>
-                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: ${growthColor}; background: #fdf4ff; border-right: 1px solid #cbd5e1;">
+                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: ${growthColor}; background: #fdf4ff; border-right: 1px solid #cbd5e1; white-space: nowrap;">
                             ${growthIcon} ${Math.abs(seg.growthRevPct).toFixed(1)}%
                         </td>
 
                         <!-- Seguimiento Actual / OTB -->
-                        <td style="padding: 10px 8px; text-align: right; color: #0f172a; font-size: 0.82rem;">
+                        <td style="padding: 10px 8px; text-align: right; color: #0f172a; font-size: 0.82rem; white-space: nowrap;">
                             <div style="font-weight: 800;">${seg.actualRev > 0 ? formatMoney(seg.actualRev) : '<span style="color:#94a3b8; font-weight:normal;">0 €</span>'}</div>
                             <div style="font-size: 0.72rem; color: #64748b;">${seg.actualRN > 0 ? formatInt(seg.actualRN) + ' habs' : ''}</div>
                         </td>
-                        <td style="padding: 10px 8px; text-align: center;">
+                        <td style="padding: 10px 8px; text-align: center; white-space: nowrap;">
                             <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
-                                <div style="width: 50px; background: #e2e8f0; height: 7px; border-radius: 4px; overflow: hidden;">
+                                <div style="width: 50px; background: #e2e8f0; height: 7px; border-radius: 4px; overflow: hidden; flex-shrink: 0;">
                                     <div style="width: ${cumplPctClamped}%; background: ${cumplColor}; height: 100%;"></div>
                                 </div>
                                 <span style="font-size: 0.78rem; font-weight: 700; color: ${cumplColor};">${seg.cumplPct.toFixed(1)}%</span>
                             </div>
                         </td>
-                        <td style="padding: 10px 8px; text-align: right; font-weight: 800; color: ${seg.gapRev <= 0 ? '#15803d' : '#b91c1c'};">
+                        <td style="padding: 10px 8px; text-align: right; font-weight: 800; color: ${seg.gapRev <= 0 ? '#15803d' : '#b91c1c'}; white-space: nowrap;">
                             ${seg.gapRev <= 0 ? '+' + formatMoney(Math.abs(seg.gapRev)) : '-' + formatMoney(seg.gapRev)}
                         </td>
                     </tr>
@@ -4460,7 +4469,7 @@
             }).join('');
 
             return `
-                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px; margin-top: 14px;">
+                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px; margin-top: 0;">
                     <!-- Header and Actions -->
                     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px;">
                         <div>
