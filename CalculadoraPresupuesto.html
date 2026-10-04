@@ -2357,6 +2357,8 @@
                 stratSel.value = 'official';
             }
 
+            syncGroupsTargetToNexus(currentHotel, currentYear);
+
             updateAll();
             showNotification(`✅ Presupuesto Oficial ${currentYear} grabado y protegido con clave.`);
         }
@@ -4401,6 +4403,7 @@
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${seg.color};"></span>
                                 <span>${seg.name}</span>
+                                ${seg.name === 'GRUPOS' ? '<span style="background: #e0e7ff; color: #3730a3; padding: 2px 7px; border-radius: 6px; font-size: 0.65rem; font-weight: 800; border: 1px solid #c7d2fe;" title="Este objetivo anual y mensual es la fuente oficial que se fija para Nexus Groups">🔗 Nexus Groups</span>' : ''}
                             </div>
                         </td>
 
@@ -4478,6 +4481,9 @@
                             </button>
                             <button onclick="saveCustomSegmentBudget()" class="btn" style="background: #4f46e5; color: #ffffff; border: none; padding: 6px 14px; border-radius: 8px; font-weight: 700; font-size: 0.78rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 6px rgba(79, 70, 229, 0.3);" title="Guardar este reparto para que persista al consultar o exportar el presupuesto">
                                 💾 Guardar Reparto
+                            </button>
+                            <button onclick="manualSyncNexusGroups()" class="btn" style="background: #0284c7; color: #ffffff; border: none; padding: 6px 14px; border-radius: 8px; font-weight: 700; font-size: 0.78rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);" title="Enviar y sincronizar los objetivos fijados para el segmento Grupos con Nexus Groups">
+                                🎯 Sincronizar Nexus Groups
                             </button>
                         </div>
                     </div>
@@ -4683,14 +4689,115 @@
             CapaStorage.setItem(customKey, JSON.stringify(customStore));
             currentSegmentBreakdownData.isCustomized = true;
 
+            // Sincronizar automáticamente con Nexus Groups para que el segmento Grupos adopte este objetivo
+            syncGroupsTargetToNexus(currentHotel, currentYear);
+
             const container = document.getElementById('pacingTabContent_segments');
             if (container) {
                 container.innerHTML = renderSegmentBreakdownSection(currentSegmentBreakdownData);
             }
             if (typeof showNotification === 'function') {
-                showNotification(`✅ Reparto de objetivos por segmento guardado correctamente para ${months[m]} ${currentYear}.`);
+                showNotification(`✅ Reparto de objetivos por segmento guardado y sincronizado con Nexus Groups para ${months[m]} ${currentYear}.`);
             } else {
-                alert(`✅ Reparto de objetivos por segmento guardado correctamente para ${months[m]} ${currentYear}.`);
+                alert(`✅ Reparto de objetivos por segmento guardado y sincronizado con Nexus Groups para ${months[m]} ${currentYear}.`);
+            }
+        }
+
+        function syncGroupsTargetToNexus(hotel, yearStr) {
+            try {
+                const targetHotelName = hotel || currentHotel;
+                const targetYearStr = String(yearStr || currentYear);
+                const hotelKey = (targetHotelName === 'Cumbria') ? 'cumbria' : 'guadiana';
+                const yearInt = parseInt(targetYearStr, 10);
+                const monthly = {};
+                let totalRev = 0, totalRN = 0;
+
+                for (let m = 0; m < 12; m++) {
+                    const tRev = currentRev[m] || 0;
+                    const tAdr = currentAdr[m] || 0;
+                    const tRN = tAdr > 0 ? Math.round(tRev / tAdr) : 0;
+                    const breakdown = getMonthlySegmentBudgetBreakdown(targetHotelName, targetYearStr, m, tRev, tRN, tAdr);
+                    const gSeg = breakdown.segments ? breakdown.segments.find(s => s.name === 'GRUPOS') : null;
+
+                    let sRev = 0, sRN = 0, sAdr = 75;
+                    if (gSeg) {
+                        sRev = Math.round(gSeg.targetRev);
+                        sRN = Math.round(gSeg.targetRN);
+                        sAdr = sRN > 0 ? Math.round((sRev / sRN) * 100) / 100 : Math.round(gSeg.targetAdr || 75);
+                    } else {
+                        sRev = Math.round(tRev * 0.05);
+                        sRN = Math.round(tRN * 0.05);
+                        sAdr = sRN > 0 ? Math.round((sRev / sRN) * 100) / 100 : 75;
+                    }
+
+                    const sPax = Math.round(sRN * 1.9);
+                    monthly[m + 1] = {
+                        revenue: sRev,
+                        rooms: sRN,
+                        adr: sAdr,
+                        pax: sPax
+                    };
+                    totalRev += sRev;
+                    totalRN += sRN;
+                }
+
+                const targetDoc = {
+                    hotel: hotelKey,
+                    targetYear: yearInt,
+                    baseYear: yearInt - 1,
+                    scenario: 'capasuite_official',
+                    growthPercent: 0,
+                    monthly: monthly,
+                    overall: {
+                        totalRevenue: Math.round(totalRev),
+                        lodgingRevenue: Math.round(totalRev),
+                        roomNights: Math.round(totalRN),
+                        pax: Math.round(totalRN * 1.9),
+                        adr: totalRN > 0 ? Math.round((totalRev / totalRN) * 100) / 100 : 75,
+                        isOfficial: true,
+                        source: 'CapaSuite'
+                    },
+                    isOfficial: true,
+                    source: 'CapaSuite',
+                    officialSavedAt: new Date().toISOString(),
+                    officialSavedBy: 'Dirección Revenue (CapaSuite)',
+                    updatedAt: new Date().toISOString(),
+                    status: 'Definitivo'
+                };
+
+                const docKey = `nexus_target_${hotelKey}_${targetYearStr}`;
+                CapaStorage.setItem(docKey, JSON.stringify(targetDoc));
+                if (typeof window !== 'undefined' && window.localStorage) {
+                    window.localStorage.setItem(docKey, JSON.stringify(targetDoc));
+                    window.localStorage.setItem('v3_' + docKey, JSON.stringify(targetDoc));
+                }
+
+                // Sincronizar también con la base general hotel_manager_db_v2 en el segmento GRUPOS
+                const db = JSON.parse(CapaStorage.getItem('hotel_manager_db_v2')) || {};
+                if (!db[targetHotelName]) db[targetHotelName] = {};
+                if (!db[targetHotelName][targetYearStr]) db[targetHotelName][targetYearStr] = {};
+                if (!db[targetHotelName][targetYearStr].segments) db[targetHotelName][targetYearStr].segments = {};
+
+                db[targetHotelName][targetYearStr].segments['GRUPOS'] = {
+                    revenue: Object.values(monthly).map(x => x.revenue),
+                    rooms: Object.values(monthly).map(x => x.rooms),
+                    pax: Object.values(monthly).map(x => x.pax)
+                };
+                CapaStorage.setItem('hotel_manager_db_v2', JSON.stringify(db));
+
+                return targetDoc;
+            } catch(e) {
+                console.warn('[CapaSuite] Error al sincronizar objetivos de grupos con Nexus Groups:', e);
+                return null;
+            }
+        }
+
+        function manualSyncNexusGroups() {
+            const doc = syncGroupsTargetToNexus(currentHotel, currentYear);
+            if (doc && doc.overall) {
+                const msg = `🎯 Objetivos de Grupos sincronizados con Nexus Groups (${currentHotel} ${currentYear}): ${formatMoney(doc.overall.totalRevenue)} (${formatInt(doc.overall.roomNights)} habs).`;
+                if (typeof showNotification === 'function') showNotification(msg);
+                else alert(msg);
             }
         }
 
