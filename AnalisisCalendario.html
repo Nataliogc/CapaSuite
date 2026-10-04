@@ -2090,8 +2090,10 @@
             const currentHotel = document.getElementById('hotelSelector').value;
             const cap = (currentHotel === 'Cumbria' ? 59 : 108);
             const t = document.getElementById('tooltip');
-            
-            const dateStr = new Date(iso).toLocaleDateString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');
+            const dObj = new Date(iso + (iso.length === 10 ? 'T00:00:00' : ''));
+            const dateStr = !isNaN(dObj.getTime()) ? 
+                `${String(dObj.getDate()).padStart(2, '0')}/${String(dObj.getMonth() + 1).padStart(2, '0')}/${dObj.getFullYear()}` : 
+                iso;
             const hotelADR = hData.adr || 0;
             const hotelPrice = (dData.hotels && dData.hotels[currentHotel]) ? (dData.hotels[currentHotel].price || dData.hotels[currentHotel]) : 0;
             const roomsSold = (hData.occ > 0) ? hData.occ : (hData.otb || 0);

@@ -5084,7 +5084,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
             // Poblar textos
             document.getElementById('cuposModalTitle').innerText = `Gestión de Cupos y Ocupación`;
-            document.getElementById('cuposModalSubtitle').innerText = `${hotelName} · ${dateISO}`;
+            document.getElementById('cuposModalSubtitle').innerText = `${hotelName} · ${formatSpanishDate(dateISO)}`;
             document.getElementById('cuposModalBaseRooms').innerText = currentCuposModalContext.baseRooms;
             document.getElementById('cuposModalCapacity').innerText = capacity;
 

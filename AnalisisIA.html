@@ -698,6 +698,27 @@
         let allGeneratedInsights = [];
         let currentActiveInsightDates = [];
 
+        function formatSpanishDate(dateInput) {
+            if (!dateInput) return '';
+            const str = String(dateInput).trim();
+            const dmyMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+            if (dmyMatch) {
+                return `${dmyMatch[1].padStart(2, '0')}/${dmyMatch[2].padStart(2, '0')}/${dmyMatch[3]}`;
+            }
+            const isoMatch = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+            if (isoMatch) {
+                return `${isoMatch[3].padStart(2, '0')}/${isoMatch[2].padStart(2, '0')}/${isoMatch[1]}`;
+            }
+            const d = new Date(str + (str.length === 10 ? 'T00:00:00' : ''));
+            if (!isNaN(d.getTime())) {
+                const dd = String(d.getDate()).padStart(2, '0');
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const yyyy = d.getFullYear();
+                return `${dd}/${mm}/${yyyy}`;
+            }
+            return str;
+        }
+
         function getHotelRoomsCount(h) {
             return (h === 'Cumbria') ? 59 : 108;
         }
@@ -871,10 +892,16 @@
                             if (hKey !== currentHotel && d.hotels[hKey] && d.hotels[hKey].sold) {
                                 const dateStr = d.dateISO || d.date;
                                 if (!soldOutDates.some(x => x.dateISO === dateStr)) {
+                                    const dObj = new Date((dateStr || '') + 'T00:00:00');
+                                    const dayOfWeek = isNaN(dObj.getTime()) ? '' : dObj.toLocaleDateString('es-ES', { weekday: 'short' });
+                                    const isWeekend = dayOfWeek.toLowerCase().includes('vie') || dayOfWeek.toLowerCase().includes('sáb') || dayOfWeek.toLowerCase().includes('sab');
                                     soldOutDates.push({
                                         dateISO: dateStr,
+                                        dayOfWeek: dayOfWeek ? (dayOfWeek.charAt(0).toUpperCase() + dayOfWeek.slice(1)) : '',
+                                        isWeekend: isWeekend,
                                         competitor: hKey,
                                         myPrice: d.hotels[currentHotel]?.price || 0,
+                                        compAvg: d.compAvg ? Math.round(d.compAvg) : null,
                                         tactic: '🚨 Competidor lleno: Subir BAR +25% de última hora'
                                     });
                                 }
@@ -1329,10 +1356,11 @@
 
             if (tableContainer) {
                 const rowsHtml = targetInsight.dates.map((d, idx) => {
+                    const displayDate = formatSpanishDate(d.dateISO || d.date);
                     return `
                         <tr style="border-bottom: 1px solid var(--border); font-size: 0.83rem;">
                             <td style="padding: 9px 12px; font-weight: 700; white-space: nowrap;">
-                                ${d.dateISO}
+                                ${displayDate}
                             </td>
                             <td style="padding: 9px 12px; text-align: center;">
                                 <span style="background: ${d.isWeekend ? '#fef3c7' : '#f1f5f9'}; color: ${d.isWeekend ? '#b45309' : '#475569'}; padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">
@@ -1385,9 +1413,10 @@
 
         function copyDatesModalData() {
             if (!currentActiveInsightDates || currentActiveInsightDates.length === 0) return;
-            const text = "FECHA\tDÍA\tTU TARIFA\tCOMPSET\tDIFERENCIA\tTÁCTICA\n" + currentActiveInsightDates.map(d => 
-                `${d.dateISO}\t${d.dayOfWeek || ''}\t${d.myPrice} €\t${d.compAvg || ''} €\t${d.diff || ''} €\t${d.tactic || ''}`
-            ).join("\n");
+            const text = "FECHA\tDÍA\tTU TARIFA\tCOMPSET\tDIFERENCIA\tTÁCTICA\n" + currentActiveInsightDates.map(d => {
+                const dateStr = formatSpanishDate(d.dateISO || d.date);
+                return `${dateStr}\t${d.dayOfWeek || ''}\t${d.myPrice} €\t${d.compAvg || ''} €\t${d.diff || ''} €\t${d.tactic || ''}`;
+            }).join("\n");
 
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(text).then(() => {
