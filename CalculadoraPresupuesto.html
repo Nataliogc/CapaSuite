@@ -99,6 +99,13 @@
             -webkit-text-fill-color: transparent;
         }
 
+        [data-theme="light"] .header-title h1 {
+            background: linear-gradient(135deg, #0f172a 0%, #334155 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
         .header-title p {
             margin: 2px 0 0;
             color: var(--text-muted);
@@ -576,6 +583,46 @@
             background: #4f46e5;
             color: #ffffff;
             border-color: #4f46e5;
+        }
+
+        .pacing-tab-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .pacing-tab-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: var(--text-main);
+        }
+        .pacing-tab-btn.active {
+            background: var(--primary);
+            color: #ffffff;
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px var(--primary-glow);
+        }
+        [data-theme="light"] .pacing-tab-btn {
+            background: #f1f5f9;
+            color: #475569;
+            border-color: #cbd5e1;
+        }
+        [data-theme="light"] .pacing-tab-btn:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+        [data-theme="light"] .pacing-tab-btn.active {
+            background: #4f46e5;
+            color: #ffffff;
+            border-color: #4f46e5;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
         }
 
         @keyframes modalPop {
@@ -2074,7 +2121,9 @@
             }
 
             const thObjTarget = document.getElementById('th-obj-target');
-            if (thObjTarget) thObjTarget.innerText = `OBJETIVO ${currentYear} (Presupuesto)`;
+            if (thObjTarget) {
+                thObjTarget.innerHTML = `OBJETIVO ${currentYear} (Presupuesto)<br><span style="font-size:0.65rem; font-weight:normal; opacity:0.85;">(Clic en un mes para ver reparto por segmento)</span>`;
+            }
 
             const detailInfoTip = document.getElementById('detailInfoTip');
             if (detailInfoTip) {
@@ -2502,8 +2551,8 @@
                     <td style="text-align: right; font-size: 0.78rem; color: #7e22ce; background: #faf5ff; padding: 6px 8px;">
                         ${otbRN > 0 ? formatInt(otbRN) : '<span style="color:#94a3b8;">&mdash;</span>'}
                     </td>
-                    <td onclick="openBudgetPacingModal(${i})" style="text-align: right; font-size: 0.78rem; font-weight: 700; background: #faf5ff; border-right: 1px solid #e9d5ff; padding: 6px 8px; color: ${otbGapColor}; cursor: pointer;"
-                        title="💡 Clic para ver habitaciones y precio medio necesarios para cumplir el presupuesto de ${months[i]}">
+                    <td onclick="openBudgetPacingModal(${i}, 'segments')" style="text-align: right; font-size: 0.78rem; font-weight: 700; background: #faf5ff; border-right: 1px solid #e9d5ff; padding: 6px 8px; color: ${otbGapColor}; cursor: pointer;"
+                        title="💡 Clic para ver reparto por segmento y tácticas para cumplir el presupuesto de ${months[i]}">
                         <span class="pacing-clickable-pill">${otbRev > 0 ? ((otbGap > 0 ? '-' : '+') + formatInt(Math.abs(otbGap)) + ' €') : '<span style="color:#94a3b8;">&mdash;</span>'} 🔍</span>
                     </td>` : '';
 
@@ -2514,8 +2563,8 @@
                 const cumplBg = cumplPct >= 100 ? '#f0fdf4' : (cumplPct >= 80 ? '#fffbeb' : '#fef2f2');
                 const cumplSub = timing.isClosed ? 'Real Cerrado' : (timing.isCurrent ? 'Real + OTB' : 'Cartera OTB');
                 const cumplCellHtml = showCumplCol ? `
-                    <td onclick="openBudgetPacingModal(${i})" style="text-align: center; font-size: 0.8rem; font-weight: 700; background: ${cumplBg}; border-right: 1px solid #fef08a; padding: 6px 8px; cursor: pointer;"
-                        title="💡 Clic para ver habitaciones y precio medio necesarios para cumplir el presupuesto de ${months[i]} (${timing.label})">
+                    <td onclick="openBudgetPacingModal(${i}, 'segments')" style="text-align: center; font-size: 0.8rem; font-weight: 700; background: ${cumplBg}; border-right: 1px solid #fef08a; padding: 6px 8px; cursor: pointer;"
+                        title="💡 Clic para ver objetivos por segmento y plan de cumplimiento de ${months[i]} (${timing.label})">
                         <span class="pacing-clickable-badge" style="color: ${cumplColor};">${cumplPct >= 100 ? '✅' : (cumplPct >= 80 ? '🟡' : '🔴')} ${cumplPct.toFixed(1)}%</span>
                         <span style="display: block; font-size: 0.62rem; color: #64748b; font-weight: 600; margin-top: 2px;">${cumplSub}</span>
                     </td>` : '';
@@ -2531,10 +2580,15 @@
 
                 editorBody.innerHTML += `
                 <tr style="border-bottom: 1px solid #f1f5f9; ${timing.isCurrent ? 'background: rgba(99, 102, 241, 0.035);' : ''}">
-                    <td class="text-left font-bold" onclick="openBudgetPacingModal(${i})" style="padding: 10px 14px; color:#1e293b; background: ${timing.isCurrent ? '#f5f3ff' : '#fdfdfd'}; white-space: nowrap; cursor: pointer;" title="💡 Clic para analizar el ritmo diario y tácticas de ${months[i]} (${timing.label})">
+                    <td class="text-left font-bold" onclick="openBudgetPacingModal(${i}, 'segments')" style="padding: 10px 14px; color:#1e293b; background: ${timing.isCurrent ? '#f5f3ff' : '#fdfdfd'}; white-space: nowrap; cursor: pointer;" title="💡 Clic para ver objetivos repartidos por segmento y tácticas de ${months[i]} (${timing.label})">
                         <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                             <span style="font-size: 0.92rem; font-weight: 800; color: ${timing.isCurrent ? '#4338ca' : '#1e293b'};">${months[i]}</span>
                             ${statusBadge}
+                        </div>
+                        <div style="margin-top: 4px;">
+                            <span onclick="event.stopPropagation(); openBudgetPacingModal(${i}, 'segments');" style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.65rem; font-weight: 700; color: #4338ca; background: #e0e7ff; border: 1px solid #c7d2fe; padding: 2px 7px; border-radius: 6px; cursor: pointer;" title="Ver objetivos del mes repartidos por segmento">
+                                👥 Desglose Segmentos 🔍
+                            </span>
                         </div>
                     </td>
                     
@@ -2613,14 +2667,14 @@
                 const otbFootCells = showOtbCols ? `
                     <td style="text-align: right; white-space: nowrap; font-weight: 700; color: #7e22ce; background: #faf5ff; padding: 10px 10px;">${formatInt(t_otbRev)} €</td>
                     <td style="text-align: right; white-space: nowrap; font-weight: 700; color: #7e22ce; background: #faf5ff; padding: 10px 10px;">${formatInt(t_otbRN)}</td>
-                    <td onclick="openBudgetPacingModal(-1)" style="text-align: right; white-space: nowrap; font-weight: 800; color: ${tOtbGapColor}; background: #faf5ff; border-right: 1px solid #e9d5ff; padding: 10px 10px; cursor: pointer;"
-                        title="💡 Clic para analizar el cumplimiento del presupuesto anual">
+                    <td onclick="openBudgetPacingModal(-1, 'segments')" style="text-align: right; white-space: nowrap; font-weight: 800; color: ${tOtbGapColor}; background: #faf5ff; border-right: 1px solid #e9d5ff; padding: 10px 10px; cursor: pointer;"
+                        title="💡 Clic para analizar el cumplimiento del presupuesto anual y reparto por segmento">
                         <span class="pacing-clickable-pill">${(tOtbGap > 0 ? '-' : '+')}${formatInt(Math.abs(tOtbGap))} € 🔍</span>
                     </td>` : '';
 
                 const cumplFootCell = showCumplCol ? `
-                    <td onclick="openBudgetPacingModal(-1)" style="text-align: center; white-space: nowrap; font-weight: 800; color: ${tCumplColor}; background: ${tCumplBg}; border-right: 1px solid #fef08a; padding: 10px 8px; cursor: pointer;"
-                        title="💡 Clic para analizar el cumplimiento del presupuesto anual">
+                    <td onclick="openBudgetPacingModal(-1, 'segments')" style="text-align: center; white-space: nowrap; font-weight: 800; color: ${tCumplColor}; background: ${tCumplBg}; border-right: 1px solid #fef08a; padding: 10px 8px; cursor: pointer;"
+                        title="💡 Clic para analizar el cumplimiento del presupuesto anual y reparto por segmento">
                         <span class="pacing-clickable-badge" style="color: ${tCumplColor};">${tCumplPct >= 100 ? '✅' : (tCumplPct >= 80 ? '🟡' : '🔴')} ${tCumplPct.toFixed(1)}%</span>
                     </td>` : '';
 
@@ -3076,7 +3130,56 @@
         // BUDGET PACING & ACTION PLAN MODAL (CUMPLIMIENTO DE PRESUPUESTO)
         // =========================================================================
         let activePacingMonth = 0;
+        let activePacingTab = 'segments';
         let currentPacingData = null;
+        let currentSegmentBreakdownData = null;
+
+        function normalizeSegmentDisplayName(name) {
+            if (!name) return '';
+            const clean = String(name).trim();
+            const upper = clean.toUpperCase();
+            if (upper === 'DIRONLINE' || upper === 'DIR ONLINE' || upper === 'DIR_ONLINE' || upper === 'D ON LINE' || upper === 'DIRECTO ONLINE' || upper === 'DIRECTO ON') {
+                return 'DIRECTO ONLINE';
+            }
+            if (upper === 'DIRECTO OFFLINE' || upper === 'DIRECTO OFF' || upper === 'D OFF LINE' || upper === 'DIRECTO O') {
+                return 'DIRECTO OFFLINE';
+            }
+            if (upper === 'OTA' || upper === 'OTA/AAVV' || upper === 'OTAS' || upper === 'AAVV' || upper === 'OTA / AAVV') {
+                return 'OTA / AAVV';
+            }
+            if (upper === 'CORPORATIVO LINEAL' || upper === 'CORPORATI' || upper === 'CORPORATIVO' || upper === 'EMPRESAS' || upper === 'EMPRESA' || upper === 'TARIFAS NEGOCIADAS' || upper === 'TARIFAS N') {
+                return 'CORPORATIVO LINEAL';
+            }
+            if (upper === 'GRTANTEO' || upper === 'GRUPO TANTEO' || upper === 'GRUPO TAN' || upper === 'GRUPOS' || upper === 'GRUPO') {
+                return 'GRUPOS';
+            }
+            if (upper === 'TTOO DINAMICA' || upper === 'TTOO DINA' || upper === 'TTOO' || upper === 'TOUROPERACION') {
+                return 'TTOO DINÁMICA';
+            }
+            if (upper === 'PARTICULARES' || upper === 'PARTICULA' || upper === 'PARTICULAR') {
+                return 'PARTICULARES';
+            }
+            if (upper === 'AGENCIAS' || upper === 'GRUPO AVORIS') {
+                return 'AGENCIAS';
+            }
+            if (upper === 'BONO ONLINE' || upper === 'BONO LINE' || upper === 'BONO SPA') {
+                return 'BONO ONLINE';
+            }
+            return clean;
+        }
+
+        function getSegmentColor(name) {
+            const n = (name || '').toUpperCase();
+            if (n.includes('DIR') && n.includes('ON')) return '#10b981';
+            if (n.includes('DIR') && n.includes('OFF')) return '#0d9488';
+            if (n.includes('OTA') || n.includes('AAVV')) return '#8b5cf6';
+            if (n.includes('CORP') || n.includes('NEGOCIAD') || n.includes('EMPRES')) return '#6366f1';
+            if (n.includes('GRUP') || n.includes('TANTEO')) return '#f59e0b';
+            if (n.includes('TTOO') || n.includes('DINAMIC')) return '#0284c7';
+            if (n.includes('PARTIC')) return '#ec4899';
+            if (n.includes('BONO')) return '#06b6d4';
+            return '#64748b';
+        }
 
         function getHotelRoomsCount(hotel) {
             return (hotel === 'Cumbria') ? 59 : 108;
@@ -3110,7 +3213,8 @@
             return { cutoffDay, cutoffMonth, cutoffYear, now };
         }
 
-        function openBudgetPacingModal(monthIdx) {
+        function openBudgetPacingModal(monthIdx, defaultTab) {
+            if (defaultTab) activePacingTab = defaultTab;
             const cutoff = getCutoffInfo(currentHotel, currentYear);
             if (monthIdx === undefined || monthIdx === null || monthIdx === -1) {
                 if (parseInt(currentYear) === cutoff.cutoffYear) {
@@ -3926,6 +4030,11 @@
                     </div>
                 </div>`;
 
+            // Calculate Segment Budget Breakdown
+            const segmentBreakdown = getMonthlySegmentBudgetBreakdown(currentHotel, currentYear, m, targetRev, targetRN, targetAdr);
+            currentSegmentBreakdownData = segmentBreakdown;
+            const segmentSectionHtml = renderSegmentBreakdownSection(segmentBreakdown);
+
             // Insert into Modal Container
             const container = document.getElementById('budgetPacingModalContent');
             if (container) {
@@ -3941,7 +4050,7 @@
                                 </span>
                             </div>
                             <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #64748b;">
-                                Análisis de producción vendida (Real + OTB) y palancas para conseguir el presupuesto de <b style="color:#0f172a;">${fullMonth}</b>.
+                                Análisis de producción vendida (Real + OTB), reparto de objetivos por segmento de mercado y palancas para <b style="color:#0f172a;">${fullMonth}</b>.
                             </p>
                         </div>
                         <button onclick="closeBudgetPacingModal()" style="background: none; border: none; font-size: 1.8rem; color: #94a3b8; cursor: pointer; padding: 0 5px; line-height: 1;" title="Cerrar (Esc)">&times;</button>
@@ -3995,14 +4104,41 @@
                     <!-- Hero Box with Key Indications -->
                     ${heroSectionHtml}
 
-                    <!-- Daily Availability & Adaptive Distribution Table -->
-                    ${dailyTableHtml}
+                    <!-- Tabs Navigation Bar -->
+                    <div style="display: flex; gap: 8px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-top: 14px; margin-bottom: 12px; overflow-x: auto;">
+                        <button id="pacingTabBtn_segments" class="pacing-tab-btn ${activePacingTab === 'segments' ? 'active' : ''}" onclick="switchPacingModalTab('segments')">
+                            <span>👥</span> Objetivos por Segmento
+                        </button>
+                        <button id="pacingTabBtn_daily" class="pacing-tab-btn ${activePacingTab === 'daily' ? 'active' : ''}" onclick="switchPacingModalTab('daily')">
+                            <span>📅</span> Disponibilidad y Reparto Diario
+                        </button>
+                        <button id="pacingTabBtn_tactics" class="pacing-tab-btn ${activePacingTab === 'tactics' ? 'active' : ''}" onclick="switchPacingModalTab('tactics')">
+                            <span>⚖️</span> Estrategias Tácticas
+                        </button>
+                        <button id="pacingTabBtn_simulator" class="pacing-tab-btn ${activePacingTab === 'simulator' ? 'active' : ''}" onclick="switchPacingModalTab('simulator')">
+                            <span>🎛️</span> Simulador Interactivo
+                        </button>
+                    </div>
 
-                    <!-- 3 Strategy Levers -->
-                    ${leversSectionHtml}
+                    <!-- Tab 1: Segment Breakdown (Market Segments) -->
+                    <div id="pacingTabContent_segments" style="display: ${activePacingTab === 'segments' ? 'block' : 'none'};">
+                        ${segmentSectionHtml}
+                    </div>
 
-                    <!-- Interactive Real-time Simulator -->
-                    ${simulatorHtml}
+                    <!-- Tab 2: Daily Availability & Adaptive Distribution Table -->
+                    <div id="pacingTabContent_daily" style="display: ${activePacingTab === 'daily' ? 'block' : 'none'};">
+                        ${dailyTableHtml}
+                    </div>
+
+                    <!-- Tab 3: Strategic Levers -->
+                    <div id="pacingTabContent_tactics" style="display: ${activePacingTab === 'tactics' ? 'block' : 'none'};">
+                        ${leversSectionHtml}
+                    </div>
+
+                    <!-- Tab 4: Interactive Simulator -->
+                    <div id="pacingTabContent_simulator" style="display: ${activePacingTab === 'simulator' ? 'block' : 'none'};">
+                        ${simulatorHtml}
+                    </div>
 
                     <!-- Modal Actions Footer -->
                     <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e2e8f0; padding-top: 14px; flex-wrap: wrap; gap: 10px;">
@@ -4019,6 +4155,542 @@
 
                 // Run initial recalculation of the simulator
                 recalcBudgetSimulator(false);
+            }
+        }
+
+        function switchPacingModalTab(tabKey) {
+            activePacingTab = tabKey;
+            const tabs = ['segments', 'daily', 'tactics', 'simulator'];
+            tabs.forEach(t => {
+                const btn = document.getElementById('pacingTabBtn_' + t);
+                const content = document.getElementById('pacingTabContent_' + t);
+                if (btn) {
+                    if (t === tabKey) btn.classList.add('active');
+                    else btn.classList.remove('active');
+                }
+                if (content) {
+                    content.style.display = (t === tabKey) ? 'block' : 'none';
+                }
+            });
+        }
+
+        function getMonthlySegmentBudgetBreakdown(hotel, yearStr, monthIdx, targetRev, targetRN, targetAdr) {
+            const m = monthIdx;
+            const yearInt = parseInt(yearStr, 10);
+            let histYear = '';
+            let histSegData = null;
+
+            let uploadSegDB = {};
+            let mainDB = {};
+            try {
+                uploadSegDB = JSON.parse(CapaStorage.getItem('upload_segment_db_v2') || '{}') || {};
+            } catch(e) {}
+            try {
+                mainDB = JSON.parse(CapaStorage.getItem('hotel_manager_db_v2') || '{}') || {};
+            } catch(e) {}
+
+            const candidateYears = [];
+            for (let y = yearInt - 1; y >= yearInt - 4; y--) {
+                candidateYears.push(String(y));
+            }
+            const availableYears = new Set([
+                ...Object.keys(uploadSegDB[hotel] || {}),
+                ...Object.keys(mainDB[hotel] || {})
+            ]);
+            availableYears.forEach(y => {
+                if (!candidateYears.includes(y) && parseInt(y, 10) < yearInt) {
+                    candidateYears.push(y);
+                }
+            });
+
+            for (const y of candidateYears) {
+                const segObj = uploadSegDB[hotel]?.[y]?.segment || mainDB[hotel]?.[y]?.segment;
+                if (segObj && Object.keys(segObj).length > 0) {
+                    histYear = y;
+                    histSegData = segObj;
+                    break;
+                }
+            }
+
+            const curSegData = uploadSegDB[hotel]?.[yearStr]?.segment || mainDB[hotel]?.[yearStr]?.segment || {};
+
+            const customKey = `custom_seg_budget_${hotel}_${yearStr}`;
+            let customStore = {};
+            try {
+                customStore = JSON.parse(CapaStorage.getItem(customKey) || '{}') || {};
+            } catch(e) {}
+            const customMonth = customStore[m] || null;
+
+            const benchmarks = [
+                { name: 'OTA / AAVV', shareRev: 0.46, shareRN: 0.45 },
+                { name: 'DIRECTO ONLINE', shareRev: 0.22, shareRN: 0.20 },
+                { name: 'CORPORATIVO LINEAL', shareRev: 0.16, shareRN: 0.18 },
+                { name: 'DIRECTO OFFLINE', shareRev: 0.07, shareRN: 0.08 },
+                { name: 'GRUPOS', shareRev: 0.05, shareRN: 0.05 },
+                { name: 'TTOO DINÁMICA', shareRev: 0.04, shareRN: 0.04 }
+            ];
+
+            const segmentMap = new Map();
+
+            if (histSegData && Object.keys(histSegData).length > 0) {
+                Object.keys(histSegData).forEach(rawKey => {
+                    const canonical = normalizeSegmentDisplayName(rawKey);
+                    const segItem = histSegData[rawKey] || {};
+                    const rev = Number(segItem.accommodation?.[m] || segItem.revenue?.[m] || 0);
+                    const rn = Number(segItem.rooms?.[m] || 0);
+
+                    if (!segmentMap.has(canonical)) {
+                        segmentMap.set(canonical, {
+                            name: canonical,
+                            color: getSegmentColor(canonical),
+                            histRev: 0,
+                            histRN: 0,
+                            actualRev: 0,
+                            actualRN: 0
+                        });
+                    }
+                    const record = segmentMap.get(canonical);
+                    record.histRev += rev;
+                    record.histRN += rn;
+                });
+            } else {
+                benchmarks.forEach(b => {
+                    segmentMap.set(b.name, {
+                        name: b.name,
+                        color: getSegmentColor(b.name),
+                        histRev: Math.round((targetRev || 50000) * 0.9 * b.shareRev),
+                        histRN: Math.round((targetRN || 600) * 0.9 * b.shareRN),
+                        actualRev: 0,
+                        actualRN: 0
+                    });
+                });
+                histYear = `${yearInt - 1} (Estimado)`;
+            }
+
+            if (curSegData && Object.keys(curSegData).length > 0) {
+                Object.keys(curSegData).forEach(rawKey => {
+                    const canonical = normalizeSegmentDisplayName(rawKey);
+                    const segItem = curSegData[rawKey] || {};
+                    const aRev = Number(segItem.accommodation?.[m] || segItem.revenue?.[m] || 0);
+                    const aRN = Number(segItem.rooms?.[m] || 0);
+
+                    if (!segmentMap.has(canonical)) {
+                        segmentMap.set(canonical, {
+                            name: canonical,
+                            color: getSegmentColor(canonical),
+                            histRev: 0,
+                            histRN: 0,
+                            actualRev: 0,
+                            actualRN: 0
+                        });
+                    }
+                    const record = segmentMap.get(canonical);
+                    record.actualRev += aRev;
+                    record.actualRN += aRN;
+                });
+            }
+
+            let totalHistRev = 0;
+            let totalHistRN = 0;
+            segmentMap.forEach(s => {
+                totalHistRev += s.histRev;
+                totalHistRN += s.histRN;
+            });
+
+            const segments = [];
+            segmentMap.forEach(s => {
+                const histAdr = s.histRN > 0 ? (s.histRev / s.histRN) : 0;
+                const shareHistRev = totalHistRev > 0 ? (s.histRev / totalHistRev) : 0;
+                const shareHistRN = totalHistRN > 0 ? (s.histRN / totalHistRN) : 0;
+
+                let segTargetRev = 0;
+                let segTargetRN = 0;
+
+                if (customMonth && customMonth[s.name]) {
+                    segTargetRev = Number(customMonth[s.name].rev) || 0;
+                    segTargetRN = Number(customMonth[s.name].rn) || 0;
+                } else {
+                    segTargetRev = Math.round(targetRev * shareHistRev);
+                    segTargetRN = Math.round(targetRN * shareHistRN);
+                }
+
+                const segTargetAdr = segTargetRN > 0 ? (segTargetRev / segTargetRN) : 0;
+                const shareTargetRev = targetRev > 0 ? (segTargetRev / targetRev) : 0;
+                const growthRevPct = s.histRev > 0 ? (((segTargetRev - s.histRev) / s.histRev) * 100) : 0;
+                const growthRNPct = s.histRN > 0 ? (((segTargetRN - s.histRN) / s.histRN) * 100) : 0;
+                const cumplPct = segTargetRev > 0 ? ((s.actualRev / segTargetRev) * 100) : 0;
+                const gapRev = segTargetRev - s.actualRev;
+
+                segments.push({
+                    name: s.name,
+                    color: s.color,
+                    histRev: s.histRev,
+                    histRN: s.histRN,
+                    histAdr,
+                    shareHistRev,
+                    shareHistRN,
+                    targetRev: segTargetRev,
+                    targetRN: segTargetRN,
+                    targetAdr: segTargetAdr,
+                    shareTargetRev,
+                    growthRevPct,
+                    growthRNPct,
+                    actualRev: s.actualRev,
+                    actualRN: s.actualRN,
+                    cumplPct,
+                    gapRev
+                });
+            });
+
+            segments.sort((a, b) => b.targetRev - a.targetRev);
+
+            const sumTargetRev = segments.reduce((sum, s) => sum + s.targetRev, 0);
+            const sumTargetRN = segments.reduce((sum, s) => sum + s.targetRN, 0);
+            const diffRev = targetRev - sumTargetRev;
+            const diffRN = targetRN - sumTargetRN;
+
+            return {
+                hotel,
+                year: yearStr,
+                monthIdx: m,
+                histYear: histYear || `${yearInt - 1}`,
+                targetRev,
+                targetRN,
+                targetAdr,
+                sumTargetRev,
+                sumTargetRN,
+                diffRev,
+                diffRN,
+                isCustomized: !!customMonth,
+                segments
+            };
+        }
+
+        function renderSegmentBreakdownSection(breakdown) {
+            const { hotel, year, monthIdx, histYear, targetRev, targetRN, targetAdr, sumTargetRev, sumTargetRN, diffRev, diffRN, isCustomized, segments } = breakdown;
+
+            const diffRevAbs = Math.abs(diffRev);
+            const diffRNAbs = Math.abs(diffRN);
+            let balanceStatusBadge = '';
+            if (diffRevAbs < 5 && diffRNAbs < 2) {
+                balanceStatusBadge = `<span style="background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; padding: 4px 10px; border-radius: 8px; font-weight: 700; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 4px;">
+                    <span>✅</span> Reparto 100% Cuadrado con el Presupuesto
+                </span>`;
+            } else if (diffRev > 0) {
+                balanceStatusBadge = `<span style="background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; padding: 4px 10px; border-radius: 8px; font-weight: 700; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 4px;">
+                    <span>ℹ️</span> Faltan ${formatMoney(diffRev)} por asignar a segmentos
+                </span>`;
+            } else {
+                balanceStatusBadge = `<span style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; padding: 4px 10px; border-radius: 8px; font-weight: 700; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 4px;">
+                    <span>⚠️</span> Los segmentos exceden el objetivo por +${formatMoney(diffRevAbs)}
+                </span>`;
+            }
+
+            const rowsHtml = segments.map((seg, idx) => {
+                const growthColor = seg.growthRevPct > 0 ? '#16a34a' : (seg.growthRevPct < 0 ? '#dc2626' : '#64748b');
+                const growthIcon = seg.growthRevPct > 0 ? '▲' : (seg.growthRevPct < 0 ? '▼' : '▬');
+                const sharePct = (seg.shareTargetRev * 100).toFixed(1);
+                const shareHistPct = (seg.shareHistRev * 100).toFixed(1);
+
+                const cumplPctClamped = Math.min(100, Math.max(0, seg.cumplPct));
+                const cumplColor = seg.cumplPct >= 100 ? '#10b981' : (seg.cumplPct >= 70 ? '#3b82f6' : (seg.cumplPct >= 40 ? '#f59e0b' : '#64748b'));
+
+                return `
+                    <tr style="border-bottom: 1px solid #e2e8f0; transition: background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                        <td style="padding: 10px 12px; font-weight: 700; color: #0f172a; white-space: nowrap;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${seg.color};"></span>
+                                <span>${seg.name}</span>
+                            </div>
+                        </td>
+
+                        <!-- Histórico Ref -->
+                        <td style="padding: 10px 8px; text-align: right; color: #475569; font-size: 0.82rem; background: #f8fafc;">
+                            <div style="font-weight: 700;">${formatMoney(seg.histRev)}</div>
+                            <div style="font-size: 0.72rem; color: #94a3b8;">${formatInt(seg.histRN)} habs • ${seg.histAdr.toFixed(1)}€</div>
+                        </td>
+                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-size: 0.78rem; background: #f8fafc; border-right: 1px solid #cbd5e1;">
+                            ${shareHistPct}%
+                        </td>
+
+                        <!-- Target Actual (Editable) -->
+                        <td style="padding: 8px 8px; text-align: right; background: #fdf4ff;">
+                            <input type="number" step="100" min="0" value="${seg.targetRev}" 
+                                style="width: 105px; padding: 5px 8px; text-align: right; font-weight: 800; font-size: 0.85rem; color: #6b21a8; background: #ffffff; border: 1px solid #d8b4fe; border-radius: 6px;"
+                                onchange="onSegmentTargetInputChange(${idx}, 'targetRev', this.value)"
+                                title="Modificar ingresos objetivo de este segmento"> €
+                        </td>
+                        <td style="padding: 8px 8px; text-align: right; background: #fdf4ff;">
+                            <input type="number" step="5" min="0" value="${seg.targetRN}" 
+                                style="width: 75px; padding: 5px 8px; text-align: right; font-weight: 700; font-size: 0.85rem; color: #581c87; background: #ffffff; border: 1px solid #d8b4fe; border-radius: 6px;"
+                                onchange="onSegmentTargetInputChange(${idx}, 'targetRN', this.value)"
+                                title="Modificar habitaciones objetivo de este segmento"> habs
+                        </td>
+                        <td style="padding: 10px 8px; text-align: center; font-weight: 800; color: #4338ca; background: #fdf4ff;">
+                            ${seg.targetAdr.toFixed(2)} €
+                        </td>
+                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #6b21a8; background: #fdf4ff;">
+                            ${sharePct}%
+                        </td>
+                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: ${growthColor}; background: #fdf4ff; border-right: 1px solid #cbd5e1;">
+                            ${growthIcon} ${Math.abs(seg.growthRevPct).toFixed(1)}%
+                        </td>
+
+                        <!-- Seguimiento Actual / OTB -->
+                        <td style="padding: 10px 8px; text-align: right; color: #0f172a; font-size: 0.82rem;">
+                            <div style="font-weight: 800;">${seg.actualRev > 0 ? formatMoney(seg.actualRev) : '<span style="color:#94a3b8; font-weight:normal;">0 €</span>'}</div>
+                            <div style="font-size: 0.72rem; color: #64748b;">${seg.actualRN > 0 ? formatInt(seg.actualRN) + ' habs' : ''}</div>
+                        </td>
+                        <td style="padding: 10px 8px; text-align: center;">
+                            <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+                                <div style="width: 50px; background: #e2e8f0; height: 7px; border-radius: 4px; overflow: hidden;">
+                                    <div style="width: ${cumplPctClamped}%; background: ${cumplColor}; height: 100%;"></div>
+                                </div>
+                                <span style="font-size: 0.78rem; font-weight: 700; color: ${cumplColor};">${seg.cumplPct.toFixed(1)}%</span>
+                            </div>
+                        </td>
+                        <td style="padding: 10px 8px; text-align: right; font-weight: 800; color: ${seg.gapRev <= 0 ? '#15803d' : '#b91c1c'};">
+                            ${seg.gapRev <= 0 ? '+' + formatMoney(Math.abs(seg.gapRev)) : '-' + formatMoney(seg.gapRev)}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            return `
+                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px; margin-top: 14px;">
+                    <!-- Header and Actions -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px;">
+                        <div>
+                            <h3 style="margin: 0; font-size: 1.15rem; color: #0f172a; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                                <span>👥</span> Desglose de Objetivos por Segmento de Mercado (${year})
+                            </h3>
+                            <p style="margin: 3px 0 0 0; font-size: 0.8rem; color: #64748b;">
+                                Reparto del presupuesto mensual entre canales comerciales, basado en el histórico real de <b>${histYear}</b> y ajustable para ejercicios futuros.
+                            </p>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            ${balanceStatusBadge}
+                            <button onclick="autoBalanceSegmentTargets()" class="btn" style="background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; padding: 6px 12px; border-radius: 8px; font-weight: 700; font-size: 0.78rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="Ajusta proporcionalmente los segmentos para que sumen exactamente el 100% del objetivo del mes">
+                                ⚖️ Auto-Equilibrar al 100%
+                            </button>
+                            <button onclick="resetSegmentBudgetToHistorical()" class="btn" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 6px 12px; border-radius: 8px; font-weight: 700; font-size: 0.78rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="Vuelve a calcular los segmentos usando la cuota exacta del año histórico">
+                                🔄 Restablecer a Histórico
+                            </button>
+                            <button onclick="saveCustomSegmentBudget()" class="btn" style="background: #4f46e5; color: #ffffff; border: none; padding: 6px 14px; border-radius: 8px; font-weight: 700; font-size: 0.78rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 6px rgba(79, 70, 229, 0.3);" title="Guardar este reparto para que persista al consultar o exportar el presupuesto">
+                                💾 Guardar Reparto
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Table -->
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem;">
+                            <thead>
+                                <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; color: #475569; font-size: 0.72rem; text-transform: uppercase;">
+                                    <th style="padding: 10px 12px; text-align: left;">Segmento</th>
+                                    <th colspan="2" style="padding: 8px 10px; text-align: center; background: #f1f5f9; border-right: 1px solid #cbd5e1; color: #334155;">
+                                        Histórico Base (${histYear})
+                                    </th>
+                                    <th colspan="5" style="padding: 8px 10px; text-align: center; background: #f3e8ff; border-right: 1px solid #cbd5e1; color: #6b21a8;">
+                                        🎯 Objetivo ${year} (Presupuesto Editable)
+                                    </th>
+                                    <th colspan="3" style="padding: 8px 10px; text-align: center; background: #f8fafc; color: #334155;">
+                                        📊 Seguimiento Actual (Real + OTB)
+                                    </th>
+                                </tr>
+                                <tr style="background: #f8fafc; border-bottom: 1px solid #cbd5e1; font-size: 0.7rem; color: #64748b;">
+                                    <th style="padding: 6px 12px; text-align: left;">Nombre Canal</th>
+                                    <th style="padding: 6px 8px; text-align: right; background: #f1f5f9;">Producción</th>
+                                    <th style="padding: 6px 8px; text-align: center; background: #f1f5f9; border-right: 1px solid #cbd5e1;">Cuota</th>
+                                    <th style="padding: 6px 8px; text-align: right; background: #fdf4ff; color: #6b21a8;">Ingresos Obj (€)</th>
+                                    <th style="padding: 6px 8px; text-align: right; background: #fdf4ff; color: #6b21a8;">Habs Obj (RN)</th>
+                                    <th style="padding: 6px 8px; text-align: center; background: #fdf4ff; color: #6b21a8;">ADR Obj</th>
+                                    <th style="padding: 6px 8px; text-align: center; background: #fdf4ff; color: #6b21a8;">Cuota %</th>
+                                    <th style="padding: 6px 8px; text-align: center; background: #fdf4ff; border-right: 1px solid #cbd5e1; color: #6b21a8;">Crecimiento</th>
+                                    <th style="padding: 6px 8px; text-align: right;">Vendido (€)</th>
+                                    <th style="padding: 6px 8px; text-align: center;">% Cumpl.</th>
+                                    <th style="padding: 6px 8px; text-align: right;">Pendiente</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rowsHtml}
+                            </tbody>
+                            <tfoot style="background: #f8fafc; font-weight: 800; border-top: 2px solid #cbd5e1; font-size: 0.82rem;">
+                                <tr>
+                                    <td style="padding: 10px 12px; text-align: left; color: #0f172a;">
+                                        <div>TOTAL SEGMENTOS</div>
+                                        <div style="font-size: 0.7rem; font-weight: 600; color: #64748b;">(Objetivo Mes: ${formatMoney(targetRev)})</div>
+                                    </td>
+                                    <td style="padding: 10px 8px; text-align: right; color: #475569; background: #f1f5f9;">
+                                        ${formatMoney(segments.reduce((s, x) => s + x.histRev, 0))}
+                                    </td>
+                                    <td style="padding: 10px 8px; text-align: center; color: #475569; background: #f1f5f9; border-right: 1px solid #cbd5e1;">
+                                        100%
+                                    </td>
+                                    <td style="padding: 10px 8px; text-align: right; color: #6b21a8; background: #fdf4ff; font-size: 0.9rem;">
+                                        ${formatMoney(sumTargetRev)}
+                                    </td>
+                                    <td style="padding: 10px 8px; text-align: right; color: #581c87; background: #fdf4ff; font-size: 0.9rem;">
+                                        ${formatInt(sumTargetRN)} habs
+                                    </td>
+                                    <td style="padding: 10px 8px; text-align: center; color: #4338ca; background: #fdf4ff; font-size: 0.88rem;">
+                                        ${(sumTargetRN > 0 ? (sumTargetRev / sumTargetRN) : 0).toFixed(2)} €
+                                    </td>
+                                    <td style="padding: 10px 8px; text-align: center; color: #6b21a8; background: #fdf4ff;">
+                                        100%
+                                    </td>
+                                    <td style="padding: 10px 8px; text-align: center; color: #4338ca; background: #fdf4ff; border-right: 1px solid #cbd5e1;">
+                                        ${targetRev > 0 ? ((sumTargetRev - targetRev) / targetRev * 100).toFixed(1) + '%' : '0%'}
+                                    </td>
+                                    <td style="padding: 10px 8px; text-align: right; color: #0f172a;">
+                                        ${formatMoney(segments.reduce((s, x) => s + x.actualRev, 0))}
+                                    </td>
+                                    <td style="padding: 10px 8px; text-align: center; color: #4338ca;">
+                                        ${(sumTargetRev > 0 ? (segments.reduce((s, x) => s + x.actualRev, 0) / sumTargetRev * 100) : 0).toFixed(1)}%
+                                    </td>
+                                    <td style="padding: 10px 8px; text-align: right; color: ${diffRev <= 0 ? '#15803d' : '#b91c1c'}; font-size: 0.85rem;">
+                                        ${formatMoney(sumTargetRev - segments.reduce((s, x) => s + x.actualRev, 0))}
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <div style="margin-top: 12px; font-size: 0.76rem; color: #64748b; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                        <span>💡 Puedes modificar cualquier cifra de ingresos o habitaciones por segmento directamente en la tabla y pulsar <b>Guardar Reparto</b> para fijar tu presupuesto comercial.</span>
+                        <span style="font-weight: 700; color: #4338ca;">${isCustomized ? '⭐ Reparto personalizado activo para este mes' : '📊 Distribución generada según histórico base'}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function onSegmentTargetInputChange(idx, field, value) {
+            if (!currentSegmentBreakdownData || !currentSegmentBreakdownData.segments[idx]) return;
+            const seg = currentSegmentBreakdownData.segments[idx];
+            const num = Math.max(0, parseFloat(value) || 0);
+            seg[field] = num;
+            seg.targetAdr = seg.targetRN > 0 ? (seg.targetRev / seg.targetRN) : 0;
+            seg.shareTargetRev = currentSegmentBreakdownData.targetRev > 0 ? (seg.targetRev / currentSegmentBreakdownData.targetRev) : 0;
+            seg.growthRevPct = seg.histRev > 0 ? (((seg.targetRev - seg.histRev) / seg.histRev) * 100) : 0;
+            seg.cumplPct = seg.targetRev > 0 ? ((seg.actualRev / seg.targetRev) * 100) : 0;
+            seg.gapRev = seg.targetRev - seg.actualRev;
+
+            const sumTargetRev = currentSegmentBreakdownData.segments.reduce((sum, s) => sum + s.targetRev, 0);
+            const sumTargetRN = currentSegmentBreakdownData.segments.reduce((sum, s) => sum + s.targetRN, 0);
+            currentSegmentBreakdownData.sumTargetRev = sumTargetRev;
+            currentSegmentBreakdownData.sumTargetRN = sumTargetRN;
+            currentSegmentBreakdownData.diffRev = currentSegmentBreakdownData.targetRev - sumTargetRev;
+            currentSegmentBreakdownData.diffRN = currentSegmentBreakdownData.targetRN - sumTargetRN;
+
+            const container = document.getElementById('pacingTabContent_segments');
+            if (container) {
+                container.innerHTML = renderSegmentBreakdownSection(currentSegmentBreakdownData);
+            }
+        }
+
+        function autoBalanceSegmentTargets() {
+            if (!currentSegmentBreakdownData) return;
+            const currentSumRev = currentSegmentBreakdownData.segments.reduce((sum, s) => sum + s.targetRev, 0);
+            const currentSumRN = currentSegmentBreakdownData.segments.reduce((sum, s) => sum + s.targetRN, 0);
+            const targetRev = currentSegmentBreakdownData.targetRev;
+            const targetRN = currentSegmentBreakdownData.targetRN;
+
+            if (currentSumRev > 0 && targetRev > 0) {
+                const factorRev = targetRev / currentSumRev;
+                currentSegmentBreakdownData.segments.forEach(s => {
+                    s.targetRev = Math.round(s.targetRev * factorRev);
+                });
+                const newSumRev = currentSegmentBreakdownData.segments.reduce((sum, s) => sum + s.targetRev, 0);
+                if (newSumRev !== targetRev && currentSegmentBreakdownData.segments.length > 0) {
+                    currentSegmentBreakdownData.segments[0].targetRev += (targetRev - newSumRev);
+                }
+            }
+            if (currentSumRN > 0 && targetRN > 0) {
+                const factorRN = targetRN / currentSumRN;
+                currentSegmentBreakdownData.segments.forEach(s => {
+                    s.targetRN = Math.round(s.targetRN * factorRN);
+                });
+                const newSumRN = currentSegmentBreakdownData.segments.reduce((sum, s) => sum + s.targetRN, 0);
+                if (newSumRN !== targetRN && currentSegmentBreakdownData.segments.length > 0) {
+                    currentSegmentBreakdownData.segments[0].targetRN += (targetRN - newSumRN);
+                }
+            }
+
+            currentSegmentBreakdownData.segments.forEach(s => {
+                s.targetAdr = s.targetRN > 0 ? (s.targetRev / s.targetRN) : 0;
+                s.shareTargetRev = targetRev > 0 ? (s.targetRev / targetRev) : 0;
+                s.growthRevPct = s.histRev > 0 ? (((s.targetRev - s.histRev) / s.histRev) * 100) : 0;
+                s.cumplPct = s.targetRev > 0 ? ((s.actualRev / s.targetRev) * 100) : 0;
+                s.gapRev = s.targetRev - s.actualRev;
+            });
+
+            currentSegmentBreakdownData.sumTargetRev = currentSegmentBreakdownData.segments.reduce((sum, s) => sum + s.targetRev, 0);
+            currentSegmentBreakdownData.sumTargetRN = currentSegmentBreakdownData.segments.reduce((sum, s) => sum + s.targetRN, 0);
+            currentSegmentBreakdownData.diffRev = targetRev - currentSegmentBreakdownData.sumTargetRev;
+            currentSegmentBreakdownData.diffRN = targetRN - currentSegmentBreakdownData.sumTargetRN;
+
+            const container = document.getElementById('pacingTabContent_segments');
+            if (container) {
+                container.innerHTML = renderSegmentBreakdownSection(currentSegmentBreakdownData);
+            }
+        }
+
+        function resetSegmentBudgetToHistorical() {
+            if (!currentSegmentBreakdownData) return;
+            const m = currentSegmentBreakdownData.monthIdx;
+            const customKey = `custom_seg_budget_${currentHotel}_${currentYear}`;
+            let customStore = {};
+            try {
+                customStore = JSON.parse(CapaStorage.getItem(customKey) || '{}') || {};
+                delete customStore[m];
+                CapaStorage.setItem(customKey, JSON.stringify(customStore));
+            } catch(e) {}
+
+            const breakdown = getMonthlySegmentBudgetBreakdown(
+                currentHotel,
+                currentYear,
+                m,
+                currentSegmentBreakdownData.targetRev,
+                currentSegmentBreakdownData.targetRN,
+                currentSegmentBreakdownData.targetAdr
+            );
+            currentSegmentBreakdownData = breakdown;
+            const container = document.getElementById('pacingTabContent_segments');
+            if (container) {
+                container.innerHTML = renderSegmentBreakdownSection(currentSegmentBreakdownData);
+            }
+        }
+
+        function saveCustomSegmentBudget() {
+            if (!currentSegmentBreakdownData) return;
+            const m = currentSegmentBreakdownData.monthIdx;
+            const customKey = `custom_seg_budget_${currentHotel}_${currentYear}`;
+            let customStore = {};
+            try {
+                customStore = JSON.parse(CapaStorage.getItem(customKey) || '{}') || {};
+            } catch(e) {}
+
+            const monthMap = {};
+            currentSegmentBreakdownData.segments.forEach(s => {
+                monthMap[s.name] = {
+                    rev: s.targetRev,
+                    rn: s.targetRN,
+                    adr: s.targetAdr
+                };
+            });
+
+            customStore[m] = monthMap;
+            CapaStorage.setItem(customKey, JSON.stringify(customStore));
+            currentSegmentBreakdownData.isCustomized = true;
+
+            const container = document.getElementById('pacingTabContent_segments');
+            if (container) {
+                container.innerHTML = renderSegmentBreakdownSection(currentSegmentBreakdownData);
+            }
+            if (typeof showNotification === 'function') {
+                showNotification(`✅ Reparto de objetivos por segmento guardado correctamente para ${months[m]} ${currentYear}.`);
+            } else {
+                alert(`✅ Reparto de objetivos por segmento guardado correctamente para ${months[m]} ${currentYear}.`);
             }
         }
 
