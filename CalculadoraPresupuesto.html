@@ -19,6 +19,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="js/nav.js"></script>
     <script src="js/firebase-auth.js?v=20261001-sync3"></script>
     <script src="js/theme-manager.js"></script>
@@ -1471,6 +1472,7 @@
         function init() {
             switchHotel();
             switchTab('tab-dashboard');
+            try { syncGroupsTargetToNexus(currentHotel, currentYear); } catch(e) {}
 
             // Sync from Cloud Listener
             window.addEventListener('capasuite-data-synced', () => {
@@ -2396,6 +2398,7 @@
             renderCharts();
             renderDetailTable();
             renderBonusTable();
+            try { syncGroupsTargetToNexus(currentHotel, currentYear); } catch(e) {}
         }
 
         function getMonthTiming(mIdx, yearStr, hotel) {
@@ -4719,7 +4722,7 @@
                 const hotelKey = (targetHotelName === 'Cumbria') ? 'cumbria' : 'guadiana';
                 const yearInt = parseInt(targetYearStr, 10);
                 const monthly = {};
-                let totalRev = 0, totalRN = 0;
+                let totalRev = 0, totalRN = 0, totalHistRev = 0, totalHistRN = 0, totalActualRev = 0, totalActualRN = 0;
 
                 for (let m = 0; m < 12; m++) {
                     const tRev = currentRev[m] || 0;
@@ -4729,10 +4732,18 @@
                     const gSeg = breakdown.segments ? breakdown.segments.find(s => s.name === 'GRUPOS') : null;
 
                     let sRev = 0, sRN = 0, sAdr = 75;
+                    let hRev = 0, hRN = 0, hAdr = 0;
+                    let aRev = 0, aRN = 0;
+
                     if (gSeg) {
                         sRev = Math.round(gSeg.targetRev);
                         sRN = Math.round(gSeg.targetRN);
                         sAdr = sRN > 0 ? Math.round((sRev / sRN) * 100) / 100 : Math.round(gSeg.targetAdr || 75);
+                        hRev = Math.round(gSeg.histRev || 0);
+                        hRN = Math.round(gSeg.histRN || 0);
+                        hAdr = Math.round((gSeg.histAdr || 0) * 100) / 100;
+                        aRev = Math.round((gSeg.actualRev || 0) * 100) / 100;
+                        aRN = Math.round(gSeg.actualRN || 0);
                     } else {
                         sRev = Math.round(tRev * 0.05);
                         sRN = Math.round(tRN * 0.05);
@@ -4744,10 +4755,23 @@
                         revenue: sRev,
                         rooms: sRN,
                         adr: sAdr,
-                        pax: sPax
+                        pax: sPax,
+                        targetRevenue: sRev,
+                        targetRoomNights: sRN,
+                        targetAdr: sAdr,
+                        targetPax: sPax,
+                        histRev: hRev,
+                        histRN: hRN,
+                        histAdr: hAdr,
+                        actualRev: aRev,
+                        actualRN: aRN
                     };
                     totalRev += sRev;
                     totalRN += sRN;
+                    totalHistRev += hRev;
+                    totalHistRN += hRN;
+                    totalActualRev += aRev;
+                    totalActualRN += aRN;
                 }
 
                 const targetDoc = {
@@ -4763,6 +4787,10 @@
                         roomNights: Math.round(totalRN),
                         pax: Math.round(totalRN * 1.9),
                         adr: totalRN > 0 ? Math.round((totalRev / totalRN) * 100) / 100 : 75,
+                        histRevenue: Math.round(totalHistRev),
+                        histRoomNights: Math.round(totalHistRN),
+                        actualRevenue: Math.round(totalActualRev * 100) / 100,
+                        actualRoomNights: Math.round(totalActualRN),
                         isOfficial: true,
                         source: 'CapaSuite'
                     },
@@ -4779,6 +4807,8 @@
                 if (typeof window !== 'undefined' && window.localStorage) {
                     window.localStorage.setItem(docKey, JSON.stringify(targetDoc));
                     window.localStorage.setItem('v3_' + docKey, JSON.stringify(targetDoc));
+                    window.localStorage.setItem(`nexus_target_${targetHotelName}_${targetYearStr}`, JSON.stringify(targetDoc));
+                    window.localStorage.setItem(`v3_nexus_target_${targetHotelName}_${targetYearStr}`, JSON.stringify(targetDoc));
                 }
 
                 // Sincronizar también con la base general hotel_manager_db_v2 en el segmento GRUPOS
@@ -4794,6 +4824,32 @@
                 };
                 CapaStorage.setItem('hotel_manager_db_v2', JSON.stringify(db));
 
+                // Sincronizar en Firestore con el proyecto de Nexus Groups (gest-grupos-hotel)
+                try {
+                    if (typeof firebase !== 'undefined') {
+                        let nexusApp = null;
+                        try {
+                            nexusApp = firebase.app("nexusGroupsApp");
+                        } catch(e) {
+                            nexusApp = firebase.initializeApp({
+                                apiKey: "AIzaSyAn_A9mfH3TCgC-yWGPyRN1sAHhsWWEKis",
+                                authDomain: "gest-grupos-hotel.firebaseapp.com",
+                                projectId: "gest-grupos-hotel",
+                                storageBucket: "gest-grupos-hotel.firebasestorage.app"
+                            }, "nexusGroupsApp");
+                        }
+                        if (nexusApp && typeof nexusApp.firestore === "function") {
+                            const fs = nexusApp.firestore();
+                            const fsDocId = `groupTargets_${hotelKey}_${targetYearStr}`;
+                            fs.collection("settings").doc(fsDocId).set(targetDoc, { merge: true })
+                                .then(() => console.log(`[CapaSuite] Sincronizado en Firestore Nexus: ${fsDocId}`))
+                                .catch(err => console.warn(`[CapaSuite] Firestore sync error:`, err));
+                        }
+                    }
+                } catch(eFs) {
+                    console.warn('[CapaSuite] Error sincronizando con Firestore de Nexus:', eFs);
+                }
+
                 return targetDoc;
             } catch(e) {
                 console.warn('[CapaSuite] Error al sincronizar objetivos de grupos con Nexus Groups:', e);
@@ -4804,9 +4860,16 @@
         function manualSyncNexusGroups() {
             const doc = syncGroupsTargetToNexus(currentHotel, currentYear);
             if (doc && doc.overall) {
-                const msg = `🎯 Objetivos de Grupos sincronizados con Nexus Groups (${currentHotel} ${currentYear}): ${formatMoney(doc.overall.totalRevenue)} (${formatInt(doc.overall.roomNights)} habs).`;
+                const octTarget = doc.monthly && doc.monthly[10] ? doc.monthly[10] : null;
+                const octInfo = octTarget ? ` | Octubre: ${formatMoney(octTarget.revenue)} (${formatInt(octTarget.rooms)} habs)` : '';
+                const msg = `⚡ Objetivos de Grupos sincronizados con Nexus Groups (${currentHotel} ${currentYear}): Total ${formatMoney(doc.overall.totalRevenue)} (${formatInt(doc.overall.roomNights)} habs)${octInfo}. Sincronizado en LocalStorage y Cloud Firestore.`;
                 if (typeof showNotification === 'function') showNotification(msg);
                 else alert(msg);
+
+                // Copiar JSON al portapapeles
+                try {
+                    navigator.clipboard.writeText(JSON.stringify(doc, null, 2));
+                } catch(e) {}
             }
         }
 
