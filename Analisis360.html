@@ -4336,18 +4336,27 @@
                 : '<span>●</span> Solo ingresos de habitaciones';
 
             // Sublabels according to Mode
+            const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
             const occSubEl = document.getElementById('kpi-occ-sublabel');
             if (occSubEl) {
-                if (mode === 'real') occSubEl.innerText = `Día ${Math.floor(elapsedDays)} de 365 (YTD)`;
-                else if (mode === 'projected') occSubEl.innerText = `Proy. 365 días (${fmtNum(totalRms)} RN)`;
-                else occSubEl.innerText = `Cartera OTB (${fmtNum(totalRms)} RN)`;
+                if (mode === 'real') {
+                    occSubEl.innerText = midx === -1 ? `Día ${Math.floor(elapsedDays)} de 365 (YTD)` : `${Math.floor(elapsedDays)} de ${days} días (YTD)`;
+                } else if (mode === 'projected') {
+                    occSubEl.innerText = midx === -1 ? `Proy. 365 días (${fmtNum(totalRms)} RN)` : `Proy. ${monthNames[midx]} (${days} d · ${fmtNum(totalRms)} RN)`;
+                } else {
+                    occSubEl.innerText = midx === -1 ? `Cartera OTB (${fmtNum(totalRms)} RN)` : `OTB ${monthNames[midx]} (${fmtNum(totalRms)} RN)`;
+                }
             }
 
             const revparSubEl = document.getElementById('kpi-revpar-sublabel');
             if (revparSubEl) {
-                if (mode === 'real') revparSubEl.innerText = `YTD (${fmt(habRev)})`;
-                else if (mode === 'projected') revparSubEl.innerText = `Proy. Cierre Anual`;
-                else revparSubEl.innerText = `Cartera OTB`;
+                if (mode === 'real') {
+                    revparSubEl.innerText = midx === -1 ? `YTD (${fmt(habRev)})` : `Real ${monthNames[midx]} (${fmt(habRev)})`;
+                } else if (mode === 'projected') {
+                    revparSubEl.innerText = midx === -1 ? `Proy. Cierre Anual` : `Proy. Cierre ${monthNames[midx]}`;
+                } else {
+                    revparSubEl.innerText = midx === -1 ? `Cartera OTB` : `Cartera ${monthNames[midx]}`;
+                }
             }
 
             // VS LAST YEAR (Real 2025)
@@ -4444,7 +4453,7 @@
                 document.getElementById('budget-pct-revpar').innerText = 'N/A';
             }
 
-            // PICK-UP MONITOR: comparison of loaded reports, not a verified 24h interval.
+            // PICK-UP MONITOR: comparison of loaded reports
             const pickupElement = document.getElementById('kpi-pickup-24h');
             pickupElement.innerHTML = '<span class="pickup-badge pickup-neutral">No hay datos comparables de Pick-up</span>';
             const rangeElement = document.getElementById('kpi-pickup-range');
@@ -4464,75 +4473,126 @@
             let prevRevSum = 0;
             let minStayDate = null;
             let maxStayDate = null;
+            let comparedDays = 0;
+
+            const roomsHelper = entry => {
+                if (entry === null || entry === undefined) return 0;
+                if (typeof entry === 'object') return Number.isFinite(entry.rooms) ? entry.rooms : 0;
+                const n = Number(entry);
+                return Number.isFinite(n) ? n : 0;
+            };
+            const revHelper = entry => {
+                if (entry === null || entry === undefined) return 0;
+                if (typeof entry === 'object') {
+                    const r = entry.revenue !== undefined ? entry.revenue : entry.accommodation;
+                    return Number.isFinite(r) ? r : 0;
+                }
+                const n = Number(entry);
+                return Number.isFinite(n) ? n : 0;
+            };
 
             if (yearData.daily_otb && yearData.otb_prev && yearData.otb_prev.daily_otb) {
                 const currOtb = yearData.daily_otb;
                 const prevOtb = yearData.otb_prev.daily_otb;
-                let comparable = true;
-                let comparedDays = 0;
                 const dates = new Set([...Object.keys(currOtb), ...Object.keys(prevOtb)]);
+
                 dates.forEach(date => {
                     const parsed = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
-                    if (!parsed) { comparable = false; return; }
+                    if (!parsed) return;
                     const m = Number(parsed[2]) - 1;
                     if (parsed[1] !== String(currentYear) || (midx !== -1 && m !== midx)) return;
-                    const validDate = new Date(Date.UTC(Number(parsed[1]), m, Number(parsed[3])));
-                    if (validDate.toISOString().slice(0, 10) !== date) { comparable = false; return; }
-                    const rooms = entry => entry !== null && typeof entry === 'object' ? entry.rooms : entry;
-                    const rev = entry => entry !== null && typeof entry === 'object' ? (entry.revenue || entry.accommodation || 0) : 0;
-                    const c = rooms(currOtb[date]);
-                    const p = rooms(prevOtb[date]);
-                    const cR = rev(currOtb[date]);
-                    const pR = rev(prevOtb[date]);
-                    // Missing dates/amounts are not evidence of zero bookings or cancellations.
-                    if (!Number.isFinite(c) || !Number.isFinite(p) || c < 0 || p < 0) {
-                        comparable = false;
-                        return;
-                    }
+
+                    const c = currOtb[date] !== undefined ? roomsHelper(currOtb[date]) : 0;
+                    const p = prevOtb[date] !== undefined ? roomsHelper(prevOtb[date]) : 0;
+                    const cR = currOtb[date] !== undefined ? revHelper(currOtb[date]) : 0;
+                    const pR = prevOtb[date] !== undefined ? revHelper(prevOtb[date]) : 0;
+
+                    if (c < 0 || p < 0) return;
+
                     comparedDays++;
-                    totalPickup += c - p;
-                    totalPickupRev += (Number.isFinite(cR) && Number.isFinite(pR)) ? (cR - pR) : 0;
+                    totalPickup += (c - p);
+                    totalPickupRev += (cR - pR);
                     currRmsSum += c;
                     prevRmsSum += p;
-                    currRevSum += (Number.isFinite(cR) ? cR : 0);
-                    prevRevSum += (Number.isFinite(pR) ? pR : 0);
+                    currRevSum += cR;
+                    prevRevSum += pR;
+
                     if (!minStayDate || date < minStayDate) minStayDate = date;
                     if (!maxStayDate || date > maxStayDate) maxStayDate = date;
                 });
-                if (comparable && comparedDays > 0) {
-                    const badgeClass = totalPickup > 0 ? 'pickup-up' : (totalPickup < 0 ? 'pickup-down' : 'pickup-neutral');
-                    const icon = totalPickup > 0 ? '📈' : (totalPickup < 0 ? '📉' : '●');
-                    pickupElement.innerHTML = `<span class="pickup-badge ${badgeClass}">${icon} Variación entre cargas: ${totalPickup > 0 ? '+' : ''}${totalPickup} RN</span>`;
+            }
 
-                    if (rangeElement && rangeElement !== pickupElement && minStayDate && maxStayDate) {
-                        const fmtD = d => {
-                            const p = d.split('-');
-                            return p.length === 3 ? `${p[2]}/${p[1]}/${p[0].slice(-2)}` : d;
-                        };
-                        const prevSnap = yearData.otb_prev.snapshotDate ? yearData.otb_prev.snapshotDate.split(' ')[0] : 'Ant.';
-                        const tramoTexto = minStayDate === maxStayDate ? fmtD(minStayDate) : `${fmtD(minStayDate)} al ${fmtD(maxStayDate)}`;
-                        rangeElement.innerHTML = `<span title="Comparando informe anterior (${prevSnap}) con el actual">📅 Tramo: <b>${tramoTexto}</b> · Foto <b>${prevSnap}</b></span>`;
+            // Fallback si no hay daily_otb o no hubo días coincidentes pero hay OTB mensual
+            if (comparedDays === 0 && yearData.otb && yearData.otb_prev) {
+                if (midx !== -1) {
+                    const cR = yearData.otb.rooms?.[midx] || 0;
+                    const pR = yearData.otb_prev.rooms?.[midx] || 0;
+                    const cV = yearData.otb.breakdown?.habitacion?.[midx] || yearData.otb.revenue?.[midx] || 0;
+                    const pV = yearData.otb_prev.breakdown?.habitacion?.[midx] || yearData.otb_prev.revenue?.[midx] || 0;
+                    if (cR > 0 || pR > 0 || cV > 0 || pV > 0) {
+                        totalPickup = cR - pR;
+                        totalPickupRev = cV - pV;
+                        currRmsSum = cR; prevRmsSum = pR;
+                        currRevSum = cV; prevRevSum = pV;
+                        comparedDays = 1;
                     }
-
-                    if (adrPickupElement && adrPickupElement !== pickupElement) {
-                        const currAvgAdr = currRmsSum > 0 ? (currRevSum / currRmsSum) : 0;
-                        const prevAvgAdr = prevRmsSum > 0 ? (prevRevSum / prevRmsSum) : 0;
-                        const deltaAdr = (currAvgAdr > 0 && prevAvgAdr > 0) ? (currAvgAdr - prevAvgAdr) : 0;
-                        const newBookingAdr = (totalPickup > 0 && totalPickupRev > 0) ? (totalPickupRev / totalPickup) : null;
-
-                        let adrClass = 'pickup-neutral';
-                        let adrIcon = '●';
-                        if (deltaAdr > 0.05) { adrClass = 'pickup-up'; adrIcon = '📈'; }
-                        else if (deltaAdr < -0.05) { adrClass = 'pickup-down'; adrIcon = '📉'; }
-
-                        const signAdr = deltaAdr > 0 ? '+' : '';
-                        const tooltipText = newBookingAdr ? `ADR medio de nuevas reservas: ${newBookingAdr.toFixed(2)} €` : 'Variación de precio medio entre informes';
-                        adrPickupElement.innerHTML = `<span class="pickup-badge ${adrClass}" title="${tooltipText}">${adrIcon} Pick-up ADR: ${signAdr}${deltaAdr.toFixed(2).replace('.', ',')} €</span>`;
+                } else {
+                    const cRArr = yearData.otb.rooms || [];
+                    const pRArr = yearData.otb_prev.rooms || [];
+                    const cVArr = yearData.otb.breakdown?.habitacion || yearData.otb.revenue || [];
+                    const pVArr = yearData.otb_prev.breakdown?.habitacion || yearData.otb_prev.revenue || [];
+                    const sum = arr => arr.reduce((a, b) => a + (Number(b) || 0), 0);
+                    const cR = sum(cRArr);
+                    const pR = sum(pRArr);
+                    const cV = sum(cVArr);
+                    const pV = sum(pVArr);
+                    if (cR > 0 || pR > 0 || cV > 0 || pV > 0) {
+                        totalPickup = cR - pR;
+                        totalPickupRev = cV - pV;
+                        currRmsSum = cR; prevRmsSum = pR;
+                        currRevSum = cV; prevRevSum = pV;
+                        comparedDays = 12;
                     }
+                }
+            }
+
+            if (comparedDays > 0) {
+                const badgeClass = totalPickup > 0 ? 'pickup-up' : (totalPickup < 0 ? 'pickup-down' : 'pickup-neutral');
+                const icon = totalPickup > 0 ? '📈' : (totalPickup < 0 ? '📉' : '●');
+                pickupElement.innerHTML = `<span class="pickup-badge ${badgeClass}">${icon} Variación entre cargas: ${totalPickup > 0 ? '+' : ''}${totalPickup} RN</span>`;
+
+                if (rangeElement && rangeElement !== pickupElement) {
+                    const fmtD = d => {
+                        const p = d.split('-');
+                        return p.length === 3 ? `${p[2]}/${p[1]}/${p[0].slice(-2)}` : d;
+                    };
+                    const prevSnap = yearData.otb_prev.snapshotDate ? yearData.otb_prev.snapshotDate.split(' ')[0] : 'Ant.';
+                    let tramoTexto = '';
+                    if (minStayDate && maxStayDate) {
+                        tramoTexto = minStayDate === maxStayDate ? fmtD(minStayDate) : `${fmtD(minStayDate)} al ${fmtD(maxStayDate)}`;
+                    } else {
+                        tramoTexto = midx === -1 ? `Todo ${currentYear}` : monthNames[midx];
+                    }
+                    rangeElement.innerHTML = `<span title="Comparando informe anterior (${prevSnap}) con el actual">📅 Tramo: <b>${tramoTexto}</b> · Foto <b>${prevSnap}</b></span>`;
+                }
+
+                if (adrPickupElement && adrPickupElement !== pickupElement) {
+                    const currAvgAdr = currRmsSum > 0 ? (currRevSum / currRmsSum) : 0;
+                    const prevAvgAdr = prevRmsSum > 0 ? (prevRevSum / prevRmsSum) : 0;
+                    const deltaAdr = (currAvgAdr > 0 && prevAvgAdr > 0) ? (currAvgAdr - prevAvgAdr) : 0;
+                    const newBookingAdr = (totalPickup > 0 && totalPickupRev > 0) ? (totalPickupRev / totalPickup) : null;
+
+                    let adrClass = 'pickup-neutral';
+                    let adrIcon = '●';
+                    if (deltaAdr > 0.05) { adrClass = 'pickup-up'; adrIcon = '📈'; }
+                    else if (deltaAdr < -0.05) { adrClass = 'pickup-down'; adrIcon = '📉'; }
+
+                    const signAdr = deltaAdr > 0 ? '+' : '';
+                    const tooltipText = newBookingAdr ? `ADR medio de nuevas reservas: ${newBookingAdr.toFixed(2)} €` : 'Variación de precio medio entre informes';
+                    adrPickupElement.innerHTML = `<span class="pickup-badge ${adrClass}" title="${tooltipText}">${adrIcon} Pick-up ADR: ${signAdr}${deltaAdr.toFixed(2).replace('.', ',')} €</span>`;
                 }
             } else {
                 if (rangeElement && rangeElement !== pickupElement) {
-                    const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
                     const monthLabel = midx === -1 ? `Todo el año ${currentYear}` : (monthNames[midx] + ` ${currentYear}`);
                     rangeElement.innerHTML = `<span style="font-size:0.68rem; color:var(--text-muted);">Tramo: ${monthLabel} (1ª carga OTB)</span>`;
                 }
