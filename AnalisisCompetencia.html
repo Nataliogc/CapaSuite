@@ -3148,9 +3148,9 @@
                                 }
                                 
                                 // Fetch Previous Rooms for Instant Pick-up
-                                // Comparing current daily_otb vs saved daily_otb in otb_prev
-                                if (dbYear.otb_prev && dbYear.otb_prev.daily_otb && dbYear.otb_prev.daily_otb[iso]) {
-                                    const oldData = dbYear.otb_prev.daily_otb[iso];
+                                const previousUpload = dbYear.otb_last_upload_prev ?? dbYear.otb_prev;
+                                if (previousUpload?.daily_otb?.[iso] !== undefined) {
+                                    const oldData = previousUpload.daily_otb[iso];
                                     prevRooms = Math.round((typeof oldData === 'object') ? (oldData.rooms || 0) : oldData);
                                 }
                             }
@@ -3678,9 +3678,10 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         d.hotels[activeHotel].otbChange = 0;
                         
                         for (const y of yearsToTry) {
-                            if (hD[y]?.otb_prev?.daily_otb?.[iso] !== undefined) {
-                                if (hD[y].otb_prev.snapshotDate === '31-12-2027') continue;
-                                const prevVal = hD[y].otb_prev.daily_otb[iso];
+                            const previousUpload = hD[y]?.otb_last_upload_prev ?? hD[y]?.otb_prev;
+                            if (previousUpload?.daily_otb?.[iso] !== undefined) {
+                                if (previousUpload.snapshotDate === '31-12-2027') continue;
+                                const prevVal = previousUpload.daily_otb[iso];
                                 const pVal = (typeof prevVal === 'object') ? (prevVal.rooms || 0) : prevVal;
                                 if (activeHotel === 'Cumbria' && iso === '2027-01-02' && pVal >= 50) continue;
                                 prevRooms = pVal;

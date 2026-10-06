@@ -398,6 +398,11 @@
     function mergeForecast(db, hotel, report) {
         db[hotel] ||= { segment: {} };
         const target = db[hotel];
+        const previousForecast = {
+            segment: JSON.parse(JSON.stringify(target.segment || {})),
+            updatedAt: target.updatedAt,
+            source: target.source
+        };
         if (target.segment && Object.keys(target.segment).length > 0) {
             target.segment_prev = JSON.parse(JSON.stringify(target.segment));
             target.prevUpdatedAt = target.updatedAt;
@@ -416,7 +421,11 @@
         const uploadedAt = new Date();
         const uploadDay = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Madrid' }).format(uploadedAt);
         if (!target.pickupBaseline || target.pickupBaseline.day !== uploadDay) {
-            target.pickupBaseline = { day: uploadDay, segment: JSON.parse(JSON.stringify(target.segment)), updatedAt: uploadedAt.toISOString(), source: report.source };
+            const hasPrevious = Object.keys(previousForecast.segment).length > 0;
+            target.pickupBaseline = { day: uploadDay,
+                segment: hasPrevious ? previousForecast.segment : JSON.parse(JSON.stringify(target.segment)),
+                updatedAt: hasPrevious ? previousForecast.updatedAt : uploadedAt.toISOString(),
+                source: hasPrevious ? previousForecast.source : report.source };
         }
         if (target.segment_prev) target.segment_prev = JSON.parse(JSON.stringify(target.pickupBaseline.segment));
         target.prevUpdatedAt = target.pickupBaseline.updatedAt;

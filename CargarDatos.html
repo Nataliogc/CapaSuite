@@ -1945,7 +1945,8 @@
                 for (const [y, target] of Object.entries(db[hotel])) {
                     const before = metadata.pickupBefore?.[y] || {};
                     if (!yearsAffected.map(String).includes(y) && !fields.some(field => JSON.stringify(target[field]) !== JSON.stringify(before[field]))) continue;
-                    DailyPickup.apply(target, fields, uploadDate, metadata.mode === 'forecast' ? target.lastOtbDate : type === 'Prod' ? target.lastProdDate : target.lastSegDate);
+                    if (metadata.mode === 'forecast') DailyPickup.retainLastUpload(target, before, uploadDate);
+                    DailyPickup.apply(target, fields, uploadDate, metadata.mode === 'forecast' ? before.lastOtbDate || before.updates?.otb : type === 'Prod' ? before.lastProdDate || before.updates?.prod : before.lastSegDate || before.updates?.seg, before);
                 }
                 if (metadata.mode === 'forecast') {
                     const calendar = JSON.parse(CapaStorage.getItem('revenue_data_v2') || '{"data":[]}');

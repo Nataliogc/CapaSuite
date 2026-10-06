@@ -2,13 +2,13 @@
     'use strict';
     const clone = value => JSON.parse(JSON.stringify(value));
     const day = date => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Madrid' }).format(date);
-    function apply(target, fields, date = new Date(), label = '') {
+    function apply(target, fields, date = new Date(), label = '', before = target) {
         const key = fields.join('|');
         target.pickupBaselines ||= {};
         let baseline = target.pickupBaselines[key];
         if (!baseline || baseline.day !== day(date)) {
             baseline = { day: day(date), label, values: {} };
-            for (const field of fields) if (target[field] !== undefined) baseline.values[field] = clone(target[field]);
+            for (const field of fields) if (before[field] !== undefined) baseline.values[field] = clone(before[field]);
             target.pickupBaselines[key] = baseline;
         }
         for (const field of fields) {
@@ -23,7 +23,15 @@
         if (fields.includes('service')) target.prod_prev = { service: clone(baseline.values.service || {}), snapshotDate: baseline.label };
         return baseline;
     }
-    const api = { apply, day };
+    function retainLastUpload(target, before, date = new Date()) {
+        target.otb_last_upload_prev = {
+            ...clone(before.otb || {}),
+            daily_otb: clone(before.daily_otb || {}),
+            snapshotDate: before.lastOtbDate || before.updates?.otb || '',
+            capturedAt: date.toISOString()
+        };
+    }
+    const api = { apply, day, retainLastUpload };
     if (typeof module === 'object') module.exports = api;
     root.DailyPickup = api;
 })(typeof window === 'object' ? window : globalThis);
