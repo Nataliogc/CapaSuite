@@ -84,7 +84,7 @@ test('manual cupos storage persistence and retrieval format', () => {
 test('renderTable executes without ReferenceError or initialization errors', () => {
     const html = fs.readFileSync('AnalisisCompetencia.html', 'utf8');
     const tableHeader = { innerHTML: '' };
-    const tableBody = { innerHTML: '' };
+    const tableBody = { innerHTML: '', addEventListener: () => {} };
     const ctx = {
         document: {
             getElementById: (id) => {

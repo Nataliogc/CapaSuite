@@ -1129,6 +1129,11 @@
             background-color: var(--bg-deep);
         }
 
+        #tableBody tr.row-selected > td,
+        #tableBody tr.row-selected:hover > td:first-child {
+            background-color: #dbeafe !important;
+        }
+
         /* BADGES & PILLS */
         .date-pill {
             display: flex;
@@ -4155,6 +4160,15 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             document.getElementById('insights-container').appendChild(div);
         }
 
+        let selectedTableDate = null;
+
+        function selectTableRow(row) {
+            selectedTableDate = row.dataset.date;
+            document.querySelectorAll('#tableBody tr').forEach(tableRow => {
+                tableRow.classList.toggle('row-selected', tableRow === row);
+            });
+        }
+
         function renderTable(data) {
             const thead = document.getElementById('tableHeader');
             thead.innerHTML = '';
@@ -4301,7 +4315,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     }
                 }
 
-                let html = `<tr id="row-${d.dayIndex}">`;
+                let html = `<tr id="row-${d.dayIndex}" data-date="${d.dateISO}" class="${selectedTableDate === d.dateISO ? 'row-selected' : ''}">`;
                 html += `<td>${cellContent}</td>`;
 
                 // My Price (Active Hotel)
@@ -4552,6 +4566,13 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             }).join('');
 
             tbody.innerHTML = rowsHTML;
+            if (!tbody.rowSelectionBound) {
+                tbody.addEventListener('click', event => {
+                    const row = event.target.closest('tr');
+                    if (row && row.parentElement === tbody) selectTableRow(row);
+                }, true);
+                tbody.rowSelectionBound = true;
+            }
         }
 
 
