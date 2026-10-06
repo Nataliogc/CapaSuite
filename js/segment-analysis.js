@@ -413,7 +413,15 @@
                 seg.days[iso] = dt;
             }
         }
-        target.updatedAt = new Date().toISOString();
+        const uploadedAt = new Date();
+        const uploadDay = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Madrid' }).format(uploadedAt);
+        if (!target.pickupBaseline || target.pickupBaseline.day !== uploadDay) {
+            target.pickupBaseline = { day: uploadDay, segment: JSON.parse(JSON.stringify(target.segment)), updatedAt: uploadedAt.toISOString(), source: report.source };
+        }
+        if (target.segment_prev) target.segment_prev = JSON.parse(JSON.stringify(target.pickupBaseline.segment));
+        target.prevUpdatedAt = target.pickupBaseline.updatedAt;
+        target.prevSource = target.pickupBaseline.source;
+        target.updatedAt = uploadedAt.toISOString();
         target.source = report.source;
         return [report.startYear];
     }

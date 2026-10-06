@@ -11,6 +11,7 @@
     <script src="js/state.js"></script>
     <script src="js/storage.js"></script>
     <script src="js/revenue-history.js"></script>
+    <script src="js/daily-pickup.js"></script>
     <script src="js/segment-analysis.js?v=20260929-corrections"></script>
     <script src="js/segment-review.js?v=3"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -1827,8 +1828,9 @@
                                     reviewed = null;
                                 }
                             }
+                            const pickupBefore = JSON.parse(JSON.stringify(db[hotel] || {}));
                             processDataForDB(jsonData, file.name, hotel, type, manualDate, reviewed);
-                            await finalizeUpload(type, hotel, period, year, file, manualDate, dateInfo, historyId, { preferSegments: !!reviewed?.segmentData, mode: reviewed?.segmentData || ['Otb', 'Prevision'].includes(type) ? 'forecast' : 'actual' });
+                            await finalizeUpload(type, hotel, period, year, file, manualDate, dateInfo, historyId, { pickupBefore, preferSegments: !!reviewed?.segmentData, mode: reviewed?.segmentData || ['Otb', 'Prevision'].includes(type) ? 'forecast' : 'actual' });
                         } catch (pErr) {
                             if (historyId) await CapaRevenueHistory.fail(historyId, pErr).catch(console.error);
                             console.error("❌ Fallo crítico en processDataForDB:", pErr);
@@ -1935,8 +1937,30 @@
                 config[hotel].logs = config[hotel].logs.slice(-MAX_LOGS);
             }
 
+            if (type !== 'Hist') {
+                const fields = metadata.mode === 'forecast'
+                    ? ['otb', 'daily_otb', 'segment_otb']
+                    : type === 'Prod' ? ['service'] : ['segment'];
+                const uploadDate = new Date();
+                for (const [y, target] of Object.entries(db[hotel])) {
+                    const before = metadata.pickupBefore?.[y] || {};
+                    if (!yearsAffected.map(String).includes(y) && !fields.some(field => JSON.stringify(target[field]) !== JSON.stringify(before[field]))) continue;
+                    DailyPickup.apply(target, fields, uploadDate, metadata.mode === 'forecast' ? target.lastOtbDate : type === 'Prod' ? target.lastProdDate : target.lastSegDate);
+                }
+                if (metadata.mode === 'forecast') {
+                    const calendar = JSON.parse(CapaStorage.getItem('revenue_data_v2') || '{"data":[]}');
+                    for (const entry of calendar.data || []) {
+                        const current = entry.occupancyData?.[hotel];
+                        const yearData = db[hotel][String(entry.dateISO || '').slice(0, 4)];
+                        const previous = yearData?.otb_prev?.daily_otb?.[entry.dateISO];
+                        if (current && previous !== undefined) current.otb_prev = typeof previous === 'object' ? previous.rooms : previous;
+                    }
+                    CapaStorage.setItem('revenue_data_v2', JSON.stringify(calendar));
+                }
+            }
             saveData();
-            if (historyId) await CapaRevenueHistory.commit(historyId, { ...metadata, period });
+            const { pickupBefore, ...historyMetadata } = metadata;
+            if (historyId) await CapaRevenueHistory.commit(historyId, { ...historyMetadata, period });
             document.getElementById('loader').style.display = 'none';
             showToast(`✅ Archivo de ${type === 'Hist' ? 'Histórico' : (type === 'Prod' ? 'Producción' : (type === 'Seg' ? 'Segmentos' : 'Previsión'))} cargado correctamente`, 'success');
             updateHistory();

@@ -52,7 +52,9 @@
             el(key).replaceChildren(...captures.map(r => new Option(formatDate(r.capturedAt) + ' · ' + r.source.name, r.id)));
         }
         el('currentCapture').value = captures.some(r => r.id === current) ? current : captures[0]?.id || '';
-        el('previousCapture').value = captures.some(r => r.id === previous) ? previous : captures[1]?.id || '';
+        const currentCapture = captures.find(r => r.id === el('currentCapture').value);
+        const sameDay = currentCapture && captures.filter(r => formatDate(r.capturedAt).split(',')[0] === formatDate(currentCapture.capturedAt).split(',')[0] && r.capturedAt <= currentCapture.capturedAt).at(-1);
+        el('previousCapture').value = captures.some(r => r.id === previous) ? previous : sameDay?.id || captures[1]?.id || '';
         renderComparison(); renderImports();
     }
     function renderComparison() {
