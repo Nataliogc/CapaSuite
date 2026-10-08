@@ -5592,8 +5592,11 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     <button type="button" class="btn" onclick="closeEmailRevenueModal()" style="background:transparent; border:1px solid var(--border); color:var(--text-muted); font-weight:600; font-size:0.82rem; padding:8px 16px;">
                         Cerrar
                     </button>
+                    <button type="button" class="btn" onclick="copyRevenueWhatsAppToClipboard()" style="background:#16a34a; border:none; color:#ffffff; font-weight:700; display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-size:0.82rem; padding:8px 16px; border-radius:8px; box-shadow:0 4px 12px rgba(22,163,74,0.35); transition:all 0.2s ease;" title="Copia el mensaje con formato optimizado para WhatsApp (tarjetas claras por fecha, negritas, emojis y sin tablas rotas)">
+                        📲 Copiar para WhatsApp
+                    </button>
                     <button type="button" class="btn" onclick="copyRevenueEmailHtmlToClipboard()" style="background:var(--bg-deep); border:1.5px solid var(--primary); color:var(--primary); font-weight:700; display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-size:0.82rem; padding:8px 16px;" title="Copia la tabla HTML profesional al portapapeles para pegarla en Outlook, Teams o cualquier editor con Ctrl+V">
-                        📋 Copiar tabla profesional
+                        📋 Copiar tabla (Outlook)
                     </button>
                     <button type="button" class="btn" onclick="sendRevenueEmailViaMailto()" style="background:linear-gradient(135deg, #4f46e5, #2563eb); border:none; color:#fff; font-weight:700; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 14px rgba(79,70,229,0.45); cursor:pointer; font-size:0.82rem; padding:9px 18px;" title="Copia la tabla al portapapeles y abre tu cliente de correo con el mensaje listo. Solo pega con Ctrl+V.">
                         ✉️ Copiar tabla + Abrir Email
@@ -6488,38 +6491,108 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
         }
 
 
-        function generateRevenueEmailPlainText(report, userNotes) {
+        function getShortCompetitorName(name) {
+            if (!name) return '';
+            const clean = String(name).trim();
+            if (/^Hotel\s+Santa\b/i.test(clean)) return 'H.Santa';
+            if (/^Hotel\s+Parque\b/i.test(clean)) return 'H.Parque';
+            if (/^Hotel\s+/i.test(clean)) {
+                const after = clean.replace(/^Hotel\s+/i, '').trim().split(' ')[0];
+                return 'H.' + after;
+            }
+            if (/^Exe\b/i.test(clean)) return 'Exe';
+            if (/^Eurostars\b/i.test(clean)) return 'Eurostars';
+            if (/^NH\b/i.test(clean)) return 'NH';
+            if (/^L[ií]bere\b/i.test(clean)) return 'Líbere';
+            if (/^Sercotel\b/i.test(clean)) return 'Guadiana';
+            if (/^Cumbria\b/i.test(clean)) return 'Cumbria';
+            
+            const parts = clean.split(/\s+/);
+            if (parts.length > 1 && parts[0].length <= 3) return parts[0] + ' ' + parts[1];
+            return parts[0];
+        }
+
+        function generateRevenueWhatsAppText(report, userNotes) {
             const hotel = report.hotel;
             const config = getHotelEmailConfig(hotel);
             const hotelName = config.displayName || (hotel === 'Guadiana' ? 'Sercotel Guadiana' : `Hotel ${hotel}`);
-            let text = `${config.salutation}\n\n`;
-            text += `Te adjunto los cambios de tarifas realizados hoy para ${hotelName}:\n\n`;
+            let text = `*${config.salutation}*\n\n`;
+            text += `Te adjunto los cambios de tarifas realizados hoy para *${hotelName}*:\n\n`;
             if (userNotes && userNotes.trim()) {
-                text += `OBSERVACIONES DE LA DIRECCIÓN:\n${userNotes.trim()}\n\n`;
+                text += `💬 *OBSERVACIONES:*\n_${userNotes.trim()}_\n\n`;
             }
-            text += `RESUMEN DE CAMBIOS EFECTUADOS:\n`;
-            text += `- Hotel: ${hotelName}\n`;
-            text += `- Fechas modificadas: ${report.count} días\n`;
-            text += `- Precio medio anterior: ${report.avgOld.toFixed(2)} €\n`;
-            text += `- Precio medio nuevo aplicado: ${report.avgNew.toFixed(2)} €\n`;
-            text += `- Variación media: ${report.avgDelta >= 0 ? '+' : ''}${report.avgDelta.toFixed(2)} € (${report.avgDelta >= 0 ? '+' : ''}${report.avgDeltaPct.toFixed(1)}%)\n\n`;
+            const sign = report.avgDelta >= 0 ? '+' : '';
+            text += `📊 *RESUMEN DE CAMBIOS EFECTUADOS:*\n`;
+            text += `• *Hotel:* ${hotelName}\n`;
+            text += `• *Fechas modificadas:* ${report.count} días\n`;
+            text += `• *Precio medio anterior:* ${report.avgOld.toFixed(2)} €\n`;
+            text += `• *Precio medio nuevo aplicado:* ${report.avgNew.toFixed(2)} €\n`;
+            text += `• *Variación media:* ${sign}${report.avgDelta.toFixed(2)} € (${sign}${report.avgDeltaPct.toFixed(1)}%)\n\n`;
 
-            text += `DETALLE DE TARIFAS Y LÍNEA DE COMPETIDORES:\n`;
-            text += `----------------------------------------------------------------------------------------------------\n`;
-            text += `Fecha | Ocup. / Libres | Ant. -> NUEVA (Var) | Mercado | Competidores | Criterio\n`;
-            text += `----------------------------------------------------------------------------------------------------\n`;
+            text += `━━━━━━━━━━━━━━━━━━━━━━\n`;
+            text += `📋 *DETALLE POR FECHA Y MERCADO*\n`;
+            text += `━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
             report.items.forEach(item => {
                 const deltaSign = item.delta > 0 ? '+' : '';
                 const available = Math.max(0, item.capacity - item.rooms);
-                const compStr = item.competitors.map(c => `${c.name.split(' ')[0]}: ${c.price}`).join(' | ');
+                const compStr = item.competitors.map(c => `${getShortCompetitorName(c.name)}: ${c.price}`).join(' | ');
                 const eventStr = item.eventText ? ` [🎉 ${item.eventText}]` : '';
-                text += `${item.dateDisplay} (${item.dayName.substring(0,3)}) | ${item.rooms}/${item.capacity} (${item.occPct}% · ${available} libres) | ${Math.round(item.oldPrice)}€ -> ${Math.round(item.newPrice)}€ (${deltaSign}${Math.round(item.delta)}€) | Mkt: ${Math.round(item.marketAvg)}€ | ${compStr} | ${item.actionText}${eventStr}\n`;
+
+                text += `📅 *${item.dateDisplay} (${item.dayName.substring(0,3)})* · Ocup: *${item.occPct}%* (${available} lib.)\n`;
+                text += `💵 *${Math.round(item.oldPrice)}€ ➔ ${Math.round(item.newPrice)}€* (${deltaSign}${Math.round(item.delta)}€) · Mkt: ${Math.round(item.marketAvg)}€\n`;
+                text += `🏨 *Comps:* ${compStr}\n`;
+                if (item.actionText && item.actionText !== '-') {
+                    text += `🎯 *Criterio:* ${item.actionText}${eventStr}\n`;
+                } else if (eventStr) {
+                    text += `🎉 *Evento:* ${item.eventText}\n`;
+                }
+                text += `\n`;
             });
 
-            text += `----------------------------------------------------------------------------------------------------\n\n`;
-            text += `Quedo a tu disposición ante cualquier consulta.\n\nSaludos cordiales,\nNatalio\n${config.signoff}`;
+            text += `━━━━━━━━━━━━━━━━━━━━━━\n`;
+            text += `Quedo a tu disposición ante cualquier consulta.\n\nSaludos cordiales,\n*Natalio*\n_${config.signoff}_`;
             return text;
+        }
+
+        function generateRevenueEmailPlainText(report, userNotes) {
+            return generateRevenueWhatsAppText(report, userNotes);
+        }
+
+        function copyRevenueWhatsAppToClipboard() {
+            const notes = document.getElementById('revenueEmailNotes')?.value || '';
+            const report = getModifiedRatesReport();
+            if (report.items.length === 0) {
+                alert('No hay tarifas modificadas para copiar.');
+                return;
+            }
+
+            const waText = generateRevenueWhatsAppText(report, notes);
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(waText).then(() => {
+                    showRevenueEmailToast('📲 ¡Formato WhatsApp copiado! Pégalo en tu chat con Ctrl+V.');
+                }).catch(() => {
+                    copyFallbackWhatsApp(waText);
+                });
+            } else {
+                copyFallbackWhatsApp(waText);
+            }
+        }
+
+        function copyFallbackWhatsApp(text) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+                document.execCommand('copy');
+                showRevenueEmailToast('📲 ¡Formato WhatsApp copiado al portapapeles!');
+            } catch(e) {
+                alert('No se pudo copiar automáticamente.');
+            }
+            document.body.removeChild(ta);
         }
 
         function sendRevenueEmailViaMailto() {

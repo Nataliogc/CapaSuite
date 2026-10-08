@@ -3155,6 +3155,9 @@
             if (upper === 'OTA' || upper === 'OTA/AAVV' || upper === 'OTAS' || upper === 'AAVV' || upper === 'OTA / AAVV') {
                 return 'OTA / AAVV';
             }
+            if (upper === 'CORPORATIVO DINAMICO' || upper === 'CORPORATIVO DINÁMICO' || upper === 'CORP DINAMICO' || upper === 'CORPORATIVO DIN' || upper === 'HRS' || upper === 'KEYTEL' || upper === 'WORLD2MEET' || upper === 'W2M') {
+                return 'CORPORATIVO DINÁMICO';
+            }
             if (upper === 'CORPORATIVO LINEAL' || upper === 'CORPORATI' || upper === 'CORPORATIVO' || upper === 'EMPRESAS' || upper === 'EMPRESA' || upper === 'TARIFAS NEGOCIADAS' || upper === 'TARIFAS N') {
                 return 'CORPORATIVO LINEAL';
             }
@@ -3181,6 +3184,7 @@
             if (n.includes('DIR') && n.includes('ON')) return '#10b981';
             if (n.includes('DIR') && n.includes('OFF')) return '#0d9488';
             if (n.includes('OTA') || n.includes('AAVV')) return '#8b5cf6';
+            if (n.includes('CORP') && (n.includes('DIN') || n.includes('DINA'))) return '#4f46e5';
             if (n.includes('CORP') || n.includes('NEGOCIAD') || n.includes('EMPRES')) return '#6366f1';
             if (n.includes('GRUP') || n.includes('TANTEO')) return '#f59e0b';
             if (n.includes('TTOO') || n.includes('DINAMIC')) return '#0284c7';
@@ -4230,9 +4234,10 @@
             const customMonth = customStore[m] || null;
 
             const benchmarks = [
-                { name: 'OTA / AAVV', shareRev: 0.46, shareRN: 0.45 },
+                { name: 'OTA / AAVV', shareRev: 0.44, shareRN: 0.43 },
                 { name: 'DIRECTO ONLINE', shareRev: 0.22, shareRN: 0.20 },
-                { name: 'CORPORATIVO LINEAL', shareRev: 0.16, shareRN: 0.18 },
+                { name: 'CORPORATIVO LINEAL', shareRev: 0.12, shareRN: 0.14 },
+                { name: 'CORPORATIVO DINÁMICO', shareRev: 0.06, shareRN: 0.06 },
                 { name: 'DIRECTO OFFLINE', shareRev: 0.07, shareRN: 0.08 },
                 { name: 'GRUPOS', shareRev: 0.05, shareRN: 0.05 },
                 { name: 'TTOO DINÁMICA', shareRev: 0.04, shareRN: 0.04 }

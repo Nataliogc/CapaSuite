@@ -4793,10 +4793,11 @@
             const getVal = (arr) => midx === -1 ? arr.reduce((a, b) => a + b, 0) : arr[midx];
             const channelGroups = {
                 "Directo": ["DIRECTO ONLINE", "DIRONLINE", "DIRECTO OFFLINE"],
-                "OTA / AAVV": ["OTA/AAVV", "TTOO DINAMICA"],
-                "Grupos": ["GRUPOS", "GRTANTEO"],
-                "Corporativo": ["CORPORATIVO LINEAL"],
-                "Otros": ["OTROS", "PARTICULARES"]
+                "Corporativo": ["CORPORATIVO LINEAL", "CORPORATIVO DINAMICO"],
+                "OTA / AAVV": ["OTA/AAVV"],
+                "TTOO Dinámica": ["TTOO DINAMICA"],
+                "Grupos": ["GRUPOS", "GRTANTEO", "GRUPO TANTEO", "GRUPO"],
+                "Otros": ["OTROS", "PARTICULARES", "AGENCIAS", "BONO ONLINE", "BONO SPA"]
             };
 
             const chanLabels = [];
