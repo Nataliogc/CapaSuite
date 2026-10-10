@@ -39,7 +39,11 @@
         'D OFF LINE': 'DIRECTO OFFLINE', 
         'DIRECTO OFF': 'DIRECTO OFFLINE',
         'MOSTRADOR': 'DIRECTO OFFLINE',
-        // Directo Online (motores propios)
+        'TELEFONO': 'DIRECTO OFFLINE',
+        'EMAIL': 'DIRECTO OFFLINE',
+        'CORREO ELECTRONICO': 'DIRECTO OFFLINE',
+        'RECEPCION': 'DIRECTO OFFLINE',
+        // Directo Online (motores propios: Guadiana -> Roiback, SynXis, Witbooking; Cumbria -> Web Hotel Synergy)
         'D ON LINE': 'DIRECTO ONLINE', 
         'DIRONLINE': 'DIRECTO ONLINE',
         'DIR ONLINE': 'DIRECTO ONLINE',
@@ -48,6 +52,7 @@
         'ROIBACK': 'DIRECTO ONLINE',
         'SYNXIS': 'DIRECTO ONLINE',
         'WITBOOKING': 'DIRECTO ONLINE',
+        'WEB HOTEL SYNERGY': 'DIRECTO ONLINE',
         'WEB HOTEL': 'DIRECTO ONLINE',
         'SYNERGY': 'DIRECTO ONLINE',
         // OTA / AAVV
@@ -68,11 +73,14 @@
         'SERHS': 'TTOO DINAMICA',
         'TRAVELTINO': 'TTOO DINAMICA',
         'WEEKENDESK': 'TTOO DINAMICA',
-        // Otros
+        // Otros y Bonos
         'BONO LINE': 'BONO ONLINE', 
+        'BONO SPA': 'BONO ONLINE',
         'BONO LINEAL': 'OTROS', 
         'SMARTBOX': 'OTROS',
+        'EXMARBOOX': 'OTROS',
         'EGO EXPERIENCIAS': 'OTROS',
+        'EGOEXPERIENCIAS': 'OTROS',
         'EGO': 'OTROS',
         'WONDERBOX': 'OTROS',
         // Grupos
@@ -120,8 +128,11 @@
         'PARTICULARES',
         'AGENCIAS',
         'BONO ONLINE',
+        'BONO SPA',
 
         // Variaciones y códigos PMS habituales para segmentos
+        'BONO LINEAL',
+        'BONO LINE',
         'CORPORATI',
         'CO LINEAL',
         'COLINEAL',
@@ -204,14 +215,16 @@
         'DIRECTO ONLINE (WEB)': 'Directo Online (Web)',
         'SYNXIS': 'SynXis',
         'WITBOOKING': 'Witbooking',
-        'WEB HOTEL': 'Web Hotel',
-        'SYNERGY': 'Synergy',
+        'WEB HOTEL SYNERGY': 'Web Hotel Synergy',
+        'WEB HOTEL': 'Web Hotel Synergy',
+        'SYNERGY': 'Web Hotel Synergy',
 
         // Directo Presencial / Mostrador
         'MOSTRADOR': 'Mostrador',
-        'RECEPCION': 'Mostrador',
-        'TELEFONO': 'Mostrador',
-        'EMAIL': 'Mostrador',
+        'RECEPCION': 'Recepción',
+        'TELEFONO': 'Teléfono',
+        'EMAIL': 'Correo electrónico',
+        'CORREO ELECTRONICO': 'Correo electrónico',
 
         // GDS / B2B Corporativo
         'KEYTEL': 'Keytel Phoenix',
@@ -240,8 +253,10 @@
 
         // Bonos / Vouchers
         'SMARTBOX': 'Smartbox',
+        'EXMARBOOX': 'Smartbox',
         'WONDERBOX': 'Wonderbox',
         'EGO EXPERIENCIAS': 'Ego Experiencias',
+        'EGOEXPERIENCIAS': 'Ego Experiencias',
         'EGO': 'Ego Experiencias',
         'DAKOTABOX': 'Ego Experiencias',
         'BONO SPA': 'Bono Spa'
@@ -264,56 +279,63 @@
     }
 
     const DEFAULT_CHANNEL_COMMISSIONS = {
-        'Booking.com': { pct: 18, fixedPerRN: 0 },
-        'Expedia': { pct: 18, fixedPerRN: 0 },
-        'Agoda': { pct: 18, fixedPerRN: 0 },
-        'Airbnb': { pct: 15, fixedPerRN: 0 },
-        'Destinia': { pct: 18, fixedPerRN: 0 },
-        'eDreams': { pct: 18, fixedPerRN: 0 },
-        'Logitravel': { pct: 16, fixedPerRN: 0 },
-        'Hotusa': { pct: 18, fixedPerRN: 0 },
-        'Restel': { pct: 18, fixedPerRN: 0 },
-        'Roiback': { pct: 3, fixedPerRN: 0 },
-        'Sercotel': { pct: 4, fixedPerRN: 0 },
-        'Directo Online (Web)': { pct: 3, fixedPerRN: 0 },
-        'SynXis': { pct: 3, fixedPerRN: 0 },
-        'Witbooking': { pct: 3, fixedPerRN: 0 },
-        'Web Hotel': { pct: 3, fixedPerRN: 0 },
-        'Synergy': { pct: 3, fixedPerRN: 0 },
+        'Booking.com': { pct: 0, fixedPerRN: 0 },
+        'Expedia': { pct: 0, fixedPerRN: 0 },
+        'Agoda': { pct: 0, fixedPerRN: 0 },
+        'Airbnb': { pct: 0, fixedPerRN: 0 },
+        'Destinia': { pct: 0, fixedPerRN: 0 },
+        'eDreams': { pct: 0, fixedPerRN: 0 },
+        'Logitravel': { pct: 0, fixedPerRN: 0 },
+        'Hotusa': { pct: 0, fixedPerRN: 0 },
+        'Restel': { pct: 0, fixedPerRN: 0 },
+        'Roiback': { pct: 0, fixedPerRN: 0 },
+        'Sercotel': { pct: 0, fixedPerRN: 0 },
+        'Directo Online (Web)': { pct: 0, fixedPerRN: 0 },
+        'SynXis': { pct: 0, fixedPerRN: 0 },
+        'Witbooking': { pct: 0, fixedPerRN: 0 },
+        'Web Hotel Synergy': { pct: 0, fixedPerRN: 0 },
+        'Web Hotel': { pct: 0, fixedPerRN: 0 },
+        'Synergy': { pct: 0, fixedPerRN: 0 },
         'Mostrador': { pct: 0, fixedPerRN: 0 },
+        'Teléfono': { pct: 0, fixedPerRN: 0 },
+        'Correo electrónico': { pct: 0, fixedPerRN: 0 },
+        'Recepción': { pct: 0, fixedPerRN: 0 },
         'Tarifas Negociadas': { pct: 0, fixedPerRN: 0 },
         'Empresas Directas': { pct: 0, fixedPerRN: 0 },
-        'Keytel Phoenix': { pct: 10, fixedPerRN: 0 },
-        'Keytel GDS': { pct: 10, fixedPerRN: 0 },
-        'SiteMinder GDS': { pct: 10, fixedPerRN: 0 },
-        'HRS': { pct: 12, fixedPerRN: 0 },
-        'Viajes El Corte Inglés': { pct: 10, fixedPerRN: 0 },
-        'World2Meet': { pct: 12, fixedPerRN: 0 },
-        'Hotelbeds': { pct: 20, fixedPerRN: 0 },
-        'Serhs Tourism': { pct: 20, fixedPerRN: 0 },
-        'Traveltino': { pct: 20, fixedPerRN: 0 },
-        'Weekendesk': { pct: 20, fixedPerRN: 0 },
-        'Grupo Ávoris': { pct: 14, fixedPerRN: 0 },
-        'Smartbox': { pct: 22, fixedPerRN: 0 },
-        'Wonderbox': { pct: 22, fixedPerRN: 0 },
-        'Ego Experiencias': { pct: 22, fixedPerRN: 0 },
-        'Bono Spa': { pct: 10, fixedPerRN: 0 }
+        'Keytel Phoenix': { pct: 0, fixedPerRN: 0 },
+        'Keytel GDS': { pct: 0, fixedPerRN: 0 },
+        'SiteMinder GDS': { pct: 0, fixedPerRN: 0 },
+        'HRS': { pct: 0, fixedPerRN: 0 },
+        'Viajes El Corte Inglés': { pct: 0, fixedPerRN: 0 },
+        'World2Meet': { pct: 0, fixedPerRN: 0 },
+        'Hotelbeds': { pct: 0, fixedPerRN: 0 },
+        'Serhs Tourism': { pct: 0, fixedPerRN: 0 },
+        'Traveltino': { pct: 0, fixedPerRN: 0 },
+        'Weekendesk': { pct: 0, fixedPerRN: 0 },
+        'Grupo Ávoris': { pct: 0, fixedPerRN: 0 },
+        'Smartbox': { pct: 0, fixedPerRN: 0 },
+        'Wonderbox': { pct: 0, fixedPerRN: 0 },
+        'Ego Experiencias': { pct: 0, fixedPerRN: 0 },
+        'Bono Spa': { pct: 0, fixedPerRN: 0 }
     };
 
     const DEFAULT_SEGMENT_COMMISSIONS = {
-        'OTA/AAVV': { pct: 18, fixedPerRN: 0 },
-        'DIRECTO ONLINE': { pct: 3, fixedPerRN: 0 },
+        'OTA/AAVV': { pct: 0, fixedPerRN: 0 },
+        'DIRECTO ONLINE': { pct: 0, fixedPerRN: 0 },
         'DIRECTO OFFLINE': { pct: 0, fixedPerRN: 0 },
         'CORPORATIVO LINEAL': { pct: 0, fixedPerRN: 0 },
-        'CORPORATIVO DINAMICO': { pct: 10, fixedPerRN: 0 },
-        'TTOO DINAMICA': { pct: 20, fixedPerRN: 0 },
+        'CORPORATIVO DINAMICO': { pct: 0, fixedPerRN: 0 },
+        'TTOO DINAMICA': { pct: 0, fixedPerRN: 0 },
         'GRUPOS': { pct: 0, fixedPerRN: 0 },
         'GRTANTEO': { pct: 0, fixedPerRN: 0 },
-        'OTROS': { pct: 10, fixedPerRN: 0 },
+        'OTROS': { pct: 0, fixedPerRN: 0 },
         'PARTICULARES': { pct: 0, fixedPerRN: 0 },
-        'AGENCIAS': { pct: 12, fixedPerRN: 0 },
-        'BONO ONLINE': { pct: 15, fixedPerRN: 0 }
+        'AGENCIAS': { pct: 0, fixedPerRN: 0 },
+        'BONO ONLINE': { pct: 0, fixedPerRN: 0 },
+        'BONO SPA': { pct: 0, fixedPerRN: 0 }
     };
+
+    const inMemoryCommissionConfig = {};
 
     function getChannelCommissionConfig(hotel = '') {
         try {
@@ -321,9 +343,10 @@
             let raw = null;
             if (typeof CapaStorage !== 'undefined' && CapaStorage.getItem) {
                 raw = CapaStorage.getItem('channel_commissions_' + h);
-            }
-            if (!raw && typeof window !== 'undefined' && window.localStorage) {
+            } else if (typeof window !== 'undefined' && window.localStorage) {
                 raw = window.localStorage.getItem('channel_commissions_' + h);
+            } else if (inMemoryCommissionConfig[h]) {
+                raw = inMemoryCommissionConfig[h];
             }
             const saved = raw ? JSON.parse(raw) : {};
             // Filtrar cualquier segmento antiguo guardado por error en la configuración de canales
@@ -353,6 +376,7 @@
             if (typeof window !== 'undefined' && window.localStorage) {
                 window.localStorage.setItem('channel_commissions_' + h, json);
             }
+            inMemoryCommissionConfig[h] = json;
             return merged;
         } catch (e) {
             console.error('Error guardando comisiones de canales:', e);

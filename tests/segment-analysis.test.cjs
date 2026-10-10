@@ -214,19 +214,29 @@ test('channels breakdown within segments is parsed, merged and aggregated correc
     assert.equal(bkg.rooms, 25);
     assert.equal(bkg.accommodation, 2500);
     assert.equal(bkg.adr, 100);
-    assert.equal(bkg.commissionPct, 18);
-    assert.equal(bkg.commissionAmount, 450);
-    assert.equal(bkg.netAccommodation, 2050);
-    assert.equal(bkg.netAdr, 82);
-    assert.equal(bkg.netMarginPct, 82);
+    // Por defecto, sin comisiones:
+    assert.equal(bkg.commissionPct, 0);
+    assert.equal(bkg.commissionAmount, 0);
+    assert.equal(bkg.netAccommodation, 2500);
+    assert.equal(bkg.netAdr, 100);
+    assert.equal(bkg.netMarginPct, 100);
 
     const netAgg = S.aggregateNet(db.Guadiana['2026'], [0]);
     assert.equal(netAgg.rooms, 55); // 35 OTA + 20 Direct
     assert.equal(netAgg.grossAccommodation, 5500); // 3500 OTA + 2000 Direct
-    assert.equal(netAgg.totalCommissions, 450 + 180 + 60); // 450 Bkg + 180 Expedia (1000*0.18) + 60 Roiback (2000*0.03) = 690
-    assert.equal(netAgg.netAccommodation, 5500 - 690); // 4810
+    assert.equal(netAgg.totalCommissions, 0);
+    assert.equal(netAgg.netAccommodation, 5500);
     assert.equal(netAgg.grossAdr, 100);
-    assert.equal(netAgg.netAdr, 4810 / 55);
+    assert.equal(netAgg.netAdr, 100);
+
+    // Si el usuario configura una comisión personalizada en el modal:
+    S.saveChannelCommissionConfig('Guadiana', { 'Booking.com': { pct: 18, fixedPerRN: 0 } });
+    const bkgCustom = S.calculateNetMetrics(2500, 25, 'Booking.com', 'Guadiana');
+    assert.equal(bkgCustom.commissionPct, 18);
+    assert.equal(bkgCustom.commissionAmount, 450);
+    assert.equal(bkgCustom.netAccommodation, 2050);
+    // Restablecemos a 0%
+    S.saveChannelCommissionConfig('Guadiana', S.DEFAULT_CHANNEL_COMMISSIONS);
 });
 
 test('segments like CO DINAMI, CO LINEAL, GRTANTEO, DIRONLINE are never confused with channels', () => {
@@ -303,10 +313,99 @@ test('segments like CO DINAMI, CO LINEAL, GRTANTEO, DIRONLINE are never confused
     const netAgg = S.aggregateNet(report.years['2026'], [0]);
     assert.equal(netAgg.rooms, 46); // 20 + 10 + 16
     assert.equal(netAgg.grossAccommodation, 4400); // 2000 + 800 + 1600
-    // Corp Din: 2000 * 10% = 200; Corp Lineal: 800 * 0% = 0; Dir Online: 1600 * 3% = 48. Total com = 248
-    assert.equal(netAgg.totalCommissions, 200 + 0 + 48);
-    assert.equal(netAgg.netAccommodation, 4400 - 248);
+    // Por defecto todas sin comisiones:
+    assert.equal(netAgg.totalCommissions, 0);
+    assert.equal(netAgg.netAccommodation, 4400);
 });
+
+test('Cumbria: Bono Spa is own/direct (0% commission) and Bono Lineal maps gift boxes to Otros', () => {
+    // Bono Spa is direct/own -> 0%
+    const bonoNet = S.calculateNetMetrics(1000, 10, 'Bono Spa', 'Cumbria');
+    assert.equal(bonoNet.commissionPct, 0);
+    assert.equal(bonoNet.commissionAmount, 0);
+    assert.equal(bonoNet.netAccommodation, 1000);
+    assert.equal(bonoNet.netMarginPct, 100);
+
+    // Bono Online segment fallback is also 0%
+    const segNet = S.calculateNetMetrics(1000, 10, 'BONO ONLINE', 'Cumbria');
+    assert.equal(segNet.commissionPct, 0);
+    assert.equal(segNet.commissionAmount, 0);
+
+    // Gift boxes format as real channels under Otros
+    assert.equal(S.formatChannelName('SMARTBOX'), 'Smartbox');
+    assert.equal(S.formatChannelName('EXMARBOOX'), 'Smartbox');
+    assert.equal(S.formatChannelName('WONDERBOX'), 'Wonderbox');
+    assert.equal(S.formatChannelName('EGO EXPERIENCIAS'), 'Ego Experiencias');
+    assert.equal(S.formatChannelName('EGOEXPERIENCIAS'), 'Ego Experiencias');
+
+    // BONO LINEAL is recognized as segment
+    assert.ok(S.isSegment('BONO LINEAL'));
+    assert.equal(S.formatChannelName('BONO LINEAL'), null);
+
+    // Por defecto sin comisiones:
+    const smartNet = S.calculateNetMetrics(1000, 10, 'Smartbox', 'Cumbria');
+    assert.equal(smartNet.commissionPct, 0);
+    assert.equal(smartNet.commissionAmount, 0);
+    assert.equal(smartNet.netAccommodation, 1000);
+
+    // Si se personaliza con 22%:
+    S.saveChannelCommissionConfig('Cumbria', { 'Smartbox': { pct: 22, fixedPerRN: 0 } });
+    const smartCustom = S.calculateNetMetrics(1000, 10, 'Smartbox', 'Cumbria');
+    assert.equal(smartCustom.commissionPct, 22);
+    assert.equal(smartCustom.commissionAmount, 220);
+    assert.equal(smartCustom.netAccommodation, 780);
+    S.saveChannelCommissionConfig('Cumbria', S.DEFAULT_CHANNEL_COMMISSIONS);
+});
+
+test('operational hotel channel-to-segment rules (Guadiana & Cumbria)', () => {
+    // 1. Directo Offline
+    assert.equal(S.canonical('Teléfono'), 'DIRECTO OFFLINE');
+    assert.equal(S.canonical('Email'), 'DIRECTO OFFLINE');
+    assert.equal(S.canonical('Correo electrónico'), 'DIRECTO OFFLINE');
+    assert.equal(S.canonical('Mostrador'), 'DIRECTO OFFLINE');
+    assert.equal(S.canonical('Recepción'), 'DIRECTO OFFLINE');
+
+    // 2. Corporativo Dinámico
+    assert.equal(S.canonical('HRS'), 'CORPORATIVO DINAMICO');
+    assert.equal(S.canonical('Keytel - Phoenix'), 'CORPORATIVO DINAMICO');
+    assert.equal(S.canonical('Keytel GDS'), 'CORPORATIVO DINAMICO');
+    assert.equal(S.canonical('SiteMinder GDS'), 'CORPORATIVO DINAMICO');
+    assert.equal(S.canonical('Viajes El Corte Inglés'), 'CORPORATIVO DINAMICO');
+    assert.equal(S.canonical('World2Meet'), 'CORPORATIVO DINAMICO');
+
+    // 3. Corporativo Lineal
+    assert.equal(S.canonical('Tarifas Negociadas'), 'CORPORATIVO LINEAL');
+    assert.equal(S.canonical('Empresas'), 'CORPORATIVO LINEAL');
+
+    // 4. Directo Online (Guadiana: Roiback, SynXis, Witbooking; Cumbria: Web Hotel Synergy)
+    assert.equal(S.canonical('Roiback'), 'DIRECTO ONLINE');
+    assert.equal(S.canonical('SynXis'), 'DIRECTO ONLINE');
+    assert.equal(S.canonical('Witbooking'), 'DIRECTO ONLINE');
+    assert.equal(S.canonical('WEB HOTEL SYNERGY'), 'DIRECTO ONLINE');
+    assert.equal(S.formatChannelName('WEB HOTEL SYNERGY'), 'Web Hotel Synergy');
+
+    // 5. OTA / AAVV
+    assert.equal(S.canonical('Booking.com'), 'OTA/AAVV');
+    assert.equal(S.canonical('Expedia'), 'OTA/AAVV');
+
+    // 6. TTOO Dinámica
+    assert.equal(S.canonical('Hotelbeds'), 'TTOO DINAMICA');
+    assert.equal(S.canonical('Serhs Tourism'), 'TTOO DINAMICA');
+    assert.equal(S.canonical('Traveltino'), 'TTOO DINAMICA');
+    assert.equal(S.canonical('Weekendesk'), 'TTOO DINAMICA');
+
+    // 7. Otros
+    assert.equal(S.canonical('Smartbox'), 'OTROS');
+    assert.equal(S.canonical('Ego Experiencias'), 'OTROS');
+    assert.equal(S.canonical('Wonderbox'), 'OTROS');
+
+    // 8. Grupos
+    assert.equal(S.canonical('GRUPO'), 'GRUPOS');
+    assert.equal(S.canonical('GRUPO CONFIRMADO'), 'GRUPOS');
+    assert.equal(S.canonical('GRUPO TANTEO'), 'GRTANTEO');
+});
+
+
 
 
 
