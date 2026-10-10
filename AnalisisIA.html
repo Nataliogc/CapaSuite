@@ -1053,14 +1053,52 @@
             }
 
             // ============================================================
-            // AUDIT 5: Channel Mix & Dependencia de OTAs
+            // AUDIT 5: Channel Mix & Dependencia de OTAs & Comisiones Netas
             // ============================================================
             let totalSegRev = 0, otaRev = 0, dirOnlineRev = 0, corpRev = 0;
+            let realCommissionsPaid = 0;
+            const channelAggMap = {};
+
             if (segData && Object.keys(segData).length > 0) {
                 Object.entries(segData).forEach(([k, v]) => {
                     const upper = k.toUpperCase();
                     const sumR = v.revenue ? v.revenue.reduce((a, b) => a + b, 0) : (v.accommodation ? v.accommodation.reduce((a, b) => a + b, 0) : 0);
+                    const sumRN = v.rooms ? v.rooms.reduce((a, b) => a + b, 0) : 0;
                     totalSegRev += sumR;
+
+                    // If granular channel data is available via SegmentAnalysis
+                    if (window.SegmentAnalysis && typeof SegmentAnalysis.getSegmentChannels === 'function') {
+                        const chList = SegmentAnalysis.getSegmentChannels(v, null, currentHotel);
+                        if (chList && chList.length > 0) {
+                            chList.forEach(ch => {
+                                const chName = ch.name || 'Canal Desconocido';
+                                if (!channelAggMap[chName]) {
+                                    channelAggMap[chName] = { name: chName, revenue: 0, rooms: 0, commissionAmount: 0, commissionRate: ch.commissionRate };
+                                }
+                                channelAggMap[chName].revenue += ch.revenue;
+                                channelAggMap[chName].rooms += ch.rooms;
+                                channelAggMap[chName].commissionAmount += ch.commissionAmount;
+                                realCommissionsPaid += ch.commissionAmount;
+
+                                const chUpper = chName.toUpperCase();
+                                if (chUpper.includes('BOOKING') || chUpper.includes('EXPEDIA') || chUpper.includes('OTA') || chUpper.includes('HOTELBEDS')) {
+                                    otaRev += ch.revenue;
+                                } else if (chUpper.includes('DIRECT') || chUpper.includes('WEB') || chUpper.includes('ROIBACK') || chUpper.includes('SERCOTEL')) {
+                                    dirOnlineRev += ch.revenue;
+                                }
+                            });
+                            return;
+                        }
+                    }
+
+                    // Fallback to segment-level calculation
+                    if (window.SegmentAnalysis && typeof SegmentAnalysis.calculateNetMetrics === 'function') {
+                        const netM = SegmentAnalysis.calculateNetMetrics(sumR, sumRN, k, currentHotel);
+                        realCommissionsPaid += netM.commissionAmount;
+                    } else {
+                        if (upper.includes('OTA') || upper.includes('AAVV')) realCommissionsPaid += (sumR * 0.18);
+                    }
+
                     if (upper.includes('OTA') || upper.includes('AAVV')) otaRev += sumR;
                     if (upper.includes('DIR') && upper.includes('ON')) dirOnlineRev += sumR;
                     if (upper.includes('CORP') || upper.includes('EMPRES') || upper.includes('NEGOCIAD')) corpRev += sumR;
@@ -1070,20 +1108,34 @@
             const otaShare = totalSegRev > 0 ? (otaRev / totalSegRev) * 100 : 0;
             const dirShare = totalSegRev > 0 ? (dirOnlineRev / totalSegRev) * 100 : 0;
             const corpShare = totalSegRev > 0 ? (corpRev / totalSegRev) * 100 : 0;
-            const commCostEst = otaRev * 0.19;
+            const commCostEst = realCommissionsPaid > 0 ? realCommissionsPaid : (otaRev * 0.18);
+            const netMarginPct = totalSegRev > 0 ? ((totalSegRev - commCostEst) / totalSegRev) * 100 : 100;
 
-            if (otaShare >= 45) {
+            // Shift savings estimation: moving 10% of OTA volume to Direct Online (18% vs 3% = 15% net gain)
+            const shift10PctSavings = Math.round(otaRev * 0.10 * 0.15);
+
+            if (otaShare >= 40 || commCostEst > 5000) {
+                // Top channels summary if available
+                const topChannelsStr = Object.values(channelAggMap).length > 0
+                    ? Object.values(channelAggMap)
+                        .sort((a,b) => b.revenue - a.revenue)
+                        .slice(0, 3)
+                        .map(c => `<b>${c.name}</b> (${fmtEuro(c.revenue)} · com: ${fmtEuro(c.commissionAmount)})`)
+                        .join(', ')
+                    : '';
+
                 insights.push({
                     id: 'ins_otadep',
                     category: 'distribution',
-                    priority: 'warning',
-                    badge: '👥 DISTRIBUCIÓN & CANALES',
-                    title: `Elevada dependencia de intermediación OTA (${otaShare.toFixed(1)}% del mix)`,
-                    diagnostic: `Las OTAs y agencias absorben <b>${fmtEuro(otaRev)}</b> de tus ingresos, con un coste estimado en comisiones de <b>${fmtEuro(commCostEst)}</b> (~19% medio). La Venta Directa Online representa solo el <b>${dirShare.toFixed(1)}%</b> (${fmtEuro(dirOnlineRev)}).`,
-                    strategy: `<b>Estrategia Revenue Experta:</b><br>
+                    priority: otaShare >= 50 ? 'critical' : 'warning',
+                    badge: '👥 DISTRIBUCIÓN & CANALES NETOS',
+                    title: `Dependencia de intermediación OTA (${otaShare.toFixed(1)}%) · Gasto en Comisiones: ${fmtEuro(commCostEst)}`,
+                    diagnostic: `Las OTAs absorben <b>${fmtEuro(otaRev)}</b> de tu producción con un gasto comercial en comisiones de <b>${fmtEuro(commCostEst)}</b> (margen neto global de cartera: <b>${netMarginPct.toFixed(1)}%</b>). ${topChannelsStr ? `<br>Canales clave analizados: ${topChannelsStr}.` : ''} La Venta Directa Online representa solo el <b>${dirShare.toFixed(1)}%</b> (${fmtEuro(dirOnlineRev)}).`,
+                    strategy: `<b>Estrategia Revenue & Desintermediación Rentable:</b><br>
+• <b>Plan Trasvase 10% a Canal Directo:</b> Si trasvasas solo un 10% de la venta OTA a tu motor web oficial (Roiback / Sercotel.com), el hotel retendría <b>+${fmtEuro(shift10PctSavings)} limpios</b> directamente en el resultado neto.<br>
 • <b>Paridad de Tarifa Neta:</b> Dota a tu web oficial de ventajas de valor real que la OTA no ofrece: desayuno con 50% descuento, late check-out garantizado hasta las 13:00 o upgrade de habitación gratuito sujeto a disponibilidad.<br>
-• <b>Inventario Estratégico:</b> Cierra en Booking/Expedia las categorías superiores o suites en fechas de alta demanda, vendiéndolas en exclusiva en tu web oficial.<br>
-• <b>Protocolo de Conversión en Recepción:</b> Implanta en el check-in y check-out el registro en el club directo con un código de fidelización del 10% para su próxima visita.`,
+• <b>Inventario Estratégico y Ring-fencing:</b> Cierra en Booking/Expedia las habitaciones superiores o suites en fechas de alta demanda, manteniéndolas en exclusiva en el canal directo.<br>
+• <b>Protocolo de Conversión en Recepción:</b> Implanta en el check-in y check-out el registro en el club directo con un código de fidelización exclusivo para su próxima estancia.`,
                     actionUrl: 'AnalisisSegmentos.html'
                 });
             }
@@ -1290,14 +1342,14 @@
                         </div>
                     </div>
 
-                    <!-- Card 4: Channel Health -->
+                    <!-- Card 4: Channel Health & Net Margin -->
                     <div class="scorecard-card">
                         <div>
-                            <div style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Mix Venta Directa vs OTA</div>
-                            <div style="font-size:1.55rem; font-weight:800; color:${dirShare >= 20 ? '#059669' : '#d97706'}; margin:6px 0 2px 0;">${dirShare.toFixed(1)}% Dir</div>
+                            <div style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Margen Neto & Comisiones</div>
+                            <div style="font-size:1.55rem; font-weight:800; color:${netMarginPct >= 85 ? '#059669' : '#d97706'}; margin:6px 0 2px 0;">${netMarginPct.toFixed(1)}% Neto</div>
                         </div>
                         <div style="font-size:0.75rem; color:var(--text-muted); margin-top:8px;">
-                            OTAs: ${otaShare.toFixed(1)}% (~${fmtEuro(commCostEst)} comisiones)
+                            Comisiones: -${fmtEuro(commCostEst)} · Directo: ${dirShare.toFixed(1)}%
                         </div>
                     </div>
                 `;
