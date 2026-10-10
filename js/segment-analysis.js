@@ -5,6 +5,8 @@
     const months = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
     const aliases = { 
         'CORPORATI': 'CORPORATIVO LINEAL', 
+        'CO LINEAL': 'CORPORATIVO LINEAL',
+        'COLINEAL': 'CORPORATIVO LINEAL',
         'TARIFAS NEGOCIADAS': 'CORPORATIVO LINEAL', 
         'TARIFAS N': 'CORPORATIVO LINEAL', 
         'TARIFAS NEG': 'CORPORATIVO LINEAL', 
@@ -14,6 +16,9 @@
         // Corporativo Dinámico y sus canales
         'CORPORATIVO DINAMICO': 'CORPORATIVO DINAMICO',
         'CORPORATIVO DIN': 'CORPORATIVO DINAMICO',
+        'CO DINAMI': 'CORPORATIVO DINAMICO',
+        'CODINAMI': 'CORPORATIVO DINAMICO',
+        'CO DINAMICO': 'CORPORATIVO DINAMICO',
         'CORP DINAMICO': 'CORPORATIVO DINAMICO',
         'CORP DINA': 'CORPORATIVO DINAMICO',
         'HRS': 'CORPORATIVO DINAMICO',
@@ -99,48 +104,175 @@
     const canonical = value => aliases[norm(value)] || norm(value);
     const isTotalName = value => /^(TOTAL|TOTAL GENERAL|TOTAL MASTER|RESUMEN)$/.test(norm(value));
 
+    const SEGMENT_NAMES_AND_ALIASES = new Set([
+        // Segmentos maestros / canónicos
+        'CORPORATIVO LINEAL',
+        'CORPORATIVO DINAMICO',
+        'DIRECTO OFFLINE',
+        'DIRECTO ONLINE',
+        'GRTANTEO',
+        'GRUPO TANTEO',
+        'GRUPOS',
+        'GRUPO',
+        'OTA/AAVV',
+        'OTROS',
+        'TTOO DINAMICA',
+        'PARTICULARES',
+        'AGENCIAS',
+        'BONO ONLINE',
+
+        // Variaciones y códigos PMS habituales para segmentos
+        'CORPORATI',
+        'CO LINEAL',
+        'COLINEAL',
+        'CORPORATIVO DIN',
+        'CO DINAMI',
+        'CODINAMI',
+        'CO DINAMICO',
+        'CORP DINAMICO',
+        'CORP DINA',
+        'CODINA',
+        'DIRECTO O',
+        'D OFF LINE',
+        'DIRECTO OFF',
+        'DIR OFF',
+        'DIR OFFLINE',
+        'DIROFFLINE',
+        'D ON LINE',
+        'DIRONLINE',
+        'DIR ONLINE',
+        'DIRECTO ON',
+        'DIR ON',
+        'OTA',
+        'OTA / AAVV',
+        'OTAS',
+        'AAVV',
+        'OTA-AAVV',
+        'TTOO DINA',
+        'TTOO',
+        'TTOODINAMICA',
+        'TTOO DIN',
+        'GRUPO CONFIRMADO',
+        'GRUPO TAN',
+        'TANTEO',
+        'PARTICULA',
+        'PARTICULAR',
+        'TOTAL',
+        'TOTAL GENERAL',
+        'TOTAL MASTER',
+        'RESUMEN'
+    ]);
+
+    function isSegment(name) {
+        if (!name) return false;
+        const upper = norm(name);
+        if (SEGMENT_NAMES_AND_ALIASES.has(upper)) return true;
+        if (validSegments.includes(canonical(name))) {
+            return !isKnownChannel(name);
+        }
+        return false;
+    }
+
+    const KNOWN_CHANNELS_MAP = {
+        // OTAs
+        'BOOKING': 'Booking.com',
+        'BOOKING.COM': 'Booking.com',
+        'BOOKINGCOM': 'Booking.com',
+        'EXPEDIA': 'Expedia',
+        'AGODA': 'Agoda',
+        'AIRBNB': 'Airbnb',
+        'HOTUSA': 'Hotusa',
+        'RESTEL': 'Restel',
+        'DESTINIA': 'Destinia',
+        'EDREAMS': 'eDreams',
+        'ODIGEO': 'eDreams',
+        'LOGITRAVEL': 'Logitravel',
+        'HOTELBEDS': 'Hotelbeds',
+        'HBD': 'Hotelbeds',
+        'SERHS': 'Serhs Tourism',
+        'SERHS TOURISM': 'Serhs Tourism',
+        'TRAVELTINO': 'Traveltino',
+        'WEEKENDESK': 'Weekendesk',
+
+        // Motores Directos / Web
+        'ROIBACK': 'Roiback',
+        'SERCOTEL': 'Sercotel',
+        'DIRECTO WEB': 'Directo Online (Web)',
+        'MOTOR': 'Directo Online (Web)',
+        'MOTOR PROPIO': 'Directo Online (Web)',
+        'WEB PROPIA': 'Directo Online (Web)',
+        'DIRECTO ONLINE (WEB)': 'Directo Online (Web)',
+        'SYNXIS': 'SynXis',
+        'WITBOOKING': 'Witbooking',
+        'WEB HOTEL': 'Web Hotel',
+        'SYNERGY': 'Synergy',
+
+        // Directo Presencial / Mostrador
+        'MOSTRADOR': 'Mostrador',
+        'RECEPCION': 'Mostrador',
+        'TELEFONO': 'Mostrador',
+        'EMAIL': 'Mostrador',
+
+        // GDS / B2B Corporativo
+        'KEYTEL': 'Keytel Phoenix',
+        'KEYTEL PHOENIX': 'Keytel Phoenix',
+        'KEYTEL - PHOENIX': 'Keytel Phoenix',
+        'PHOENIX': 'Keytel Phoenix',
+        'KEYTEL GDS': 'Keytel GDS',
+        'SITEMINDER GDS': 'SiteMinder GDS',
+        'SITEMINDER': 'SiteMinder GDS',
+        'HRS': 'HRS',
+        'VIAJES EL CORTE INGLES': 'Viajes El Corte Inglés',
+        'EL CORTE INGLES': 'Viajes El Corte Inglés',
+        'VECI': 'Viajes El Corte Inglés',
+        'ECI': 'Viajes El Corte Inglés',
+        'WORLD2MEET': 'World2Meet',
+        'W2M': 'World2Meet',
+        'GRUPO AVORIS': 'Grupo Ávoris',
+        'AVORIS': 'Grupo Ávoris',
+        'GRUPO AVO': 'Grupo Ávoris',
+        'TARIFAS NEGOCIADAS': 'Tarifas Negociadas',
+        'TARIFAS N': 'Tarifas Negociadas',
+        'TARIFAS NEG': 'Tarifas Negociadas',
+        'TARIFAS NEGOCI': 'Tarifas Negociadas',
+        'EMPRESAS': 'Empresas Directas',
+        'EMPRESA': 'Empresas Directas',
+
+        // Bonos / Vouchers
+        'SMARTBOX': 'Smartbox',
+        'WONDERBOX': 'Wonderbox',
+        'EGO EXPERIENCIAS': 'Ego Experiencias',
+        'EGO': 'Ego Experiencias',
+        'DAKOTABOX': 'Ego Experiencias',
+        'BONO SPA': 'Bono Spa'
+    };
+
+    function isKnownChannel(name) {
+        if (!name) return false;
+        const upper = norm(name);
+        return Boolean(KNOWN_CHANNELS_MAP[upper]);
+    }
+
     function formatChannelName(raw) {
-        const s = String(raw || '').trim();
-        if (!s) return 'General';
+        if (!raw) return null;
+        const s = String(raw).trim();
         const upper = norm(s);
-        if (upper === 'BOOKING' || upper === 'BOOKINGCOM') return 'Booking.com';
-        if (upper === 'EXPEDIA') return 'Expedia';
-        if (upper === 'ROIBACK') return 'Roiback';
-        if (upper === 'SERCOTEL') return 'Sercotel';
-        if (upper === 'KEYTEL' || upper === 'KEYTEL PHOENIX' || upper === 'KEYTEL - PHOENIX' || upper === 'PHOENIX') return 'Keytel Phoenix';
-        if (upper === 'KEYTEL GDS') return 'Keytel GDS';
-        if (upper === 'SITEMINDER' || upper === 'SITEMINDER GDS') return 'SiteMinder GDS';
-        if (upper === 'VECI' || upper === 'VIAJES EL CORTE INGLES' || upper === 'EL CORTE INGLES') return 'Viajes El Corte Inglés';
-        if (upper === 'W2M' || upper === 'WORLD2MEET') return 'World2Meet';
-        if (upper === 'HOTELBEDS') return 'Hotelbeds';
-        if (upper === 'SERHS' || upper === 'SERHS TOURISM') return 'Serhs Tourism';
-        if (upper === 'TRAVELTINO') return 'Traveltino';
-        if (upper === 'WEEKENDESK') return 'Weekendesk';
-        if (upper === 'SMARTBOX') return 'Smartbox';
-        if (upper === 'WONDERBOX') return 'Wonderbox';
-        if (upper === 'EGO' || upper === 'EGO EXPERIENCIAS') return 'Ego Experiencias';
-        if (upper === 'MOSTRADOR') return 'Mostrador';
-        if (upper === 'DIRECTO OFFLINE' || upper === 'DIRECTO O' || upper === 'D OFF LINE' || upper === 'DIRECTO OFF') return 'Directo Offline';
-        if (upper === 'DIRECTO ONLINE' || upper === 'DIR ONLINE' || upper === 'DIRONLINE' || upper === 'D ON LINE' || upper === 'DIRECTO ON') return 'Directo Online (Web)';
-        if (upper === 'TARIFAS NEGOCIADAS' || upper === 'TARIFAS N' || upper === 'TARIFAS NEG' || upper === 'TARIFAS NEGOCI') return 'Tarifas Negociadas';
-        if (upper === 'EMPRESAS' || upper === 'EMPRESA') return 'Empresas Directas';
-        if (upper === 'HRS') return 'HRS';
-        if (upper === 'SYNXIS') return 'SynXis';
-        if (upper === 'WITBOOKING') return 'Witbooking';
-        if (upper === 'WEB HOTEL') return 'Web Hotel';
-        if (upper === 'SYNERGY') return 'Synergy';
-        if (upper === 'GRUPO AVORIS') return 'Grupo Ávoris';
-        if (upper === 'BONO ONLINE' || upper === 'BONO LINE') return 'Bono Online';
-        if (upper === 'BONO SPA') return 'Bono Spa';
-        if (upper === 'GRUPO TANTEO' || upper === 'GRTANTEO' || upper === 'GRUPO TAN') return 'Grupo Tanteo';
-        if (upper === 'GRUPO CONFIRMADO' || upper === 'GRUPOS' || upper === 'GRUPO') return 'Grupos';
-        if (upper === 'PARTICULAR' || upper === 'PARTICULARES' || upper === 'PARTICULA') return 'Particulares';
-        return s;
+        // Si coincide con un segmento o total, NO es un canal
+        if (isSegment(s) || isTotalName(s)) return null;
+        if (KNOWN_CHANNELS_MAP[upper]) return KNOWN_CHANNELS_MAP[upper];
+        return null;
     }
 
     const DEFAULT_CHANNEL_COMMISSIONS = {
         'Booking.com': { pct: 18, fixedPerRN: 0 },
         'Expedia': { pct: 18, fixedPerRN: 0 },
+        'Agoda': { pct: 18, fixedPerRN: 0 },
+        'Airbnb': { pct: 15, fixedPerRN: 0 },
+        'Destinia': { pct: 18, fixedPerRN: 0 },
+        'eDreams': { pct: 18, fixedPerRN: 0 },
+        'Logitravel': { pct: 16, fixedPerRN: 0 },
+        'Hotusa': { pct: 18, fixedPerRN: 0 },
+        'Restel': { pct: 18, fixedPerRN: 0 },
         'Roiback': { pct: 3, fixedPerRN: 0 },
         'Sercotel': { pct: 4, fixedPerRN: 0 },
         'Directo Online (Web)': { pct: 3, fixedPerRN: 0 },
@@ -149,7 +281,6 @@
         'Web Hotel': { pct: 3, fixedPerRN: 0 },
         'Synergy': { pct: 3, fixedPerRN: 0 },
         'Mostrador': { pct: 0, fixedPerRN: 0 },
-        'Directo Offline': { pct: 0, fixedPerRN: 0 },
         'Tarifas Negociadas': { pct: 0, fixedPerRN: 0 },
         'Empresas Directas': { pct: 0, fixedPerRN: 0 },
         'Keytel Phoenix': { pct: 10, fixedPerRN: 0 },
@@ -166,12 +297,10 @@
         'Smartbox': { pct: 22, fixedPerRN: 0 },
         'Wonderbox': { pct: 22, fixedPerRN: 0 },
         'Ego Experiencias': { pct: 22, fixedPerRN: 0 },
-        'Bono Online': { pct: 15, fixedPerRN: 0 },
-        'Bono Spa': { pct: 10, fixedPerRN: 0 },
-        'Grupos': { pct: 0, fixedPerRN: 0 },
-        'Grupo Tanteo': { pct: 0, fixedPerRN: 0 },
-        'Particulares': { pct: 0, fixedPerRN: 0 },
-        // Fallbacks por segmento si no hay subcanal:
+        'Bono Spa': { pct: 10, fixedPerRN: 0 }
+    };
+
+    const DEFAULT_SEGMENT_COMMISSIONS = {
         'OTA/AAVV': { pct: 18, fixedPerRN: 0 },
         'DIRECTO ONLINE': { pct: 3, fixedPerRN: 0 },
         'DIRECTO OFFLINE': { pct: 0, fixedPerRN: 0 },
@@ -181,7 +310,9 @@
         'GRUPOS': { pct: 0, fixedPerRN: 0 },
         'GRTANTEO': { pct: 0, fixedPerRN: 0 },
         'OTROS': { pct: 10, fixedPerRN: 0 },
-        'PARTICULARES': { pct: 0, fixedPerRN: 0 }
+        'PARTICULARES': { pct: 0, fixedPerRN: 0 },
+        'AGENCIAS': { pct: 12, fixedPerRN: 0 },
+        'BONO ONLINE': { pct: 15, fixedPerRN: 0 }
     };
 
     function getChannelCommissionConfig(hotel = '') {
@@ -195,7 +326,12 @@
                 raw = window.localStorage.getItem('channel_commissions_' + h);
             }
             const saved = raw ? JSON.parse(raw) : {};
-            return { ...DEFAULT_CHANNEL_COMMISSIONS, ...saved };
+            // Filtrar cualquier segmento antiguo guardado por error en la configuración de canales
+            const cleanSaved = {};
+            for (const [k, v] of Object.entries(saved)) {
+                if (!isSegment(k)) cleanSaved[k] = v;
+            }
+            return { ...DEFAULT_CHANNEL_COMMISSIONS, ...cleanSaved };
         } catch (e) {
             return { ...DEFAULT_CHANNEL_COMMISSIONS };
         }
@@ -205,7 +341,11 @@
         try {
             const h = (hotel && typeof hotel === 'string') ? hotel : 'Guadiana';
             const existing = getChannelCommissionConfig(h);
-            const merged = { ...existing, ...config };
+            const cleanConfig = {};
+            for (const [k, v] of Object.entries(config || {})) {
+                if (!isSegment(k)) cleanConfig[k] = v;
+            }
+            const merged = { ...existing, ...cleanConfig };
             const json = JSON.stringify(merged);
             if (typeof CapaStorage !== 'undefined' && CapaStorage.setItem) {
                 CapaStorage.setItem('channel_commissions_' + h, json);
@@ -224,15 +364,35 @@
         const config = getChannelCommissionConfig(hotel);
         const nameNorm = norm(channelOrSegmentName);
         const canon = canonical(channelOrSegmentName);
-        let rule = config[channelOrSegmentName] || config[canon];
-        if (!rule) {
-            for (const [k, v] of Object.entries(config)) {
-                if (norm(k) === nameNorm || norm(k) === norm(canon)) {
-                    rule = v;
-                    break;
+        
+        let rule = null;
+        // 1. Si NO es un segmento, buscar en la configuración de canales
+        if (!isSegment(channelOrSegmentName)) {
+            rule = config[channelOrSegmentName] || config[canon];
+            if (!rule) {
+                for (const [k, v] of Object.entries(config)) {
+                    if (norm(k) === nameNorm || norm(k) === norm(canon)) {
+                        rule = v;
+                        break;
+                    }
                 }
             }
         }
+
+        // 2. Si es un segmento o no se encontró regla de canal, consultar comisiones por defecto de segmento
+        if (!rule) {
+            const segKey = canon || canonical(channelOrSegmentName);
+            rule = DEFAULT_SEGMENT_COMMISSIONS[segKey] || DEFAULT_SEGMENT_COMMISSIONS[channelOrSegmentName];
+            if (!rule) {
+                for (const [k, v] of Object.entries(DEFAULT_SEGMENT_COMMISSIONS)) {
+                    if (norm(k) === nameNorm || norm(k) === norm(canon)) {
+                        rule = v;
+                        break;
+                    }
+                }
+            }
+        }
+
         rule = rule || { pct: 0, fixedPerRN: 0 };
         const pctCommission = Number(rule.pct) || 0;
         const fixedFee = Number(rule.fixedPerRN) || 0;
@@ -427,7 +587,7 @@
                 const block = blocks.find(b => b.row === r + 1);
                 totalBlock = isTotalName(block.name);
                 segment = totalBlock ? null : block.name;
-                currentChannel = totalBlock ? null : formatChannelName(block.original || block.name);
+                currentChannel = totalBlock ? null : formatChannelName(block.original);
             }
             if (!metric || (!segment && !totalBlock)) continue;
             const isTotal = /\b(PRO|PROD|PRODUCCIO?N|REVENUE|VENTA|VTA|INGRESOS?|TOTAL|TOTALES|NETO|IMPORTE)\b/.test(metric);
@@ -555,7 +715,12 @@
                     }
                     if (seg.channels) {
                         target.segment[name].channels ||= {};
+                        // Limpiar canales antiguos que coincidan con nombres de segmentos
+                        for (const k of Object.keys(target.segment[name].channels)) {
+                            if (isSegment(k)) delete target.segment[name].channels[k];
+                        }
                         for (const [chName, chData] of Object.entries(seg.channels)) {
+                            if (isSegment(chName)) continue;
                             const tgtCh = target.segment[name].channels[chName] ||= {
                                 name: chName,
                                 revenue: Array(12).fill(0),
@@ -626,11 +791,14 @@
         for (const block of blocks) {
             const segment = block.name;
             if (/^(TOTAL|TOTAL GENERAL|TOTAL MASTER|RESUMEN)$/.test(norm(segment)) || !segment) continue;
-            const currentChannel = formatChannelName(block.original || segment);
+            const currentChannel = formatChannelName(block.original);
             
             const target = segmentData[segment] ||= { name: segment, days: {}, channels: {} };
-            target.channels ||= {};
-            const chTarget = (target.channels[currentChannel] ||= { name: currentChannel, days: {} });
+            let chTarget = null;
+            if (currentChannel) {
+                target.channels ||= {};
+                chTarget = (target.channels[currentChannel] ||= { name: currentChannel, days: {} });
+            }
             let roomRows = 0, lodgingRows = 0;
 
             for (let r = block.row - 1; r <= block.end; r++) {
@@ -651,21 +819,21 @@
                     const value = number(row[i]);
                     
                     const dt = target.days[c.iso] ||= { revenue: 0, rooms: 0, accommodation: 0, totalRevenue: 0 };
-                    const chDt = chTarget.days[c.iso] ||= { revenue: 0, rooms: 0, accommodation: 0, totalRevenue: 0 };
+                    const chDt = chTarget ? (chTarget.days[c.iso] ||= { revenue: 0, rooms: 0, accommodation: 0, totalRevenue: 0 }) : null;
                     
                     if (isRooms) {
                         dt.rooms += value;
-                        chDt.rooms += value;
+                        if (chDt) chDt.rooms += value;
                     } else if (isTotal) {
                         dt.totalRevenue += value;
-                        chDt.totalRevenue += value;
+                        if (chDt) chDt.totalRevenue += value;
                     } else {
                         if (validSegments.includes(canonical(metric))) return;
                         dt.revenue += value;
-                        chDt.revenue += value;
+                        if (chDt) chDt.revenue += value;
                         if (isLodging) {
                             dt.accommodation += value;
-                            chDt.accommodation += value;
+                            if (chDt) chDt.accommodation += value;
                         }
                         dt.concepts ||= {};
                         dt.concepts[metric] = (dt.concepts[metric] || 0) + value;
@@ -677,9 +845,11 @@
                 dt.accommodationVerified = lodgingRows > 0;
                 if (!Object.keys(dt.concepts || {}).length) dt.revenue = dt.totalRevenue;
             }
-            for (const chDt of Object.values(chTarget.days)) {
-                chDt.accommodationVerified = lodgingRows > 0;
-                if (chDt.revenue === 0 && chDt.totalRevenue > 0) chDt.revenue = chDt.totalRevenue;
+            if (chTarget) {
+                for (const chDt of Object.values(chTarget.days)) {
+                    chDt.accommodationVerified = lodgingRows > 0;
+                    if (chDt.revenue === 0 && chDt.totalRevenue > 0) chDt.revenue = chDt.totalRevenue;
+                }
             }
         }
         return { segmentData, coverage: columns.filter(Boolean).map(c => c.iso), source: fileName, startYear };
@@ -766,49 +936,32 @@
         if (!segment) return [];
         const mList = Array.isArray(selectedMonths) && selectedMonths.length ? selectedMonths : Array.from({ length: 12 }, (_, i) => i);
         if (segment.channels && Object.keys(segment.channels).length > 0) {
-            return Object.values(segment.channels).map(ch => {
-                const rooms = sum(ch, 'rooms', mList);
-                const accommodation = sum(ch, 'accommodation', mList);
-                const revenue = sum(ch, 'revenue', mList);
-                const totalRevenue = sum(ch, 'totalRevenue', mList);
-                const adr = rooms > 0 && accommodation > 0 ? accommodation / rooms : (rooms > 0 && revenue > 0 ? revenue / rooms : null);
-                const net = calculateNetMetrics(accommodation, rooms, ch.name, hotel);
-                return {
-                    name: ch.name,
-                    rooms,
-                    accommodation,
-                    revenue,
-                    totalRevenue,
-                    adr,
-                    commissionPct: net.commissionPct,
-                    fixedFeePerRN: net.fixedFeePerRN,
-                    commissionAmount: net.commissionAmount,
-                    netAccommodation: net.netAccommodation,
-                    netAdr: net.netAdr,
-                    netMarginPct: net.netMarginPct
-                };
-            }).filter(ch => ch.rooms > 0 || ch.accommodation > 0 || ch.revenue > 0 || ch.totalRevenue > 0);
+            return Object.values(segment.channels)
+                .filter(ch => ch && ch.name && !isSegment(ch.name))
+                .map(ch => {
+                    const rooms = sum(ch, 'rooms', mList);
+                    const accommodation = sum(ch, 'accommodation', mList);
+                    const revenue = sum(ch, 'revenue', mList);
+                    const totalRevenue = sum(ch, 'totalRevenue', mList);
+                    const adr = rooms > 0 && accommodation > 0 ? accommodation / rooms : (rooms > 0 && revenue > 0 ? revenue / rooms : null);
+                    const net = calculateNetMetrics(accommodation, rooms, ch.name, hotel);
+                    return {
+                        name: ch.name,
+                        rooms,
+                        accommodation,
+                        revenue,
+                        totalRevenue,
+                        adr,
+                        commissionPct: net.commissionPct,
+                        fixedFeePerRN: net.fixedFeePerRN,
+                        commissionAmount: net.commissionAmount,
+                        netAccommodation: net.netAccommodation,
+                        netAdr: net.netAdr,
+                        netMarginPct: net.netMarginPct
+                    };
+                }).filter(ch => ch.rooms > 0 || ch.accommodation > 0 || ch.revenue > 0 || ch.totalRevenue > 0);
         }
-        const rooms = sum(segment, 'rooms', mList);
-        const accommodation = sum(segment, 'accommodation', mList);
-        const revenue = sum(segment, 'revenue', mList);
-        const totalRevenue = sum(segment, 'totalRevenue', mList);
-        const adr = rooms > 0 && accommodation > 0 ? accommodation / rooms : (rooms > 0 && revenue > 0 ? revenue / rooms : null);
-        const net = calculateNetMetrics(accommodation, rooms, segment.name, hotel);
-        return [{
-            name: segment.name,
-            rooms,
-            accommodation,
-            revenue,
-            totalRevenue,
-            adr,
-            commissionPct: net.commissionPct,
-            fixedFeePerRN: net.fixedFeePerRN,
-            commissionAmount: net.commissionAmount,
-            netAccommodation: net.netAccommodation,
-            netAdr: net.netAdr,
-            netMarginPct: net.netMarginPct
-        }];
+        return [];
     }
 
     function aggregateNet(data, selectedMonths, hotel = '') {
@@ -820,11 +973,21 @@
 
         for (const seg of segments(data)) {
             const chList = getSegmentChannels(seg, mList, hotel);
-            for (const ch of chList) {
-                grossAccommodation += ch.accommodation;
-                rooms += ch.rooms;
-                totalCommissions += ch.commissionAmount;
-                netAccommodation += ch.netAccommodation;
+            if (chList && chList.length > 0) {
+                for (const ch of chList) {
+                    grossAccommodation += ch.accommodation;
+                    rooms += ch.rooms;
+                    totalCommissions += ch.commissionAmount;
+                    netAccommodation += ch.netAccommodation;
+                }
+            } else {
+                const sRooms = sum(seg, 'rooms', mList);
+                const sAcc = sum(seg, 'accommodation', mList);
+                const net = calculateNetMetrics(sAcc, sRooms, seg.name, hotel);
+                grossAccommodation += sAcc;
+                rooms += sRooms;
+                totalCommissions += net.commissionAmount;
+                netAccommodation += net.netAccommodation;
             }
         }
 
@@ -862,11 +1025,14 @@
         getHotelMappings: getStoredHotelMappings, 
         saveHotelMappings: saveStoredHotelMappings, 
         formatChannelName, 
+        isSegment,
+        isKnownChannel,
         getSegmentChannels,
         getChannelCommissionConfig,
         saveChannelCommissionConfig,
         calculateNetMetrics,
-        DEFAULT_CHANNEL_COMMISSIONS
+        DEFAULT_CHANNEL_COMMISSIONS,
+        DEFAULT_SEGMENT_COMMISSIONS
     };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.SegmentAnalysis = api;

@@ -229,4 +229,84 @@ test('channels breakdown within segments is parsed, merged and aggregated correc
     assert.equal(netAgg.netAdr, 4810 / 55);
 });
 
+test('segments like CO DINAMI, CO LINEAL, GRTANTEO, DIRONLINE are never confused with channels', () => {
+    // 1. isSegment identification
+    assert.ok(S.isSegment('CO DINAMI'));
+    assert.ok(S.isSegment('CO LINEAL'));
+    assert.ok(S.isSegment('CORPORATIVO DINAMICO'));
+    assert.ok(S.isSegment('CORPORATIVO LINEAL'));
+    assert.ok(S.isSegment('DIRONLINE'));
+    assert.ok(S.isSegment('DIRECTO OFFLINE'));
+    assert.ok(S.isSegment('DIRECTO ONLINE'));
+    assert.ok(S.isSegment('GRTANTEO'));
+    assert.ok(S.isSegment('GRUPOS'));
+    assert.ok(S.isSegment('Grupos'));
+    assert.ok(S.isSegment('OTA/AAVV'));
+
+    // Channels are NOT segments
+    assert.ok(!S.isSegment('Booking.com'));
+    assert.ok(!S.isSegment('BOOKING'));
+    assert.ok(!S.isSegment('Expedia'));
+    assert.ok(!S.isSegment('Roiback'));
+    assert.ok(!S.isSegment('Keytel Phoenix'));
+
+    // 2. formatChannelName returns null for segments
+    assert.equal(S.formatChannelName('CO DINAMI'), null);
+    assert.equal(S.formatChannelName('CO LINEAL'), null);
+    assert.equal(S.formatChannelName('DIRONLINE'), null);
+    assert.equal(S.formatChannelName('GRTANTEO'), null);
+    assert.equal(S.formatChannelName('GRUPOS'), null);
+    assert.equal(S.formatChannelName('OTA/AAVV'), null);
+
+    // Real channels format properly
+    assert.equal(S.formatChannelName('BOOKING'), 'Booking.com');
+    assert.equal(S.formatChannelName('EXPEDIA'), 'Expedia');
+    assert.equal(S.formatChannelName('ROIBACK'), 'Roiback');
+
+    // 3. Parsing reports with only segments does not create fictitious channels
+    const reportData = [
+        ['Seg.', '', '01/01/26', '02/01/26'],
+        ['CO DINAMI', 'Hab', 10, 10],
+        ['', 'HABITACION DOBLE', 1000, 1000],
+        ['CO LINEAL', 'Hab', 5, 5],
+        ['', 'HABITACION DOBLE', 400, 400],
+        ['DIRONLINE', 'Hab', 8, 8],
+        ['', 'HABITACION DOBLE', 800, 800],
+        ['TOTAL GENERAL', 'Hab', 23, 23],
+        ['', 'HABITACION DOBLE', 2200, 2200]
+    ];
+    const report = S.parse(reportData, 'Seg_Standard_2026.xlsx');
+    const corpDin = report.years['2026'].segment['CORPORATIVO DINAMICO'];
+    assert.ok(corpDin);
+    assert.equal(corpDin.rooms[0], 20);
+    assert.equal(corpDin.accommodation[0], 2000);
+    // Should NOT have created channels for CO DINAMI
+    assert.ok(!corpDin.channels || Object.keys(corpDin.channels).length === 0);
+
+    // getSegmentChannels must return empty array, NOT [{ name: 'CORPORATIVO DINAMICO' }]
+    const channels = S.getSegmentChannels(corpDin, [0]);
+    assert.equal(channels.length, 0);
+
+    // 4. Commissions config must NOT contain segments
+    const config = S.getChannelCommissionConfig('Guadiana');
+    assert.ok(!config['CO DINAMI']);
+    assert.ok(!config['CO LINEAL']);
+    assert.ok(!config['CORPORATIVO DINAMICO']);
+    assert.ok(!config['GRTANTEO']);
+    assert.ok(!config['GRUPOS']);
+    assert.ok(!config['DIRONLINE']);
+    assert.ok(!config['OTA/AAVV']);
+    assert.ok(config['Booking.com']);
+    assert.ok(config['Roiback']);
+
+    // 5. Aggregate net correctly applies segment fallback when no channel breakdown exists
+    const netAgg = S.aggregateNet(report.years['2026'], [0]);
+    assert.equal(netAgg.rooms, 46); // 20 + 10 + 16
+    assert.equal(netAgg.grossAccommodation, 4400); // 2000 + 800 + 1600
+    // Corp Din: 2000 * 10% = 200; Corp Lineal: 800 * 0% = 0; Dir Online: 1600 * 3% = 48. Total com = 248
+    assert.equal(netAgg.totalCommissions, 200 + 0 + 48);
+    assert.equal(netAgg.netAccommodation, 4400 - 248);
+});
+
+
 

@@ -34,17 +34,21 @@ function openCommissionModal() {
     if (hotelData) {
         for (const seg of SegmentAnalysis.segments(hotelData)) {
             const chs = SegmentAnalysis.getSegmentChannels(seg, [], currentHotel);
-            chs.forEach(c => currentChannels.add(c.name));
+            chs.forEach(c => {
+                if (!SegmentAnalysis.isSegment(c.name)) currentChannels.add(c.name);
+            });
         }
     }
 
-    const allKeys = [...new Set([...currentChannels, ...Object.keys(config)])].sort((a, b) => {
-        const aIn = currentChannels.has(a);
-        const bIn = currentChannels.has(b);
-        if (aIn && !bIn) return -1;
-        if (!aIn && bIn) return 1;
-        return a.localeCompare(b, 'es');
-    });
+    const allKeys = [...new Set([...currentChannels, ...Object.keys(config)])]
+        .filter(k => !SegmentAnalysis.isSegment(k))
+        .sort((a, b) => {
+            const aIn = currentChannels.has(a);
+            const bIn = currentChannels.has(b);
+            if (aIn && !bIn) return -1;
+            if (!aIn && bIn) return 1;
+            return a.localeCompare(b, 'es');
+        });
 
     tbody.innerHTML = allKeys.map(chName => {
         const item = config[chName] || { pct: 0, fixedPerRN: 0 };
@@ -95,6 +99,7 @@ function saveCommissionsFromModal() {
     const newConfig = {};
     tbody.querySelectorAll('tr[data-ch]').forEach(row => {
         const name = row.getAttribute('data-ch');
+        if (SegmentAnalysis && SegmentAnalysis.isSegment && SegmentAnalysis.isSegment(name)) return;
         const pctVal = parseFloat(row.querySelector('.commission-pct-input')?.value) || 0;
         const feeVal = parseFloat(row.querySelector('.commission-fee-input')?.value) || 0;
         newConfig[name] = { pct: pctVal, fixedPerRN: feeVal };
@@ -169,6 +174,7 @@ function buildMonthlyFromForecast(db) {
             }
             if (segData.channels) {
                 for (const [chName, chData] of Object.entries(segData.channels)) {
+                    if (SegmentAnalysis && SegmentAnalysis.isSegment && SegmentAnalysis.isSegment(chName)) continue;
                     for (const [iso, daily] of Object.entries(chData.days || {})) {
                         const [yyyy, mm] = iso.split('-');
                         const year = yyyy;
@@ -213,9 +219,35 @@ function loadData() {
                     delete historicalDB[h][y];
                     cleaned = true;
                 }
+                const segs = historicalDB[h][y]?.segment || {};
+                for (const seg of Object.values(segs)) {
+                    if (seg.channels) {
+                        for (const chName of Object.keys(seg.channels)) {
+                            if (SegmentAnalysis && SegmentAnalysis.isSegment && SegmentAnalysis.isSegment(chName)) {
+                                delete seg.channels[chName];
+                                cleaned = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        let cleanedForecast = false;
+        for (const h of Object.keys(forecastDB)) {
+            const segs = forecastDB[h]?.segment || {};
+            for (const seg of Object.values(segs)) {
+                if (seg.channels) {
+                    for (const chName of Object.keys(seg.channels)) {
+                        if (SegmentAnalysis && SegmentAnalysis.isSegment && SegmentAnalysis.isSegment(chName)) {
+                            delete seg.channels[chName];
+                            cleanedForecast = true;
+                        }
+                    }
+                }
             }
         }
         if (cleaned) CapaStorage.setItem(STORAGE_KEY, JSON.stringify(historicalDB));
+        if (cleanedForecast) CapaStorage.setItem('segment_forecast_v2', JSON.stringify(forecastDB));
 
         const config = JSON.parse(CapaStorage.getItem('upload_config_db_v2') || '{}');
         for (const h of Object.keys(HOTELS)) {
@@ -853,8 +885,8 @@ function renderDashboard() {
     el('tableBody').innerHTML = visible.map(row => {
         const segObj = currentMap.get(row.name);
         const oldSegObj = previousMap.get(row.name);
-        const segChannels = segObj?.channels ? Object.values(segObj.channels) : [];
-        const hasMultipleChannels = segChannels.length > 1 || (segChannels.length === 1 && segChannels[0].name !== row.name);
+        const segChannels = segObj?.channels ? Object.values(segObj.channels).filter(c => c && c.name && !SegmentAnalysis.isSegment(c.name)) : [];
+        const hasMultipleChannels = segChannels.length > 0;
         const isExpanded = expandedSegments.has(row.name);
 
         const mix = mixTotal ? (currentMetric === 'rooms' ? row.rooms : row.accommodation) / mixTotal : null;

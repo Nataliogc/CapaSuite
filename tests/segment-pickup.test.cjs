@@ -87,6 +87,7 @@ test('renderSegmentPickupAnalysis in Analisis360 calculates pickup from forecast
         normalizeSegmentDisplayName: (n) => n,
         fmt: (n) => `${Math.round(n)} €`,
         fmtNum: (n) => `${n}`,
+        window: { __seg360NetMode: false },
         console: console
     };
 
