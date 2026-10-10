@@ -293,9 +293,12 @@ test('segments like CO DINAMI, CO LINEAL, GRTANTEO, DIRONLINE are never confused
     // Should NOT have created channels for CO DINAMI
     assert.ok(!corpDin.channels || Object.keys(corpDin.channels).length === 0);
 
-    // getSegmentChannels must return empty array, NOT [{ name: 'CORPORATIVO DINAMICO' }]
+    // getSegmentChannels asigna el canal operativo por defecto según Opción A (Empresas Corporativas)
     const channels = S.getSegmentChannels(corpDin, [0]);
-    assert.equal(channels.length, 0);
+    assert.equal(channels.length, 1);
+    assert.equal(channels[0].name, 'Empresas Corporativas');
+    assert.equal(channels[0].rooms, 20);
+    assert.equal(channels[0].accommodation, 2000);
 
     // 4. Commissions config must NOT contain segments
     const config = S.getChannelCommissionConfig('Guadiana');

@@ -268,13 +268,42 @@
         return Boolean(KNOWN_CHANNELS_MAP[upper]);
     }
 
-    function formatChannelName(raw) {
-        if (!raw) return null;
-        const s = String(raw).trim();
+    const DEFAULT_SEGMENT_CHANNELS = {
+        'CORPORATIVO LINEAL': () => 'Tarifas Negociadas',
+        'CORPORATIVO DINAMICO': () => 'Empresas Corporativas',
+        'DIRECTO OFFLINE': () => 'Directo Offline (Mostrador/Tel)',
+        'DIRECTO ONLINE': (hotel) => (String(hotel || '').toLowerCase().includes('cumbria') ? 'Web Hotel Synergy' : 'Directo Online (Web)'),
+        'OTA/AAVV': () => 'OTA / Agencias Online',
+        'TTOO DINAMICA': () => 'TTOO Dinámica',
+        'OTROS': () => 'Otros Canales',
+        'GRUPOS': () => 'Grupos Confirmados',
+        'GRTANTEO': () => 'Grupos Tanteo',
+        'PARTICULARES': () => 'Particulares',
+        'AGENCIAS': () => 'Agencias Tradicionales',
+        'BONO ONLINE': (hotel) => (String(hotel || '').toLowerCase().includes('cumbria') ? 'Bono Spa' : 'Bono Online')
+    };
+
+    function getDefaultChannelForSegment(segmentName, hotel = '') {
+        const seg = canonical(segmentName);
+        if (DEFAULT_SEGMENT_CHANNELS[seg]) {
+            return DEFAULT_SEGMENT_CHANNELS[seg](hotel);
+        }
+        return null;
+    }
+
+    function formatChannelName(raw, segmentName = '', hotel = '') {
+        if (!raw && !segmentName) return null;
+        const s = String(raw || '').trim();
         const upper = norm(s);
-        // Si coincide con un segmento o total, NO es un canal
-        if (isSegment(s) || isTotalName(s)) return null;
+        if (isTotalName(s) || isTotalName(segmentName)) return null;
         if (KNOWN_CHANNELS_MAP[upper]) return KNOWN_CHANNELS_MAP[upper];
+
+        // Si se pasa un raw que es un segmento conocido sin coincidir en canales conocidos, es un segmento
+        if (isSegment(s)) return null;
+
+        if (segmentName) {
+            return getDefaultChannelForSegment(segmentName, hotel);
+        }
         return null;
     }
 
@@ -291,9 +320,19 @@
         'Roiback': { pct: 0, fixedPerRN: 0 },
         'Sercotel': { pct: 0, fixedPerRN: 0 },
         'Directo Online (Web)': { pct: 0, fixedPerRN: 0 },
+        'Web Hotel Synergy': { pct: 0, fixedPerRN: 0 },
+        'Directo Offline (Mostrador/Tel)': { pct: 0, fixedPerRN: 0 },
+        'Empresas Corporativas': { pct: 0, fixedPerRN: 0 },
+        'OTA / Agencias Online': { pct: 0, fixedPerRN: 0 },
+        'TTOO Dinámica': { pct: 0, fixedPerRN: 0 },
+        'Otros Canales': { pct: 0, fixedPerRN: 0 },
+        'Grupos Confirmados': { pct: 0, fixedPerRN: 0 },
+        'Grupos Tanteo': { pct: 0, fixedPerRN: 0 },
+        'Particulares': { pct: 0, fixedPerRN: 0 },
+        'Agencias Tradicionales': { pct: 0, fixedPerRN: 0 },
+        'Bono Online': { pct: 0, fixedPerRN: 0 },
         'SynXis': { pct: 0, fixedPerRN: 0 },
         'Witbooking': { pct: 0, fixedPerRN: 0 },
-        'Web Hotel Synergy': { pct: 0, fixedPerRN: 0 },
         'Web Hotel': { pct: 0, fixedPerRN: 0 },
         'Synergy': { pct: 0, fixedPerRN: 0 },
         'Mostrador': { pct: 0, fixedPerRN: 0 },
@@ -611,7 +650,7 @@
                 const block = blocks.find(b => b.row === r + 1);
                 totalBlock = isTotalName(block.name);
                 segment = totalBlock ? null : block.name;
-                currentChannel = totalBlock ? null : formatChannelName(block.original);
+                currentChannel = totalBlock ? null : formatChannelName(block.original, block.name, detectedHotel);
             }
             if (!metric || (!segment && !totalBlock)) continue;
             const isTotal = /\b(PRO|PROD|PRODUCCIO?N|REVENUE|VENTA|VTA|INGRESOS?|TOTAL|TOTALES|NETO|IMPORTE)\b/.test(metric);
@@ -815,7 +854,7 @@
         for (const block of blocks) {
             const segment = block.name;
             if (/^(TOTAL|TOTAL GENERAL|TOTAL MASTER|RESUMEN)$/.test(norm(segment)) || !segment) continue;
-            const currentChannel = formatChannelName(block.original);
+            const currentChannel = formatChannelName(block.original, block.name, detectedHotel);
             
             const target = segmentData[segment] ||= { name: segment, days: {}, channels: {} };
             let chTarget = null;
@@ -984,6 +1023,33 @@
                         netMarginPct: net.netMarginPct
                     };
                 }).filter(ch => ch.rooms > 0 || ch.accommodation > 0 || ch.revenue > 0 || ch.totalRevenue > 0);
+        }
+
+        // Si el segmento no tiene canales desglosados en el archivo, se asigna al canal operativo por defecto
+        const defChName = formatChannelName('', segment.name, hotel);
+        if (defChName) {
+            const rooms = sum(segment, 'rooms', mList);
+            const accommodation = sum(segment, 'accommodation', mList);
+            const revenue = sum(segment, 'revenue', mList);
+            const totalRevenue = sum(segment, 'totalRevenue', mList);
+            if (rooms > 0 || accommodation > 0 || revenue > 0 || totalRevenue > 0) {
+                const adr = rooms > 0 && accommodation > 0 ? accommodation / rooms : (rooms > 0 && revenue > 0 ? revenue / rooms : null);
+                const net = calculateNetMetrics(accommodation, rooms, defChName, hotel);
+                return [{
+                    name: defChName,
+                    rooms,
+                    accommodation,
+                    revenue,
+                    totalRevenue,
+                    adr,
+                    commissionPct: net.commissionPct,
+                    fixedFeePerRN: net.fixedFeePerRN,
+                    commissionAmount: net.commissionAmount,
+                    netAccommodation: net.netAccommodation,
+                    netAdr: net.netAdr,
+                    netMarginPct: net.netMarginPct
+                }];
+            }
         }
         return [];
     }
