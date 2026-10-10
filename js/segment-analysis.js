@@ -99,6 +99,161 @@
     const canonical = value => aliases[norm(value)] || norm(value);
     const isTotalName = value => /^(TOTAL|TOTAL GENERAL|TOTAL MASTER|RESUMEN)$/.test(norm(value));
 
+    function formatChannelName(raw) {
+        const s = String(raw || '').trim();
+        if (!s) return 'General';
+        const upper = norm(s);
+        if (upper === 'BOOKING' || upper === 'BOOKINGCOM') return 'Booking.com';
+        if (upper === 'EXPEDIA') return 'Expedia';
+        if (upper === 'ROIBACK') return 'Roiback';
+        if (upper === 'SERCOTEL') return 'Sercotel';
+        if (upper === 'KEYTEL' || upper === 'KEYTEL PHOENIX' || upper === 'KEYTEL - PHOENIX' || upper === 'PHOENIX') return 'Keytel Phoenix';
+        if (upper === 'KEYTEL GDS') return 'Keytel GDS';
+        if (upper === 'SITEMINDER' || upper === 'SITEMINDER GDS') return 'SiteMinder GDS';
+        if (upper === 'VECI' || upper === 'VIAJES EL CORTE INGLES' || upper === 'EL CORTE INGLES') return 'Viajes El Corte Inglés';
+        if (upper === 'W2M' || upper === 'WORLD2MEET') return 'World2Meet';
+        if (upper === 'HOTELBEDS') return 'Hotelbeds';
+        if (upper === 'SERHS' || upper === 'SERHS TOURISM') return 'Serhs Tourism';
+        if (upper === 'TRAVELTINO') return 'Traveltino';
+        if (upper === 'WEEKENDESK') return 'Weekendesk';
+        if (upper === 'SMARTBOX') return 'Smartbox';
+        if (upper === 'WONDERBOX') return 'Wonderbox';
+        if (upper === 'EGO' || upper === 'EGO EXPERIENCIAS') return 'Ego Experiencias';
+        if (upper === 'MOSTRADOR') return 'Mostrador';
+        if (upper === 'DIRECTO OFFLINE' || upper === 'DIRECTO O' || upper === 'D OFF LINE' || upper === 'DIRECTO OFF') return 'Directo Offline';
+        if (upper === 'DIRECTO ONLINE' || upper === 'DIR ONLINE' || upper === 'DIRONLINE' || upper === 'D ON LINE' || upper === 'DIRECTO ON') return 'Directo Online (Web)';
+        if (upper === 'TARIFAS NEGOCIADAS' || upper === 'TARIFAS N' || upper === 'TARIFAS NEG' || upper === 'TARIFAS NEGOCI') return 'Tarifas Negociadas';
+        if (upper === 'EMPRESAS' || upper === 'EMPRESA') return 'Empresas Directas';
+        if (upper === 'HRS') return 'HRS';
+        if (upper === 'SYNXIS') return 'SynXis';
+        if (upper === 'WITBOOKING') return 'Witbooking';
+        if (upper === 'WEB HOTEL') return 'Web Hotel';
+        if (upper === 'SYNERGY') return 'Synergy';
+        if (upper === 'GRUPO AVORIS') return 'Grupo Ávoris';
+        if (upper === 'BONO ONLINE' || upper === 'BONO LINE') return 'Bono Online';
+        if (upper === 'BONO SPA') return 'Bono Spa';
+        if (upper === 'GRUPO TANTEO' || upper === 'GRTANTEO' || upper === 'GRUPO TAN') return 'Grupo Tanteo';
+        if (upper === 'GRUPO CONFIRMADO' || upper === 'GRUPOS' || upper === 'GRUPO') return 'Grupos';
+        if (upper === 'PARTICULAR' || upper === 'PARTICULARES' || upper === 'PARTICULA') return 'Particulares';
+        return s;
+    }
+
+    const DEFAULT_CHANNEL_COMMISSIONS = {
+        'Booking.com': { pct: 18, fixedPerRN: 0 },
+        'Expedia': { pct: 18, fixedPerRN: 0 },
+        'Roiback': { pct: 3, fixedPerRN: 0 },
+        'Sercotel': { pct: 4, fixedPerRN: 0 },
+        'Directo Online (Web)': { pct: 3, fixedPerRN: 0 },
+        'SynXis': { pct: 3, fixedPerRN: 0 },
+        'Witbooking': { pct: 3, fixedPerRN: 0 },
+        'Web Hotel': { pct: 3, fixedPerRN: 0 },
+        'Synergy': { pct: 3, fixedPerRN: 0 },
+        'Mostrador': { pct: 0, fixedPerRN: 0 },
+        'Directo Offline': { pct: 0, fixedPerRN: 0 },
+        'Tarifas Negociadas': { pct: 0, fixedPerRN: 0 },
+        'Empresas Directas': { pct: 0, fixedPerRN: 0 },
+        'Keytel Phoenix': { pct: 10, fixedPerRN: 0 },
+        'Keytel GDS': { pct: 10, fixedPerRN: 0 },
+        'SiteMinder GDS': { pct: 10, fixedPerRN: 0 },
+        'HRS': { pct: 12, fixedPerRN: 0 },
+        'Viajes El Corte Inglés': { pct: 10, fixedPerRN: 0 },
+        'World2Meet': { pct: 12, fixedPerRN: 0 },
+        'Hotelbeds': { pct: 20, fixedPerRN: 0 },
+        'Serhs Tourism': { pct: 20, fixedPerRN: 0 },
+        'Traveltino': { pct: 20, fixedPerRN: 0 },
+        'Weekendesk': { pct: 20, fixedPerRN: 0 },
+        'Grupo Ávoris': { pct: 14, fixedPerRN: 0 },
+        'Smartbox': { pct: 22, fixedPerRN: 0 },
+        'Wonderbox': { pct: 22, fixedPerRN: 0 },
+        'Ego Experiencias': { pct: 22, fixedPerRN: 0 },
+        'Bono Online': { pct: 15, fixedPerRN: 0 },
+        'Bono Spa': { pct: 10, fixedPerRN: 0 },
+        'Grupos': { pct: 0, fixedPerRN: 0 },
+        'Grupo Tanteo': { pct: 0, fixedPerRN: 0 },
+        'Particulares': { pct: 0, fixedPerRN: 0 },
+        // Fallbacks por segmento si no hay subcanal:
+        'OTA/AAVV': { pct: 18, fixedPerRN: 0 },
+        'DIRECTO ONLINE': { pct: 3, fixedPerRN: 0 },
+        'DIRECTO OFFLINE': { pct: 0, fixedPerRN: 0 },
+        'CORPORATIVO LINEAL': { pct: 0, fixedPerRN: 0 },
+        'CORPORATIVO DINAMICO': { pct: 10, fixedPerRN: 0 },
+        'TTOO DINAMICA': { pct: 20, fixedPerRN: 0 },
+        'GRUPOS': { pct: 0, fixedPerRN: 0 },
+        'GRTANTEO': { pct: 0, fixedPerRN: 0 },
+        'OTROS': { pct: 10, fixedPerRN: 0 },
+        'PARTICULARES': { pct: 0, fixedPerRN: 0 }
+    };
+
+    function getChannelCommissionConfig(hotel = '') {
+        try {
+            const h = (hotel && typeof hotel === 'string') ? hotel : 'Guadiana';
+            let raw = null;
+            if (typeof CapaStorage !== 'undefined' && CapaStorage.getItem) {
+                raw = CapaStorage.getItem('channel_commissions_' + h);
+            }
+            if (!raw && typeof window !== 'undefined' && window.localStorage) {
+                raw = window.localStorage.getItem('channel_commissions_' + h);
+            }
+            const saved = raw ? JSON.parse(raw) : {};
+            return { ...DEFAULT_CHANNEL_COMMISSIONS, ...saved };
+        } catch (e) {
+            return { ...DEFAULT_CHANNEL_COMMISSIONS };
+        }
+    }
+
+    function saveChannelCommissionConfig(hotel, config) {
+        try {
+            const h = (hotel && typeof hotel === 'string') ? hotel : 'Guadiana';
+            const existing = getChannelCommissionConfig(h);
+            const merged = { ...existing, ...config };
+            const json = JSON.stringify(merged);
+            if (typeof CapaStorage !== 'undefined' && CapaStorage.setItem) {
+                CapaStorage.setItem('channel_commissions_' + h, json);
+            }
+            if (typeof window !== 'undefined' && window.localStorage) {
+                window.localStorage.setItem('channel_commissions_' + h, json);
+            }
+            return merged;
+        } catch (e) {
+            console.error('Error guardando comisiones de canales:', e);
+            return config;
+        }
+    }
+
+    function calculateNetMetrics(grossAccommodation, rooms, channelOrSegmentName, hotel = '') {
+        const config = getChannelCommissionConfig(hotel);
+        const nameNorm = norm(channelOrSegmentName);
+        const canon = canonical(channelOrSegmentName);
+        let rule = config[channelOrSegmentName] || config[canon];
+        if (!rule) {
+            for (const [k, v] of Object.entries(config)) {
+                if (norm(k) === nameNorm || norm(k) === norm(canon)) {
+                    rule = v;
+                    break;
+                }
+            }
+        }
+        rule = rule || { pct: 0, fixedPerRN: 0 };
+        const pctCommission = Number(rule.pct) || 0;
+        const fixedFee = Number(rule.fixedPerRN) || 0;
+
+        const commissionAmount = (grossAccommodation * (pctCommission / 100)) + (rooms * fixedFee);
+        const netAccommodation = Math.max(0, grossAccommodation - commissionAmount);
+        const grossAdr = rooms > 0 ? grossAccommodation / rooms : null;
+        const netAdr = rooms > 0 ? netAccommodation / rooms : null;
+        const netMarginPct = grossAccommodation > 0 ? (netAccommodation / grossAccommodation) * 100 : (100 - pctCommission);
+
+        return {
+            commissionPct: pctCommission,
+            fixedFeePerRN: fixedFee,
+            commissionAmount,
+            netAccommodation,
+            grossAdr,
+            netAdr,
+            netMarginPct
+        };
+    }
+
     function getStoredHotelMappings(hotel) {
         try {
             const h = (hotel && typeof hotel === 'string') ? hotel : 'Guadiana';
@@ -264,7 +419,7 @@
             if (c.day) days.push(c.day);
             else for (let day = 1; day <= new Date(Date.UTC(Number(c.year), c.month + 1, 0)).getUTCDate(); day++) days.push(day);
         });
-        let segment = null, totalBlock = false, roomRows = 0, lodgingRows = 0;
+        let segment = null, totalBlock = false, roomRows = 0, lodgingRows = 0, currentChannel = null;
         for (let r = header + 1; r < rows.length; r++) {
             const row = rows[r] || [], rawName = String(row[0] ?? '').trim(), metric = norm(row[1]);
             const isRooms = isRoomMetric(metric);
@@ -272,6 +427,7 @@
                 const block = blocks.find(b => b.row === r + 1);
                 totalBlock = isTotalName(block.name);
                 segment = totalBlock ? null : block.name;
+                currentChannel = totalBlock ? null : formatChannelName(block.original || block.name);
             }
             if (!metric || (!segment && !totalBlock)) continue;
             const isTotal = /\b(PRO|PROD|PRODUCCIO?N|REVENUE|VENTA|VTA|INGRESOS?|TOTAL|TOTALES|NETO|IMPORTE)\b/.test(metric);
@@ -286,9 +442,25 @@
                 const y = years[c.year], value = number(row[i]);
                 const target = totalBlock ? (y.controls.values ||= empty('TOTAL')) : (y.segment[segment] ||= empty(segment));
                 
-                if (isRooms) target.rooms[c.month] += value;
-                else if (isTotal) target.totalRevenue[c.month] += value;
-                else {
+                let chTarget = null;
+                if (!totalBlock && currentChannel) {
+                    target.channels ||= {};
+                    chTarget = (target.channels[currentChannel] ||= {
+                        name: currentChannel,
+                        revenue: Array(12).fill(0),
+                        rooms: Array(12).fill(0),
+                        accommodation: Array(12).fill(0),
+                        totalRevenue: Array(12).fill(0)
+                    });
+                }
+
+                if (isRooms) {
+                    target.rooms[c.month] += value;
+                    if (chTarget) chTarget.rooms[c.month] += value;
+                } else if (isTotal) {
+                    target.totalRevenue[c.month] += value;
+                    if (chTarget) chTarget.totalRevenue[c.month] += value;
+                } else {
                     const safeMetric = metric || 'DESCONOCIDO';
                     // Si la métrica/concepto coincide con el nombre de un segmento, es un desglose del bloque de totales.
                     // Lo ignoramos para no sumarlo como concepto ni duplicar la producción.
@@ -299,7 +471,12 @@
                     target.concepts[safeMetric][c.month] += value;
                     
                     target.revenue[c.month] += value;
-                    if (isLodging) { target.accommodation[c.month] += value; target.accommodationVerified[c.month] = true; }
+                    if (chTarget) chTarget.revenue[c.month] += value;
+                    if (isLodging) {
+                        target.accommodation[c.month] += value;
+                        target.accommodationVerified[c.month] = true;
+                        if (chTarget) chTarget.accommodation[c.month] += value;
+                    }
                 }
                 if (totalBlock) y.controls.present = true;
             });
@@ -315,7 +492,17 @@
                 }
             };
             if (y.controls.present) processFallback(y.controls.values);
-            for (const s of Object.values(y.segment)) processFallback(s);
+            for (const s of Object.values(y.segment)) {
+                processFallback(s);
+                if (s.channels) {
+                    for (const ch of Object.values(s.channels)) {
+                        if (!ch.revenue.some(v => v !== 0) && ch.totalRevenue.some(v => v !== 0)) {
+                            ch.revenue = ch.totalRevenue.slice();
+                            ch.accommodation = ch.totalRevenue.slice();
+                        }
+                    }
+                }
+            }
             
             for (const [m, days] of Object.entries(y.coverage)) {
                 days.sort((a, b) => a - b);
@@ -346,6 +533,11 @@
                     if (seg.concepts) {
                         for (const concept of Object.values(seg.concepts)) concept[m] = 0;
                     }
+                    if (seg.channels) {
+                        for (const ch of Object.values(seg.channels)) {
+                            for (const field of fields) if (ch[field]) ch[field][m] = 0;
+                        }
+                    }
                 }
                 for (const [name, seg] of Object.entries(incoming.segment)) {
                     // Define own keys, including unusual names supplied by external reports.
@@ -359,6 +551,22 @@
                         for (const [cName, cArr] of Object.entries(seg.concepts)) {
                             target.segment[name].concepts[cName] ||= Array(12).fill(0);
                             target.segment[name].concepts[cName][m] = cArr[m];
+                        }
+                    }
+                    if (seg.channels) {
+                        target.segment[name].channels ||= {};
+                        for (const [chName, chData] of Object.entries(seg.channels)) {
+                            const tgtCh = target.segment[name].channels[chName] ||= {
+                                name: chName,
+                                revenue: Array(12).fill(0),
+                                rooms: Array(12).fill(0),
+                                accommodation: Array(12).fill(0),
+                                totalRevenue: Array(12).fill(0)
+                            };
+                            for (const field of fields) {
+                                tgtCh[field] ||= Array(12).fill(0);
+                                tgtCh[field][m] = chData[field]?.[m] || 0;
+                            }
                         }
                     }
                 }
@@ -418,8 +626,11 @@
         for (const block of blocks) {
             const segment = block.name;
             if (/^(TOTAL|TOTAL GENERAL|TOTAL MASTER|RESUMEN)$/.test(norm(segment)) || !segment) continue;
+            const currentChannel = formatChannelName(block.original || segment);
             
-            const target = segmentData[segment] ||= { name: segment, days: {} };
+            const target = segmentData[segment] ||= { name: segment, days: {}, channels: {} };
+            target.channels ||= {};
+            const chTarget = (target.channels[currentChannel] ||= { name: currentChannel, days: {} });
             let roomRows = 0, lodgingRows = 0;
 
             for (let r = block.row - 1; r <= block.end; r++) {
@@ -440,13 +651,22 @@
                     const value = number(row[i]);
                     
                     const dt = target.days[c.iso] ||= { revenue: 0, rooms: 0, accommodation: 0, totalRevenue: 0 };
+                    const chDt = chTarget.days[c.iso] ||= { revenue: 0, rooms: 0, accommodation: 0, totalRevenue: 0 };
                     
-                    if (isRooms) dt.rooms += value;
-                    else if (isTotal) dt.totalRevenue += value;
-                    else {
+                    if (isRooms) {
+                        dt.rooms += value;
+                        chDt.rooms += value;
+                    } else if (isTotal) {
+                        dt.totalRevenue += value;
+                        chDt.totalRevenue += value;
+                    } else {
                         if (validSegments.includes(canonical(metric))) return;
                         dt.revenue += value;
-                        if (isLodging) dt.accommodation += value;
+                        chDt.revenue += value;
+                        if (isLodging) {
+                            dt.accommodation += value;
+                            chDt.accommodation += value;
+                        }
                         dt.concepts ||= {};
                         dt.concepts[metric] = (dt.concepts[metric] || 0) + value;
                     }
@@ -456,6 +676,10 @@
             for (const dt of Object.values(target.days)) {
                 dt.accommodationVerified = lodgingRows > 0;
                 if (!Object.keys(dt.concepts || {}).length) dt.revenue = dt.totalRevenue;
+            }
+            for (const chDt of Object.values(chTarget.days)) {
+                chDt.accommodationVerified = lodgingRows > 0;
+                if (chDt.revenue === 0 && chDt.totalRevenue > 0) chDt.revenue = chDt.totalRevenue;
             }
         }
         return { segmentData, coverage: columns.filter(Boolean).map(c => c.iso), source: fileName, startYear };
@@ -482,6 +706,15 @@
             const seg = target.segment[name] ||= { name, days: {} };
             for (const [iso, dt] of Object.entries(incomingSeg.days)) {
                 seg.days[iso] = dt;
+            }
+            if (incomingSeg.channels) {
+                seg.channels ||= {};
+                for (const [chName, incomingCh] of Object.entries(incomingSeg.channels)) {
+                    const ch = seg.channels[chName] ||= { name: chName, days: {} };
+                    for (const [iso, chDt] of Object.entries(incomingCh.days)) {
+                        ch.days[iso] = chDt;
+                    }
+                }
             }
         }
         const uploadedAt = new Date();
@@ -529,7 +762,112 @@
         if (!data || !name) return data;
         return { ...data, segment: Object.fromEntries(Object.entries(data.segment || {}).filter(([, segment]) => segment.name === name)) };
     }
-    const api = { parse, merge, parseForecast, mergeForecast, aggregate, comparable, availableMonths, segments, sum, number, reviewRows, validSegments, canonical, scope, getHotelMappings: getStoredHotelMappings, saveHotelMappings: saveStoredHotelMappings };
+    function getSegmentChannels(segment, selectedMonths, hotel = '') {
+        if (!segment) return [];
+        const mList = Array.isArray(selectedMonths) && selectedMonths.length ? selectedMonths : Array.from({ length: 12 }, (_, i) => i);
+        if (segment.channels && Object.keys(segment.channels).length > 0) {
+            return Object.values(segment.channels).map(ch => {
+                const rooms = sum(ch, 'rooms', mList);
+                const accommodation = sum(ch, 'accommodation', mList);
+                const revenue = sum(ch, 'revenue', mList);
+                const totalRevenue = sum(ch, 'totalRevenue', mList);
+                const adr = rooms > 0 && accommodation > 0 ? accommodation / rooms : (rooms > 0 && revenue > 0 ? revenue / rooms : null);
+                const net = calculateNetMetrics(accommodation, rooms, ch.name, hotel);
+                return {
+                    name: ch.name,
+                    rooms,
+                    accommodation,
+                    revenue,
+                    totalRevenue,
+                    adr,
+                    commissionPct: net.commissionPct,
+                    fixedFeePerRN: net.fixedFeePerRN,
+                    commissionAmount: net.commissionAmount,
+                    netAccommodation: net.netAccommodation,
+                    netAdr: net.netAdr,
+                    netMarginPct: net.netMarginPct
+                };
+            }).filter(ch => ch.rooms > 0 || ch.accommodation > 0 || ch.revenue > 0 || ch.totalRevenue > 0);
+        }
+        const rooms = sum(segment, 'rooms', mList);
+        const accommodation = sum(segment, 'accommodation', mList);
+        const revenue = sum(segment, 'revenue', mList);
+        const totalRevenue = sum(segment, 'totalRevenue', mList);
+        const adr = rooms > 0 && accommodation > 0 ? accommodation / rooms : (rooms > 0 && revenue > 0 ? revenue / rooms : null);
+        const net = calculateNetMetrics(accommodation, rooms, segment.name, hotel);
+        return [{
+            name: segment.name,
+            rooms,
+            accommodation,
+            revenue,
+            totalRevenue,
+            adr,
+            commissionPct: net.commissionPct,
+            fixedFeePerRN: net.fixedFeePerRN,
+            commissionAmount: net.commissionAmount,
+            netAccommodation: net.netAccommodation,
+            netAdr: net.netAdr,
+            netMarginPct: net.netMarginPct
+        }];
+    }
+
+    function aggregateNet(data, selectedMonths, hotel = '') {
+        const mList = Array.isArray(selectedMonths) && selectedMonths.length ? selectedMonths : Array.from({ length: 12 }, (_, i) => i);
+        let grossAccommodation = 0;
+        let rooms = 0;
+        let totalCommissions = 0;
+        let netAccommodation = 0;
+
+        for (const seg of segments(data)) {
+            const chList = getSegmentChannels(seg, mList, hotel);
+            for (const ch of chList) {
+                grossAccommodation += ch.accommodation;
+                rooms += ch.rooms;
+                totalCommissions += ch.commissionAmount;
+                netAccommodation += ch.netAccommodation;
+            }
+        }
+
+        const grossAdr = rooms > 0 ? grossAccommodation / rooms : null;
+        const netAdr = rooms > 0 ? netAccommodation / rooms : null;
+        const netMarginPct = grossAccommodation > 0 ? (netAccommodation / grossAccommodation) * 100 : null;
+
+        return {
+            grossAccommodation,
+            rooms,
+            totalCommissions,
+            netAccommodation,
+            grossAdr,
+            netAdr,
+            netMarginPct
+        };
+    }
+
+    const api = { 
+        parse, 
+        merge, 
+        parseForecast, 
+        mergeForecast, 
+        aggregate, 
+        aggregateNet,
+        comparable, 
+        availableMonths, 
+        segments, 
+        sum, 
+        number, 
+        reviewRows, 
+        validSegments, 
+        canonical, 
+        scope, 
+        getHotelMappings: getStoredHotelMappings, 
+        saveHotelMappings: saveStoredHotelMappings, 
+        formatChannelName, 
+        getSegmentChannels,
+        getChannelCommissionConfig,
+        saveChannelCommissionConfig,
+        calculateNetMetrics,
+        DEFAULT_CHANNEL_COMMISSIONS
+    };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.SegmentAnalysis = api;
 })(typeof window === 'undefined' ? globalThis : window);

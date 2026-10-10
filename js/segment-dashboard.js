@@ -6,7 +6,127 @@ const HOTELS = { Guadiana: { rooms: 108 }, Cumbria: { rooms: 59 } };
 let historicalDB = {}, forecastDB = {}, segmentDB = {}, currentHotel = window.CapaState.activeHotel, currentYear = '', currentMetric = 'revenue', charts = {};
 let currentMode = 'historical';
 let currentSegment = '';
+let isNetRevenueMode = false;
+let expandedSegments = new Set();
 function selectSegment(name) { currentSegment = name; renderDashboard(); }
+function setRevenueNetMode(enableNet) {
+    isNetRevenueMode = !!enableNet;
+    const btnGross = el('btn-mode-gross');
+    const btnNet = el('btn-mode-net');
+    if (btnGross) btnGross.classList.toggle('active', !isNetRevenueMode);
+    if (btnNet) btnNet.classList.toggle('active', isNetRevenueMode);
+    renderDashboard();
+}
+
+function openCommissionModal() {
+    const modal = el('commissionConfigModal');
+    if (!modal) return;
+    const hotelTitle = el('modalHotelName');
+    if (hotelTitle) hotelTitle.textContent = currentHotel === 'Guadiana' ? 'Hotel Guadiana' : 'Hotel Cumbria';
+    
+    const config = SegmentAnalysis.getChannelCommissionConfig(currentHotel);
+    const tbody = el('commissionModalTableBody');
+    if (!tbody) return;
+
+    // Obtener canales actuales presentes en los datos del hotel para destacarlos primero
+    const currentChannels = new Set();
+    const hotelData = segmentDB[currentHotel]?.[currentYear];
+    if (hotelData) {
+        for (const seg of SegmentAnalysis.segments(hotelData)) {
+            const chs = SegmentAnalysis.getSegmentChannels(seg, [], currentHotel);
+            chs.forEach(c => currentChannels.add(c.name));
+        }
+    }
+
+    const allKeys = [...new Set([...currentChannels, ...Object.keys(config)])].sort((a, b) => {
+        const aIn = currentChannels.has(a);
+        const bIn = currentChannels.has(b);
+        if (aIn && !bIn) return -1;
+        if (!aIn && bIn) return 1;
+        return a.localeCompare(b, 'es');
+    });
+
+    tbody.innerHTML = allKeys.map(chName => {
+        const item = config[chName] || { pct: 0, fixedPerRN: 0 };
+        const isPresent = currentChannels.has(chName);
+        const marginPct = (100 - (Number(item.pct) || 0)).toFixed(1);
+        return `<tr data-ch="${escapeHTML(chName)}" style="${isPresent ? 'background: rgba(99,102,241,0.03);' : ''}">
+            <td style="padding: 10px 14px;">
+                <strong>${escapeHTML(chName)}</strong>
+                ${isPresent ? '<span style="font-size:0.7rem; color:var(--primary); margin-left:6px; font-weight:600;">(En uso)</span>' : ''}
+            </td>
+            <td style="padding: 10px 14px; text-align: right;">
+                <input type="number" step="0.5" min="0" max="100" class="commission-pct-input form-select" value="${Number(item.pct) || 0}"
+                    oninput="updateModalMargin(this)" style="width: 85px; text-align: right; padding: 4px 8px; display: inline-block;"> %
+            </td>
+            <td style="padding: 10px 14px; text-align: right;">
+                <input type="number" step="0.25" min="0" max="100" class="commission-fee-input form-select" value="${Number(item.fixedPerRN) || 0}"
+                    style="width: 85px; text-align: right; padding: 4px 8px; display: inline-block;"> €
+            </td>
+            <td style="padding: 10px 14px; text-align: right; font-weight: 700; color: ${Number(marginPct) < 85 ? '#e11d48' : '#10b981'};" class="modal-margin-cell">
+                ${marginPct}%
+            </td>
+        </tr>`;
+    }).join('');
+
+    modal.style.display = 'flex';
+}
+
+function updateModalMargin(input) {
+    const row = input.closest('tr');
+    if (!row) return;
+    const val = parseFloat(input.value) || 0;
+    const margin = (100 - val).toFixed(1);
+    const cell = row.querySelector('.modal-margin-cell');
+    if (cell) {
+        cell.textContent = margin + '%';
+        cell.style.color = Number(margin) < 85 ? '#e11d48' : '#10b981';
+    }
+}
+
+function closeCommissionModal() {
+    const modal = el('commissionConfigModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function saveCommissionsFromModal() {
+    const tbody = el('commissionModalTableBody');
+    if (!tbody) return;
+    const newConfig = {};
+    tbody.querySelectorAll('tr[data-ch]').forEach(row => {
+        const name = row.getAttribute('data-ch');
+        const pctVal = parseFloat(row.querySelector('.commission-pct-input')?.value) || 0;
+        const feeVal = parseFloat(row.querySelector('.commission-fee-input')?.value) || 0;
+        newConfig[name] = { pct: pctVal, fixedPerRN: feeVal };
+    });
+    SegmentAnalysis.saveChannelCommissionConfig(currentHotel, newConfig);
+    closeCommissionModal();
+    if (typeof showToast === 'function') {
+        showToast(`Comisiones guardadas para ${currentHotel}.`, 'success');
+    }
+    renderDashboard();
+}
+
+function resetDefaultCommissions() {
+    if (!confirm('¿Restablecer las comisiones por defecto para este hotel?')) return;
+    SegmentAnalysis.saveChannelCommissionConfig(currentHotel, SegmentAnalysis.DEFAULT_CHANNEL_COMMISSIONS);
+    openCommissionModal();
+    if (typeof showToast === 'function') {
+        showToast(`Comisiones restablecidas a valores de mercado.`, 'info');
+    }
+    renderDashboard();
+}
+
+function toggleAllChannels() {
+    const hotelData = segmentDB[currentHotel]?.[currentYear];
+    const segsWithChannels = SegmentAnalysis.segments(hotelData).filter(s => s.channels && Object.keys(s.channels).length > 1);
+    if (expandedSegments.size >= segsWithChannels.length && segsWithChannels.length > 0) {
+        expandedSegments.clear();
+    } else {
+        segsWithChannels.forEach(s => expandedSegments.add(s.name));
+    }
+    renderDashboard();
+}
 const el = id => document.getElementById(id);
 const escapeHTML = text => String(text ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = (n, metric = 'revenue') => n == null || !Number.isFinite(n) ? '—' : new Intl.NumberFormat('es-ES', metric === 'rooms' ? { maximumFractionDigits: 0 } : { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
@@ -34,7 +154,7 @@ function buildMonthlyFromForecast(db) {
                 if (!yData.coverage[monthIdx].includes(dayNum)) yData.coverage[monthIdx].push(dayNum);
                 yData.segmentCoverage[monthIdx] = yData.coverage[monthIdx];
 
-                const seg = yData.segment[segName] ||= { name: segName, revenue: Array(12).fill(0), rooms: Array(12).fill(0), accommodation: Array(12).fill(0), concepts: {}, accommodationVerified: Array(12).fill(true) };
+                const seg = yData.segment[segName] ||= { name: segName, revenue: Array(12).fill(0), rooms: Array(12).fill(0), accommodation: Array(12).fill(0), concepts: {}, accommodationVerified: Array(12).fill(true), channels: {} };
                 seg.revenue[monthIdx] += daily.revenue || 0;
                 seg.rooms[monthIdx] += daily.rooms || 0;
                 seg.accommodation[monthIdx] += daily.accommodation || 0;
@@ -44,6 +164,23 @@ function buildMonthlyFromForecast(db) {
                     for (const [cName, cVal] of Object.entries(daily.concepts)) {
                         seg.concepts[cName] ||= Array(12).fill(0);
                         seg.concepts[cName][monthIdx] += (cVal || 0);
+                    }
+                }
+            }
+            if (segData.channels) {
+                for (const [chName, chData] of Object.entries(segData.channels)) {
+                    for (const [iso, daily] of Object.entries(chData.days || {})) {
+                        const [yyyy, mm] = iso.split('-');
+                        const year = yyyy;
+                        const monthIdx = Number(mm) - 1;
+                        if (!result[hotel]?.[year]?.segment?.[segName]) continue;
+                        const seg = result[hotel][year].segment[segName];
+                        seg.channels ||= {};
+                        const ch = seg.channels[chName] ||= { name: chName, revenue: Array(12).fill(0), rooms: Array(12).fill(0), accommodation: Array(12).fill(0), totalRevenue: Array(12).fill(0) };
+                        ch.revenue[monthIdx] += daily.revenue || 0;
+                        ch.rooms[monthIdx] += daily.rooms || 0;
+                        ch.accommodation[monthIdx] += daily.accommodation || 0;
+                        ch.totalRevenue[monthIdx] += daily.totalRevenue || 0;
                     }
                 }
             }
@@ -92,6 +229,7 @@ function loadData() {
 }
 function switchHotel(hotel) {
     currentHotel = hotel; currentYear = ''; currentSegment = '';
+    expandedSegments.clear();
     el('hotelLogo').src = hotel === 'Guadiana' ? 'Imagen/logo-guadiana.svg' : 'Imagen/logo-cumbria.svg';
     initControls();
 }
@@ -598,8 +736,22 @@ function renderDashboard() {
     const totals = SegmentAnalysis.aggregate(data, months), prior = previous ? SegmentAnalysis.aggregate(previous, months) : null;
     const hotelTotals = SegmentAnalysis.aggregate(hotelData, months), hotelPrior = previous ? SegmentAnalysis.aggregate(hotelPrevious, months) : null;
     const capacity = HOTELS[currentHotel].rooms;
-    const revpar = totals.days ? totals.accommodation / (capacity * totals.days) : null;
-    const priorRevpar = prior?.days ? prior.accommodation / (capacity * prior.days) : null;
+    
+    // Net metrics calculation when isNetRevenueMode is active
+    const netTotals = SegmentAnalysis.aggregateNet(data, months, currentHotel);
+    const netPrior = previous ? SegmentAnalysis.aggregateNet(previous, months, currentHotel) : null;
+    const netHotelTotals = SegmentAnalysis.aggregateNet(hotelData, months, currentHotel);
+    const netHotelPrior = previous ? SegmentAnalysis.aggregateNet(hotelPrevious, months, currentHotel) : null;
+
+    const displayProd = isNetRevenueMode ? netTotals.netAccommodation : totals.accommodation;
+    const displayPriorProd = isNetRevenueMode ? netPrior?.netAccommodation : prior?.accommodation;
+    const adrVal = totals.adr != null ? totals.adr : (totals.rooms > 0 && totals.accommodation != null ? totals.accommodation / totals.rooms : null);
+    const priorAdrVal = prior?.adr != null ? prior.adr : (prior?.rooms > 0 && prior.accommodation != null ? prior.accommodation / prior.rooms : null);
+    const displayAdr = isNetRevenueMode ? (netTotals.netAdr ?? adrVal) : adrVal;
+    const displayPriorAdr = isNetRevenueMode ? (netPrior?.netAdr ?? priorAdrVal) : priorAdrVal;
+
+    const revpar = totals.days ? displayProd / (capacity * totals.days) : null;
+    const priorRevpar = prior?.days && displayPriorProd != null ? displayPriorProd / (capacity * prior.days) : null;
 
     // Indicador y fecha de corte
     const info = getCutoffDateInfo(currentHotel, currentYear, currentMode);
@@ -614,14 +766,16 @@ function renderDashboard() {
     }
 
     const cutoffText = info.cutoffDate ? ` · Corte: ${info.cutoffDate}` : '';
-    el('metric-years').textContent = `${scopeName} · ${currentYear}${compareYear ? ' vs ' + compareYear : ''} · ${totals.days == null ? 'Cobertura sin verificar' : totals.days + ' días cargados'}${cutoffText}`;
-    el('revpar-label').textContent = currentSegment ? 'Aportación al RevPAR del hotel' : 'RevPAR · solo alojamiento';
+    const netBadgeText = isNetRevenueMode ? ' · 💎 Modo Neto (Deduciendo comisiones)' : '';
+    el('metric-years').textContent = `${scopeName} · ${currentYear}${compareYear ? ' vs ' + compareYear : ''} · ${totals.days == null ? 'Cobertura sin verificar' : totals.days + ' días cargados'}${cutoffText}${netBadgeText}`;
+    el('revpar-label').textContent = currentSegment ? (isNetRevenueMode ? 'Aportación RevPAR Neto' : 'Aportación al RevPAR del hotel') : (isNetRevenueMode ? 'RevPAR Neto · tras comisiones' : 'RevPAR · solo alojamiento');
 
     let periodPrefix = '';
     if (currentMode === 'historical' && info.cutoffDate) {
         periodPrefix = `📅 <strong>Datos reales cargados hasta el ${info.cutoffDate}</strong>. `;
     }
-    el('period-note').innerHTML = `${periodPrefix}${months.map(m => MONTH_ORDER[m]).join(', ')}. Producción = Prod. Habitación / Alojamiento (base para ADR y comparativas). ${compareYear && !comparable ? '(Nota: Días cargados no coinciden, comparativa puede ser inexacta).' : ''}${totals.days == null ? ' Reimporta el Excel para verificar fechas y desglosar el alojamiento.' : ''}`;
+    const netCommissionNote = isNetRevenueMode ? ` 💎 <strong>Mostrando valores NETOS</strong> (Comisiones deducidas en el periodo: ${fmt(netTotals.totalCommissions, 'revenue')}, Margen neto global: ${pct((netTotals.netMarginPct || 0) / 100)}). ` : '';
+    el('period-note').innerHTML = `${periodPrefix}${netCommissionNote}${months.map(m => MONTH_ORDER[m]).join(', ')}. Producción = ${isNetRevenueMode ? 'Prod. Neta Alojamiento' : 'Prod. Habitación / Alojamiento'} (base para ADR y comparativas). ${compareYear && !comparable ? '(Nota: Días cargados no coinciden, comparativa puede ser inexacta).' : ''}${totals.days == null ? ' Reimporta el Excel para verificar fechas y desglosar el alojamiento.' : ''}`;
     if (currentMode === 'forecast') {
         const availableY = Object.keys(segmentDB[currentHotel] || {}).sort();
         const otherYears = availableY.filter(y => y !== currentYear);
@@ -630,12 +784,15 @@ function renderDashboard() {
     }
     const invalidStored = SegmentAnalysis.segments(data).filter(s => !SegmentAnalysis.validSegments.includes(SegmentAnalysis.canonical(s.name)) && months.some(m => ['rooms', 'revenue', 'accommodation', 'totalRevenue'].some(field => Number(s[field]?.[m]) !== 0 && s[field]?.[m] != null)));
     if (invalidStored.length) el('period-note').innerHTML += ` Atención: hay segmentos incorrectos guardados (${invalidStored.map(s => s.name).join(', ')}). Pulsa Importar Excel para revisarlos y asignar el segmento correcto antes de guardar.`;
-    const adrVal = totals.adr != null ? totals.adr : (totals.rooms > 0 && totals.accommodation != null ? totals.accommodation / totals.rooms : null);
-    const priorAdrVal = prior?.adr != null ? prior.adr : (prior?.rooms > 0 && prior.accommodation != null ? prior.accommodation / prior.rooms : null);
-    [['prod', totals.accommodation, prior?.accommodation, 'revenue'], ['rooms', totals.rooms, prior?.rooms, 'rooms'], ['adr', adrVal, priorAdrVal, 'adr'], ['revpar', revpar, priorRevpar, 'adr']].forEach(([id, value, before, metric]) => {
+    
+    [['prod', displayProd, displayPriorProd, 'revenue'], ['rooms', totals.rooms, prior?.rooms, 'rooms'], ['adr', displayAdr, displayPriorAdr, 'adr'], ['revpar', revpar, priorRevpar, 'adr']].forEach(([id, value, before, metric]) => {
         el('kpi-' + id).textContent = fmt(value, metric);
         const trend = el('kpi-' + id + '-diff');
-        trend.textContent = delta(value, before) + (previous && before !== 0 ? ` vs ${compareYear}` : '');
+        let diffText = delta(value, before) + (previous && before !== 0 ? ` vs ${compareYear}` : '');
+        if (id === 'prod' && isNetRevenueMode && netTotals.totalCommissions > 0) {
+            diffText += ` (Comis: -${fmt(netTotals.totalCommissions)})`;
+        }
+        trend.textContent = diffText;
         trend.className = 'kpi-diff ' + (before != null && value != null ? (value > before ? 'positive' : value < before ? 'negative' : '') : '');
     });
     el('period-note').innerHTML = `<strong>${scopeName}</strong>. ` + el('period-note').innerHTML;
@@ -652,53 +809,127 @@ function renderDashboard() {
         const oldRevenue = previous ? SegmentAnalysis.sum(old, 'revenue', months) : null;
         const adr = accommodation != null && rooms > 0 ? accommodation / rooms : null;
         const oldAdr = previous && oldRooms > 0 ? oldAccommodation / oldRooms : null;
+
+        // Métricas netas por segmento
+        const segNet = isNetRevenueMode ? SegmentAnalysis.aggregateNet({ segment: { [name]: segment } }, months, currentHotel) : null;
+        const oldSegNet = (isNetRevenueMode && old) ? SegmentAnalysis.aggregateNet({ segment: { [name]: old } }, months, currentHotel) : null;
+
+        const effectiveAcc = isNetRevenueMode ? (segNet?.netAccommodation ?? accommodation) : accommodation;
+        const effectiveOldAcc = isNetRevenueMode ? (oldSegNet?.netAccommodation ?? oldAccommodation) : oldAccommodation;
+        const effectiveAdr = isNetRevenueMode ? (segNet?.netAdr ?? adr) : adr;
+        const effectiveOldAdr = isNetRevenueMode ? (oldSegNet?.netAdr ?? oldAdr) : oldAdr;
+
         return {
             name,
             rooms,
-            accommodation,
+            accommodation: effectiveAcc,
+            grossAccommodation: accommodation,
             revenue,
-            adr,
-            value: currentMetric === 'adr' ? adr : currentMetric === 'rooms' ? rooms : accommodation,
-            before: currentMetric === 'adr' ? oldAdr : currentMetric === 'rooms' ? oldRooms : oldAccommodation,
-            oldAccommodation,
+            adr: effectiveAdr,
+            grossAdr: adr,
+            value: currentMetric === 'adr' ? effectiveAdr : currentMetric === 'rooms' ? rooms : effectiveAcc,
+            before: currentMetric === 'adr' ? effectiveOldAdr : currentMetric === 'rooms' ? oldRooms : effectiveOldAcc,
+            oldAccommodation: effectiveOldAcc,
             oldRevenue,
             oldRooms
         };
     }).filter(row => row.accommodation !== 0 || row.rooms !== 0 || (row.oldAccommodation !== 0 && row.oldAccommodation != null) || (row.oldRooms !== 0 && row.oldRooms != null));
     const sort = el('segment-sort').value;
     rows.sort((a, b) => sort === 'name' ? a.name.localeCompare(b.name, 'es') : sort === 'change' ? ((b.value ?? 0) - (b.before ?? 0)) - ((a.value ?? 0) - (a.before ?? 0)) : (b.value ?? -Infinity) - (a.value ?? -Infinity));
-    const metricName = currentMetric === 'adr' ? 'ADR' : currentMetric === 'rooms' ? 'Habitaciones (RN)' : 'Prod. Habitación';
+    const metricName = currentMetric === 'adr' ? (isNetRevenueMode ? 'ADR Neto' : 'ADR') : currentMetric === 'rooms' ? 'Habitaciones (RN)' : (isNetRevenueMode ? 'Prod. Neta Habitación' : 'Prod. Habitación');
     el('table-title').textContent = `${metricName} · todos los segmentos (pulsa un nombre para analizarlo)`;
     el('evolution-title').textContent = `Evolución de ${metricName.toLowerCase()} · ${scopeName}`;
     el('comparison-title').textContent = `Comparativa de ${metricName.toLowerCase()} · ${scopeName}`;
-    el('tableHead').innerHTML = `<tr><th>Segmento</th><th>${currentYear}</th><th>${compareYear || 'Comparación'}</th><th>Diferencia</th><th>Variación</th><th>Peso ${currentMetric === 'rooms' ? 'habitaciones' : 'alojamiento'}</th><th>Cambio de peso</th></tr>`;
-    const mixTotal = currentMetric === 'rooms' ? hotelTotals.rooms : hotelTotals.accommodation;
-    const priorMixTotal = hotelPrior && (currentMetric === 'rooms' ? hotelPrior.rooms : hotelPrior.accommodation);
+    el('tableHead').innerHTML = `<tr><th>Segmento</th><th>${currentYear}</th><th>${compareYear || 'Comparación'}</th><th>Diferencia</th><th>Variación</th><th>Peso ${currentMetric === 'rooms' ? 'habitaciones' : (isNetRevenueMode ? 'aloj. neto' : 'alojamiento')}</th><th>Cambio de peso</th></tr>`;
+    const mixTotal = currentMetric === 'rooms' ? hotelTotals.rooms : (isNetRevenueMode ? netHotelTotals.netAccommodation : hotelTotals.accommodation);
+    const priorMixTotal = hotelPrior && (currentMetric === 'rooms' ? hotelPrior.rooms : (isNetRevenueMode ? netHotelPrior?.netAccommodation : hotelPrior.accommodation));
     const query = el('segment-search').value.trim().toLocaleLowerCase('es');
     const visible = rows.filter(row => row.name.toLocaleLowerCase('es').includes(query));
+    const toggleBtn = el('btn-toggle-all-channels');
+    if (toggleBtn) {
+        toggleBtn.textContent = expandedSegments.size ? '⊟ Colapsar Canales' : '⊞ Desplegar Canales';
+    }
+
     el('tableBody').innerHTML = visible.map(row => {
+        const segObj = currentMap.get(row.name);
+        const oldSegObj = previousMap.get(row.name);
+        const segChannels = segObj?.channels ? Object.values(segObj.channels) : [];
+        const hasMultipleChannels = segChannels.length > 1 || (segChannels.length === 1 && segChannels[0].name !== row.name);
+        const isExpanded = expandedSegments.has(row.name);
+
         const mix = mixTotal ? (currentMetric === 'rooms' ? row.rooms : row.accommodation) / mixTotal : null;
         const oldMix = priorMixTotal ? (currentMetric === 'rooms' ? row.before : row.oldAccommodation) / priorMixTotal : null;
         const difference = row.before != null && row.value != null ? row.value - row.before : null;
-        return `<tr><td><button class="toggle-btn${row.name === currentSegment ? ' active' : ''}" data-segment="${escapeHTML(row.name)}">${escapeHTML(row.name)}</button></td><td>${fmt(row.value, currentMetric)}</td><td>${fmt(row.before, currentMetric)}</td><td class="${difference > 0 ? 'positive' : difference < 0 ? 'negative' : ''}">${difference > 0 ? '+' : ''}${fmt(difference, currentMetric)}</td><td>${delta(row.value, row.before)}</td><td>${pct(mix)}</td><td>${oldMix == null || mix == null ? '—' : new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2, signDisplay: 'always' }).format((mix - oldMix) * 100) + ' pp'}</td></tr>`;
+
+        const expandIcon = hasMultipleChannels ? `<button class="toggle-btn" data-toggle-seg="${escapeHTML(row.name)}" style="padding: 2px 6px; font-size: 0.7rem; margin-right: 6px; border-radius: 4px; line-height: 1;" title="${isExpanded ? 'Colapsar canales' : 'Ver canales de este segmento'}">${isExpanded ? '▼' : '▶'}</button>` : '';
+        const channelCountBadge = hasMultipleChannels ? `<span style="font-size: 0.72rem; color: var(--text-muted); font-weight: normal; margin-left: 6px;">(${segChannels.length} can.)</span>` : '';
+
+        let mainRow = `<tr><td><div style="display: flex; align-items: center;">${expandIcon}<button class="toggle-btn${row.name === currentSegment ? ' active' : ''}" data-segment="${escapeHTML(row.name)}">${escapeHTML(row.name)}</button>${channelCountBadge}</div></td><td>${fmt(row.value, currentMetric)}</td><td>${fmt(row.before, currentMetric)}</td><td class="${difference > 0 ? 'positive' : difference < 0 ? 'negative' : ''}">${difference > 0 ? '+' : ''}${fmt(difference, currentMetric)}</td><td>${delta(row.value, row.before)}</td><td>${pct(mix)}</td><td>${oldMix == null || mix == null ? '—' : new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2, signDisplay: 'always' }).format((mix - oldMix) * 100) + ' pp'}</td></tr>`;
+
+        let subRows = '';
+        if (isExpanded && hasMultipleChannels) {
+            const chList = SegmentAnalysis.getSegmentChannels(segObj, months, currentHotel);
+            subRows = chList.map(ch => {
+                const oldCh = oldSegObj?.channels?.[ch.name];
+                const oldChList = oldSegObj ? SegmentAnalysis.getSegmentChannels({ ...oldSegObj, channels: { [ch.name]: oldCh } }, months, currentHotel) : [];
+                const oldChData = oldChList[0];
+                const oldChRooms = oldChData?.rooms ?? (oldCh ? SegmentAnalysis.sum(oldCh, 'rooms', months) : null);
+                const oldChAcc = isNetRevenueMode ? (oldChData?.netAccommodation ?? null) : (oldCh ? SegmentAnalysis.sum(oldCh, 'accommodation', months) : null);
+                const oldChAdr = isNetRevenueMode ? (oldChData?.netAdr ?? null) : (oldChRooms > 0 && oldChAcc > 0 ? oldChAcc / oldChRooms : null);
+
+                const chAcc = isNetRevenueMode ? ch.netAccommodation : ch.accommodation;
+                const chAdr = isNetRevenueMode ? ch.netAdr : ch.adr;
+                const chVal = currentMetric === 'adr' ? chAdr : currentMetric === 'rooms' ? ch.rooms : chAcc;
+                const chBefore = oldCh ? (currentMetric === 'adr' ? oldChAdr : currentMetric === 'rooms' ? oldChRooms : oldChAcc) : null;
+                const chDiff = chBefore != null && chVal != null ? chVal - chBefore : null;
+                const chMix = mixTotal ? (currentMetric === 'rooms' ? ch.rooms : chAcc) / mixTotal : null;
+                const commissionNote = isNetRevenueMode ? ` <span style="font-size:0.7rem; color:var(--text-muted); font-weight:normal;">(${ch.commissionPct}% com.)</span>` : '';
+                return `<tr class="channel-subrow" style="background: rgba(99, 102, 241, 0.04); font-size: 0.82rem;">
+                    <td style="padding-left: 36px; border-left: 3px solid var(--primary);">
+                        <span style="color: var(--primary); font-weight: 700; margin-right: 6px;">↳</span>
+                        <span style="font-weight: 600; color: var(--text-main);">${escapeHTML(ch.name)}</span>${commissionNote}
+                    </td>
+                    <td>${fmt(chVal, currentMetric)}</td>
+                    <td>${fmt(chBefore, currentMetric)}</td>
+                    <td class="${chDiff > 0 ? 'positive' : chDiff < 0 ? 'negative' : ''}">${chDiff > 0 ? '+' : ''}${fmt(chDiff, currentMetric)}</td>
+                    <td>${delta(chVal, chBefore)}</td>
+                    <td>${pct(chMix)}</td>
+                    <td>—</td>
+                </tr>`;
+            }).join('');
+        }
+
+        return mainRow + subRows;
     }).join('') || '<tr><td colspan="7">No hay segmentos para esta búsqueda.</td></tr>';
+
     el('tableBody').querySelectorAll('[data-segment]').forEach(button => { button.onclick = () => selectSegment(button.dataset.segment); });
-    const totalAdr = hotelTotals.adr != null ? hotelTotals.adr : (hotelTotals.rooms > 0 && hotelTotals.accommodation != null ? hotelTotals.accommodation / hotelTotals.rooms : null);
-    const priorAdr = hotelPrior?.adr != null ? hotelPrior.adr : (hotelPrior?.rooms > 0 && hotelPrior.accommodation != null ? hotelPrior.accommodation / hotelPrior.rooms : null);
-    const totalValue = currentMetric === 'rooms' ? hotelTotals.rooms : currentMetric === 'adr' ? totalAdr : hotelTotals.accommodation;
-    const priorValue = currentMetric === 'rooms' ? hotelPrior?.rooms : currentMetric === 'adr' ? priorAdr : hotelPrior?.accommodation;
+    el('tableBody').querySelectorAll('[data-toggle-seg]').forEach(button => {
+        button.onclick = (e) => {
+            e.stopPropagation();
+            const seg = button.dataset.toggleSeg;
+            if (expandedSegments.has(seg)) expandedSegments.delete(seg);
+            else expandedSegments.add(seg);
+            renderDashboard();
+        };
+    });
+    const totalEffectiveAcc = isNetRevenueMode ? netHotelTotals.netAccommodation : hotelTotals.accommodation;
+    const priorEffectiveAcc = isNetRevenueMode ? netHotelPrior?.netAccommodation : hotelPrior?.accommodation;
+    const totalAdr = isNetRevenueMode ? netHotelTotals.netAdr : (hotelTotals.adr != null ? hotelTotals.adr : (hotelTotals.rooms > 0 && hotelTotals.accommodation != null ? hotelTotals.accommodation / hotelTotals.rooms : null));
+    const priorAdr = isNetRevenueMode ? netHotelPrior?.netAdr : (hotelPrior?.adr != null ? hotelPrior.adr : (hotelPrior?.rooms > 0 && hotelPrior.accommodation != null ? hotelPrior.accommodation / hotelPrior.rooms : null));
+    const totalValue = currentMetric === 'rooms' ? hotelTotals.rooms : currentMetric === 'adr' ? totalAdr : totalEffectiveAcc;
+    const priorValue = currentMetric === 'rooms' ? hotelPrior?.rooms : currentMetric === 'adr' ? priorAdr : priorEffectiveAcc;
     el('tableFoot').innerHTML = `<tr><td>Total del periodo</td><td>${fmt(totalValue, currentMetric)}</td><td>${fmt(priorValue, currentMetric)}</td><td>${fmt(priorValue != null && totalValue != null ? totalValue - priorValue : null, currentMetric)}</td><td>${delta(totalValue, priorValue)}</td><td>${mixTotal ? pct(1) : '—'}</td><td>—</td></tr>`;
-    el('table-note').textContent = `${visible.length} de ${rows.length} segmentos. La búsqueda localiza filas; selecciona el nombre para cambiar el análisis. Este total corresponde a la producción de habitación del hotel. Peso en ADR = peso de alojamiento. pp = puntos porcentuales.`;
+    el('table-note').textContent = `${visible.length} de ${rows.length} segmentos. La búsqueda localiza filas; selecciona el nombre para cambiar el análisis. ${isNetRevenueMode ? 'Modo Neto activo: producción y ADR descontando comisiones de comercialización.' : 'Este total corresponde a la producción de habitación del hotel.'} Peso en ADR = peso de alojamiento. pp = puntos porcentuales.`;
     const leaders = [...rows].sort((a, b) => b.accommodation - a.accommodation);
     const leader = leaders[0];
     const mover = previous ? [...rows].sort((a, b) => Math.abs(b.accommodation - (b.oldAccommodation ?? 0)) - Math.abs(a.accommodation - (a.oldAccommodation ?? 0)))[0] : null;
     el('insights').replaceChildren();
     const notes = [];
     if (currentSegment) {
-        notes.push(`${scopeName}: ${pct(hotelTotals.accommodation ? totals.accommodation / hotelTotals.accommodation : null)} de la producción de habitación del hotel y ${pct(hotelTotals.rooms ? totals.rooms / hotelTotals.rooms : null)} de sus habitaciones-noche.`);
-        if (prior) notes.push(`Frente a ${compareYear}: ${fmt(totals.accommodation - prior.accommodation)} de producción de habitación, ${fmt(totals.rooms - prior.rooms, 'rooms')} habitaciones-noche y ${fmt(totals.adr != null && prior.adr != null ? totals.adr - prior.adr : null, 'adr')} de diferencia en ADR.`);
+        notes.push(`${scopeName}: ${pct(totalEffectiveAcc ? displayProd / totalEffectiveAcc : null)} de la producción de habitación ${isNetRevenueMode ? 'neta ' : ''}del hotel y ${pct(hotelTotals.rooms ? totals.rooms / hotelTotals.rooms : null)} de sus habitaciones-noche.`);
+        if (prior) notes.push(`Frente a ${compareYear}: ${fmt(displayProd - displayPriorProd)} de producción ${isNetRevenueMode ? 'neta ' : ''}de habitación, ${fmt(totals.rooms - prior.rooms, 'rooms')} habitaciones-noche y ${fmt(displayAdr != null && displayPriorAdr != null ? displayAdr - displayPriorAdr : null, 'adr')} de diferencia en ADR.`);
     } else {
-        if (leader && totals.accommodation > 0) notes.push(`${leader.name} concentra el ${pct(leader.accommodation / totals.accommodation)} de la producción de habitación (${fmt(leader.accommodation)}).`);
+        if (leader && displayProd > 0) notes.push(`${leader.name} concentra el ${pct(leader.accommodation / displayProd)} de la producción de habitación ${isNetRevenueMode ? 'neta ' : ''}(${fmt(leader.accommodation)}).`);
         if (mover) notes.push(`${mover.name} presenta el mayor cambio absoluto: ${fmt(mover.accommodation - (mover.oldAccommodation ?? 0))} frente a ${compareYear}.`);
     }
     if (totals.days) notes.push(`${currentSegment ? 'Aportación a la ocupación del hotel' : 'Ocupación del periodo'}: ${pct(totals.rooms / (capacity * totals.days))}. ${fmt(totals.rooms, 'rooms')} habitaciones-noche sobre ${fmt(capacity * totals.days, 'rooms')} disponibles.`);
@@ -708,10 +939,20 @@ function renderDashboard() {
     el('monthly-body').innerHTML = months.map(m => {
         const value = SegmentAnalysis.aggregate(data, [m]), hotel = SegmentAnalysis.aggregate(hotelData, [m]);
         const old = previous ? SegmentAnalysis.aggregate(previous, [m]) : null;
-        const adr = value.adr != null ? value.adr : (value.rooms > 0 && value.accommodation != null ? value.accommodation / value.rooms : null);
-        return `<tr><td>${MONTH_ORDER[m]}</td><td>${fmt(value.accommodation)}</td><td>${fmt(old?.accommodation)}</td><td>${delta(value.accommodation, old?.accommodation)}</td><td>${fmt(value.rooms, 'rooms')}</td><td>${fmt(adr, 'adr')}</td><td>${pct(hotel.accommodation ? value.accommodation / hotel.accommodation : null)}</td></tr>`;
+        const mNet = isNetRevenueMode ? SegmentAnalysis.aggregateNet(data, [m], currentHotel) : null;
+        const mOldNet = (isNetRevenueMode && previous) ? SegmentAnalysis.aggregateNet(previous, [m], currentHotel) : null;
+        const mHotelNet = isNetRevenueMode ? SegmentAnalysis.aggregateNet(hotelData, [m], currentHotel) : null;
+
+        const mAcc = isNetRevenueMode ? mNet.netAccommodation : value.accommodation;
+        const mOldAcc = isNetRevenueMode ? mOldNet?.netAccommodation : old?.accommodation;
+        const mHotelAcc = isNetRevenueMode ? mHotelNet.netAccommodation : hotel.accommodation;
+        const adr = isNetRevenueMode ? mNet.netAdr : (value.adr != null ? value.adr : (value.rooms > 0 && value.accommodation != null ? value.accommodation / value.rooms : null));
+        return `<tr><td>${MONTH_ORDER[m]}</td><td>${fmt(mAcc)}</td><td>${fmt(mOldAcc)}</td><td>${delta(mAcc, mOldAcc)}</td><td>${fmt(value.rooms, 'rooms')}</td><td>${fmt(adr, 'adr')}</td><td>${pct(mHotelAcc ? mAcc / mHotelAcc : null)}</td></tr>`;
     }).join('');
     
+    // Render Channels / Operators Section with Net & Gross capabilities
+    renderChannelsSection(hotelData, hotelPrevious, currentSegment, months, hotelTotals, hotelPrior, compareYear);
+
     // Use the same category definitions and matching order as Production.
     const conceptsCard = el('concepts-card');
     const segConcepts = data?.segment?.[currentSegment]?.concepts || {};
@@ -739,6 +980,222 @@ function renderDashboard() {
     conceptsCard.style.display = currentSegment && activeGroups.length ? 'block' : 'none';
 
     updateCharts(data, previous, months, rows, totals, prior, compareYear, metricName);
+}
+
+function renderChannelsSection(hotelData, hotelPrevious, currentSegment, months, hotelTotals, hotelPrior, compareYear) {
+    const card = el('channels-card');
+    if (!card) return;
+    
+    let channelList = [];
+    const isGlobal = !currentSegment;
+    const mixTotal = currentMetric === 'rooms' ? hotelTotals.rooms : (isNetRevenueMode ? SegmentAnalysis.aggregateNet(hotelData, months, currentHotel).netAccommodation : hotelTotals.accommodation);
+
+    if (currentSegment) {
+        const segObj = hotelData?.segment?.[currentSegment];
+        const oldSegObj = hotelPrevious?.segment?.[currentSegment];
+        const segAcc = SegmentAnalysis.sum(segObj, 'accommodation', months);
+        const segRooms = SegmentAnalysis.sum(segObj, 'rooms', months);
+        const segMixBase = currentMetric === 'rooms' ? segRooms : segAcc;
+
+        if (segObj) {
+            const rawChannels = SegmentAnalysis.getSegmentChannels(segObj, months, currentHotel);
+            channelList = rawChannels.map(ch => {
+                const oldChList = oldSegObj ? SegmentAnalysis.getSegmentChannels(oldSegObj, months, currentHotel) : [];
+                const oldCh = oldChList.find(c => c.name === ch.name);
+                return {
+                    name: ch.name,
+                    segmentName: currentSegment,
+                    rooms: ch.rooms,
+                    accommodation: ch.accommodation,
+                    adr: ch.adr,
+                    commissionPct: ch.commissionPct,
+                    fixedFeePerRN: ch.fixedFeePerRN,
+                    commissionAmount: ch.commissionAmount,
+                    netAccommodation: ch.netAccommodation,
+                    netAdr: ch.netAdr,
+                    netMarginPct: ch.netMarginPct,
+                    shareSegment: segMixBase > 0 ? (currentMetric === 'rooms' ? ch.rooms : (isNetRevenueMode ? ch.netAccommodation : ch.accommodation)) / segMixBase : null,
+                    shareHotel: mixTotal > 0 ? (currentMetric === 'rooms' ? ch.rooms : (isNetRevenueMode ? ch.netAccommodation : ch.accommodation)) / mixTotal : null,
+                    oldRooms: oldCh?.rooms ?? null,
+                    oldAccommodation: isNetRevenueMode ? (oldCh?.netAccommodation ?? null) : (oldCh?.accommodation ?? null),
+                    oldAdr: isNetRevenueMode ? (oldCh?.netAdr ?? null) : (oldCh?.adr ?? null)
+                };
+            });
+        }
+        const titleEl = el('channels-title-text');
+        if (titleEl) titleEl.innerHTML = `Canales y Rentabilidad Neta de <u>${escapeHTML(currentSegment)}</u>`;
+        const subEl = el('channels-card-subtitle');
+        if (subEl) subEl.textContent = `Desglose de producción bruta, comisiones, ADR neto y margen real de ${currentSegment}.`;
+    } else {
+        const channelMap = new Map();
+        for (const seg of SegmentAnalysis.segments(hotelData)) {
+            const rawChannels = SegmentAnalysis.getSegmentChannels(seg, months, currentHotel);
+            for (const ch of rawChannels) {
+                const existing = channelMap.get(ch.name) || {
+                    name: ch.name,
+                    segmentName: seg.name,
+                    rooms: 0,
+                    accommodation: 0,
+                    commissionAmount: 0,
+                    netAccommodation: 0,
+                    commissionPct: ch.commissionPct,
+                    oldRooms: 0,
+                    oldAccommodation: 0
+                };
+                existing.rooms += ch.rooms;
+                existing.accommodation += ch.accommodation;
+                existing.commissionAmount += ch.commissionAmount;
+                existing.netAccommodation += ch.netAccommodation;
+                channelMap.set(ch.name, existing);
+            }
+        }
+        if (hotelPrevious) {
+            for (const seg of SegmentAnalysis.segments(hotelPrevious)) {
+                const rawChannels = SegmentAnalysis.getSegmentChannels(seg, months, currentHotel);
+                for (const ch of rawChannels) {
+                    if (channelMap.has(ch.name)) {
+                        const existing = channelMap.get(ch.name);
+                        existing.oldRooms += ch.rooms;
+                        existing.oldAccommodation += (isNetRevenueMode ? ch.netAccommodation : ch.accommodation);
+                    }
+                }
+            }
+        }
+        channelList = Array.from(channelMap.values()).map(ch => {
+            const adr = ch.rooms > 0 && ch.accommodation > 0 ? ch.accommodation / ch.rooms : null;
+            const netAdr = ch.rooms > 0 && ch.netAccommodation > 0 ? ch.netAccommodation / ch.rooms : null;
+            const oldAdr = ch.oldRooms > 0 && ch.oldAccommodation > 0 ? ch.oldAccommodation / ch.oldRooms : null;
+            const netMarginPct = ch.accommodation > 0 ? (ch.netAccommodation / ch.accommodation) * 100 : (100 - ch.commissionPct);
+            return {
+                name: ch.name,
+                segmentName: ch.segmentName,
+                rooms: ch.rooms,
+                accommodation: ch.accommodation,
+                adr,
+                commissionPct: ch.commissionPct,
+                commissionAmount: ch.commissionAmount,
+                netAccommodation: ch.netAccommodation,
+                netAdr,
+                netMarginPct,
+                shareSegment: null,
+                shareHotel: mixTotal > 0 ? (currentMetric === 'rooms' ? ch.rooms : (isNetRevenueMode ? ch.netAccommodation : ch.accommodation)) / mixTotal : null,
+                oldRooms: ch.oldRooms,
+                oldAccommodation: ch.oldAccommodation,
+                oldAdr
+            };
+        });
+        const titleEl = el('channels-title-text');
+        if (titleEl) titleEl.textContent = 'Distribución y Rentabilidad Neta de Canales';
+        const subEl = el('channels-card-subtitle');
+        if (subEl) subEl.textContent = 'Análisis de comisiones de intermediación, producción neta y margen real por canal.';
+    }
+
+    channelList.sort((a, b) => {
+        const valA = currentMetric === 'rooms' ? a.rooms : currentMetric === 'adr' ? (isNetRevenueMode ? (a.netAdr ?? 0) : (a.adr ?? 0)) : (isNetRevenueMode ? a.netAccommodation : a.accommodation);
+        const valB = currentMetric === 'rooms' ? b.rooms : currentMetric === 'adr' ? (isNetRevenueMode ? (b.netAdr ?? 0) : (b.adr ?? 0)) : (isNetRevenueMode ? b.netAccommodation : b.accommodation);
+        return valB - valA;
+    });
+
+    const badgeEl = el('channels-badge');
+    if (badgeEl) badgeEl.textContent = `${channelList.length} ${channelList.length === 1 ? 'canal' : 'canales'}`;
+    card.style.display = channelList.length > 0 ? 'block' : 'none';
+
+    const tbody = el('channels-body');
+    if (tbody) {
+        tbody.innerHTML = channelList.map(ch => {
+            const segTag = isGlobal ? ` <span style="font-size:0.7rem; background:rgba(99,102,241,0.08); color:var(--primary); padding:2px 6px; border-radius:4px; font-weight:600; margin-left:4px;">${escapeHTML(ch.segmentName)}</span>` : '';
+            const marginColor = (ch.netMarginPct || 0) < 82 ? '#e11d48' : (ch.netMarginPct || 0) >= 95 ? '#10b981' : 'var(--text-main)';
+            return `<tr>
+                <td style="padding: 10px 14px;"><strong style="color:var(--text-main);">${escapeHTML(ch.name)}</strong>${segTag}</td>
+                <td style="padding: 10px 14px; text-align: right;">${fmt(ch.rooms, 'rooms')}</td>
+                <td style="padding: 10px 14px; text-align: right;">${fmt(ch.accommodation, 'revenue')}</td>
+                <td style="padding: 10px 14px; text-align: right; color: ${ch.commissionPct > 0 ? '#e11d48' : 'var(--text-muted)'}; font-weight: 600;">${ch.commissionPct > 0 ? ch.commissionPct + '%' : '0%'}</td>
+                <td style="padding: 10px 14px; text-align: right; color: ${ch.commissionAmount > 0 ? '#e11d48' : 'var(--text-muted)'};">-${fmt(ch.commissionAmount, 'revenue')}</td>
+                <td style="padding: 10px 14px; text-align: right; font-weight: 700; color: var(--primary);">${fmt(ch.netAccommodation, 'revenue')}</td>
+                <td style="padding: 10px 14px; text-align: right;">${fmt(ch.adr, 'adr')}</td>
+                <td style="padding: 10px 14px; text-align: right; font-weight: 700; color: #10b981;">${fmt(ch.netAdr, 'adr')}</td>
+                <td style="padding: 10px 14px; text-align: right; font-weight: 800; color: ${marginColor};">${pct((ch.netMarginPct || 0) / 100)}</td>
+            </tr>`;
+        }).join('') || '<tr><td colspan="9" style="text-align:center;">No hay canales registrados.</td></tr>';
+    }
+
+    const tfoot = el('channels-foot');
+    if (tfoot) {
+        const totalRooms = channelList.reduce((s, c) => s + c.rooms, 0);
+        const totalAcc = channelList.reduce((s, c) => s + c.accommodation, 0);
+        const totalCommissions = channelList.reduce((s, c) => s + c.commissionAmount, 0);
+        const totalNetAcc = channelList.reduce((s, c) => s + c.netAccommodation, 0);
+        const totalGrossAdr = totalRooms > 0 && totalAcc > 0 ? totalAcc / totalRooms : null;
+        const totalNetAdr = totalRooms > 0 && totalNetAcc > 0 ? totalNetAcc / totalRooms : null;
+        const avgMarginPct = totalAcc > 0 ? (totalNetAcc / totalAcc) * 100 : null;
+        const avgCommPct = totalAcc > 0 ? (totalCommissions / totalAcc) * 100 : null;
+
+        tfoot.innerHTML = `<tr style="font-weight:700; background:rgba(99,102,241,0.06);">
+            <td style="padding: 12px 14px;">Total Canales</td>
+            <td style="padding: 12px 14px; text-align: right;">${fmt(totalRooms, 'rooms')}</td>
+            <td style="padding: 12px 14px; text-align: right;">${fmt(totalAcc, 'revenue')}</td>
+            <td style="padding: 12px 14px; text-align: right; color: #e11d48;">${avgCommPct != null ? avgCommPct.toFixed(1) + '%' : '—'}</td>
+            <td style="padding: 12px 14px; text-align: right; color: #e11d48;">-${fmt(totalCommissions, 'revenue')}</td>
+            <td style="padding: 12px 14px; text-align: right; color: var(--primary);">${fmt(totalNetAcc, 'revenue')}</td>
+            <td style="padding: 12px 14px; text-align: right;">${fmt(totalGrossAdr, 'adr')}</td>
+            <td style="padding: 12px 14px; text-align: right; color: #10b981;">${fmt(totalNetAdr, 'adr')}</td>
+            <td style="padding: 12px 14px; text-align: right; font-weight: 800; color: var(--primary-dark);">${avgMarginPct != null ? pct(avgMarginPct / 100) : '—'}</td>
+        </tr>`;
+    }
+
+    updateChannelChart(channelList);
+}
+
+function updateChannelChart(channelList) {
+    if (typeof Chart === 'undefined') return;
+    const canvas = el('channelChart');
+    if (!canvas) return;
+    charts['channel']?.destroy();
+    if (!channelList || !channelList.length) return;
+
+    const palette = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#3b82f6', '#8b5cf6', '#14b8a6', '#f97316', '#06b6d4', '#84cc16', '#a855f7', '#64748b'];
+    const metricKey = currentMetric === 'rooms' ? 'rooms' : 'accommodation';
+    const chartData = channelList.map(c => c[metricKey] || 0);
+    const chartLabels = channelList.map(c => c.name);
+    const color = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim();
+
+    charts['channel'] = new Chart(canvas, {
+        type: 'doughnut',
+        data: {
+            labels: chartLabels,
+            datasets: [{
+                data: chartData,
+                backgroundColor: chartLabels.map((_, i) => palette[i % palette.length]),
+                borderWidth: 2,
+                borderColor: 'transparent'
+            }]
+        },
+        options: {
+            animation: false,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color,
+                        boxWidth: 10,
+                        padding: 6,
+                        font: { size: 10, family: 'Inter, sans-serif' }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => {
+                            const val = ctx.parsed;
+                            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                            const p = total > 0 ? ((val / total) * 100).toFixed(1) + '%' : '0%';
+                            return ` ${ctx.label}: ${fmt(val, currentMetric === 'rooms' ? 'rooms' : 'revenue')} (${p})`;
+                        }
+                    }
+                }
+            }
+        }
+    });
 }
 function updateCharts(data, previous, months, rows, totals, prior, compareYear, metricName) {
     if (typeof Chart === 'undefined') return;

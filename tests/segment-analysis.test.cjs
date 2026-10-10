@@ -172,3 +172,61 @@ test('central upload uses the same parser and preserves production data', () => 
     assert.equal(context.db.Hotel[2025].segment['CORPORATIVO LINEAL'].rooms[0], 2);
     assert.equal(context.db.Hotel[2025].updates.seg, '01-01-2025 al 02-01-2025');
 });
+
+test('channels breakdown within segments is parsed, merged and aggregated correctly', () => {
+    const reportData = [
+        ['Seg.', '', '01/01/26', '02/01/26'],
+        ['BOOKING', 'Hab', 10, 15],
+        ['', 'HABITACION DOBLE', 1000, 1500],
+        ['EXPEDIA', 'Hab', 5, 5],
+        ['', 'HABITACION DOBLE', 500, 500],
+        ['ROIBACK', 'Hab', 8, 12],
+        ['', 'HABITACION DOBLE', 800, 1200],
+        ['TOTAL GENERAL', 'Hab', 23, 32],
+        ['', 'HABITACION DOBLE', 2300, 3200]
+    ];
+    const report = S.parse(reportData, 'Seg_Canales_2026.xlsx');
+    const otaSeg = report.years['2026'].segment['OTA/AAVV'];
+    assert.ok(otaSeg);
+    assert.equal(otaSeg.rooms[0], 35); // 10 + 15 + 5 + 5
+    assert.equal(otaSeg.accommodation[0], 3500); // 2500 Booking + 1000 Expedia
+    assert.ok(otaSeg.channels['Booking.com']);
+    assert.ok(otaSeg.channels['Expedia']);
+    assert.equal(otaSeg.channels['Booking.com'].rooms[0], 25);
+    assert.equal(otaSeg.channels['Booking.com'].accommodation[0], 2500);
+    assert.equal(otaSeg.channels['Expedia'].rooms[0], 10);
+    assert.equal(otaSeg.channels['Expedia'].accommodation[0], 1000);
+
+    const dirSeg = report.years['2026'].segment['DIRECTO ONLINE'];
+    assert.ok(dirSeg);
+    assert.ok(dirSeg.channels['Roiback']);
+    assert.equal(dirSeg.channels['Roiback'].rooms[0], 20);
+
+    const db = {};
+    S.merge(db, 'Guadiana', report);
+    const dbOta = db.Guadiana['2026'].segment['OTA/AAVV'];
+    assert.equal(dbOta.channels['Booking.com'].rooms[0], 25);
+    assert.equal(dbOta.channels['Expedia'].accommodation[0], 1000);
+
+    const otaChannels = S.getSegmentChannels(dbOta, [0]);
+    assert.equal(otaChannels.length, 2);
+    const bkg = otaChannels.find(c => c.name === 'Booking.com');
+    assert.equal(bkg.rooms, 25);
+    assert.equal(bkg.accommodation, 2500);
+    assert.equal(bkg.adr, 100);
+    assert.equal(bkg.commissionPct, 18);
+    assert.equal(bkg.commissionAmount, 450);
+    assert.equal(bkg.netAccommodation, 2050);
+    assert.equal(bkg.netAdr, 82);
+    assert.equal(bkg.netMarginPct, 82);
+
+    const netAgg = S.aggregateNet(db.Guadiana['2026'], [0]);
+    assert.equal(netAgg.rooms, 55); // 35 OTA + 20 Direct
+    assert.equal(netAgg.grossAccommodation, 5500); // 3500 OTA + 2000 Direct
+    assert.equal(netAgg.totalCommissions, 450 + 180 + 60); // 450 Bkg + 180 Expedia (1000*0.18) + 60 Roiback (2000*0.03) = 690
+    assert.equal(netAgg.netAccommodation, 5500 - 690); // 4810
+    assert.equal(netAgg.grossAdr, 100);
+    assert.equal(netAgg.netAdr, 4810 / 55);
+});
+
+

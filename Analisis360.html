@@ -4789,32 +4789,57 @@
             const serviceData = Object.values(agg.summary).map(s => s.revenue);
             updateChart('serviceChart', 'doughnut', serviceLabels, serviceData, colors);
 
-            // 2. Channel Chart (Grouped Segments)
+            // 2. Channel Chart (Detailed Channels if available, else Grouped Segments)
             const getVal = (arr) => midx === -1 ? arr.reduce((a, b) => a + b, 0) : arr[midx];
-            const channelGroups = {
-                "Directo": ["DIRECTO ONLINE", "DIRONLINE", "DIRECTO OFFLINE"],
-                "Corporativo": ["CORPORATIVO LINEAL", "CORPORATIVO DINAMICO"],
-                "OTA / AAVV": ["OTA/AAVV"],
-                "TTOO Dinámica": ["TTOO DINAMICA"],
-                "Grupos": ["GRUPOS", "GRTANTEO", "GRUPO TANTEO", "GRUPO"],
-                "Otros": ["OTROS", "PARTICULARES", "AGENCIAS", "BONO ONLINE", "BONO SPA"]
-            };
+            
+            // Check if any segment has granular channels recorded
+            const detailedChannelsMap = new Map();
+            Object.values(segmentDb || {}).forEach(seg => {
+                if (seg && seg.channels) {
+                    Object.values(seg.channels).forEach(ch => {
+                        const chVal = getVal(ch.accommodation || ch.revenue || []);
+                        if (chVal > 0) {
+                            detailedChannelsMap.set(ch.name, (detailedChannelsMap.get(ch.name) || 0) + chVal);
+                        }
+                    });
+                }
+            });
 
             const chanLabels = [];
             const chanData = [];
-            
-            Object.entries(channelGroups).forEach(([chanName, segNames]) => {
-                let chanTotal = 0;
-                segNames.forEach(sName => {
-                    const obj = segmentDb[sName];
-                    const roomRevenue = segmentRoomRevenue(obj);
-                    if (roomRevenue) chanTotal += getVal(roomRevenue);
+
+            if (detailedChannelsMap.size > 1) {
+                Array.from(detailedChannelsMap.entries())
+                    .sort((a, b) => b[1] - a[1])
+                    .forEach(([chName, chVal]) => {
+                        if (chVal > 10) {
+                            chanLabels.push(chName);
+                            chanData.push(chVal);
+                        }
+                    });
+            } else {
+                const channelGroups = {
+                    "Directo": ["DIRECTO ONLINE", "DIRONLINE", "DIRECTO OFFLINE"],
+                    "Corporativo": ["CORPORATIVO LINEAL", "CORPORATIVO DINAMICO"],
+                    "OTA / AAVV": ["OTA/AAVV"],
+                    "TTOO Dinámica": ["TTOO DINAMICA"],
+                    "Grupos": ["GRUPOS", "GRTANTEO", "GRUPO TANTEO", "GRUPO"],
+                    "Otros": ["OTROS", "PARTICULARES", "AGENCIAS", "BONO ONLINE", "BONO SPA"]
+                };
+
+                Object.entries(channelGroups).forEach(([chanName, segNames]) => {
+                    let chanTotal = 0;
+                    segNames.forEach(sName => {
+                        const obj = segmentDb[sName];
+                        const roomRevenue = segmentRoomRevenue(obj);
+                        if (roomRevenue) chanTotal += getVal(roomRevenue);
+                    });
+                    if (chanTotal > 10) {
+                        chanLabels.push(chanName);
+                        chanData.push(chanTotal);
+                    }
                 });
-                if (chanTotal > 10) {
-                    chanLabels.push(chanName);
-                    chanData.push(chanTotal);
-                }
-            });
+            }
             updateChart('segmentChart', 'pie', chanLabels, chanData, colors);
 
             // 3. Weekly Intensity

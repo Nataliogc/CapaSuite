@@ -599,17 +599,31 @@
             </div>
 
             <section id="insights" class="card insights" aria-label="Claves del periodo"></section>
-            <div class="metric-indicator" style="justify-content: space-between;">
-                <div class="metric-toggles">
-                    <button class="toggle-btn active" id="btn-revenue" onclick="selectMetric('revenue')">
-                        💶 Prod. Habitación
-                    </button>
-                    <button class="toggle-btn" id="btn-rooms" onclick="selectMetric('rooms')">
-                        🛏️ Habitaciones
-                    </button>
-                    <button class="toggle-btn" id="btn-adr" onclick="selectMetric('adr')">
-                        🏷️ ADR
-                    </button>
+            <div class="metric-indicator" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                    <div class="metric-toggles">
+                        <button class="toggle-btn active" id="btn-revenue" onclick="selectMetric('revenue')">
+                            💶 Prod. Habitación
+                        </button>
+                        <button class="toggle-btn" id="btn-rooms" onclick="selectMetric('rooms')">
+                            🛏️ Habitaciones
+                        </button>
+                        <button class="toggle-btn" id="btn-adr" onclick="selectMetric('adr')">
+                            🏷️ ADR
+                        </button>
+                    </div>
+
+                    <div class="metric-toggles" style="border-left: 1px solid var(--border); padding-left: 12px;">
+                        <button class="toggle-btn active" id="btn-mode-gross" onclick="setRevenueNetMode(false)" title="Producción y ADR facial antes de comisiones">
+                            Bruto
+                        </button>
+                        <button class="toggle-btn" id="btn-mode-net" onclick="setRevenueNetMode(true)" title="Deduciendo comisiones y costes de intermediación">
+                            💎 Neto
+                        </button>
+                        <button class="toggle-btn" onclick="openCommissionModal()" title="Configurar comisiones por canal" style="padding: 10px 12px;">
+                            ⚙️ Comisiones
+                        </button>
+                    </div>
                 </div>
                 <span class="metric-years" id="metric-years">2026 vs 2025</span>
             </div>
@@ -631,6 +645,50 @@
 
             <section class="card"><h3 id="monthly-title">Detalle mensual</h3><div class="table-container"><table><thead><tr><th>Mes</th><th>Producción</th><th>Año comparado</th><th>Variación</th><th>Habitaciones (RN)</th><th>ADR</th><th>Peso en el hotel</th></tr></thead><tbody id="monthly-body"></tbody></table></div></section>
             
+            <!-- DESGLOSE POR CANALES / OPERADORES -->
+            <section class="card" id="channels-card" style="display: none; padding: 0; overflow: hidden; margin-top: 20px;">
+                <div style="padding: 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface); flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <h3 id="channels-card-title" style="margin: 0; color: var(--primary); display: flex; align-items: center; gap: 8px;">
+                            <span>📡</span> <span id="channels-title-text">Canales y Operadores</span>
+                        </h3>
+                        <p id="channels-card-subtitle" style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--text-muted);">
+                            Desglose de habitaciones, producción y ADR de cada canal u operador.
+                        </p>
+                    </div>
+                    <span id="channels-badge" style="font-size: 0.8rem; background: rgba(99, 102, 241, 0.12); color: var(--primary); padding: 4px 14px; border-radius: 20px; font-weight: 700; border: 1px solid rgba(99, 102, 241, 0.25);">
+                        0 canales
+                    </span>
+                </div>
+                <div style="padding: 20px; display: grid; grid-template-columns: minmax(260px, 320px) 1fr; gap: 24px; align-items: start;">
+                    <div style="height: 260px; position: relative; background: var(--bg-glass); border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column;">
+                        <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;" id="channel-chart-title">Distribución de Canales</div>
+                        <div style="flex: 1; position: relative; min-height: 0;">
+                            <canvas id="channelChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="table-container" style="max-height: 420px; border-radius: 12px; border: 1px solid var(--border); box-shadow: none;">
+                        <table style="width: 100%; min-width: 680px;">
+                            <thead id="channels-head">
+                                <tr>
+                                    <th style="padding: 12px 14px;">Canal / Operador</th>
+                                    <th style="padding: 12px 14px; text-align: right;">RN</th>
+                                    <th style="padding: 12px 14px; text-align: right;">Prod. Bruta</th>
+                                    <th style="padding: 12px 14px; text-align: right;">Comisión</th>
+                                    <th style="padding: 12px 14px; text-align: right;">Coste Interm.</th>
+                                    <th style="padding: 12px 14px; text-align: right;">Prod. Neta</th>
+                                    <th style="padding: 12px 14px; text-align: right;">ADR Bruto</th>
+                                    <th style="padding: 12px 14px; text-align: right; color: var(--primary);">ADR Neto</th>
+                                    <th style="padding: 12px 14px; text-align: right;">Margen %</th>
+                                </tr>
+                            </thead>
+                            <tbody id="channels-body"></tbody>
+                            <tfoot id="channels-foot"></tfoot>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
             <section class="card" id="concepts-card" style="display: none; padding: 0; overflow: hidden; margin-top: 20px;">
                 <div style="padding: 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface);">
                     <h3 style="margin: 0; color: var(--primary);">Desglose de Producción por Conceptos</h3>
@@ -654,7 +712,15 @@
             <div class="card" style="padding: 0;">
                 <div style="padding: 20px; border-bottom: 1px solid var(--border);">
                     <h3 id="table-title">Detalle por segmentación</h3>
-                    <div class="table-tools"><label>Buscar segmento <input id="segment-search" type="search" placeholder="Nombre del segmento" oninput="renderDashboard()"></label><label>Ordenar <select id="segment-sort" onchange="renderDashboard()"><option value="value">Mayor valor</option><option value="change">Mayor diferencia</option><option value="name">Nombre</option></select></label></div>
+                    <div class="table-tools">
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <label>Buscar segmento <input id="segment-search" type="search" placeholder="Nombre del segmento" oninput="renderDashboard()"></label>
+                            <label>Ordenar <select id="segment-sort" onchange="renderDashboard()"><option value="value">Mayor valor</option><option value="change">Mayor diferencia</option><option value="name">Nombre</option></select></label>
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <button id="btn-toggle-all-channels" class="toggle-btn" style="font-size: 0.8rem; padding: 8px 14px;" onclick="toggleAllChannels()">⊞ Desplegar Canales</button>
+                        </div>
+                    </div>
                 </div>
                 <div class="table-container">
                     <table id="dataTable">
@@ -741,6 +807,58 @@
                 style="background: transparent; color: var(--text-muted); border: 1px solid var(--border); width: 100%; padding: 10px; font-weight: 500;">
                 Cancelar
             </button>
+        </div>
+    </div>
+
+    <!-- MODAL CONFIGURACIÓN DE COMISIONES POR CANAL -->
+    <div id="commissionConfigModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(8px); z-index: 99999; justify-content: center; align-items: center;">
+        <div style="background: var(--bg-surface, #ffffff); border: 1px solid var(--border); border-radius: 20px; width: 92%; max-width: 720px; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35); color: var(--text-main); animation: modalPop 0.3s ease-out;">
+            
+            <div style="padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface);">
+                <div>
+                    <h3 style="color: var(--primary); margin: 0; font-size: 1.25rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                        <span>⚙️</span> Comisiones y Costes de Distribución
+                    </h3>
+                    <p style="margin: 4px 0 0 0; font-size: 0.82rem; color: var(--text-muted);">
+                        Configuración para <strong id="modalHotelName" style="color: var(--text-main);">Hotel Guadiana</strong>. Los cambios se guardan localmente para este hotel.
+                    </p>
+                </div>
+                <button onclick="closeCommissionModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); line-height: 1;">&times;</button>
+            </div>
+
+            <div style="padding: 18px 24px; overflow-y: auto; flex: 1;">
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0; margin-bottom: 14px; background: rgba(99, 102, 241, 0.06); padding: 10px 14px; border-radius: 8px; border-left: 3px solid var(--primary); line-height: 1.5;">
+                    💡 Los porcentajes de comisión y costes fijos se emplean para calcular el <strong>ADR Neto</strong>, la <strong>Producción Neta</strong> y el <strong>Margen Real</strong> de cada canal.
+                </p>
+                <div class="table-container" style="border: 1px solid var(--border); border-radius: 10px; max-height: 380px;">
+                    <table style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th style="padding: 10px 14px; text-align: left;">Canal / Operador</th>
+                                <th style="padding: 10px 14px; text-align: right; width: 140px;">Comisión (%)</th>
+                                <th style="padding: 10px 14px; text-align: right; width: 140px;">Coste fijo (€/RN)</th>
+                                <th style="padding: 10px 14px; text-align: right; width: 130px;">Margen Neto</th>
+                            </tr>
+                        </thead>
+                        <tbody id="commissionModalTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div style="padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface); gap: 12px; flex-wrap: wrap;">
+                <button class="btn" onclick="resetDefaultCommissions()" style="background: transparent; color: var(--text-muted); border: 1px solid var(--border); font-size: 0.8rem; padding: 8px 14px;">
+                    ↺ Restablecer valores por defecto
+                </button>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn" onclick="closeCommissionModal()" style="background: transparent; color: var(--text-muted); border: 1px solid var(--border); padding: 8px 16px;">
+                        Cancelar
+                    </button>
+                    <button class="btn" onclick="saveCommissionsFromModal()" style="background: var(--primary); color: white; padding: 8px 20px;">
+                        Guardar Comisiones
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
