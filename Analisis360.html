@@ -21,6 +21,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="js/nav.js"></script>
     <script src="js/firebase-auth.js?v=20261001-sync3"></script>
+    <script src="js/segment-analysis.js?v=20261002-adr-fix"></script>
     <script src="js/theme-manager.js"></script>
     <script src="js/production-groups.js?v=20261001-exclude-segments"></script>
 
@@ -1658,14 +1659,27 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
                     <div>
                         <span style="font-size: 0.85rem; font-weight: 800; text-transform: uppercase; color: var(--text-main); letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
-                            <span>👥</span> Rendimiento y Pick-up por Segmento de Mercado (vs Año Anterior)
+                            <span>👥</span> Rendimiento y Pick-up por Segmento y Canal (vs Año Anterior)
                         </span>
                         <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
                             Análisis comparativo de ingresos de habitación, volumen RN y precio medio ADR frente a <span id="yield-ly-label" style="font-weight:700; color:var(--text-main);">Año Anterior</span>
                         </div>
                     </div>
-                    <div style="font-size: 0.72rem; color: var(--text-muted);">
-                        Fuente: Desglose comercial de segmentos CapaSuite
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <span id="yield360CommissionBadge" style="font-size: 0.75rem; background: rgba(99, 102, 241, 0.1); color: var(--primary); padding: 4px 10px; border-radius: 8px; font-weight: 700; border: 1px solid rgba(99, 102, 241, 0.2);">
+                            💰 Comisiones: 0 €
+                        </span>
+                        <div style="display: inline-flex; background: rgba(255, 255, 255, 0.05); padding: 2px; border-radius: 8px; border: 1px solid var(--border);">
+                            <button id="btn360SegGross" onclick="set360SegmentNetMode(false)" style="background: var(--primary); color: #fff; border: none; padding: 4px 10px; border-radius: 6px; font-size: 0.72rem; font-weight: 700; cursor: pointer;">
+                                Bruto
+                            </button>
+                            <button id="btn360SegNet" onclick="set360SegmentNetMode(true)" style="background: transparent; color: var(--text-muted); border: none; padding: 4px 10px; border-radius: 6px; font-size: 0.72rem; font-weight: 700; cursor: pointer;">
+                                💎 Neto
+                            </button>
+                        </div>
+                        <div style="font-size: 0.72rem; color: var(--text-muted);">
+                            Fuente: Desglose comercial CapaSuite
+                        </div>
                     </div>
                 </div>
 
@@ -3842,6 +3856,60 @@
                 const deltaAdr = adrTY - adrLY;
                 const deltaAdrPct = adrLY > 0 ? (deltaAdr / adrLY * 100) : 0;
 
+                // Canales y métricas netas
+                let channels = [];
+                let segCommissionsTY = 0;
+                let segCommissionsLY = 0;
+
+                const segRawObjTY = segDataTY[segName] || segDataTY[Object.keys(segDataTY).find(k => normalizeSegmentDisplayName(k) === segName)];
+                const segRawObjLY = segDataLY[segName] || segDataLY[Object.keys(segDataLY).find(k => normalizeSegmentDisplayName(k) === segName)];
+
+                if (typeof SegmentAnalysis !== 'undefined') {
+                    if (segRawObjTY) {
+                        try {
+                            const mList = midx === -1 ? [] : [midx];
+                            const chList = SegmentAnalysis.getSegmentChannels(segRawObjTY, mList, hotel);
+                            channels = chList.map(ch => {
+                                const oldCh = segRawObjLY?.channels?.[ch.name];
+                                const oldChRooms = oldCh ? (midx === -1 ? SegmentAnalysis.sum(oldCh, 'rooms') : (Number(oldCh.rooms?.[midx]) || 0)) : 0;
+                                const oldChAcc = oldCh ? (midx === -1 ? SegmentAnalysis.sum(oldCh, 'accommodation') : (Number(oldCh.accommodation?.[midx]) || 0)) : 0;
+                                const oldChAdr = oldChRooms > 0 && oldChAcc > 0 ? oldChAcc / oldChRooms : 0;
+                                const oldNet = SegmentAnalysis.calculateNetMetrics(oldChAcc, oldChRooms, ch.name, hotel);
+
+                                return {
+                                    name: ch.name,
+                                    roomsTY: ch.rooms,
+                                    revTY: ch.accommodation,
+                                    adrTY: ch.adr,
+                                    commissionPct: ch.commissionPct,
+                                    commissionAmount: ch.commissionAmount,
+                                    netRevTY: ch.netAccommodation,
+                                    netAdrTY: ch.netAdr,
+                                    roomsLY: oldChRooms,
+                                    revLY: oldChAcc,
+                                    adrLY: oldChAdr,
+                                    netRevLY: oldNet.netAccommodation,
+                                    netAdrLY: oldNet.netAdr
+                                };
+                            });
+                            segCommissionsTY = channels.reduce((sum, c) => sum + c.commissionAmount, 0);
+                        } catch(e) {}
+                    }
+                    if (segCommissionsTY === 0 && cur.rev > 0) {
+                        const netRes = SegmentAnalysis.calculateNetMetrics(cur.rev, cur.rooms, segName, hotel);
+                        segCommissionsTY = netRes.commissionAmount;
+                    }
+                    if (ly.rev > 0) {
+                        const netResLY = SegmentAnalysis.calculateNetMetrics(ly.rev, ly.rooms, segName, hotel);
+                        segCommissionsLY = netResLY.commissionAmount;
+                    }
+                }
+
+                const netRevTY = Math.max(0, cur.rev - segCommissionsTY);
+                const netAdrTY = cur.rooms > 0 ? (netRevTY / cur.rooms) : 0;
+                const netRevLY = Math.max(0, ly.rev - segCommissionsLY);
+                const netAdrLY = ly.rooms > 0 ? (netRevLY / ly.rooms) : 0;
+
                 totRmsTY += cur.rooms;
                 totRevTY += cur.rev;
                 totRmsLY += ly.rooms;
@@ -3854,9 +3922,16 @@
                     roomsTY: cur.rooms,
                     revTY: cur.rev,
                     adrTY: adrTY,
+                    netRevTY: netRevTY,
+                    netAdrTY: netAdrTY,
+                    commissionAmountTY: segCommissionsTY,
                     roomsLY: ly.rooms,
                     revLY: ly.rev,
                     adrLY: adrLY,
+                    netRevLY: netRevLY,
+                    netAdrLY: netAdrLY,
+                    commissionAmountLY: segCommissionsLY,
+                    channels,
                     deltaRev,
                     deltaRevPct,
                     deltaRms,
@@ -3868,8 +3943,31 @@
                 });
             });
 
-            // Ordenar por ingresos de este año
-            rows.sort((a, b) => b.revTY - a.revTY);
+            // Actualizar badge de comisiones en la cabecera
+            const isNetView = !!window.__seg360NetMode;
+            const expandedSegs = window.__seg360ExpandedSegs || new Set();
+            const totalCommissions = rows.reduce((sum, r) => sum + r.commissionAmountTY, 0);
+            const totalNetRevTY = rows.reduce((sum, r) => sum + r.netRevTY, 0);
+            const totalNetRevLY = rows.reduce((sum, r) => sum + r.netRevLY, 0);
+
+            const commBadge = document.getElementById('yield360CommissionBadge');
+            if (commBadge) {
+                const totalMarginPct = totRevTY > 0 ? ((totRevTY - totalCommissions) / totRevTY * 100) : 100;
+                commBadge.innerHTML = `💰 Comis: <strong style="color:#ef4444;">-${fmt(totalCommissions)}</strong> · Margen: <strong style="color:#10b981;">${totalMarginPct.toFixed(1)}%</strong>`;
+            }
+            const btnGross = document.getElementById('btn360SegGross');
+            const btnNet = document.getElementById('btn360SegNet');
+            if (btnGross) {
+                btnGross.style.background = !isNetView ? 'var(--primary)' : 'transparent';
+                btnGross.style.color = !isNetView ? '#fff' : 'var(--text-muted)';
+            }
+            if (btnNet) {
+                btnNet.style.background = isNetView ? '#10b981' : 'transparent';
+                btnNet.style.color = isNetView ? '#fff' : 'var(--text-muted)';
+            }
+
+            // Ordenar por ingresos (brutos o netos según modo)
+            rows.sort((a, b) => (isNetView ? b.netRevTY - a.netRevTY : b.revTY - a.revTY));
 
             const formatVar = (diffVal, pctVal, isCurrency = false) => {
                 if (pctVal === 0 && diffVal === 0) return '<span style="color:var(--text-muted); font-size:0.7rem;">= 0%</span>';
@@ -3889,33 +3987,104 @@
                     ? `<span style="color:#10b981; font-weight:700;">+${fmt(r.pickupRev)}</span>`
                     : (r.pickupRev < 0 ? `<span style="color:#ef4444; font-weight:700;">${fmt(r.pickupRev)}</span>` : '<span style="color:var(--text-muted);">● 0 €</span>');
 
-                segTbody.innerHTML += `
+                const dispRevTY = isNetView ? r.netRevTY : r.revTY;
+                const dispRevLY = isNetView ? r.netRevLY : r.revLY;
+                const dispAdrTY = isNetView ? r.netAdrTY : r.adrTY;
+                const dispAdrLY = isNetView ? r.netAdrLY : r.adrLY;
+
+                const dispDeltaRev = dispRevTY - dispRevLY;
+                const dispDeltaRevPct = dispRevLY > 0 ? (dispDeltaRev / dispRevLY * 100) : (dispRevTY > 0 ? 100 : 0);
+                const dispDeltaAdr = dispAdrTY - dispAdrLY;
+                const dispDeltaAdrPct = dispAdrLY > 0 ? (dispDeltaAdr / dispAdrLY * 100) : 0;
+
+                const hasChannels = r.channels && r.channels.length > 1;
+                const isExpanded = expandedSegs.has(r.name);
+                const expandBtn = hasChannels 
+                    ? `<button onclick="toggle360SegmentChannels('${escapeHTML(r.name)}')" style="background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.25); color: var(--primary); padding: 1px 6px; border-radius: 4px; font-size: 0.7rem; cursor: pointer; line-height: 1; margin-right: 6px;" title="Ver canales del segmento">${isExpanded ? '▼' : '▶'}</button>` 
+                    : '';
+
+                const commissionNote = r.commissionAmountTY > 0 ? ` <span style="font-size:0.65rem; color:#ef4444; display:block; font-weight:normal;">(-${fmt(r.commissionAmountTY)})</span>` : '';
+
+                let mainRow = `
                     <tr style="border-bottom: 1px solid var(--border);">
-                        <td style="font-weight:700; color:var(--text-main);">${r.name}</td>
+                        <td style="font-weight:700; color:var(--text-main); white-space:nowrap;">
+                            <div style="display:flex; align-items:center;">
+                                ${expandBtn}
+                                <span>${r.name}</span>
+                                ${hasChannels ? `<span style="font-size:0.68rem; color:var(--text-muted); font-weight:normal; margin-left:4px;">(${r.channels.length} can.)</span>` : ''}
+                            </div>
+                        </td>
                         <!-- PRODUCCIÓN HABITACIÓN -->
-                        <td style="font-weight:700;">${fmt(r.revTY)}</td>
-                        <td style="color:var(--text-muted);">${fmt(r.revLY)}</td>
-                        <td style="border-right: 1px solid var(--border);">${formatVar(r.deltaRev, r.deltaRevPct, true)}</td>
+                        <td style="font-weight:700; color:${isNetView ? '#10b981' : 'var(--text-main)'};">
+                            ${fmt(dispRevTY)}
+                            ${commissionNote}
+                        </td>
+                        <td style="color:var(--text-muted);">${fmt(dispRevLY)}</td>
+                        <td style="border-right: 1px solid var(--border);">${formatVar(dispDeltaRev, dispDeltaRevPct, true)}</td>
                         <!-- HABITACIONES RN -->
                         <td style="font-weight:700;">${fmtNum(r.roomsTY)} RN</td>
                         <td style="color:var(--text-muted);">${fmtNum(r.roomsLY)} RN</td>
                         <td style="border-right: 1px solid var(--border);">${formatVar(r.deltaRms, r.deltaRmsPct)}</td>
                         <!-- ADR HABITACIÓN -->
-                        <td style="font-weight:700; color:var(--primary);">${fmt(r.adrTY)}</td>
-                        <td style="color:var(--text-muted);">${fmt(r.adrLY)}</td>
-                        <td style="border-right: 1px solid var(--border);">${formatVar(r.deltaAdr, r.deltaAdrPct, true)}</td>
+                        <td style="font-weight:700; color:${isNetView ? '#10b981' : 'var(--primary)'};">${fmt(dispAdrTY)}</td>
+                        <td style="color:var(--text-muted);">${fmt(dispAdrLY)}</td>
+                        <td style="border-right: 1px solid var(--border);">${formatVar(dispDeltaAdr, dispDeltaAdrPct, true)}</td>
                         <!-- PICK-UP RECIENTE -->
                         <td>${pRmsTag}</td>
                         <td>${pRevTag}</td>
                     </tr>
                 `;
+
+                let subrows = '';
+                if (isExpanded && hasChannels) {
+                    subrows = r.channels.map(ch => {
+                        const chRevTY = isNetView ? ch.netRevTY : ch.revTY;
+                        const chRevLY = isNetView ? ch.netRevLY : ch.revLY;
+                        const chAdrTY = isNetView ? ch.netAdrTY : ch.adrTY;
+                        const chAdrLY = isNetView ? ch.netAdrLY : ch.adrLY;
+                        const chDeltaRev = chRevTY - chRevLY;
+                        const chDeltaRevPct = chRevLY > 0 ? (chDeltaRev / chRevLY * 100) : (chRevTY > 0 ? 100 : 0);
+                        const chDeltaRms = ch.roomsTY - ch.roomsLY;
+                        const chDeltaRmsPct = ch.roomsLY > 0 ? (chDeltaRms / ch.roomsLY * 100) : (ch.roomsTY > 0 ? 100 : 0);
+                        const chDeltaAdr = chAdrTY - chAdrLY;
+                        const chDeltaAdrPct = chAdrLY > 0 ? (chDeltaAdr / chAdrLY * 100) : 0;
+
+                        return `
+                            <tr style="background: rgba(99, 102, 241, 0.03); font-size: 0.78rem; border-bottom: 1px dashed var(--border);">
+                                <td style="padding-left: 32px; border-left: 3px solid var(--primary); font-weight: 600; color: var(--text-main);">
+                                    <span style="color: var(--primary); margin-right: 4px;">↳</span>
+                                    <span>${escapeHTML(ch.name)}</span>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted); margin-left: 4px;">(${ch.commissionPct}% com.)</span>
+                                </td>
+                                <td style="font-weight: 600; color: ${isNetView ? '#10b981' : 'var(--text-main)'};">
+                                    ${fmt(chRevTY)}
+                                    ${ch.commissionAmount > 0 ? `<span style="font-size:0.62rem; color:#ef4444; display:block;">(-${fmt(ch.commissionAmount)})</span>` : ''}
+                                </td>
+                                <td style="color: var(--text-muted);">${fmt(chRevLY)}</td>
+                                <td style="border-right: 1px solid var(--border);">${formatVar(chDeltaRev, chDeltaRevPct, true)}</td>
+                                <td>${fmtNum(ch.roomsTY)} RN</td>
+                                <td style="color: var(--text-muted);">${fmtNum(ch.roomsLY)} RN</td>
+                                <td style="border-right: 1px solid var(--border);">${formatVar(chDeltaRms, chDeltaRmsPct)}</td>
+                                <td style="font-weight: 600; color: ${isNetView ? '#10b981' : 'var(--primary)'};">${fmt(chAdrTY)}</td>
+                                <td style="color: var(--text-muted);">${fmt(chAdrLY)}</td>
+                                <td style="border-right: 1px solid var(--border);">${formatVar(chDeltaAdr, chDeltaAdrPct, true)}</td>
+                                <td>—</td>
+                                <td>—</td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+
+                segTbody.innerHTML += mainRow + subrows;
             });
 
             // Fila Total
-            const totAdrTY = totRmsTY > 0 ? (totRevTY / totRmsTY) : 0;
-            const totAdrLY = totRmsLY > 0 ? (totRevLY / totRmsLY) : 0;
-            const totDeltaRev = totRevTY - totRevLY;
-            const totDeltaRevPct = totRevLY > 0 ? (totDeltaRev / totRevLY * 100) : 0;
+            const finalTotRevTY = isNetView ? totalNetRevTY : totRevTY;
+            const finalTotRevLY = isNetView ? totalNetRevLY : totRevLY;
+            const totAdrTY = totRmsTY > 0 ? (finalTotRevTY / totRmsTY) : 0;
+            const totAdrLY = totRmsLY > 0 ? (finalTotRevLY / totRmsLY) : 0;
+            const totDeltaRev = finalTotRevTY - finalTotRevLY;
+            const totDeltaRevPct = finalTotRevLY > 0 ? (totDeltaRev / finalTotRevLY * 100) : 0;
             const totDeltaRms = totRmsTY - totRmsLY;
             const totDeltaRmsPct = totRmsLY > 0 ? (totDeltaRms / totRmsLY * 100) : 0;
             const totDeltaAdr = totAdrTY - totAdrLY;
@@ -3923,20 +4092,35 @@
 
             segTbody.innerHTML += `
                 <tr style="background: rgba(99, 102, 241, 0.12); font-weight:800; border-top: 2px solid var(--border);">
-                    <td style="color: #a78bfa;">TOTAL TODOS LOS CANALES</td>
-                    <td>${fmt(totRevTY)}</td>
-                    <td style="color:var(--text-muted);">${fmt(totRevLY)}</td>
+                    <td style="color: #a78bfa;">TOTAL TODOS LOS CANALES (${isNetView ? '💎 NETO' : 'BRUTO'})</td>
+                    <td style="color:${isNetView ? '#10b981' : 'inherit'};">${fmt(finalTotRevTY)}</td>
+                    <td style="color:var(--text-muted);">${fmt(finalTotRevLY)}</td>
                     <td style="border-right: 1px solid var(--border);">${formatVar(totDeltaRev, totDeltaRevPct, true)}</td>
                     <td>${fmtNum(totRmsTY)} RN</td>
                     <td style="color:var(--text-muted);">${fmtNum(totRmsLY)} RN</td>
                     <td style="border-right: 1px solid var(--border);">${formatVar(totDeltaRms, totDeltaRmsPct)}</td>
-                    <td style="color:var(--primary); font-size:0.85rem;">${fmt(totAdrTY)}</td>
+                    <td style="color:${isNetView ? '#10b981' : 'var(--primary)'}; font-size:0.85rem;">${fmt(totAdrTY)}</td>
                     <td style="color:var(--text-muted);">${fmt(totAdrLY)}</td>
                     <td style="border-right: 1px solid var(--border);">${formatVar(totDeltaAdr, totDeltaAdrPct, true)}</td>
                     <td>${totPickupRms > 0 ? `<span style="color:#10b981;">+${totPickupRms} RN</span>` : (totPickupRms < 0 ? `<span style="color:#ef4444;">${totPickupRms} RN</span>` : '● 0')}</td>
                     <td>${totPickupRev > 0 ? `<span style="color:#10b981;">+${fmt(totPickupRev)}</span>` : (totPickupRev < 0 ? `<span style="color:#ef4444;">${fmt(totPickupRev)}</span>` : '● 0 €')}</td>
                 </tr>
             `;
+        }
+
+        function toggle360SegmentChannels(segName) {
+            window.__seg360ExpandedSegs = window.__seg360ExpandedSegs || new Set();
+            if (window.__seg360ExpandedSegs.has(segName)) {
+                window.__seg360ExpandedSegs.delete(segName);
+            } else {
+                window.__seg360ExpandedSegs.add(segName);
+            }
+            renderSegmentPickupAnalysis(currentHotel, currentYear, (typeof currentMonthIdx !== 'undefined' ? currentMonthIdx : -1));
+        }
+
+        function set360SegmentNetMode(enableNet) {
+            window.__seg360NetMode = !!enableNet;
+            renderSegmentPickupAnalysis(currentHotel, currentYear, (typeof currentMonthIdx !== 'undefined' ? currentMonthIdx : -1));
         }
 
         function switchHotel(h) {
