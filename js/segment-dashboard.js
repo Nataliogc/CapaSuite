@@ -8,6 +8,26 @@ let currentMode = 'historical';
 let currentSegment = '';
 let isNetRevenueMode = false;
 let expandedSegments = new Set();
+let expandedChannelSegments = new Set();
+function toggleChannelSegment(name) {
+    if (expandedChannelSegments.has(name)) {
+        expandedChannelSegments.delete(name);
+    } else {
+        expandedChannelSegments.add(name);
+    }
+    renderDashboard();
+}
+function toggleAllChannelSegments() {
+    const hotelData = segmentDB[currentHotel]?.[currentYear];
+    if (!hotelData) return;
+    const segsWithChannels = SegmentAnalysis.segments(hotelData).filter(s => s.channels && Object.values(s.channels).some(c => c && c.name && !SegmentAnalysis.isSegment(c.name)));
+    if (expandedChannelSegments.size >= segsWithChannels.length && segsWithChannels.length > 0) {
+        expandedChannelSegments.clear();
+    } else {
+        segsWithChannels.forEach(s => expandedChannelSegments.add(s.name));
+    }
+    renderDashboard();
+}
 function selectSegment(name) { currentSegment = name; renderDashboard(); }
 function setRevenueNetMode(enableNet) {
     isNetRevenueMode = !!enableNet;
@@ -1023,157 +1043,224 @@ function renderDashboard() {
 function renderChannelsSection(hotelData, hotelPrevious, currentSegment, months, hotelTotals, hotelPrior, compareYear) {
     const card = el('channels-card');
     if (!card) return;
-    
-    let channelList = [];
-    const isGlobal = !currentSegment;
-    const mixTotal = currentMetric === 'rooms' ? hotelTotals.rooms : (isNetRevenueMode ? SegmentAnalysis.aggregateNet(hotelData, months, currentHotel).netAccommodation : hotelTotals.accommodation);
-
-    if (currentSegment) {
-        const segObj = hotelData?.segment?.[currentSegment];
-        const oldSegObj = hotelPrevious?.segment?.[currentSegment];
-        const segAcc = SegmentAnalysis.sum(segObj, 'accommodation', months);
-        const segRooms = SegmentAnalysis.sum(segObj, 'rooms', months);
-        const segMixBase = currentMetric === 'rooms' ? segRooms : segAcc;
-
-        if (segObj) {
-            const rawChannels = SegmentAnalysis.getSegmentChannels(segObj, months, currentHotel);
-            channelList = rawChannels.map(ch => {
-                const oldChList = oldSegObj ? SegmentAnalysis.getSegmentChannels(oldSegObj, months, currentHotel) : [];
-                const oldCh = oldChList.find(c => c.name === ch.name);
-                return {
-                    name: ch.name,
-                    segmentName: currentSegment,
-                    rooms: ch.rooms,
-                    accommodation: ch.accommodation,
-                    adr: ch.adr,
-                    commissionPct: ch.commissionPct,
-                    fixedFeePerRN: ch.fixedFeePerRN,
-                    commissionAmount: ch.commissionAmount,
-                    netAccommodation: ch.netAccommodation,
-                    netAdr: ch.netAdr,
-                    netMarginPct: ch.netMarginPct,
-                    shareSegment: segMixBase > 0 ? (currentMetric === 'rooms' ? ch.rooms : (isNetRevenueMode ? ch.netAccommodation : ch.accommodation)) / segMixBase : null,
-                    shareHotel: mixTotal > 0 ? (currentMetric === 'rooms' ? ch.rooms : (isNetRevenueMode ? ch.netAccommodation : ch.accommodation)) / mixTotal : null,
-                    oldRooms: oldCh?.rooms ?? null,
-                    oldAccommodation: isNetRevenueMode ? (oldCh?.netAccommodation ?? null) : (oldCh?.accommodation ?? null),
-                    oldAdr: isNetRevenueMode ? (oldCh?.netAdr ?? null) : (oldCh?.adr ?? null)
-                };
-            });
-        }
-        const titleEl = el('channels-title-text');
-        if (titleEl) titleEl.innerHTML = `Canales y Rentabilidad Neta de <u>${escapeHTML(currentSegment)}</u>`;
-        const subEl = el('channels-card-subtitle');
-        if (subEl) subEl.textContent = `Desglose de producción bruta, comisiones, ADR neto y margen real de ${currentSegment}.`;
-    } else {
-        const channelMap = new Map();
-        for (const seg of SegmentAnalysis.segments(hotelData)) {
-            const rawChannels = SegmentAnalysis.getSegmentChannels(seg, months, currentHotel);
-            for (const ch of rawChannels) {
-                const existing = channelMap.get(ch.name) || {
-                    name: ch.name,
-                    segmentName: seg.name,
-                    rooms: 0,
-                    accommodation: 0,
-                    commissionAmount: 0,
-                    netAccommodation: 0,
-                    commissionPct: ch.commissionPct,
-                    oldRooms: 0,
-                    oldAccommodation: 0
-                };
-                existing.rooms += ch.rooms;
-                existing.accommodation += ch.accommodation;
-                existing.commissionAmount += ch.commissionAmount;
-                existing.netAccommodation += ch.netAccommodation;
-                channelMap.set(ch.name, existing);
-            }
-        }
-        if (hotelPrevious) {
-            for (const seg of SegmentAnalysis.segments(hotelPrevious)) {
-                const rawChannels = SegmentAnalysis.getSegmentChannels(seg, months, currentHotel);
-                for (const ch of rawChannels) {
-                    if (channelMap.has(ch.name)) {
-                        const existing = channelMap.get(ch.name);
-                        existing.oldRooms += ch.rooms;
-                        existing.oldAccommodation += (isNetRevenueMode ? ch.netAccommodation : ch.accommodation);
-                    }
-                }
-            }
-        }
-        channelList = Array.from(channelMap.values()).map(ch => {
-            const adr = ch.rooms > 0 && ch.accommodation > 0 ? ch.accommodation / ch.rooms : null;
-            const netAdr = ch.rooms > 0 && ch.netAccommodation > 0 ? ch.netAccommodation / ch.rooms : null;
-            const oldAdr = ch.oldRooms > 0 && ch.oldAccommodation > 0 ? ch.oldAccommodation / ch.oldRooms : null;
-            const netMarginPct = ch.accommodation > 0 ? (ch.netAccommodation / ch.accommodation) * 100 : (100 - ch.commissionPct);
-            return {
-                name: ch.name,
-                segmentName: ch.segmentName,
-                rooms: ch.rooms,
-                accommodation: ch.accommodation,
-                adr,
-                commissionPct: ch.commissionPct,
-                commissionAmount: ch.commissionAmount,
-                netAccommodation: ch.netAccommodation,
-                netAdr,
-                netMarginPct,
-                shareSegment: null,
-                shareHotel: mixTotal > 0 ? (currentMetric === 'rooms' ? ch.rooms : (isNetRevenueMode ? ch.netAccommodation : ch.accommodation)) / mixTotal : null,
-                oldRooms: ch.oldRooms,
-                oldAccommodation: ch.oldAccommodation,
-                oldAdr
-            };
-        });
-        const titleEl = el('channels-title-text');
-        if (titleEl) titleEl.textContent = 'Distribución y Rentabilidad Neta de Canales';
-        const subEl = el('channels-card-subtitle');
-        if (subEl) subEl.textContent = 'Análisis de comisiones de intermediación, producción neta y margen real por canal.';
+    if (!hotelData) {
+        card.style.display = 'none';
+        return;
     }
 
-    channelList.sort((a, b) => {
+    const isGlobal = !currentSegment;
+    const allSegments = SegmentAnalysis.segments(hotelData);
+    const targetSegments = currentSegment 
+        ? [allSegments.find(s => s.name === currentSegment)].filter(Boolean)
+        : allSegments;
+
+    if (currentSegment && expandedChannelSegments.size === 0) {
+        expandedChannelSegments.add(currentSegment);
+    }
+
+    let totalRealChannelsCount = 0;
+    const allRealChannelsForChart = [];
+
+    const segmentRows = targetSegments.map(segObj => {
+        const segName = segObj.name;
+        const segRooms = SegmentAnalysis.sum(segObj, 'rooms', months);
+        const segAcc = SegmentAnalysis.sum(segObj, 'accommodation', months);
+        const segRev = SegmentAnalysis.sum(segObj, 'revenue', months);
+        const segTotRev = SegmentAnalysis.sum(segObj, 'totalRevenue', months);
+
+        // Canales reales con actividad que han entrado en este segmento
+        const rawChannels = (segObj.channels ? Object.values(segObj.channels) : [])
+            .filter(c => c && c.name && !SegmentAnalysis.isSegment(c.name))
+            .map(c => {
+                const chRooms = SegmentAnalysis.sum(c, 'rooms', months);
+                const chAcc = SegmentAnalysis.sum(c, 'accommodation', months);
+                const chRev = SegmentAnalysis.sum(c, 'revenue', months);
+                const chTotRev = SegmentAnalysis.sum(c, 'totalRevenue', months);
+                const adr = chRooms > 0 && chAcc > 0 ? chAcc / chRooms : (chRooms > 0 && chRev > 0 ? chRev / chRooms : null);
+                const net = SegmentAnalysis.calculateNetMetrics(chAcc, chRooms, c.name, currentHotel);
+                return {
+                    name: c.name,
+                    segmentName: segName,
+                    rooms: chRooms,
+                    accommodation: chAcc,
+                    revenue: chRev,
+                    totalRevenue: chTotRev,
+                    adr,
+                    commissionPct: net.commissionPct,
+                    fixedFeePerRN: net.fixedFeePerRN,
+                    commissionAmount: net.commissionAmount,
+                    netAccommodation: net.netAccommodation,
+                    netAdr: net.netAdr,
+                    netMarginPct: net.netMarginPct
+                };
+            })
+            .filter(c => c.rooms > 0 || c.accommodation > 0 || c.revenue > 0 || c.totalRevenue > 0);
+
+        rawChannels.sort((a, b) => b.rooms - a.rooms || b.accommodation - a.accommodation);
+
+        totalRealChannelsCount += rawChannels.length;
+        allRealChannelsForChart.push(...rawChannels);
+
+        // Métricas netas del segmento
+        let segCommissionAmount = 0;
+        let segNetAcc = 0;
+        if (rawChannels.length > 0) {
+            const rawAccSum = rawChannels.reduce((s, c) => s + c.accommodation, 0);
+            const rawCommSum = rawChannels.reduce((s, c) => s + c.commissionAmount, 0);
+            if (rawAccSum > 0 && Math.abs(rawAccSum - segAcc) < 1) {
+                segCommissionAmount = rawCommSum;
+                segNetAcc = segAcc - segCommissionAmount;
+            } else {
+                segCommissionAmount = rawCommSum;
+                const unassignedAcc = Math.max(0, segAcc - rawAccSum);
+                const unassignedRooms = Math.max(0, segRooms - rawChannels.reduce((s, c) => s + c.rooms, 0));
+                const unassignedNet = SegmentAnalysis.calculateNetMetrics(unassignedAcc, unassignedRooms, segName, currentHotel);
+                segCommissionAmount += unassignedNet.commissionAmount;
+                segNetAcc = segAcc - segCommissionAmount;
+            }
+        } else {
+            const segNet = SegmentAnalysis.calculateNetMetrics(segAcc, segRooms, segName, currentHotel);
+            segCommissionAmount = segNet.commissionAmount;
+            segNetAcc = segNet.netAccommodation;
+        }
+
+        const segCommPct = segAcc > 0 ? (segCommissionAmount / segAcc) * 100 : 0;
+        const segGrossAdr = segRooms > 0 && segAcc > 0 ? segAcc / segRooms : null;
+        const segNetAdr = segRooms > 0 && segNetAcc > 0 ? segNetAcc / segRooms : null;
+        const segMarginPct = segAcc > 0 ? (segNetAcc / segAcc) * 100 : (100 - segCommPct);
+
+        return {
+            name: segName,
+            rooms: segRooms,
+            accommodation: segAcc,
+            commissionPct: segCommPct,
+            commissionAmount: segCommissionAmount,
+            netAccommodation: segNetAcc,
+            adr: segGrossAdr,
+            netAdr: segNetAdr,
+            netMarginPct: segMarginPct,
+            channels: rawChannels
+        };
+    }).filter(s => s.rooms !== 0 || s.accommodation !== 0);
+
+    segmentRows.sort((a, b) => {
         const valA = currentMetric === 'rooms' ? a.rooms : currentMetric === 'adr' ? (isNetRevenueMode ? (a.netAdr ?? 0) : (a.adr ?? 0)) : (isNetRevenueMode ? a.netAccommodation : a.accommodation);
         const valB = currentMetric === 'rooms' ? b.rooms : currentMetric === 'adr' ? (isNetRevenueMode ? (b.netAdr ?? 0) : (b.adr ?? 0)) : (isNetRevenueMode ? b.netAccommodation : b.accommodation);
         return valB - valA;
     });
 
+    const titleEl = el('channels-title-text');
+    if (titleEl) {
+        titleEl.textContent = currentSegment 
+            ? `Canales de ${currentSegment}` 
+            : 'Canales por Segmento';
+    }
+    const subEl = el('channels-card-subtitle');
+    if (subEl) {
+        subEl.textContent = currentSegment 
+            ? `Desglose de los canales y operadores reales que entran en ${currentSegment}.`
+            : 'Desglose de canales por cada segmento. Pulsa el desplegable (▼) para ver qué canales entran en cada uno.';
+    }
+
     const badgeEl = el('channels-badge');
-    if (badgeEl) badgeEl.textContent = `${channelList.length} ${channelList.length === 1 ? 'canal' : 'canales'}`;
-    card.style.display = channelList.length > 0 ? 'block' : 'none';
+    if (badgeEl) {
+        badgeEl.textContent = `${totalRealChannelsCount} ${totalRealChannelsCount === 1 ? 'canal real' : 'canales reales'}`;
+    }
+
+    const toggleAllBtn = el('btn-toggle-all-channel-segments');
+    if (toggleAllBtn) {
+        const segsWithChannelsCount = segmentRows.filter(s => s.channels.length > 0).length;
+        toggleAllBtn.style.display = segsWithChannelsCount > 0 ? 'inline-block' : 'none';
+        toggleAllBtn.textContent = expandedChannelSegments.size >= segsWithChannelsCount && segsWithChannelsCount > 0
+            ? '⊟ Colapsar Canales'
+            : '⊞ Desplegar Canales';
+    }
+
+    card.style.display = segmentRows.length > 0 ? 'block' : 'none';
 
     const tbody = el('channels-body');
     if (tbody) {
-        tbody.innerHTML = channelList.map(ch => {
-            const segTag = isGlobal ? ` <span style="font-size:0.7rem; background:rgba(99,102,241,0.08); color:var(--primary); padding:2px 6px; border-radius:4px; font-weight:600; margin-left:4px;">${escapeHTML(ch.segmentName)}</span>` : '';
-            const marginColor = (ch.netMarginPct || 0) < 82 ? '#e11d48' : (ch.netMarginPct || 0) >= 95 ? '#10b981' : 'var(--text-main)';
-            return `<tr>
-                <td style="padding: 10px 14px;"><strong style="color:var(--text-main);">${escapeHTML(ch.name)}</strong>${segTag}</td>
-                <td style="padding: 10px 14px; text-align: right;">${fmt(ch.rooms, 'rooms')}</td>
-                <td style="padding: 10px 14px; text-align: right;">${fmt(ch.accommodation, 'revenue')}</td>
-                <td style="padding: 10px 14px; text-align: right; color: ${ch.commissionPct > 0 ? '#e11d48' : 'var(--text-muted)'}; font-weight: 600;">${ch.commissionPct > 0 ? ch.commissionPct + '%' : '0%'}</td>
-                <td style="padding: 10px 14px; text-align: right; color: ${ch.commissionAmount > 0 ? '#e11d48' : 'var(--text-muted)'};">-${fmt(ch.commissionAmount, 'revenue')}</td>
-                <td style="padding: 10px 14px; text-align: right; font-weight: 700; color: var(--primary);">${fmt(ch.netAccommodation, 'revenue')}</td>
-                <td style="padding: 10px 14px; text-align: right;">${fmt(ch.adr, 'adr')}</td>
-                <td style="padding: 10px 14px; text-align: right; font-weight: 700; color: #10b981;">${fmt(ch.netAdr, 'adr')}</td>
-                <td style="padding: 10px 14px; text-align: right; font-weight: 800; color: ${marginColor};">${pct((ch.netMarginPct || 0) / 100)}</td>
+        let html = '';
+        for (const seg of segmentRows) {
+            const hasChannels = seg.channels.length > 0;
+            const isExpanded = expandedChannelSegments.has(seg.name);
+            const expandBtn = hasChannels 
+                ? `<button class="toggle-btn" data-toggle-ch-seg="${escapeHTML(seg.name)}" style="padding: 2px 7px; font-size: 0.72rem; margin-right: 6px; border-radius: 4px; line-height: 1; cursor: pointer;" title="${isExpanded ? 'Colapsar canales' : 'Ver canales de este segmento'}">${isExpanded ? '▼' : '▶'}</button>` 
+                : '';
+            const channelBadge = hasChannels
+                ? `<span style="font-size:0.72rem; background:rgba(99,102,241,0.1); color:var(--primary); padding:2px 8px; border-radius:10px; font-weight:700; margin-left:6px;">${seg.channels.length} ${seg.channels.length === 1 ? 'canal' : 'canales'}</span>`
+                : `<span style="font-size:0.72rem; color:var(--text-muted); font-style:italic; margin-left:6px;">(Sin canales desglosados)</span>`;
+
+            const marginColor = (seg.netMarginPct || 0) < 82 ? '#e11d48' : (seg.netMarginPct || 0) >= 95 ? '#10b981' : 'var(--text-main)';
+
+            // Fila principal del segmento
+            html += `<tr style="border-bottom: 1px solid var(--border); font-weight: 600; background: ${isExpanded ? 'rgba(99, 102, 241, 0.03)' : 'transparent'};">
+                <td style="padding: 10px 14px;">
+                    <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">
+                        ${expandBtn}
+                        <strong style="color: var(--text-main); font-size: 0.9rem;">${escapeHTML(seg.name)}</strong>
+                        ${channelBadge}
+                    </div>
+                </td>
+                <td style="padding: 10px 14px; text-align: right; font-weight: 700;">${fmt(seg.rooms, 'rooms')}</td>
+                <td style="padding: 10px 14px; text-align: right;">${fmt(seg.accommodation, 'revenue')}</td>
+                <td style="padding: 10px 14px; text-align: right; color: ${seg.commissionPct > 0 ? '#e11d48' : 'var(--text-muted)'}; font-weight: 600;">${seg.commissionPct > 0 ? seg.commissionPct.toFixed(1) + '%' : '0%'}</td>
+                <td style="padding: 10px 14px; text-align: right; color: ${seg.commissionAmount > 0 ? '#e11d48' : 'var(--text-muted)'};">${seg.commissionAmount > 0 ? '-' + fmt(seg.commissionAmount, 'revenue') : '—'}</td>
+                <td style="padding: 10px 14px; text-align: right; font-weight: 700; color: var(--primary);">${fmt(seg.netAccommodation, 'revenue')}</td>
+                <td style="padding: 10px 14px; text-align: right;">${fmt(seg.adr, 'adr')}</td>
+                <td style="padding: 10px 14px; text-align: right; font-weight: 700; color: #10b981;">${fmt(seg.netAdr, 'adr')}</td>
+                <td style="padding: 10px 14px; text-align: right; font-weight: 800; color: ${marginColor};">${pct((seg.netMarginPct || 0) / 100)}</td>
             </tr>`;
-        }).join('') || '<tr><td colspan="9" style="text-align:center;">No hay canales registrados.</td></tr>';
+
+            // Subfilas de canales cuando está desplegado (solo los canales, sin importes)
+            if (isExpanded && hasChannels) {
+                for (const ch of seg.channels) {
+                    const chCommissionNote = ch.commissionPct > 0 ? ` <span style="font-size:0.7rem; color:#e11d48; font-weight:600; background:rgba(225,29,72,0.08); padding:1px 6px; border-radius:4px;">${ch.commissionPct}% com.</span>` : '';
+                    html += `<tr class="channel-subrow" style="background: rgba(99, 102, 241, 0.05); font-size: 0.82rem; border-bottom: 1px dashed rgba(99, 102, 241, 0.15);">
+                        <td style="padding: 8px 14px 8px 38px; border-left: 3px solid var(--primary);">
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span style="color: var(--primary); font-weight: 800;">↳</span>
+                                <span style="font-weight: 700; color: var(--text-main); font-size: 0.85rem;">${escapeHTML(ch.name)}</span>
+                                ${chCommissionNote}
+                            </div>
+                        </td>
+                        <td style="padding: 8px 14px; text-align: right; font-weight: 600; color: var(--text-muted);">${ch.rooms > 0 ? fmt(ch.rooms, 'rooms') : '—'}</td>
+                        <td colspan="7" style="padding: 8px 14px; font-size: 0.78rem; color: var(--text-muted); font-style: italic;">
+                            Canal activo de ${escapeHTML(seg.name)}
+                        </td>
+                    </tr>`;
+                }
+            }
+        }
+
+        tbody.innerHTML = html || '<tr><td colspan="9" style="text-align:center; padding: 20px;">No hay segmentos ni canales registrados en el periodo seleccionado.</td></tr>';
+
+        // Listeners para los botones de desplegar
+        tbody.querySelectorAll('[data-toggle-ch-seg]').forEach(button => {
+            button.onclick = (e) => {
+                e.stopPropagation();
+                toggleChannelSegment(button.dataset.toggleChSeg);
+            };
+        });
     }
 
     const tfoot = el('channels-foot');
     if (tfoot) {
-        const totalRooms = channelList.reduce((s, c) => s + c.rooms, 0);
-        const totalAcc = channelList.reduce((s, c) => s + c.accommodation, 0);
-        const totalCommissions = channelList.reduce((s, c) => s + c.commissionAmount, 0);
-        const totalNetAcc = channelList.reduce((s, c) => s + c.netAccommodation, 0);
+        const totalRooms = segmentRows.reduce((s, c) => s + c.rooms, 0);
+        const totalAcc = segmentRows.reduce((s, c) => s + c.accommodation, 0);
+        const totalCommissions = segmentRows.reduce((s, c) => s + c.commissionAmount, 0);
+        const totalNetAcc = segmentRows.reduce((s, c) => s + c.netAccommodation, 0);
         const totalGrossAdr = totalRooms > 0 && totalAcc > 0 ? totalAcc / totalRooms : null;
         const totalNetAdr = totalRooms > 0 && totalNetAcc > 0 ? totalNetAcc / totalRooms : null;
         const avgMarginPct = totalAcc > 0 ? (totalNetAcc / totalAcc) * 100 : null;
         const avgCommPct = totalAcc > 0 ? (totalCommissions / totalAcc) * 100 : null;
 
-        tfoot.innerHTML = `<tr style="font-weight:700; background:rgba(99,102,241,0.06);">
-            <td style="padding: 12px 14px;">Total Canales</td>
+        tfoot.innerHTML = `<tr style="font-weight:700; background:rgba(99,102,241,0.06); border-top: 2px solid var(--border);">
+            <td style="padding: 12px 14px;">Total (${segmentRows.length} ${segmentRows.length === 1 ? 'segmento' : 'segmentos'}, ${totalRealChannelsCount} ${totalRealChannelsCount === 1 ? 'canal' : 'canales'})</td>
             <td style="padding: 12px 14px; text-align: right;">${fmt(totalRooms, 'rooms')}</td>
             <td style="padding: 12px 14px; text-align: right;">${fmt(totalAcc, 'revenue')}</td>
             <td style="padding: 12px 14px; text-align: right; color: #e11d48;">${avgCommPct != null ? avgCommPct.toFixed(1) + '%' : '—'}</td>
-            <td style="padding: 12px 14px; text-align: right; color: #e11d48;">-${fmt(totalCommissions, 'revenue')}</td>
+            <td style="padding: 12px 14px; text-align: right; color: #e11d48;">${totalCommissions > 0 ? '-' + fmt(totalCommissions, 'revenue') : '—'}</td>
             <td style="padding: 12px 14px; text-align: right; color: var(--primary);">${fmt(totalNetAcc, 'revenue')}</td>
             <td style="padding: 12px 14px; text-align: right;">${fmt(totalGrossAdr, 'adr')}</td>
             <td style="padding: 12px 14px; text-align: right; color: #10b981;">${fmt(totalNetAdr, 'adr')}</td>
@@ -1181,20 +1268,32 @@ function renderChannelsSection(hotelData, hotelPrevious, currentSegment, months,
         </tr>`;
     }
 
-    updateChannelChart(channelList);
+    updateChannelChart(allRealChannelsForChart, segmentRows);
 }
 
-function updateChannelChart(channelList) {
+function updateChannelChart(channelList, segmentRows) {
     if (typeof Chart === 'undefined') return;
     const canvas = el('channelChart');
     if (!canvas) return;
     charts['channel']?.destroy();
-    if (!channelList || !channelList.length) return;
 
+    const chartTitleEl = el('channel-chart-title');
     const palette = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#3b82f6', '#8b5cf6', '#14b8a6', '#f97316', '#06b6d4', '#84cc16', '#a855f7', '#64748b'];
     const metricKey = currentMetric === 'rooms' ? 'rooms' : 'accommodation';
-    const chartData = channelList.map(c => c[metricKey] || 0);
-    const chartLabels = channelList.map(c => c.name);
+
+    // Si hay canales reales, graficar los canales reales. Si no, graficar los segmentos
+    const useChannels = channelList && channelList.length > 0;
+    const items = useChannels ? channelList : (segmentRows || []);
+    if (!items.length) return;
+
+    if (chartTitleEl) {
+        chartTitleEl.textContent = useChannels 
+            ? `Distribución de Canales (${channelList.length})` 
+            : `Distribución de Segmentos (${segmentRows?.length || 0})`;
+    }
+
+    const chartData = items.map(c => c[metricKey] || 0);
+    const chartLabels = items.map(c => c.name);
     const color = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim();
 
     charts['channel'] = new Chart(canvas, {

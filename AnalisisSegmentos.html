@@ -656,9 +656,12 @@
                             Desglose de habitaciones, producción y ADR de cada canal u operador.
                         </p>
                     </div>
-                    <span id="channels-badge" style="font-size: 0.8rem; background: rgba(99, 102, 241, 0.12); color: var(--primary); padding: 4px 14px; border-radius: 20px; font-weight: 700; border: 1px solid rgba(99, 102, 241, 0.25);">
-                        0 canales
-                    </span>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <button id="btn-toggle-all-channel-segments" class="toggle-btn" style="font-size: 0.8rem; padding: 6px 14px; display: none;" onclick="toggleAllChannelSegments()">⊞ Desplegar Canales</button>
+                        <span id="channels-badge" style="font-size: 0.8rem; background: rgba(99, 102, 241, 0.12); color: var(--primary); padding: 4px 14px; border-radius: 20px; font-weight: 700; border: 1px solid rgba(99, 102, 241, 0.25);">
+                            0 canales
+                        </span>
+                    </div>
                 </div>
                 <div style="padding: 20px; display: grid; grid-template-columns: minmax(260px, 320px) 1fr; gap: 24px; align-items: start;">
                     <div style="height: 260px; position: relative; background: var(--bg-glass); border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column;">
@@ -671,7 +674,7 @@
                         <table style="width: 100%; min-width: 680px;">
                             <thead id="channels-head">
                                 <tr>
-                                    <th style="padding: 12px 14px;">Canal / Operador</th>
+                                    <th style="padding: 12px 14px;">Segmento / Canal</th>
                                     <th style="padding: 12px 14px; text-align: right;">RN</th>
                                     <th style="padding: 12px 14px; text-align: right;">Prod. Bruta</th>
                                     <th style="padding: 12px 14px; text-align: right;">Comisión</th>
