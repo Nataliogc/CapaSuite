@@ -1,3 +1,36 @@
+
+function getProtocolChannelsDescription(segName) {
+    const norm = (segName || '').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    if (norm.includes('OFFLINE') || norm.includes('OFF LINE') || norm.includes('DIRECTO OFF')) {
+        return 'Mostrador / Walk-in, Teléfono, Correo, Reservas directas particulares';
+    }
+    if (norm.includes('CORP') && norm.includes('DIN')) {
+        return 'HRS, Keytel GDS, SiteMinder GDS, Viajes El Corte Inglés, World2Meet, Empresas directas';
+    }
+    if (norm.includes('CORP') && (norm.includes('LIN') || norm.includes('LINEAL'))) {
+        return 'Empresas con tarifa corporativa negociada fija con el hotel (convenios directos)';
+    }
+    if (norm.includes('ONLINE') && !norm.includes('BONO') && !norm.includes('OTA')) {
+        return 'Motor de reservas web propio (Roiback, SynXis, Witbooking / Synergy)';
+    }
+    if (norm.includes('OTA') || norm.includes('AAVV')) {
+        return 'Booking.com, Expedia, agencias de viaje online principales';
+    }
+    if (norm.includes('TTOO') || norm.includes('TOUR')) {
+        return 'Hotelbeds, Serhs Tourism, Traveltino, Weekendesk';
+    }
+    if (norm.includes('BONO') || norm.includes('OTRO') || norm.includes('EXPERIENCIA')) {
+        return 'Smartbox, Wonderbox, Grupo Ego Experiencias, Bonos';
+    }
+    if (norm.includes('TANTEO') || norm.includes('GRTANTEO')) {
+        return 'Grupos de > 10 habitaciones pendientes de confirmación';
+    }
+    if (norm.includes('GRUPO')) {
+        return 'Reservas de grupo de más de 10 habitaciones (eventos, circuitos, series)';
+    }
+    return 'Canales comerciales clasificados según Protocolo 2.4';
+}
+
 'use strict';
 const MONTH_ORDER = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 const SHORT_MONTHS = MONTH_ORDER.map(m => m.slice(0, 3));
@@ -1278,18 +1311,18 @@ function renderChannelsSection(hotelData, hotelPrevious, currentSegment, months,
     if (subEl) {
         subEl.textContent = currentSegment 
             ? `Desglose de los canales y operadores reales que entran en ${currentSegment}.`
-            : 'Desglose de canales por cada segmento. Pulsa el desplegable (▼) para ver qué canales entran en cada uno.';
+            : 'Canales comerciales integrados en cada segmento según el Protocolo Oficial 2.4 (Recepción y Reservas).';
     }
 
     const badgeEl = el('channels-badge');
     if (badgeEl) {
-        badgeEl.textContent = `${totalRealChannelsCount} ${totalRealChannelsCount === 1 ? 'canal real' : 'canales reales'}`;
+        badgeEl.textContent = `${segmentRows.length} ${segmentRows.length === 1 ? 'segmento' : 'segmentos'}`;
     }
 
     const toggleAllBtn = el('btn-toggle-all-channel-segments');
     if (toggleAllBtn) {
         const segsWithChannelsCount = segmentRows.filter(s => s.channels.length > 0).length;
-        toggleAllBtn.style.display = segsWithChannelsCount > 0 ? 'inline-block' : 'none';
+        toggleAllBtn.style.display = 'none';
         toggleAllBtn.textContent = expandedChannelSegments.size >= segsWithChannelsCount && segsWithChannelsCount > 0
             ? '⊟ Colapsar Canales'
             : '⊞ Desplegar Canales';
@@ -1301,24 +1334,17 @@ function renderChannelsSection(hotelData, hotelPrevious, currentSegment, months,
     if (tbody) {
         let html = '';
         for (const seg of segmentRows) {
-            const hasChannels = seg.channels.length > 0;
-            const isExpanded = expandedChannelSegments.has(seg.name);
-            const expandBtn = hasChannels 
-                ? `<button class="toggle-btn" data-toggle-ch-seg="${escapeHTML(seg.name)}" style="padding: 2px 7px; font-size: 0.72rem; margin-right: 6px; border-radius: 4px; line-height: 1; cursor: pointer;" title="${isExpanded ? 'Colapsar canales' : 'Ver canales de este segmento'}">${isExpanded ? '▼' : '▶'}</button>` 
-                : '';
-            const channelBadge = hasChannels
-                ? `<span style="font-size:0.72rem; background:rgba(99,102,241,0.1); color:var(--primary); padding:2px 8px; border-radius:10px; font-weight:700; margin-left:6px;">${seg.channels.length} ${seg.channels.length === 1 ? 'canal' : 'canales'}</span>`
-                : `<span style="font-size:0.72rem; color:var(--text-muted); font-style:italic; margin-left:6px;">(Sin canales desglosados)</span>`;
-
+            const channelsDesc = getProtocolChannelsDescription(seg.name);
             const marginColor = (seg.netMarginPct || 0) < 82 ? '#e11d48' : (seg.netMarginPct || 0) >= 95 ? '#10b981' : 'var(--text-main)';
 
-            // Fila principal del segmento
-            html += `<tr style="border-bottom: 1px solid var(--border); font-weight: 600; background: ${isExpanded ? 'rgba(99, 102, 241, 0.03)' : 'transparent'};">
+            // Fila de segmento con mención de canales según Protocolo 2.4 (sin desglose de ventas por canal)
+            html += `<tr style="border-bottom: 1px solid var(--border); font-weight: 600;">
                 <td style="padding: 10px 14px;">
-                    <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">
-                        ${expandBtn}
-                        <strong style="color: var(--text-main); font-size: 0.9rem;">${escapeHTML(seg.name)}</strong>
-                        ${channelBadge}
+                    <div>
+                        <strong style="color: var(--text-main); font-size: 0.92rem;">${escapeHTML(seg.name)}</strong>
+                        <div style="font-size: 0.73rem; color: #4f46e5; margin-top: 3px; font-weight: 500;">
+                            <span style="color: var(--text-muted); font-weight: 600;">Canales incluidos:</span> ${channelsDesc}
+                        </div>
                     </div>
                 </td>
                 <td style="padding: 10px 14px; text-align: right; font-weight: 700;">${fmt(seg.rooms, 'rooms')}</td>
@@ -1330,26 +1356,6 @@ function renderChannelsSection(hotelData, hotelPrevious, currentSegment, months,
                 <td style="padding: 10px 14px; text-align: right; font-weight: 700; color: #10b981;">${fmt(seg.netAdr, 'adr')}</td>
                 <td style="padding: 10px 14px; text-align: right; font-weight: 800; color: ${marginColor};">${pct((seg.netMarginPct || 0) / 100)}</td>
             </tr>`;
-
-            // Subfilas de canales cuando está desplegado (solo los canales, sin importes)
-            if (isExpanded && hasChannels) {
-                for (const ch of seg.channels) {
-                    const chCommissionNote = ch.commissionPct > 0 ? ` <span style="font-size:0.7rem; color:#e11d48; font-weight:600; background:rgba(225,29,72,0.08); padding:1px 6px; border-radius:4px;">${ch.commissionPct}% com.</span>` : '';
-                    html += `<tr class="channel-subrow" style="background: rgba(99, 102, 241, 0.05); font-size: 0.82rem; border-bottom: 1px dashed rgba(99, 102, 241, 0.15);">
-                        <td style="padding: 8px 14px 8px 38px; border-left: 3px solid var(--primary);">
-                            <div style="display: flex; align-items: center; gap: 6px;">
-                                <span style="color: var(--primary); font-weight: 800;">↳</span>
-                                <span style="font-weight: 700; color: var(--text-main); font-size: 0.85rem;">${escapeHTML(ch.name)}</span>
-                                ${chCommissionNote}
-                            </div>
-                        </td>
-                        <td style="padding: 8px 14px; text-align: right; font-weight: 600; color: var(--text-muted);">${ch.rooms > 0 ? fmt(ch.rooms, 'rooms') : '—'}</td>
-                        <td colspan="7" style="padding: 8px 14px; font-size: 0.78rem; color: var(--text-muted); font-style: italic;">
-                            Canal activo de ${escapeHTML(seg.name)}
-                        </td>
-                    </tr>`;
-                }
-            }
         }
 
         tbody.innerHTML = html || '<tr><td colspan="9" style="text-align:center; padding: 20px;">No hay segmentos ni canales registrados en el periodo seleccionado.</td></tr>';

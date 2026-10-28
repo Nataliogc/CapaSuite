@@ -1666,6 +1666,7 @@
         }
 
         function renderTable(grouped, midx, total, fmt) {
+            const f = (n) => (typeof n === "number" && n < 0) ? `<span style="color:#dc2626; font-weight:700;">${fmt(n)}</span>` : fmt(n);
             const thead = document.getElementById('tableHead');
 
             // Calculate production days per month strictly from PRODUCCIÓN REAL
@@ -1871,8 +1872,7 @@
                         let cellContent = "";
                         const fontSize = "0.7rem"; // Smaller font to fit 12 months
 
-                        // Formatter Helper
-                        const f = (n) => (typeof n === "number" && n < 0) ? `<span style="color:#dc2626; font-weight:700;">${fmt(n)}</span>` : fmt(n);
+                        // (f is defined at function level)
 
                         // Case 1: Closed Month (Past) -> Show Real only
                         if (isClosed) {
