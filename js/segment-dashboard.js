@@ -1,36 +1,70 @@
 
-function getProtocolChannelsDescription(segName) {
+function getProtocolChannelsDescription(segName, hotel) {
+    const activeHotel = String(hotel || currentHotel || (window.CapaState && window.CapaState.activeHotel) || 'Guadiana');
+    const isCumbria = activeHotel.toLowerCase().includes('cumbria');
     const norm = (segName || '').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+
+    // 1. Bono Spa (exclusivo Cumbria Spa & Hotel)
     if (norm.includes('BONO SPA') || (norm.includes('BONO') && norm.includes('SPA')) || norm === 'SPA') {
-        return 'Bono interno propio del Spa (exclusivo Cumbria Spa & Hotel)';
+        return isCumbria 
+            ? 'Bono interno propio del Spa (exclusivo Cumbria Spa & Hotel)' 
+            : 'No aplica en Guadiana (sin Spa)';
     }
-    if (norm.includes('OFFLINE') || norm.includes('OFF LINE') || norm.includes('DIRECTO OFF')) {
-        return 'Mostrador / Walk-in, Teléfono, Correo, Reservas directas particulares';
-    }
-    if (norm.includes('CORP') && norm.includes('DIN')) {
-        return 'HRS, Keytel GDS, SiteMinder GDS, Viajes El Corte Inglés, World2Meet, Empresas directas';
-    }
-    if (norm.includes('CORP') && (norm.includes('LIN') || norm.includes('LINEAL'))) {
-        return 'Empresas con tarifa corporativa negociada fija con el hotel (convenios directos)';
-    }
+
+    // 2. Directo Online (diferenciado por hotel según Protocolo 2.4)
     if (norm.includes('ONLINE') && !norm.includes('BONO') && !norm.includes('OTA')) {
-        return 'Motor de reservas web propio (Roiback, SynXis, Witbooking / Synergy)';
+        return isCumbria
+            ? 'Motor de reservas web de Cumbria (WEB HOTEL, SYNERGY)'
+            : 'Motores de reservas web de Guadiana (Roiback, SynXis, Witbooking)';
     }
-    if (norm.includes('OTA') || norm.includes('AAVV')) {
-        return 'Booking.com, Expedia, agencias de viaje online principales';
-    }
-    if (norm.includes('TTOO') || norm.includes('TOUR')) {
-        return 'Hotelbeds, Serhs Tourism, Traveltino, Weekendesk';
+
+    // 3. Bonos / Otros (Cumbria cuenta con Bono Online / Bono Spa; Guadiana en Otros)
+    if (norm.includes('BONO ONLINE') || norm.includes('BONO LINE') || norm.includes('BONO ON LINE')) {
+        return isCumbria
+            ? 'Cofres regalo externos en Cumbria (Smartbox, Wonderbox, Ego Experiencias)'
+            : 'Cofres regalo externos (Smartbox, Wonderbox, Ego Experiencias)';
     }
     if (norm.includes('BONO') || norm.includes('OTRO') || norm.includes('EXPERIENCIA')) {
         return 'Smartbox, Wonderbox, Grupo Ego Experiencias, Bonos externos';
     }
+
+    // 4. Directo Offline
+    if (norm.includes('OFFLINE') || norm.includes('OFF LINE') || norm.includes('DIRECTO OFF')) {
+        return 'Mostrador / Walk-in, Teléfono, Correo, Reservas directas particulares';
+    }
+
+    // 5. Corporativo Dinámico
+    if (norm.includes('CORP') && norm.includes('DIN')) {
+        return 'HRS, Keytel Phoenix, Keytel GDS, SiteMinder GDS, Viajes El Corte Inglés, World2Meet, Empresas directas';
+    }
+
+    // 6. Corporativo Lineal
+    if (norm.includes('CORP') && (norm.includes('LIN') || norm.includes('LINEAL'))) {
+        return isCumbria
+            ? 'Empresas con tarifa corporativa negociada fija (convenios directos Cumbria)'
+            : 'Empresas con tarifa corporativa negociada fija (convenios directos Guadiana)';
+    }
+
+    // 7. OTA / AAVV
+    if (norm.includes('OTA') || norm.includes('AAVV')) {
+        return 'Booking.com, Expedia, agencias de viaje online principales';
+    }
+
+    // 8. TTOO Dinámica
+    if (norm.includes('TTOO') || norm.includes('TOUR')) {
+        return 'Hotelbeds, Serhs Tourism, Traveltino, Weekendesk';
+    }
+
+    // 9. Grupos Tanteo
     if (norm.includes('TANTEO') || norm.includes('GRTANTEO')) {
         return 'Grupos de > 10 habitaciones pendientes de confirmación';
     }
+
+    // 10. Grupos Confirmados
     if (norm.includes('GRUPO')) {
         return 'Reservas de grupo de más de 10 habitaciones (eventos, circuitos, series)';
     }
+
     return 'Canales comerciales clasificados según Protocolo 2.4';
 }
 
@@ -1337,7 +1371,7 @@ function renderChannelsSection(hotelData, hotelPrevious, currentSegment, months,
     if (tbody) {
         let html = '';
         for (const seg of segmentRows) {
-            const channelsDesc = getProtocolChannelsDescription(seg.name);
+            const channelsDesc = getProtocolChannelsDescription(seg.name, currentHotel);
             const marginColor = (seg.netMarginPct || 0) < 82 ? '#e11d48' : (seg.netMarginPct || 0) >= 95 ? '#10b981' : 'var(--text-main)';
 
             // Fila de segmento con mención de canales según Protocolo 2.4 (sin desglose de ventas por canal)

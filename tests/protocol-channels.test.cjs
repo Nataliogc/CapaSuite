@@ -1,0 +1,38 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const vm = require('node:vm');
+const fs = require('node:fs');
+
+test('getProtocolChannelsDescription distinguishes Guadiana vs Cumbria channels and segments', () => {
+    const dashCode = fs.readFileSync('js/segment-dashboard.js', 'utf8');
+    const fnDef = dashCode.match(/function getProtocolChannelsDescription[\s\S]*?\n\}/)[0];
+    const sandbox = {};
+    vm.createContext(sandbox);
+    vm.runInContext(fnDef, sandbox);
+    const desc = sandbox.getProtocolChannelsDescription;
+
+    // Directo Online differentiation
+    const guadiOnline = desc('DIRECTO ONLINE', 'Guadiana');
+    const cumbriaOnline = desc('DIRECTO ONLINE', 'Cumbria');
+    assert.ok(guadiOnline.includes('Roiback') && guadiOnline.includes('SynXis') && guadiOnline.includes('Witbooking'), 'Guadiana has Roiback/SynXis/Witbooking');
+    assert.ok(!guadiOnline.includes('SYNERGY'), 'Guadiana does not include Synergy');
+    assert.ok(cumbriaOnline.includes('WEB HOTEL') && cumbriaOnline.includes('SYNERGY'), 'Cumbria has Web Hotel/Synergy');
+    assert.ok(!cumbriaOnline.includes('Roiback'), 'Cumbria does not include Roiback');
+
+    // Bono Spa differentiation
+    const cumbriaBonoSpa = desc('BONO SPA', 'Cumbria');
+    const guadiBonoSpa = desc('BONO SPA', 'Guadiana');
+    assert.ok(cumbriaBonoSpa.includes('Bono interno propio del Spa'), 'Cumbria Bono Spa is internal spa voucher');
+    assert.ok(cumbriaBonoSpa.includes('Cumbria'));
+    assert.ok(guadiBonoSpa.includes('No aplica en Guadiana'), 'Guadiana has no Spa');
+
+    // Bono Online differentiation
+    const cumbriaBonoOnline = desc('BONO ONLINE', 'Cumbria');
+    assert.ok(cumbriaBonoOnline.includes('Cumbria'));
+
+    // Corporativo Lineal differentiation
+    const guadiCorp = desc('CORPORATIVO LINEAL', 'Guadiana');
+    const cumbriaCorp = desc('CORPORATIVO LINEAL', 'Cumbria');
+    assert.ok(guadiCorp.includes('Guadiana'));
+    assert.ok(cumbriaCorp.includes('Cumbria'));
+});
