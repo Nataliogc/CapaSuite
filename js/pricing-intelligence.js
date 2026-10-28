@@ -543,7 +543,26 @@
         if (!current) return result;
         result.current = current;
 
-        if (list.length === 0) return result;
+        // Si tenemos métrica directa de otbChange (pickup de la última carga / 24h)
+        const instantPickup = (currentMetrics && currentMetrics.otbChange !== undefined && currentMetrics.otbChange !== null)
+            ? Math.round(Number(currentMetrics.otbChange) || 0)
+            : null;
+
+        if (list.length === 0) {
+            if (instantPickup !== null) {
+                result.h24h = {
+                    available: true,
+                    diffRooms: instantPickup,
+                    diffRev: 0,
+                    adrPickup: 0,
+                    diffOccPct: 0,
+                    baselineRooms: current.rooms - instantPickup,
+                    baselineDate: 'Última carga',
+                    label: `${instantPickup >= 0 ? '+' : ''}${instantPickup} RN`
+                };
+            }
+            return result;
+        }
 
         const refTime = (referenceDate instanceof Date) ? referenceDate.getTime() : new Date(referenceDate).getTime();
         const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -592,6 +611,17 @@
                     baselineRooms: bestMatch.rooms,
                     baselineDate: bestMatch.captureDate,
                     label: `${diffRooms >= 0 ? '+' : ''}${diffRooms} RN`
+                };
+            } else if (h.key === 'h24h' && instantPickup !== null) {
+                result.h24h = {
+                    available: true,
+                    diffRooms: instantPickup,
+                    diffRev: 0,
+                    adrPickup: 0,
+                    diffOccPct: 0,
+                    baselineRooms: current.rooms - instantPickup,
+                    baselineDate: 'Última carga',
+                    label: `${instantPickup >= 0 ? '+' : ''}${instantPickup} RN`
                 };
             } else {
                 result[h.key] = {
@@ -1007,7 +1037,7 @@
                     countMarket++;
                 }
 
-                const pData = calculateDailyPickup(hotelName, d.dateISO, { rooms, occupancyPct: occPct });
+                const pData = calculateDailyPickup(hotelName, d.dateISO, { rooms, occupancyPct: occPct, otbChange });
                 if (pData.h24h.available) { sumP24h += pData.h24h.diffRooms; hasHistoryAny = true; }
                 if (pData.d7.available)   { sumP7d += pData.d7.diffRooms;   hasHistoryAny = true; }
                 if (pData.d14.available)  { sumP14d += pData.d14.diffRooms; hasHistoryAny = true; }
@@ -1121,6 +1151,7 @@
         let sumMkt = 0;
         let countMkt = 0;
         let sumRec = 0;
+        let p24hSum = 0;
         let p7dSum = 0;
         let p14dSum = 0;
         let p30dSum = 0;
@@ -1143,7 +1174,8 @@
                 countMkt++;
             }
 
-            const pData = calculateDailyPickup(hotelName, d.dateISO, { rooms, occupancyPct: occPct });
+            const pData = calculateDailyPickup(hotelName, d.dateISO, { rooms, occupancyPct: occPct, otbChange });
+            if (pData.h24h.available) { p24hSum += pData.h24h.diffRooms; hasHist = true; }
             if (pData.d7.available)  { p7dSum += pData.d7.diffRooms;   hasHist = true; }
             if (pData.d14.available) { p14dSum += pData.d14.diffRooms; hasHist = true; }
             if (pData.d30.available) { p30dSum += pData.d30.diffRooms; hasHist = true; }
@@ -1181,6 +1213,7 @@
             avgCurrentPrice: avgCur,
             avgRecommendedPrice: avgRec,
             forecastRevenue: Math.round(sumRevenue),
+            pickupAccum24h: hasHist ? p24hSum : null,
             pickupAccum7d: hasHist ? p7dSum : null,
             pickupAccum14d: hasHist ? p14dSum : null,
             pickupAccum30d: hasHist ? p30dSum : null,

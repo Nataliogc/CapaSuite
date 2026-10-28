@@ -98,7 +98,13 @@ assert.strictEqual(pRes.d14.diffRooms, 15, 'Pickup 14d debe ser 30 - 15 = +15');
 assert.strictEqual(pRes.d30.available, true);
 assert.strictEqual(pRes.d30.diffRooms, 20, 'Pickup 30d debe ser 30 - 10 = +20');
 
-// Fecha sin histórico previo
+// Fecha sin histórico previo en DB pero con otbChange (pickup de la última carga/informe)
+const pOtbChange = PricingIntelligence.calculateDailyPickup(hotel, '2027-11-21', { rooms: 25, otbChange: 7 }, tHoy);
+assert.strictEqual(pOtbChange.h24h.available, true);
+assert.strictEqual(pOtbChange.h24h.diffRooms, 7, 'Pickup 24h debe ser +7 desde otbChange');
+assert.strictEqual(pOtbChange.h24h.label, '+7 RN');
+
+// Fecha sin histórico previo ni otbChange
 const pEmpty = PricingIntelligence.calculateDailyPickup(hotel, '2027-11-20', { rooms: 5 }, tHoy);
 assert.strictEqual(pEmpty.h24h.available, false);
 assert.strictEqual(pEmpty.h24h.label, 'Sin histórico suficiente');

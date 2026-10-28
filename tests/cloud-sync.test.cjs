@@ -126,3 +126,14 @@ test('applyCloudData skips unchanged fields and extended settings sync across mo
 });
 
 
+
+test('upload failure or quota error retains pending work and updates sync status', async () => {
+    const s = setup({Guadiana:{2026:1}});
+    await s.run('downloadFromCloud()');
+    s.edit({Guadiana:{2026:2}});
+    s.fail();
+    await assert.rejects(async () => {
+        await s.run('uploadToCloud()');
+    });
+    assert.equal(s.run('pendingChanges.size'), 1);
+});

@@ -1958,7 +1958,12 @@
                 for (const [y, target] of Object.entries(db[hotel])) {
                     const before = metadata.pickupBefore?.[y] || {};
                     if (!yearsAffected.map(String).includes(y) && !fields.some(field => JSON.stringify(target[field]) !== JSON.stringify(before[field]))) continue;
-                    if (metadata.mode === 'forecast') DailyPickup.retainLastUpload(target, before, uploadDate);
+                    if (metadata.mode === 'forecast') {
+                        DailyPickup.retainLastUpload(target, before, uploadDate);
+                        if (typeof PricingIntelligence !== 'undefined' && typeof PricingIntelligence.captureBatchSnapshots === 'function' && target.daily_otb) {
+                            try { PricingIntelligence.captureBatchSnapshots(hotel, target.daily_otb, uploadDate); } catch(e) {}
+                        }
+                    }
                     DailyPickup.apply(target, fields, uploadDate, metadata.mode === 'forecast' ? before.lastOtbDate || before.updates?.otb : type === 'Prod' ? before.lastProdDate || before.updates?.prod : before.lastSegDate || before.updates?.seg, before);
                 }
                 if (metadata.mode === 'forecast') {

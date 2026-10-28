@@ -184,34 +184,37 @@ function syncStatus(message, failed = false) {
     }
 }
 
-const sameValue = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const isRecord = v => v !== null && typeof v === 'object' && !Array.isArray(v);
 function parseSyncValue(value) {
     if (value == null) return null;
     return JSON.parse(value);
 }
 
-// Three-way merge: unchanged local values cannot erase newer remote values.
+// Three-way merge: fast recursive merge without redundant JSON.stringify on megabytes of data
 function mergeSyncChanges(base, local, remote) {
-    if (sameValue(base, local)) return remote;
-    if (isRecord(local) && (isRecord(base) || base == null)) {
-        const merged = isRecord(remote) ? { ...remote } : {};
-        for (const key of new Set([...Object.keys(base || {}), ...Object.keys(local)])) {
-            if (['__proto__', 'prototype', 'constructor'].includes(key)) continue;
-            if (!Object.hasOwn(local, key)) {
-                if (base && Object.hasOwn(base, key)) delete merged[key];
-            } else {
-                const value = mergeSyncChanges(base?.[key], local[key], merged[key]);
-                if (value === undefined) delete merged[key];
-                else merged[key] = value;
-            }
-        }
-        return merged;
+    if (base === local) return remote;
+    if (local == null || base == null || typeof local !== 'object' || typeof base !== 'object') {
+        return base === local ? remote : local;
     }
-    if (Array.isArray(base) && Array.isArray(local) && base.length === local.length && Array.isArray(remote) && remote.length === local.length) {
+    if (Array.isArray(local)) {
+        if (!Array.isArray(base) || !Array.isArray(remote) || base.length !== local.length || remote.length !== local.length) {
+            return local;
+        }
         return local.map((value, index) => mergeSyncChanges(base[index], value, remote[index]));
     }
-    return local;
+    const merged = isRecord(remote) ? { ...remote } : {};
+    const keys = new Set([...Object.keys(base), ...Object.keys(local)]);
+    for (const key of keys) {
+        if (['__proto__', 'prototype', 'constructor'].includes(key)) continue;
+        if (!Object.hasOwn(local, key)) {
+            if (Object.hasOwn(base, key)) delete merged[key];
+        } else {
+            const value = mergeSyncChanges(base[key], local[key], merged[key]);
+            if (value === undefined) delete merged[key];
+            else merged[key] = value;
+        }
+    }
+    return merged;
 }
 
 function writeLocalSyncValue(key, value) {
@@ -299,6 +302,21 @@ function scheduleCloudUpload() {
     }, 1000);
 }
 
+
+const FIREBASE_OP_TIMEOUT_MS = 15000;
+function withCloudTimeout(promise, opName) {
+    let t;
+    const timeout = new Promise((_, reject) => {
+        t = setTimeout(() => {
+            const err = new Error('Tiempo de espera agotado al conectar con Firebase (' + opName + '). Es muy probable que se haya superado la cuota mensual del plan Spark.');
+            err.code = 'FIREBASE_TIMEOUT';
+            reject(err);
+        }, FIREBASE_OP_TIMEOUT_MS);
+    });
+    return Promise.race([promise, timeout]).finally(() => {
+        if (t) clearTimeout(t);
+    });
+}
 async function uploadToCloud() {
     if (uploadInFlight) return uploadInFlight;
     const user = cloudAuth.currentUser;
@@ -312,7 +330,7 @@ async function uploadToCloud() {
     syncStatus('Guardando cambios…');
     uploadInFlight = (async () => {
         try {
-            const result = await cloudDb.ref('users/' + user.uid).transaction(current => {
+            const result = await withCloudTimeout(cloudDb.ref('users/' + user.uid).transaction(current => {
                 const next = { ...(current || {}) };
                 for (const change of changes) {
                     const field = syncFields[change.key];
@@ -321,7 +339,7 @@ async function uploadToCloud() {
                 }
                 next.lastSync = firebase.database.ServerValue.TIMESTAMP;
                 return next;
-            }, undefined, false);
+            }, undefined, false), 'guardado');
             if (!result.committed) throw new Error('El servidor no confirmó el guardado.');
             if (cloudAuth.currentUser?.uid !== user.uid) return false;
             const committed = result.snapshot.val() || {};
@@ -337,7 +355,8 @@ async function uploadToCloud() {
             console.log('☁️ CapaSuite: cambios confirmados por Firebase.');
             return true;
         } catch (error) {
-            syncStatus('Error al guardar en la nube. Cambios pendientes.', true);
+            const isQuotaOrTimeout = error?.code === 'FIREBASE_TIMEOUT' || /quota|limit|bandwidth|exceeded/i.test(String(error?.message || ''));
+            syncStatus(isQuotaOrTimeout ? '⚠️ Cuota Firebase agotada. Guardado solo en esta sesión.' : 'Error al guardar en la nube. Cambios pendientes.', true);
             const denied = /permission/i.test(String(error?.code || '') + ' ' + String(error?.message || ''));
             if (denied && !extendedSyncDisabled && changes.some(change => EXTENDED_SYNC_KEYS.has(change.key))) {
                 // Rules may not allow the new settings fields yet: keep syncing the core data without them.
@@ -362,7 +381,7 @@ async function downloadFromCloud() {
     prepareCloudAccount(user.uid);
     syncStatus('Descargando datos…');
     try {
-        const snapshot = await cloudDb.ref('users/' + user.uid).once('value');
+        const snapshot = await withCloudTimeout(cloudDb.ref('users/' + user.uid).once('value'), 'descarga');
         if (cloudAuth.currentUser?.uid !== user.uid) return false;
         const cloudData = snapshot.val() || {};
         applyCloudData(cloudData);
@@ -374,7 +393,8 @@ async function downloadFromCloud() {
         scheduleCloudUpload();
         return true;
     } catch (error) {
-        syncStatus('No se pudo descargar la nube. Mostrando copia local.', true);
+        const isQuotaOrTimeout = error?.code === 'FIREBASE_TIMEOUT' || /quota|limit|bandwidth|exceeded/i.test(String(error?.message || ''));
+        syncStatus(isQuotaOrTimeout ? '⚠️ Cuota Firebase agotada. Usando copia local.' : 'No se pudo descargar la nube. Mostrando copia local.', true);
         console.error('Error recuperando datos de Firebase:', error);
         return false;
     }

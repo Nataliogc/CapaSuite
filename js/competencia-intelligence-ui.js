@@ -605,8 +605,10 @@
         const mktPrice = Number(d.compAvg) || 0;
         const availableRooms = Math.max(0, capacity - rooms);
 
+        const myOtbChange = (my && my.otbChange !== undefined) ? my.otbChange : (d.otbChange || 0);
+
         // Pickup data
-        const pData = PricingIntelligence.calculateDailyPickup(currentHotel, dateISO, { rooms, occupancyPct: occPct });
+        const pData = PricingIntelligence.calculateDailyPickup(currentHotel, dateISO, { rooms, occupancyPct: occPct, otbChange: myOtbChange });
 
         // Min floor price
         const minFloor = (typeof getHotelMinPrice === 'function') ? getHotelMinPrice(currentHotel) : 60;
@@ -620,6 +622,7 @@
             otbRooms: rooms,
             occupancyPct: occPct,
             capacity: capacity,
+            otbChange: myOtbChange,
             pickupData: pData,
             minFloorPrice: minFloor
         });
