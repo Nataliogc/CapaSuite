@@ -22,7 +22,7 @@
                 'DIRONLINE', 'DIR ONLINE', 'DIRECTO ONLINE', 'DIRECTO ON', 'D ON LINE', 'OTROS',
                 'OTA', 'OTA/AAVV', 'PARTICULA', 'PARTICULAR', 'PARTICULARES', 'GRTANTEO',
                 'GRUPO TANTEO', 'TARIFAS NEGOCIADAS', 'BONO LINE', 'BONO ONLINE', 'BONO LINEAL',
-                'BONO SPA', 'GRUPO AVORIS'].includes(segmentName)) return 'OMIT';
+                'BONO SPA', 'GRUPO AVORIS', 'GRUPO TAN', 'TARIFAS N', 'D OFF LIN', 'PEN', 'RES'].includes(segmentName)) return 'OMIT';
             // Omisiones de totales maestros
             if (norm === "PRODUCCION TOTAL" || norm === "TOTAL PRODUCCION" || norm === "TOTAL MASTER" || norm === "TOTAL") return "OMIT";
 

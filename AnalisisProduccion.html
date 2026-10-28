@@ -1839,7 +1839,8 @@
                 }
 
                 const gProjectedVal = gRealVal + gOtbVal;
-                if (gProjectedVal === 0 && g.details.length === 0) return;
+                const gHasAnyDetailProd = g.details.some(d => d.revenue && d.revenue.some(v => (v || 0) > 0));
+                if (gProjectedVal === 0 && !gHasAnyDetailProd) return;
 
                 const percTotal = hotelTotalProjected > 0 ? (gProjectedVal / hotelTotalProjected * 100).toFixed(1) : "0.0";
 
@@ -1871,7 +1872,7 @@
                         const fontSize = "0.7rem"; // Smaller font to fit 12 months
 
                         // Formatter Helper
-                        const f = (n) => fmt(n);
+                        const f = (n) => (typeof n === "number" && n < 0) ? `<span style="color:#dc2626; font-weight:700;">${fmt(n)}</span>` : fmt(n);
 
                         // Case 1: Closed Month (Past) -> Show Real only
                         if (isClosed) {
@@ -1958,11 +1959,15 @@
                 }
 
                 if (midx === -1) {
-                    row += `<td style="font-weight:700; font-size:0.85rem; text-align:center; white-space:nowrap;">${fmt(gProjectedVal)}</td><td style="color:var(--text-muted); font-size:0.8rem; text-align:center;">${percTotal}%</td></tr>`;
+                    row += `<td style="font-weight:700; font-size:0.85rem; text-align:center; white-space:nowrap;">${f(gProjectedVal)}</td><td style="color:var(--text-muted); font-size:0.8rem; text-align:center;">${percTotal}%</td></tr>`;
                 }
 
                 // Add Details
                 g.details.forEach(d => {
+                    const dTotal = (d.revenue && Array.isArray(d.revenue)) ? d.revenue.reduce((a, b) => a + (b || 0), 0) : 0;
+                    if (midx === -1 && dTotal === 0) return;
+                    if (midx !== -1 && (!d.revenue || (d.revenue[midx] || 0) === 0)) return;
+
                     row += `<tr class="row-detail"><td>${d.name}</td>`;
                     if (midx === -1) {
                         for (let i = 0; i < 12; i++) {
@@ -1970,17 +1975,17 @@
                             // For details, we don't have OTB breakdown. 
                             // If month is Open and val is 0, show "-" to indicate no forecast available at detail level
                             const isClosed = isMonthClosedRow(i);
-                            const txt = (!isClosed && val === 0) ? `<span style="opacity:0.3;">-</span>` : fmt(val);
+                            const txt = (!isClosed && val === 0) ? `<span style="opacity:0.3;">-</span>` : f(val);
                             // Detail rows: Smaller font
                             row += `<td style="text-align:center; font-size:0.7rem; padding:2px;">${txt}</td>`;
                         }
                         const dTotal = d.revenue.reduce((a, b) => a + b, 0);
-                        row += `<td style="font-weight:600; text-align:center;">${fmt(dTotal)}</td><td></td></tr>`;
+                        row += `<td style="font-weight:600; text-align:center;">${f(dTotal)}</td><td></td></tr>`;
                     } else {
                         const dVal = d.revenue[midx] || 0;
                         const groupTotal = g.revenue[midx] || 0;
                         const percContrib = groupTotal > 0 ? (dVal / groupTotal * 100).toFixed(1) : "0.0";
-                        row += `<td style="text-align:center;">${fmt(dVal)}</td><td style="text-align:center;"></td><td style="text-align:center; opacity:0.7;">${percContrib}%</td></tr>`;
+                        row += `<td style="text-align:center;">${f(dVal)}</td><td style="text-align:center;"></td><td style="text-align:center; opacity:0.7;">${percContrib}%</td></tr>`;
                     }
                 });
 
