@@ -1,6 +1,9 @@
 
 function getProtocolChannelsDescription(segName) {
     const norm = (segName || '').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    if (norm.includes('BONO SPA') || (norm.includes('BONO') && norm.includes('SPA')) || norm === 'SPA') {
+        return 'Bono interno propio del Spa (exclusivo Cumbria Spa & Hotel)';
+    }
     if (norm.includes('OFFLINE') || norm.includes('OFF LINE') || norm.includes('DIRECTO OFF')) {
         return 'Mostrador / Walk-in, Teléfono, Correo, Reservas directas particulares';
     }
@@ -20,7 +23,7 @@ function getProtocolChannelsDescription(segName) {
         return 'Hotelbeds, Serhs Tourism, Traveltino, Weekendesk';
     }
     if (norm.includes('BONO') || norm.includes('OTRO') || norm.includes('EXPERIENCIA')) {
-        return 'Smartbox, Wonderbox, Grupo Ego Experiencias, Bonos';
+        return 'Smartbox, Wonderbox, Grupo Ego Experiencias, Bonos externos';
     }
     if (norm.includes('TANTEO') || norm.includes('GRTANTEO')) {
         return 'Grupos de > 10 habitaciones pendientes de confirmación';
