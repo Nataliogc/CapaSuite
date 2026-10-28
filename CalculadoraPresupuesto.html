@@ -4339,8 +4339,7 @@
                 { name: 'CORPORATIVO DINÁMICO', shareRev: 0.1132, shareRN: 0.1125 },
                 { name: 'TTOO DINÁMICA', shareRev: 0.0660, shareRN: 0.0656 },
                 { name: 'GRUPOS', shareRev: 0.0570, shareRN: 0.0625 },
-                { name: 'BONO ONLINE', shareRev: 0.0200, shareRN: 0.0200 },
-                { name: 'BONO SPA', shareRev: 0.0083, shareRN: 0.0081 }
+                { name: 'BONO ONLINE', shareRev: 0.0283, shareRN: 0.0281 }
             ] : [
                 { name: 'OTA / AAVV', shareRev: 0.44, shareRN: 0.43 },
                 { name: 'DIRECTO ONLINE', shareRev: 0.22, shareRN: 0.20 },
@@ -4411,22 +4410,25 @@
                 });
             }
 
-            // Solo computar importes positivos para la cuota de distribución presupuestaria:
+            // Solo computar importes positivos para la cuota de distribución presupuestaria
+            // (En Cumbria, BONO SPA son gratuidades internas, no computan cuota de objetivo ni restan inventario presupuestado)
             let totalPositiveHistRev = 0;
             let totalPositiveHistRN = 0;
             segmentMap.forEach(s => {
+                if (hotel === 'Cumbria' && s.name === 'BONO SPA') return;
                 if (s.histRev > 0) totalPositiveHistRev += s.histRev;
                 if (s.histRN > 0) totalPositiveHistRN += s.histRN;
             });
 
             const segments = [];
             segmentMap.forEach(s => {
+                const isCumbriaBonoSpa = (hotel === 'Cumbria' && s.name === 'BONO SPA');
                 const histAdr = (s.histRN > 0 && s.histRev > 0) ? (s.histRev / s.histRN) : 0;
-                let shareHistRev = (totalPositiveHistRev > 0 && s.histRev > 0) ? (s.histRev / totalPositiveHistRev) : 0;
-                let shareHistRN = (totalPositiveHistRN > 0 && s.histRN > 0) ? (s.histRN / totalPositiveHistRN) : 0;
+                let shareHistRev = (!isCumbriaBonoSpa && totalPositiveHistRev > 0 && s.histRev > 0) ? (s.histRev / totalPositiveHistRev) : 0;
+                let shareHistRN = (!isCumbriaBonoSpa && totalPositiveHistRN > 0 && s.histRN > 0) ? (s.histRN / totalPositiveHistRN) : 0;
 
                 // Si la producción histórica fue 0 o negativa (abonos contables), aplicar cuota de referencia benchmark
-                if (shareHistRev === 0 && benchmarks) {
+                if (!isCumbriaBonoSpa && shareHistRev === 0 && benchmarks) {
                     const bench = benchmarks.find(b => b.name === s.name);
                     if (bench && bench.shareRev > 0) {
                         shareHistRev = bench.shareRev;
@@ -4437,7 +4439,11 @@
                 let segTargetRev = 0;
                 let segTargetRN = 0;
 
-                if (customMonth && customMonth[s.name]) {
+                if (isCumbriaBonoSpa) {
+                    // En Cumbria, BONO SPA son gratuidades internas y nunca llevan objetivo comercial
+                    segTargetRev = 0;
+                    segTargetRN = 0;
+                } else if (customMonth && customMonth[s.name]) {
                     segTargetRev = Math.max(0, Number(customMonth[s.name].rev) || 0);
                     segTargetRN = Math.max(0, Number(customMonth[s.name].rn) || 0);
                 } else {

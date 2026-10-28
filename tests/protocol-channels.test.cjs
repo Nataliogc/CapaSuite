@@ -62,3 +62,11 @@ test('CalculadoraPresupuesto normalizeSegmentDisplayName consolidates legacy seg
     assert.equal(norm('OTROS', 'Cumbria'), 'BONO ONLINE');
     assert.equal(norm('OTROS', 'Guadiana'), 'OTROS');
 });
+
+test('CalculadoraPresupuesto Cumbria Bono Spa is treated as complimentary with zero targets', () => {
+    const calcCode = fs.readFileSync('CalculadoraPresupuesto.html', 'utf8');
+    assert.ok(calcCode.includes("if (hotel === 'Cumbria' && s.name === 'BONO SPA') return;"));
+    assert.ok(calcCode.includes("isCumbriaBonoSpa"));
+    assert.ok(calcCode.includes("segTargetRev = 0;"));
+    assert.ok(calcCode.includes("segTargetRN = 0;"));
+});
