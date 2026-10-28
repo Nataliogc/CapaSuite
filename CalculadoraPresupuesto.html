@@ -3216,10 +3216,26 @@
         let currentPacingData = null;
         let currentSegmentBreakdownData = null;
 
-        function normalizeSegmentDisplayName(name) {
+        function normalizeSegmentDisplayName(name, hotel = '') {
             if (!name) return '';
             const clean = String(name).trim();
             const upper = clean.toUpperCase();
+            const activeH = String(hotel || currentHotel || '').toLowerCase();
+            const isCumbria = activeH.includes('cumbria');
+
+            // En Cumbria, AGENCIAS, PARTICULARES y OTROS ya no existen actualmente
+            if (isCumbria) {
+                if (upper === 'PARTICULARES' || upper === 'PARTICULA' || upper === 'PARTICULAR') {
+                    return 'DIRECTO OFFLINE';
+                }
+                if (upper === 'AGENCIAS' || upper === 'GRUPO AVORIS') {
+                    return 'OTA / AAVV';
+                }
+                if (upper === 'OTROS' || upper === 'OTRO') {
+                    return 'BONO ONLINE';
+                }
+            }
+
             if (upper === 'DIRONLINE' || upper === 'DIR ONLINE' || upper === 'DIR_ONLINE' || upper === 'D ON LINE' || upper === 'DIRECTO ONLINE' || upper === 'DIRECTO ON') {
                 return 'DIRECTO ONLINE';
             }
@@ -4318,14 +4334,15 @@
                 { name: 'CORPORATIVO', shareRev: 0.0633, shareRN: 0.0728 },
                 { name: 'OTROS', shareRev: 0.0055, shareRN: 0.0070 }
             ] : (hotel === 'Cumbria' && yearStr === '2027') ? [
-                { name: 'OTA/AAVV', shareRev: 0.2829, shareRN: 0.2813 },
+                { name: 'OTA / AAVV', shareRev: 0.2829, shareRN: 0.2813 },
                 { name: 'DIRECTO OFFLINE', shareRev: 0.1886, shareRN: 0.1875 },
                 { name: 'DIRECTO ONLINE', shareRev: 0.1414, shareRN: 0.1406 },
                 { name: 'CORPORATIVO LINEAL', shareRev: 0.1226, shareRN: 0.1219 },
                 { name: 'CORPORATIVO DINÁMICO', shareRev: 0.1132, shareRN: 0.1125 },
                 { name: 'TTOO DINÁMICA', shareRev: 0.0660, shareRN: 0.0656 },
                 { name: 'GRUPOS', shareRev: 0.0570, shareRN: 0.0625 },
-                { name: 'OTROS', shareRev: 0.0283, shareRN: 0.0281 }
+                { name: 'BONO ONLINE', shareRev: 0.0200, shareRN: 0.0200 },
+                { name: 'BONO SPA', shareRev: 0.0083, shareRN: 0.0081 }
             ] : [
                 { name: 'OTA / AAVV', shareRev: 0.44, shareRN: 0.43 },
                 { name: 'DIRECTO ONLINE', shareRev: 0.22, shareRN: 0.20 },
@@ -4340,7 +4357,7 @@
 
             if (histSegData && Object.keys(histSegData).length > 0) {
                 Object.keys(histSegData).forEach(rawKey => {
-                    const canonical = normalizeSegmentDisplayName(rawKey);
+                    const canonical = normalizeSegmentDisplayName(rawKey, hotel);
                     const segItem = histSegData[rawKey] || {};
                     const rev = Number(segItem.accommodation?.[m] || segItem.revenue?.[m] || 0);
                     const rn = Number(segItem.rooms?.[m] || 0);
@@ -4375,7 +4392,7 @@
 
             if (curSegData && Object.keys(curSegData).length > 0) {
                 Object.keys(curSegData).forEach(rawKey => {
-                    const canonical = normalizeSegmentDisplayName(rawKey);
+                    const canonical = normalizeSegmentDisplayName(rawKey, hotel);
                     const segItem = curSegData[rawKey] || {};
                     const aRev = Number(segItem.accommodation?.[m] || segItem.revenue?.[m] || 0);
                     const aRN = Number(segItem.rooms?.[m] || 0);
@@ -4429,7 +4446,7 @@
 
                 // Subdesglose por canales del segmento si existen en el histórico o en la configuración
                 let channels = [];
-                const histSegObj = histSegData ? (histSegData[s.name] || histSegData[Object.keys(histSegData).find(k => normalizeSegmentDisplayName(k) === s.name)]) : null;
+                const histSegObj = histSegData ? (histSegData[s.name] || histSegData[Object.keys(histSegData).find(k => normalizeSegmentDisplayName(k, hotel) === s.name)]) : null;
                 if (typeof SegmentAnalysis !== 'undefined' && histSegObj) {
                     try {
                         const rawChannels = SegmentAnalysis.getSegmentChannels(histSegObj, [m], hotel);

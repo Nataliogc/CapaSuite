@@ -3983,8 +3983,7 @@
                 'GRUPOS',
                 'GRTANTEO',
                 'BONO ONLINE',
-                'BONO SPA',
-                'OTROS'
+                'BONO SPA'
             ]
         };
 
@@ -4035,6 +4034,20 @@
             const customMap = getHotelCustomSegmentMapping(hotel);
             if (customMap && (customMap[upper] || customMap[clean])) {
                 return customMap[upper] || customMap[clean];
+            }
+
+            // En Cumbria, AGENCIAS, PARTICULARES y OTROS ya no existen actualmente
+            const isCumbria = String(hotel || currentHotel || '').toLowerCase().includes('cumbria');
+            if (isCumbria) {
+                if (upper === 'PARTICULARES' || upper === 'PARTICULA' || upper === 'PARTICULAR') {
+                    return 'DIRECTO OFFLINE';
+                }
+                if (upper === 'AGENCIAS' || upper === 'GRUPO AVORIS') {
+                    return 'OTA/AAVV';
+                }
+                if (upper === 'OTROS' || upper === 'OTRO') {
+                    return 'BONO ONLINE';
+                }
             }
 
             // 2. Variaciones directas
@@ -6453,13 +6466,16 @@
                         }
                     });
             } else {
+                const isCumbria = String(currentHotel).toLowerCase().includes('cumbria');
                 const channelGroups = {
                     "Directo": ["DIRECTO ONLINE", "DIRONLINE", "DIRECTO OFFLINE"],
                     "Corporativo": ["CORPORATIVO LINEAL", "CORPORATIVO DINAMICO"],
                     "OTA / AAVV": ["OTA/AAVV"],
                     "TTOO Dinámica": ["TTOO DINAMICA"],
                     "Grupos": ["GRUPOS", "GRTANTEO", "GRUPO TANTEO", "GRUPO"],
-                    "Otros": ["OTROS", "PARTICULARES", "AGENCIAS", "BONO ONLINE", "BONO SPA"]
+                    "Otros": isCumbria
+                        ? ["BONO ONLINE", "BONO SPA"]
+                        : ["OTROS", "PARTICULARES", "AGENCIAS"]
                 };
 
                 const chartSegSources = Object.assign({}, db[currentHotel]?.[currentYear]?.segment || {}, segmentDb || {});

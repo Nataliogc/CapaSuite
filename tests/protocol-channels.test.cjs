@@ -35,4 +35,27 @@ test('getProtocolChannelsDescription distinguishes Guadiana vs Cumbria channels 
     const cumbriaCorp = desc('CORPORATIVO LINEAL', 'Cumbria');
     assert.ok(guadiCorp.includes('Guadiana'));
     assert.ok(cumbriaCorp.includes('Cumbria'));
+
+    // In Cumbria, OTROS, PARTICULARES, AGENCIAS are historic and no longer active
+    assert.ok(desc('OTROS', 'Cumbria').includes('no existe en Cumbria'));
+    assert.ok(desc('PARTICULARES', 'Cumbria').includes('DIRECTO OFFLINE'));
+    assert.ok(desc('AGENCIAS', 'Cumbria').includes('OTA / AAVV'));
+});
+
+test('CalculadoraPresupuesto normalizeSegmentDisplayName consolidates legacy Cumbria segments', () => {
+    const calcCode = fs.readFileSync('CalculadoraPresupuesto.html', 'utf8');
+    const fnDef = calcCode.match(/function normalizeSegmentDisplayName[\s\S]*?\n\s{8}\}/)[0];
+    const sandbox = { currentHotel: 'Cumbria' };
+    vm.createContext(sandbox);
+    vm.runInContext(fnDef, sandbox);
+    const norm = sandbox.normalizeSegmentDisplayName;
+
+    // For Cumbria:
+    assert.equal(norm('PARTICULARES', 'Cumbria'), 'DIRECTO OFFLINE');
+    assert.equal(norm('AGENCIAS', 'Cumbria'), 'OTA / AAVV');
+    assert.equal(norm('OTROS', 'Cumbria'), 'BONO ONLINE');
+
+    // For Guadiana:
+    assert.equal(norm('PARTICULARES', 'Guadiana'), 'PARTICULARES');
+    assert.equal(norm('AGENCIAS', 'Guadiana'), 'AGENCIAS');
 });

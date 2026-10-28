@@ -25,12 +25,26 @@ function getProtocolChannelsDescription(segName, hotel) {
             : 'Cofres regalo externos (Smartbox, Wonderbox, Ego Experiencias)';
     }
     if (norm.includes('BONO') || norm.includes('OTRO') || norm.includes('EXPERIENCIA')) {
-        return 'Smartbox, Wonderbox, Grupo Ego Experiencias, Bonos externos';
+        return isCumbria
+            ? 'En Cumbria se clasifica como Bono Online o Bono Spa (el segmento Otros ya no existe en Cumbria)'
+            : 'Smartbox, Wonderbox, Grupo Ego Experiencias, Bonos externos';
     }
 
-    // 4. Directo Offline
+    // 4. Directo Offline y Particulares
+    if (norm.includes('PARTICULA')) {
+        return isCumbria
+            ? 'Segmento histórico: actualmente integrado en DIRECTO OFFLINE'
+            : 'Reservas directas particulares';
+    }
     if (norm.includes('OFFLINE') || norm.includes('OFF LINE') || norm.includes('DIRECTO OFF')) {
         return 'Mostrador / Walk-in, Teléfono, Correo, Reservas directas particulares';
+    }
+
+    // 5. Agencias Tradicionales
+    if (norm.includes('AGENCIA')) {
+        return isCumbria
+            ? 'Segmento histórico: actualmente integrado en OTA / AAVV'
+            : 'Agencias tradicionales';
     }
 
     // 5. Corporativo Dinámico
