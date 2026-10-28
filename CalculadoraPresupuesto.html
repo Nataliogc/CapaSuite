@@ -1498,8 +1498,13 @@
             switchTab('tab-dashboard');
             try { syncGroupsTargetToNexus(currentHotel, currentYear); } catch(e) {}
 
-            // Sync from Cloud Listener
-            window.addEventListener('capasuite-data-synced', () => {
+            // Sync from Cloud Listener (Only react to cloud updates for budgets/db to avoid infinite loops)
+            window.addEventListener('capasuite-data-synced', (e) => {
+                if (!e || !e.detail || e.detail.source !== 'cloud') return;
+                const changedKeys = e.detail.keys;
+                if (Array.isArray(changedKeys) && !changedKeys.some(k => k === 'hotel_manager_db_v2' || (typeof k === 'string' && (k.startsWith('custom_budget_') || k.startsWith('custom_seg_budget_'))))) {
+                    return;
+                }
                 console.log("☁️ Syncing Budget from Cloud...");
                 switchHotel();
             });
@@ -4999,7 +5004,10 @@
             }
         }
 
+        let isSyncingGroupsToNexus = false;
         function syncGroupsTargetToNexus(hotel, yearStr) {
+            if (isSyncingGroupsToNexus) return null;
+            isSyncingGroupsToNexus = true;
             try {
                 const targetHotelName = hotel || currentHotel;
                 const targetYearStr = String(yearStr || currentYear);
