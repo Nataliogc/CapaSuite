@@ -972,6 +972,14 @@
                     adr:  [ 61.93,   59.02,   53.10,   62.00,   64.70,   65.60,   67.16,   67.02,   63.85,   62.70,   62.10,   68.90],
                     rn:   [   700,    1080,    2300,    3010,    2070,    1715,    2100,    1980,    1790,    2020,    1730,    1231]
                 },
+                // ── BGT 2027 Guadiana — Presupuesto Oficial 2027 V2 (1.575.124,93 € / 22.954 RN / 68,62 € ADR) ─
+                bgt2027: {
+                    name: "Presupuesto Oficial 2027",
+                    //         Ene     Feb     Mar      Abr      May      Jun      Jul      Ago      Sep      Oct      Nov      Dic
+                    rev: [  70866,  85178, 121998,  147962,  200620,  142146,  116525,  151078,  150492,  173575,  113556,  101128 ],
+                    adr: [  63.27,  62.49,  72.62,   61.78,   82.05,   74.00,   68.50,   69.69,   66.50,   68.53,   62.22,   65.67 ],
+                    rn:  [   1120,   1363,   1680,    2395,    2445,    1921,    1701,    2168,    2263,    2533,    1825,    1540 ]
+                },
                 otbData: new Array(12).fill(0),
                 strategies: {
                     // ── PRESUPUESTO OFICIAL 2026 (BGT 2026 aprobado por Dirección General) ─
@@ -1006,6 +1014,14 @@
                     rev: [58500, 63750, 73500, 93750, 111000, 101250, 116250, 108750, 105000, 101250, 86250, 73500],
                     adr: [62.00, 64.00, 68.00, 72.00, 82.00, 78.00, 84.00, 80.00, 78.00, 74.00, 70.00, 66.00],
                     rn: [943, 996, 1080, 1302, 1353, 1298, 1383, 1359, 1346, 1368, 1232, 1113]
+                },
+                // ── BGT 2027 Cumbria (992.145,45 € / 15.434 RN / 64,28 € ADR) ─
+                bgt2027: {
+                    name: "Presupuesto 2027 Cumbria",
+                    //         Ene     Feb     Mar      Abr      May      Jun      Jul      Ago      Sep      Oct      Nov      Dic
+                    rev: [  50949,  51684,  74623,   90604,  107569,   83637,   82135,   80777,   83835,  108129,   94745,   83459 ],
+                    adr: [  54.32,  54.81,  63.73,   68.02,   70.63,   61.91,   59.22,   56.41,   61.92,   66.83,   74.84,   74.58 ],
+                    rn:  [    938,    943,   1171,    1332,    1523,    1351,    1387,    1432,    1354,    1618,    1266,    1119 ]
                 },
                 otbData: new Array(12).fill(0),
                 otbRN: new Array(12).fill(0),
@@ -1447,6 +1463,13 @@
                 currentAdr = [...h.strategies.original.adr];
                 updateAll();
                 showNotification(`🔄 Presupuesto 2026 restablecido al Presupuesto Oficial Aprobado.`);
+                return;
+            }
+            if (currentYear === '2027' && h && h.bgt2027) {
+                currentRev = [...h.bgt2027.rev];
+                currentAdr = [...h.bgt2027.adr];
+                updateAll();
+                showNotification(`🔄 Presupuesto 2027 restablecido al Presupuesto Oficial V2.`);
                 return;
             }
             if (h && h.referenceBase) {
@@ -2198,6 +2221,10 @@
                 } else {
                     isBudgetLocked = true;
                 }
+            } else if (currentYear === '2027') {
+                // 2027: abierto para revisión y edición del usuario (el usuario lo revisa, graba y bloquea con su botón)
+                isBudgetLocked = (custom && custom.locked === true) ? true : false;
+                if (stratSel) stratSel.value = (custom && custom.strategy) ? custom.strategy : 'official';
             } else {
                 if (custom && custom.locked !== false) {
                     isBudgetLocked = true;
@@ -2299,6 +2326,9 @@
                 if (custom && custom.rev && custom.rev.length === 12 && custom.rev.some(v => v > 0)) {
                     currentRev = [...custom.rev];
                     currentAdr = [...custom.adr];
+                } else if (hotelData[currentHotel] && hotelData[currentHotel][`bgt${currentYear}`]) {
+                    currentRev = [...hotelData[currentHotel][`bgt${currentYear}`].rev];
+                    currentAdr = [...hotelData[currentHotel][`bgt${currentYear}`].adr];
                 } else {
                     // Fallback to recommended Opción B (+7.5% Rev, +4.0% ADR)
                     currentRev = real.rev.map(v => v * 1.075);
@@ -2403,8 +2433,11 @@
             if (type === 'rev') currentRev[index] = v;
             if (type === 'adr') currentAdr[index] = v;
             if (type === 'rn') {
-                // If user changes RN, we update Revenue based on current ADR
-                currentRev[index] = v * currentAdr[index];
+                if (currentRev[index] > 0 && v > 0) {
+                    currentAdr[index] = parseFloat((currentRev[index] / v).toFixed(2));
+                } else if (currentAdr[index] > 0) {
+                    currentRev[index] = Math.round(v * currentAdr[index]);
+                }
             }
             updateAll();
         }
@@ -2495,7 +2528,7 @@
                         </button>
                     `;
                 } else {
-                    const resetLabel = (currentYear === '2026') ? '🔄 Restablecer a Oficial 2026' : `🔄 Resetear a Base ${prevYear}`;
+                    const resetLabel = (currentYear === '2026') ? '🔄 Restablecer a Oficial 2026' : (currentYear === '2027' ? '🔄 Restablecer a Oficial 2027' : `🔄 Resetear a Base ${prevYear}`);
                     actionsContainer.innerHTML = `
                         <button id="resetBtn" onclick="resetToBase()" class="btn"
                             style="background: #f1f5f9; color: #475569; font-size: 0.8rem; border-radius: 8px;">
@@ -4266,7 +4299,14 @@
             } catch(e) {}
             const customMonth = customStore[m] || null;
 
-            const benchmarks = [
+            const benchmarks = (hotel === 'Guadiana' && yearStr === '2027') ? [
+                { name: 'GRUPOS', shareRev: 0.3459, shareRN: 0.3912 },
+                { name: 'OTA/AAVV', shareRev: 0.3149, shareRN: 0.2756 },
+                { name: 'DIRECTO OFFLINE', shareRev: 0.1774, shareRN: 0.1702 },
+                { name: 'DIRECTO ONLINE', shareRev: 0.0930, shareRN: 0.0832 },
+                { name: 'CORPORATIVO', shareRev: 0.0633, shareRN: 0.0728 },
+                { name: 'OTROS', shareRev: 0.0055, shareRN: 0.0070 }
+            ] : [
                 { name: 'OTA / AAVV', shareRev: 0.44, shareRN: 0.43 },
                 { name: 'DIRECTO ONLINE', shareRev: 0.22, shareRN: 0.20 },
                 { name: 'CORPORATIVO LINEAL', shareRev: 0.12, shareRN: 0.14 },
