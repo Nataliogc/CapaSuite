@@ -30,21 +30,17 @@ function getProtocolChannelsDescription(segName, hotel) {
             : 'Smartbox, Wonderbox, Grupo Ego Experiencias, Bonos externos';
     }
 
-    // 4. Directo Offline y Particulares
+    // 4. Directo Offline y Particulares (Particulares no existe como segmento en ningún hotel)
     if (norm.includes('PARTICULA')) {
-        return isCumbria
-            ? 'Segmento histórico: actualmente integrado en DIRECTO OFFLINE'
-            : 'Reservas directas particulares';
+        return 'Segmento histórico: integrado en DIRECTO OFFLINE (Mostrador / Walk-in, Teléfono, Correo, Reservas directas particulares)';
     }
     if (norm.includes('OFFLINE') || norm.includes('OFF LINE') || norm.includes('DIRECTO OFF')) {
         return 'Mostrador / Walk-in, Teléfono, Correo, Reservas directas particulares';
     }
 
-    // 5. Agencias Tradicionales
+    // 5. Agencias Tradicionales (integradas en OTA / AAVV)
     if (norm.includes('AGENCIA')) {
-        return isCumbria
-            ? 'Segmento histórico: actualmente integrado en OTA / AAVV'
-            : 'Agencias tradicionales';
+        return 'Segmento histórico: integrado en OTA / AAVV';
     }
 
     // 5. Corporativo Dinámico

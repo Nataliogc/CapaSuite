@@ -4036,15 +4036,17 @@
                 return customMap[upper] || customMap[clean];
             }
 
-            // En Cumbria, AGENCIAS, PARTICULARES y OTROS ya no existen actualmente
+            // PARTICULARES y AGENCIAS no son oficiales en ningún hotel (se consolidan en DIRECTO OFFLINE y OTA/AAVV)
+            if (upper === 'PARTICULARES' || upper === 'PARTICULA' || upper === 'PARTICULAR') {
+                return 'DIRECTO OFFLINE';
+            }
+            if (upper === 'AGENCIAS' || upper === 'GRUPO AVORIS') {
+                return 'OTA/AAVV';
+            }
+
+            // En Cumbria, OTROS tampoco existe (se divide en BONO ONLINE o BONO SPA)
             const isCumbria = String(hotel || currentHotel || '').toLowerCase().includes('cumbria');
             if (isCumbria) {
-                if (upper === 'PARTICULARES' || upper === 'PARTICULA' || upper === 'PARTICULAR') {
-                    return 'DIRECTO OFFLINE';
-                }
-                if (upper === 'AGENCIAS' || upper === 'GRUPO AVORIS') {
-                    return 'OTA/AAVV';
-                }
                 if (upper === 'OTROS' || upper === 'OTRO') {
                     return 'BONO ONLINE';
                 }
@@ -6475,7 +6477,7 @@
                     "Grupos": ["GRUPOS", "GRTANTEO", "GRUPO TANTEO", "GRUPO"],
                     "Otros": isCumbria
                         ? ["BONO ONLINE", "BONO SPA"]
-                        : ["OTROS", "PARTICULARES", "AGENCIAS"]
+                        : ["OTROS"]
                 };
 
                 const chartSegSources = Object.assign({}, db[currentHotel]?.[currentYear]?.segment || {}, segmentDb || {});

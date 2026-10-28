@@ -3223,14 +3223,18 @@
             const activeH = String(hotel || currentHotel || '').toLowerCase();
             const isCumbria = activeH.includes('cumbria');
 
-            // En Cumbria, AGENCIAS, PARTICULARES y OTROS ya no existen actualmente
+            // PARTICULARES y AGENCIAS no son segmentos oficiales en ningún hotel (ni en Guadiana ni en Cumbria)
+            // PARTICULARES se consolida siempre en DIRECTO OFFLINE
+            if (upper === 'PARTICULARES' || upper === 'PARTICULA' || upper === 'PARTICULAR') {
+                return 'DIRECTO OFFLINE';
+            }
+            // AGENCIAS se consolida siempre en OTA / AAVV
+            if (upper === 'AGENCIAS' || upper === 'GRUPO AVORIS') {
+                return 'OTA / AAVV';
+            }
+
+            // En Cumbria, OTROS tampoco existe (se divide en BONO ONLINE o BONO SPA)
             if (isCumbria) {
-                if (upper === 'PARTICULARES' || upper === 'PARTICULA' || upper === 'PARTICULAR') {
-                    return 'DIRECTO OFFLINE';
-                }
-                if (upper === 'AGENCIAS' || upper === 'GRUPO AVORIS') {
-                    return 'OTA / AAVV';
-                }
                 if (upper === 'OTROS' || upper === 'OTRO') {
                     return 'BONO ONLINE';
                 }
@@ -3256,12 +3260,6 @@
             }
             if (upper === 'TTOO DINAMICA' || upper === 'TTOO DINA' || upper === 'TTOO' || upper === 'TOUROPERACION') {
                 return 'TTOO DINÁMICA';
-            }
-            if (upper === 'PARTICULARES' || upper === 'PARTICULA' || upper === 'PARTICULAR') {
-                return 'PARTICULARES';
-            }
-            if (upper === 'AGENCIAS' || upper === 'GRUPO AVORIS') {
-                return 'AGENCIAS';
             }
             if (upper === 'BONO ONLINE' || upper === 'BONO LINE' || upper === 'BONO ON LINE') {
                 return 'BONO ONLINE';

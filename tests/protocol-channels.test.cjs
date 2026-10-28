@@ -36,13 +36,15 @@ test('getProtocolChannelsDescription distinguishes Guadiana vs Cumbria channels 
     assert.ok(guadiCorp.includes('Guadiana'));
     assert.ok(cumbriaCorp.includes('Cumbria'));
 
-    // In Cumbria, OTROS, PARTICULARES, AGENCIAS are historic and no longer active
-    assert.ok(desc('OTROS', 'Cumbria').includes('no existe en Cumbria'));
+    // PARTICULARES and AGENCIAS are historic and no longer active in either hotel
+    assert.ok(desc('PARTICULARES', 'Guadiana').includes('DIRECTO OFFLINE'));
     assert.ok(desc('PARTICULARES', 'Cumbria').includes('DIRECTO OFFLINE'));
+    assert.ok(desc('AGENCIAS', 'Guadiana').includes('OTA / AAVV'));
     assert.ok(desc('AGENCIAS', 'Cumbria').includes('OTA / AAVV'));
+    assert.ok(desc('OTROS', 'Cumbria').includes('no existe en Cumbria'));
 });
 
-test('CalculadoraPresupuesto normalizeSegmentDisplayName consolidates legacy Cumbria segments', () => {
+test('CalculadoraPresupuesto normalizeSegmentDisplayName consolidates legacy segments in both hotels', () => {
     const calcCode = fs.readFileSync('CalculadoraPresupuesto.html', 'utf8');
     const fnDef = calcCode.match(/function normalizeSegmentDisplayName[\s\S]*?\n\s{8}\}/)[0];
     const sandbox = { currentHotel: 'Cumbria' };
@@ -50,12 +52,13 @@ test('CalculadoraPresupuesto normalizeSegmentDisplayName consolidates legacy Cum
     vm.runInContext(fnDef, sandbox);
     const norm = sandbox.normalizeSegmentDisplayName;
 
-    // For Cumbria:
+    // Both hotels: PARTICULARES -> DIRECTO OFFLINE, AGENCIAS -> OTA / AAVV
     assert.equal(norm('PARTICULARES', 'Cumbria'), 'DIRECTO OFFLINE');
+    assert.equal(norm('PARTICULARES', 'Guadiana'), 'DIRECTO OFFLINE');
     assert.equal(norm('AGENCIAS', 'Cumbria'), 'OTA / AAVV');
-    assert.equal(norm('OTROS', 'Cumbria'), 'BONO ONLINE');
+    assert.equal(norm('AGENCIAS', 'Guadiana'), 'OTA / AAVV');
 
-    // For Guadiana:
-    assert.equal(norm('PARTICULARES', 'Guadiana'), 'PARTICULARES');
-    assert.equal(norm('AGENCIAS', 'Guadiana'), 'AGENCIAS');
+    // Cumbria only: OTROS -> BONO ONLINE
+    assert.equal(norm('OTROS', 'Cumbria'), 'BONO ONLINE');
+    assert.equal(norm('OTROS', 'Guadiana'), 'OTROS');
 });
