@@ -3191,21 +3191,27 @@
         }
 
         const formatMoney = (n) => {
-            if (n === 0 || n === null || n === undefined) return "0,00 €";
-            return Number(n).toLocaleString('es-ES', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            }) + " €";
+            if (n === null || n === undefined || isNaN(n)) return "0,00 €";
+            const num = Number(n);
+            const sign = num < 0 ? "-" : "";
+            const parts = Math.abs(num).toFixed(2).split(".");
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+            return sign + parts.join(",") + " €";
         };
-        const formatNum = (n) => {
-            if (n === 0 || n === null || n === undefined) return "0";
-            return Number(n).toLocaleString('es-ES', {
-                maximumFractionDigits: 2
-            });
+        const formatNum = (n, decimals = 2) => {
+            if (n === null || n === undefined || isNaN(n)) return "0";
+            const num = Number(n);
+            const sign = num < 0 ? "-" : "";
+            const parts = Math.abs(num).toFixed(decimals).split(".");
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+            const dec = parts[1] ? parts[1].replace(/0+$/, '') : '';
+            return sign + parts[0] + (dec ? ',' + dec : '');
         };
         const formatInt = (n) => {
-            if (n === 0 || n === null || n === undefined) return "0";
-            return Math.round(n).toLocaleString('es-ES');
+            if (n === null || n === undefined || isNaN(n)) return "0";
+            const num = Math.round(Number(n));
+            const sign = num < 0 ? "-" : "";
+            return sign + Math.abs(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
         };
 
         // =========================================================================
@@ -4652,8 +4658,9 @@
                         <!-- Target Actual (Editable si bruto, reflejado si neto) -->
                         <td style="padding: 8px 8px; text-align: right; background: #fdf4ff; white-space: nowrap;">
                             <div style="display: inline-flex; align-items: center; justify-content: flex-end; gap: 4px;">
-                                <input type="number" step="100" min="0" value="${dispTargetRev}" 
+                                <input type="text" inputmode="numeric" value="${formatInt(dispTargetRev)}" 
                                     style="width: 105px; padding: 5px 8px; text-align: right; font-weight: 800; font-size: 0.85rem; color: ${isNetView ? '#059669' : '#6b21a8'}; background: #ffffff; border: 1px solid ${isNetView ? '#a7f3d0' : '#d8b4fe'}; border-radius: 6px;"
+                                    onfocus="this.select()"
                                     onchange="onSegmentTargetInputChange(${idx}, 'targetRev', this.value)"
                                     title="${isNetView ? 'Producción Neta estimada' : 'Modificar ingresos brutos objetivo de este segmento'}">
                                 <span style="font-weight: 700; color: ${isNetView ? '#059669' : '#6b21a8'}; font-size: 0.82rem;">€</span>
@@ -4661,8 +4668,9 @@
                         </td>
                         <td style="padding: 8px 8px; text-align: right; background: #fdf4ff; white-space: nowrap;">
                             <div style="display: inline-flex; align-items: center; justify-content: flex-end; gap: 4px;">
-                                <input type="number" step="5" min="0" value="${seg.targetRN}" 
+                                <input type="text" inputmode="numeric" value="${formatInt(seg.targetRN)}" 
                                     style="width: 75px; padding: 5px 8px; text-align: right; font-weight: 700; font-size: 0.85rem; color: #581c87; background: #ffffff; border: 1px solid #d8b4fe; border-radius: 6px;"
+                                    onfocus="this.select()"
                                     onchange="onSegmentTargetInputChange(${idx}, 'targetRN', this.value)"
                                     title="Modificar habitaciones objetivo de este segmento">
                                 <span style="font-weight: 700; color: #581c87; font-size: 0.8rem;">habs</span>
@@ -4757,8 +4765,9 @@
                     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px;">
                         <div>
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <h3 style="margin: 0; font-size: 1.15rem; color: #0f172a; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                                <h3 style="margin: 0; font-size: 1.15rem; color: #0f172a; font-weight: 800; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                                     <span>👥</span> Desglose de Objetivos por Segmento y Canal (${year})
+                                    <span style="background: ${hotel.toLowerCase().includes('cumbria') ? '#ecfdf5' : '#eef2ff'}; color: ${hotel.toLowerCase().includes('cumbria') ? '#047857' : '#3730a3'}; border: 1px solid ${hotel.toLowerCase().includes('cumbria') ? '#a7f3d0' : '#c7d2fe'}; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 800;">🏨 ${hotel}</span>
                                 </h3>
                                 <div style="display: inline-flex; background: #f1f5f9; padding: 2px; border-radius: 8px; border: 1px solid #cbd5e1; margin-left: 6px;">
                                     <button onclick="setBudgetNetMode(false)" style="background: ${!isNetView ? '#ffffff' : 'transparent'}; color: ${!isNetView ? '#4338ca' : '#64748b'}; border: none; padding: 3px 10px; border-radius: 6px; font-size: 0.72rem; font-weight: 700; cursor: pointer; box-shadow: ${!isNetView ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};">
@@ -4920,7 +4929,8 @@
         function onSegmentTargetInputChange(idx, field, value) {
             if (!currentSegmentBreakdownData || !currentSegmentBreakdownData.segments[idx]) return;
             const seg = currentSegmentBreakdownData.segments[idx];
-            const num = Math.max(0, parseFloat(value) || 0);
+            const cleanVal = String(value || '').replace(/\./g, '').replace(',', '.');
+            const num = Math.max(0, parseFloat(cleanVal) || 0);
             seg[field] = num;
             seg.targetAdr = seg.targetRN > 0 ? (seg.targetRev / seg.targetRN) : 0;
             seg.shareTargetRev = currentSegmentBreakdownData.targetRev > 0 ? (seg.targetRev / currentSegmentBreakdownData.targetRev) : 0;
