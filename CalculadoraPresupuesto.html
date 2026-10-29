@@ -344,7 +344,8 @@
             border-right: 1px solid var(--border);
         }
 
-        tbody td {
+        tbody td,
+        tfoot td {
             text-align: right;
             padding: 6px 8px;
             border-bottom: 1px solid var(--border);
@@ -352,7 +353,8 @@
             font-variant-numeric: tabular-nums;
         }
 
-        tbody td:first-child {
+        tbody td:first-child,
+        tfoot td:first-child {
             text-align: left;
             font-weight: 600;
             position: sticky;
@@ -3017,6 +3019,8 @@
             const t_occ26 = t_cap > 0 ? t_rn26 / t_cap * 100 : 0;
 
             const tv_rev = t_rev25 > 0 ? ((t_rev26 - t_rev25) / t_rev25 * 100) : 0;
+            const tv_adr = t_adr25 > 0 ? ((t_adr26 - t_adr25) / t_adr25 * 100) : 0;
+            const tv_rn = t_rn25 > 0 ? ((t_rn26 - t_rn25) / t_rn25 * 100) : 0;
 
             const prevYear = String(parseInt(currentYear) - 1);
 
@@ -3028,35 +3032,44 @@
                 occ: t_rn26Real / t_cap * 100
             };
 
-            tfoot.innerHTML = `<tr>
-            <td style="display:flex; justify-content:space-between; align-items:center;">
-                TOTAL
-                <button onclick="showRealModal()" title="Ver Detalle Producción Real" style="background:none; border:none; cursor:pointer; font-size:1.1rem;">👁️</button>
+            tfoot.innerHTML = `<tr style="border-top: 2px solid #cbd5e1; font-weight: 700; background: #f8fafc;">
+            <td class="bg-neutral border-sep" style="padding: 6px 10px; white-space: nowrap; font-weight: 800;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span>TOTAL</span>
+                    <button onclick="showRealModal()" title="Ver Detalle Producción Real" style="background:none; border:none; cursor:pointer; font-size:1.1rem; line-height:1; padding:0 2px;">👁️</button>
+                </div>
             </td>
-            <td>${formatNum(t_cap)}</td>
-            <td>${formatMoney(t_rev25)}</td>
-            <td>
+            <td class="bg-neutral border-sep" style="font-weight:700; color:#334155;">${formatNum(t_cap)}</td>
+            
+            <td class="bg-group-rev" style="color:#64748b; font-size: 0.85rem;">${formatMoney(t_rev25)}</td>
+            <td class="bg-group-rev">
                 <div style="font-weight:700;">${formatMoney(t_rev26)}</div>
-                <div style="font-size:0.75rem; color:var(--primary);">${formatMoney(t_rev26Real)}</div>
+                <div style="font-size:0.75rem; color:var(--primary); font-weight:700;">${formatMoney(t_rev26Real)}</div>
             </td>
-            <td>${(tv_rev > 0 ? '+' : '') + tv_rev.toFixed(1)}%</td>
+            <td class="bg-group-rev border-sep" style="font-size: 0.85rem; font-weight:700;">
+                <div class="${tv_rev >= 0 ? 'text-success' : 'text-danger'}">${(tv_rev > 0 ? '+' : '') + tv_rev.toFixed(1)}%</div>
+            </td>
             
-            <td>${t_adr25.toFixed(2)}€</td>
-            <td>
+            <td class="bg-group-adr" style="color:#64748b; font-size: 0.85rem;">${t_adr25.toFixed(2)}€</td>
+            <td class="bg-group-adr">
                 <div style="font-weight:700;">${t_adr26.toFixed(2)}€</div>
-                <div style="font-size:0.75rem; color:var(--primary);">${t_adr26Real.toFixed(2)}€</div>
+                <div style="font-size:0.75rem; color:var(--primary); font-weight:700;">${t_adr26Real.toFixed(2)}€</div>
             </td>
-            <td>-</td>
+            <td class="bg-group-adr border-sep" style="font-size: 0.85rem; font-weight:700;">
+                <div class="${tv_adr >= 0 ? 'text-success' : 'text-danger'}">${(tv_adr > 0 ? '+' : '') + tv_adr.toFixed(1)}%</div>
+            </td>
             
-            <td>${formatNum(t_rn25)}</td>
-            <td>
+            <td class="bg-group-occ" style="color:#64748b; font-size: 0.85rem;">${formatNum(t_rn25)}</td>
+            <td class="bg-group-occ">
                 <div style="font-weight:700;">${formatNum(t_rn26)}</div>
-                <div style="font-size:0.75rem; color:#c2410c;">${formatNum(t_rn26Real)}</div>
+                <div style="font-size:0.75rem; color:#c2410c; font-weight:700;">${formatNum(t_rn26Real)}</div>
             </td>
-            <td>-</td>
+            <td class="bg-group-occ border-sep" style="font-size: 0.85rem; font-weight:700;">
+                <div class="${tv_rn >= 0 ? 'text-success' : 'text-danger'}">${(tv_rn > 0 ? '+' : '') + tv_rn.toFixed(1)}%</div>
+            </td>
             
-            <td>${t_occ25.toFixed(1)}%</td>
-            <td>${t_occ26.toFixed(1)}%</td>
+            <td style="color:#64748b; font-size: 0.85rem; font-weight:700;">${t_occ25.toFixed(1)}%</td>
+            <td style="font-weight: 800; color:var(--primary);">${t_occ26.toFixed(1)}%</td>
         </tr>`;
         }
 
@@ -4459,12 +4472,12 @@
 
                 // Asegurar objetivos oficiales de Grupos 2027 si el histórico no aporta producción positiva
                 if (s.name === 'GRUPOS' && yearStr === '2027' && (!customMonth || !customMonth[s.name])) {
-                    if (hotel === 'Cumbria') {
+                    if (hotel === 'Cumbria' || String(hotel).toLowerCase().includes('cumbria')) {
                         const cumbriaOfficialGroupsRev = [3975, 3975, 4400, 4500, 4810, 4760, 5580, 5130, 5015, 4550, 5225, 4640];
                         const cumbriaOfficialGroupsRN = [75, 75, 80, 75, 65, 85, 90, 90, 85, 70, 95, 80];
                         segTargetRev = cumbriaOfficialGroupsRev[m] || segTargetRev;
                         segTargetRN = cumbriaOfficialGroupsRN[m] || segTargetRN;
-                    } else if (hotel === 'Guadiana') {
+                    } else if (hotel === 'Guadiana' || String(hotel).toLowerCase().includes('guadiana')) {
                         const guadianaOfficialGroupsRev = [24512, 29463, 42198, 51179, 69393, 49168, 40305, 52257, 52054, 60039, 39278, 34980];
                         const guadianaOfficialGroupsRN = [437, 534, 657, 937, 957, 752, 665, 849, 885, 991, 713, 603];
                         segTargetRev = guadianaOfficialGroupsRev[m] || segTargetRev;
@@ -5098,17 +5111,27 @@
                         sAdr = sRN > 0 ? Math.round((sRev / sRN) * 100) / 100 : 75;
                     }
 
-                    // En 2027, garantizar que ningún mes de Grupos quede en 0 o negativo
-                    if (sRev <= 0 && targetYearStr === '2027') {
-                        const officialMonthly = (targetHotelName === 'Cumbria') 
+                    // En 2027, asegurar que se apliquen los objetivos oficiales de Grupos
+                    if (targetYearStr === '2027') {
+                        const isCumbria = String(targetHotelName).toLowerCase().includes('cumbria');
+                        const officialMonthly = isCumbria
                             ? [3975, 3975, 4400, 4500, 4810, 4760, 5580, 5130, 5015, 4550, 5225, 4640]
                             : [24512, 29463, 42198, 51179, 69393, 49168, 40305, 52257, 52054, 60039, 39278, 34980];
-                        const officialRN = (targetHotelName === 'Cumbria')
+                        const officialRN = isCumbria
                             ? [75, 75, 80, 75, 65, 85, 90, 90, 85, 70, 95, 80]
                             : [437, 534, 657, 937, 957, 752, 665, 849, 885, 991, 713, 603];
-                        sRev = officialMonthly[m];
-                        sRN = officialRN[m];
-                        sAdr = sRN > 0 ? Math.round((sRev / sRN) * 100) / 100 : 58;
+                        // Si no hay edición personalizada explícita para este mes, usar el oficial
+                        const customStoreKey = `custom_seg_budget_${targetHotelName}_2027`;
+                        let hasCustomGrupos = false;
+                        try {
+                            const cs = JSON.parse(CapaStorage.getItem(customStoreKey) || '{}');
+                            if (cs[m] && cs[m]['GRUPOS']) hasCustomGrupos = true;
+                        } catch(e) {}
+                        if (!hasCustomGrupos || sRev <= 0) {
+                            sRev = officialMonthly[m];
+                            sRN = officialRN[m];
+                            sAdr = sRN > 0 ? Math.round((sRev / sRN) * 100) / 100 : (isCumbria ? 53 : 58);
+                        }
                     }
 
                     const sPax = Math.round(sRN * 1.9);
