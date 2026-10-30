@@ -22,9 +22,9 @@
     <script src="js/nav.js"></script>
     <script src="js/theme-manager.js"></script>
     <script src="js/firebase-auth.js?v=20261001-sync3"></script>
-    <script src="js/version.js?v=20261029-0039"></script>
-    <script src="js/pricing-intelligence.js?v=20261029-0039"></script>
-    <script src="js/competencia-intelligence-ui.js?v=20261029-0039"></script>
+    <script src="js/version.js?v=20261030-0110"></script>
+    <script src="js/pricing-intelligence.js?v=20261030-0110"></script>
+    <script src="js/competencia-intelligence-ui.js?v=20261030-0110"></script>
 
     <link rel="stylesheet" href="css/tokens.css">
     <link rel="stylesheet" href="css/nav.css">
@@ -423,6 +423,26 @@
             border-left-color: #f59e0b;
             border-left-width: 4px;
             background: linear-gradient(90deg, rgba(245, 158, 11, 0.12) 0%, var(--bg-surface) 40%);
+        }
+        .expert-insight-card.subir-escalado {
+            border-left-color: #10b981;
+            border-left-width: 4px;
+            background: linear-gradient(90deg, rgba(16, 185, 129, 0.12) 0%, var(--bg-surface) 45%);
+        }
+        .expert-insight-card.subir-bar {
+            border-left-color: #059669;
+            border-left-width: 4px;
+            background: linear-gradient(90deg, rgba(5, 150, 105, 0.10) 0%, var(--bg-surface) 45%);
+        }
+        .expert-insight-card.revisar-bajada {
+            border-left-color: #f59e0b;
+            border-left-width: 4px;
+            background: linear-gradient(90deg, rgba(245, 158, 11, 0.12) 0%, var(--bg-surface) 45%);
+        }
+        .expert-insight-card.pendiente-demanda {
+            border-left-color: #6366f1;
+            border-left-width: 4px;
+            background: linear-gradient(90deg, rgba(99, 102, 241, 0.10) 0%, var(--bg-surface) 45%);
         }
         .expert-insight-card.pickup-pos {
             border-left-color: #10b981;
@@ -2267,7 +2287,7 @@
             const my = d.hotels[hotel];
             const myP = (my && !my.sold) ? my.price : 0;
             const mktPrice = d.compAvg || 0;
-            if (!my || my.sold || myP === 0 || mktPrice === 0) {
+            if (!my || my.sold || myP === 0) {
                 return null;
             }
 
@@ -2306,7 +2326,7 @@
 
             const targetPrice = rec.proposedPrice;
             const diffAmount = rec.diffAmount;
-            const diffPct = ((myP - mktPrice) / mktPrice) * 100;
+            const diffPct = (mktPrice > 0) ? (((myP - mktPrice) / mktPrice) * 100) : 0;
             const canApply = (diffAmount !== 0 && myP > 0);
 
             const minRange = rec.minRange || Math.max(minFloor || 0, targetPrice - 4);
@@ -2743,10 +2763,10 @@
             const globalAvg = (processedData.length > 0) 
                 ? (processedData.reduce((a, b) => a + (b.compAvg || 0), 0) / processedData.length) 
                 : 0;
+            const cap = HOTEL_CAPACITY[activeHotel] || (activeHotel === 'Cumbria' ? 59 : 108);
 
             if (type === 'overbooking_open') {
                 filterLabel = "🚨 Overbooking con Ventas Abiertas (¡CERRAR YA!)";
-                const cap = HOTEL_CAPACITY[activeHotel] || (activeHotel === 'Cumbria' ? 59 : 108);
                 filtered = baseData.filter(d => {
                     ensureHotelStructure(d, activeHotel);
                     const dynamic = getDynamicDateHtml(d, activeHotel);
@@ -2756,8 +2776,7 @@
                     return isOpen && currentOcc >= cap;
                 });
             } else if (type === 'closed_available') {
-                filterLabel = "🔔 Cierre con Habitaciones Libres (¡Hay sitio!)";
-                const cap = HOTEL_CAPACITY[activeHotel] || (activeHotel === 'Cumbria' ? 59 : 108);
+                filterLabel = "🔔 Cierre con Plazas Libres (¡Hay sitio!)";
                 filtered = baseData.filter(d => {
                     ensureHotelStructure(d, activeHotel);
                     const dynamic = getDynamicDateHtml(d, activeHotel);
@@ -2766,53 +2785,123 @@
                     const isSold = (my && (my.sold || my.status === 'sold'));
                     return isSold && currentOcc < cap && !my?.isSoldOut && (cap - currentOcc >= 1);
                 });
-            } else if (type === 'opp') {
-                filterLabel = "Oportunidad (Tarifa baja)";
+            } else if (type === 'subir_escalado') {
+                filterLabel = "📈 Subida por Escalado (Yielding)";
                 filtered = baseData.filter(d => {
                     const my = d.hotels[activeHotel];
-                    return my && !my.sold && my.price > 0 && d.compAvg > 0 && my.price < d.compAvg * 0.85;
+                    if (!my || my.sold || !my.price) return false;
+                    const dynamic = getDynamicDateHtml(d, activeHotel);
+                    const currentOcc = (dynamic.occ > 0) ? dynamic.occ : (dynamic.otb || my.otbRooms || my.occupancy || 0);
+                    const occPct = (currentOcc / cap) * 100;
+                    const yieldInfo = calculateSmartYield(d, activeHotel);
+                    if (!yieldInfo) return false;
+                    return (yieldInfo.action === 'SUBIR' || yieldInfo.action === 'REVISIÓN MANUAL') && (
+                        yieldInfo.demandStatus === 'SUBIDA POR ESCALADO CRÍTICO' ||
+                        yieldInfo.demandStatus === 'SUBIDA POR ESCALADO' ||
+                        yieldInfo.demandStatus === 'OVERBOOKING / LLENO' ||
+                        yieldInfo.triggerText?.includes('Escalado') ||
+                        (occPct >= 61 && yieldInfo.action === 'SUBIR')
+                    );
                 });
-            } else if (type === 'risk') {
-                filterLabel = "Riesgo (Sobreprecio)";
+            } else if (type === 'subir_bar') {
+                filterLabel = "🛡️ Bajo BAR Base (Alinear Tarifa)";
                 filtered = baseData.filter(d => {
                     const my = d.hotels[activeHotel];
-                    return my && !my.sold && my.price > 0 && d.compAvg > 0 && my.price > d.compAvg * 1.25;
+                    if (!my || my.sold || !my.price) return false;
+                    const dynamic = getDynamicDateHtml(d, activeHotel);
+                    const currentOcc = (dynamic.occ > 0) ? dynamic.occ : (dynamic.otb || my.otbRooms || my.occupancy || 0);
+                    const occPct = (currentOcc / cap) * 100;
+                    const yieldInfo = calculateSmartYield(d, activeHotel);
+                    if (!yieldInfo || yieldInfo.action !== 'SUBIR') return false;
+                    const isEscalado = (
+                        yieldInfo.demandStatus === 'SUBIDA POR ESCALADO CRÍTICO' ||
+                        yieldInfo.demandStatus === 'SUBIDA POR ESCALADO' ||
+                        yieldInfo.triggerText?.includes('Escalado') ||
+                        (occPct >= 61)
+                    );
+                    return !isEscalado;
+                });
+            } else if (type === 'subir_all') {
+                filterLabel = "▲ Subidas Recomendadas (Todas)";
+                filtered = baseData.filter(d => {
+                    const my = d.hotels[activeHotel];
+                    if (!my || my.sold || !my.price) return false;
+                    const yieldInfo = calculateSmartYield(d, activeHotel);
+                    return yieldInfo && (yieldInfo.action === 'SUBIR' || yieldInfo.action === 'REVISIÓN MANUAL');
+                });
+            } else if (type === 'revisar_bajada') {
+                filterLabel = "⚠️ Revisar Bajada (Fuera de Rango)";
+                filtered = baseData.filter(d => {
+                    const my = d.hotels[activeHotel];
+                    if (!my || my.sold || !my.price) return false;
+                    const yieldInfo = calculateSmartYield(d, activeHotel);
+                    return yieldInfo && (yieldInfo.action === 'REVISAR BAJADA' || yieldInfo.demandStatus === 'POR ENCIMA DE RANGO');
+                });
+            } else if (type === 'pendiente_demanda') {
+                filterLabel = "📋 Pendiente Evaluación Demanda (En Observación)";
+                filtered = baseData.filter(d => {
+                    const my = d.hotels[activeHotel];
+                    if (!my || my.sold || !my.price) return false;
+                    const yieldInfo = calculateSmartYield(d, activeHotel);
+                    return yieldInfo && (yieldInfo.demandStatus === 'PENDIENTE DE EVALUACIÓN DE DEMANDA' || yieldInfo.triggerText?.includes('Pend. Demanda'));
+                });
+            } else if (type === 'pickup_pos') {
+                filterLabel = "⚡ Aceleración de Reservas (Pick-up +)";
+                filtered = baseData.filter(d => {
+                    const my = d.hotels[activeHotel];
+                    const dynamic = getDynamicDateHtml(d, activeHotel);
+                    const change = (my && my.otbChange !== undefined) ? my.otbChange : (dynamic.pickup || 0);
+                    const yieldInfo = calculateSmartYield(d, activeHotel);
+                    return change >= 5 || (yieldInfo && yieldInfo.demandStatus === 'MOMENTUM DE VENTAS');
+                });
+            } else if (type === 'pickup_neg') {
+                filterLabel = "📉 Caída Reservas / Cancelaciones (-)";
+                filtered = baseData.filter(d => {
+                    const my = d.hotels[activeHotel];
+                    const dynamic = getDynamicDateHtml(d, activeHotel);
+                    const change = (my && my.otbChange !== undefined) ? my.otbChange : (dynamic.pickup || 0);
+                    return change <= -5;
+                });
+            } else if (type === 'sold_out') {
+                filterLabel = "🏆 Competencia Completa (Sold Out)";
+                filtered = baseData.filter(d => {
+                    const my = d.hotels[activeHotel];
+                    const dynamic = getDynamicDateHtml(d, activeHotel);
+                    const currentOcc = (dynamic.occ > 0) ? dynamic.occ : (dynamic.otb || 0);
+                    return (d.activeSoldComps || 0) > 0 && my && !my.sold && currentOcc < cap;
                 });
             } else if (type === 'compression') {
-                filterLabel = "Demanda Pico (Pendientes de Blindar)";
+                filterLabel = "🔥 Demanda Pico de Mercado (Pendientes de Blindar)";
                 filtered = baseData.filter(d => {
                     const my = d.hotels[activeHotel];
                     return (d.compAvg > globalAvg * 1.35) && my && !my.sold && my.price > 0 && my.price < d.compAvg;
                 });
                 if (filtered.length === 0) {
                     filtered = baseData.filter(d => d.compAvg > globalAvg * 1.35);
-                    filterLabel = "Demanda Pico (Mercado)";
+                    filterLabel = "🔥 Demanda Pico de Mercado (Todas)";
                 }
             } else if (type === 'compression_all') {
-                filterLabel = "Demanda Pico (Todas)";
+                filterLabel = "🔥 Demanda Pico de Mercado (Todas)";
                 filtered = baseData.filter(d => d.compAvg > globalAvg * 1.35);
-            } else if (type === 'pickup_pos') {
-                filterLabel = "Aceleración Pick-up (+)";
-                filtered = baseData.filter(d => {
-                    const my = d.hotels[activeHotel];
-                    return my && (my.otbChange || 0) >= 8;
-                });
-            } else if (type === 'pickup_neg') {
-                filterLabel = "Caída Reservas / Cancelaciones (-)";
-                filtered = baseData.filter(d => {
-                    const my = d.hotels[activeHotel];
-                    return my && (my.otbChange || 0) <= -8;
-                });
-            } else if (type === 'sold_out') {
-                filterLabel = "Competidores Llenos (Sold Out)";
-                filtered = baseData.filter(d => (d.activeSoldComps || 0) > 0);
             } else if (type === 'high_occ') {
                 filterLabel = "Alta Carga (>75%)";
-                const cap = HOTEL_CAPACITY[activeHotel] || 100;
                 filtered = baseData.filter(d => {
                     const my = d.hotels[activeHotel];
-                    const rooms = (my?.otbRooms !== undefined) ? my.otbRooms : (my?.occupancy !== undefined ? my.occupancy : 0);
-                    return (rooms / cap) >= 0.75;
+                    const dynamic = getDynamicDateHtml(d, activeHotel);
+                    const currentOcc = (dynamic.occ > 0) ? dynamic.occ : (dynamic.otb || my?.otbRooms || my?.occupancy || 0);
+                    return (currentOcc / cap) >= 0.75;
+                });
+            } else if (type === 'opp') {
+                filterLabel = "Oportunidad Tarifaria";
+                filtered = baseData.filter(d => {
+                    const my = d.hotels[activeHotel];
+                    return my && !my.sold && my.price > 0 && d.compAvg > 0 && my.price < d.compAvg * 0.85;
+                });
+            } else if (type === 'risk') {
+                filterLabel = "Riesgo de Sobreprecio";
+                filtered = baseData.filter(d => {
+                    const my = d.hotels[activeHotel];
+                    return my && !my.sold && my.price > 0 && d.compAvg > 0 && my.price > d.compAvg * 1.25;
                 });
             } else {
                 clearTableFilter();
@@ -4132,71 +4221,110 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             }
 
             let mySum = 0, compSum = 0, count = 0;
-            let opps = [];
-            let risks = [];
+            const hotelCap = HOTEL_CAPACITY[activeHotel] || (activeHotel === 'Cumbria' ? 59 : 108);
+            const globalAvg = data.reduce((a, b) => a + (b.compAvg || 0), 0) / (data.length || 1);
+
+            let overbookingOpenDays = [];
+            let closedWithAvailableDays = [];
+            let subirEscaladoDays = [];
+            let subirBarDays = [];
+            let revisarBajadaDays = [];
+            let pendienteDemandaDays = [];
             let posPickup = [];
             let negPickup = [];
             let soldOutDays = [];
-            let highOccDays = [];
-            let overbookingOpenDays = [];
-            let closedWithAvailableDays = [];
+            let compressionUnshieldedDays = [];
+            let compressionShieldedDays = [];
 
-            const globalAvg = data.reduce((a, b) => a + (b.compAvg || 0), 0) / (data.length || 1);
-            const hotelCap = HOTEL_CAPACITY[activeHotel] || (activeHotel === 'Cumbria' ? 59 : 108);
+            const todayDt = new Date();
+            todayDt.setHours(0, 0, 0, 0);
 
             data.forEach(d => {
                 ensureHotelStructure(d, activeHotel);
                 const my = d.hotels[activeHotel];
-                const myChange = (my.otbChange !== undefined) ? my.otbChange : 0;
-                
-                // Ocupación real y estado de ventas
                 const dynamic = getDynamicDateHtml(d, activeHotel);
-                const currentOcc = (dynamic.occ > 0) ? dynamic.occ : (dynamic.otb || 0);
+                const currentOcc = (dynamic.occ > 0) ? dynamic.occ : (dynamic.otb || my?.otbRooms || my?.occupancy || 0);
+                const occPct = (currentOcc / hotelCap) * 100;
                 const isOpen = (my && !my.sold && my.price > 0 && my.status !== 'sold');
                 const isSold = (my && (my.sold || my.status === 'sold'));
+                const myChange = (my?.otbChange !== undefined) ? my.otbChange : (dynamic.pickup || 0);
+
+                let daysOutVal = 999;
+                if (d.dateISO) {
+                    const targetDt = new Date(d.dateISO);
+                    daysOutVal = Math.ceil((targetDt.getTime() - todayDt.getTime()) / (1000 * 60 * 60 * 24));
+                }
 
                 // ALERTA CRÍTICA: Overbooking con Ventas Abiertas (¡CERRAR YA!)
                 if (isOpen && currentOcc >= hotelCap) {
                     const obExcess = currentOcc - hotelCap;
-                    overbookingOpenDays.push({ ...d, currentOcc, obExcess });
+                    overbookingOpenDays.push({ ...d, currentOcc, obExcess, occPct, daysOutVal });
                 }
 
                 // ALERTA CRÍTICA: Cierre con Habitaciones Libres (¡Hay sitio!)
                 if (isSold && currentOcc < hotelCap && !my?.isSoldOut && (hotelCap - currentOcc >= 1)) {
                     const roomGap = hotelCap - currentOcc;
-                    closedWithAvailableDays.push({ ...d, currentOcc, roomGap });
+                    closedWithAvailableDays.push({ ...d, currentOcc, roomGap, occPct, daysOutVal });
                 }
 
-                // 1. Pick-up Detection (Aceleración >= 8 habs o Caída <= -8 habs)
-                if (myChange >= 8) {
-                    posPickup.push({ ...d, otbChange: myChange });
-                } else if (myChange <= -8) {
-                    negPickup.push({ ...d, otbChange: myChange });
-                }
-
-                // 2. Competidores Sold Out en esta fecha
-                if ((d.activeSoldComps || 0) >= 1 && my && !my.sold) {
-                    soldOutDays.push(d);
-                }
-
-                // 3. Alta Ocupación Propia
-                const occPct = (currentOcc / hotelCap) * 100;
-                if (occPct >= 75 && my && !my.sold && my.price > 0 && d.compAvg > 0 && my.price <= d.compAvg * 1.05) {
-                    highOccDays.push({ ...d, occPct: occPct });
-                }
-
-                if (!my || my.sold || my.price === 0) return;
+                if (!isOpen) return;
 
                 count++;
                 mySum += my.price;
                 compSum += (d.compAvg || 0);
 
-                if (d.compAvg > 0 && my.price < d.compAvg * 0.85) opps.push(d);
-                if (d.compAvg > 0 && my.price > d.compAvg * 1.25) risks.push(d);
-            });
+                // Evaluación con el motor estratégico de Revenue Management
+                const yieldInfo = calculateSmartYield(d, activeHotel);
 
-            // 4. Compresión de mercado (Demanda Pico)
-            const compression = data.filter(d => (d.compAvg || 0) > globalAvg * 1.35);
+                if (yieldInfo) {
+                    const isPendingDem = (yieldInfo.demandStatus === 'PENDIENTE DE EVALUACIÓN DE DEMANDA' || yieldInfo.triggerText?.includes('Pend. Demanda'));
+
+                    const isEscalado = (yieldInfo.action === 'SUBIR' || yieldInfo.action === 'REVISIÓN MANUAL') && (
+                        yieldInfo.demandStatus === 'SUBIDA POR ESCALADO CRÍTICO' ||
+                        yieldInfo.demandStatus === 'SUBIDA POR ESCALADO' ||
+                        yieldInfo.demandStatus === 'OVERBOOKING / LLENO' ||
+                        yieldInfo.triggerText?.includes('Escalado') ||
+                        (occPct >= 61 && yieldInfo.action === 'SUBIR')
+                    );
+
+                    const isBarBase = (yieldInfo.action === 'SUBIR') && !isEscalado;
+
+                    if (isEscalado) {
+                        subirEscaladoDays.push({ ...d, currentOcc, occPct, daysOutVal, yieldInfo });
+                    } else if (isBarBase) {
+                        subirBarDays.push({ ...d, currentOcc, occPct, daysOutVal, yieldInfo });
+                    }
+
+                    if (yieldInfo.action === 'REVISAR BAJADA' || yieldInfo.demandStatus === 'POR ENCIMA DE RANGO') {
+                        revisarBajadaDays.push({ ...d, currentOcc, occPct, daysOutVal, yieldInfo });
+                    }
+
+                    if (isPendingDem) {
+                        pendienteDemandaDays.push({ ...d, currentOcc, occPct, daysOutVal, yieldInfo });
+                    }
+                }
+
+                // Pick-up (Aceleración >= 5 habs o Caída <= -5 habs)
+                if (myChange >= 5 || (yieldInfo && yieldInfo.demandStatus === 'MOMENTUM DE VENTAS')) {
+                    posPickup.push({ ...d, otbChange: myChange, currentOcc, occPct, daysOutVal });
+                } else if (myChange <= -5) {
+                    negPickup.push({ ...d, otbChange: myChange, currentOcc, occPct, daysOutVal });
+                }
+
+                // Competidores Sold Out en esta fecha (con plazas libres en nuestro hotel)
+                if ((d.activeSoldComps || 0) >= 1 && currentOcc < hotelCap) {
+                    soldOutDays.push({ ...d, soldComps: d.activeSoldComps, currentOcc, occPct, daysOutVal });
+                }
+
+                // Compresión de mercado (Demanda Pico)
+                if ((d.compAvg || 0) > globalAvg * 1.35) {
+                    if (my.price < d.compAvg) {
+                        compressionUnshieldedDays.push({ ...d, currentOcc, occPct, daysOutVal, compAvg: d.compAvg });
+                    } else {
+                        compressionShieldedDays.push({ ...d, currentOcc, occPct, daysOutVal, compAvg: d.compAvg });
+                    }
+                }
+            });
 
             let alertCount = 0;
 
@@ -4213,7 +4341,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     icon: '🚨',
                     title: 'OVERBOOKING · VENTAS ABIERTAS',
                     badge: `${overbookingOpenDays.length} crítica${overbookingOpenDays.length !== 1 ? 's' : ''}`,
-                    desc: `<b>🚨 ¡CERRAR YA!</b> Ocupación completa o superior a la capacidad con ventas abiertas en canales. Riesgo crítico de sobreventa y walk-outs.`,
+                    desc: `<b>🚨 ¡CERRAR YA!</b> Ocupación completa o superior a la capacidad (${hotelCap} habs) con ventas abiertas en canales. Riesgo inminente de sobreventa y walk-outs.`,
                     chips: chips,
                     filterType: 'overbooking_open',
                     filterCount: overbookingOpenDays.length
@@ -4230,70 +4358,163 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 addExpertInsightCard({
                     type: 'closed-available',
                     icon: '🔔',
-                    title: 'Cierre con Habitaciones Libres',
+                    title: 'Cierre con Plazas Libres',
                     badge: `${closedWithAvailableDays.length} fecha${closedWithAvailableDays.length !== 1 ? 's' : ''}`,
-                    desc: `<b>🔔 ¡HAY SITIO!</b> El hotel está cerrado en canales pero constan habitaciones libres. Si corresponden a cupos o bloqueos garantizados, regístralos en el modal de cupos.`,
+                    desc: `<b>🔔 ¡HAY SITIO!</b> El hotel está cerrado en canales pero constan habitaciones libres (${hotelCap} habs capacidad). Si corresponden a cupos o bloqueos garantizados, regístralos en cupos; de lo contrario, reabre venta.`,
                     chips: chips,
                     filterType: 'closed_available',
                     filterCount: closedWithAvailableDays.length
                 });
             }
 
-            // --- INSIGHT 1: Aceleración de Pick-up (+) ---
+            // --- INSIGHT 1: SUBIDA POR ESCALADO DE OCUPACIÓN (YIELDING ACTIVO) ---
+            if (subirEscaladoDays.length > 0) {
+                alertCount++;
+                subirEscaladoDays.sort((a, b) => b.occPct - a.occPct);
+                const avgDiff = Math.round(subirEscaladoDays.reduce((s, d) => s + (d.yieldInfo.diffAmount || 0), 0) / subirEscaladoDays.length);
+                const minOcc = Math.round(Math.min(...subirEscaladoDays.map(d => d.occPct)));
+                const maxOcc = Math.round(Math.max(...subirEscaladoDays.map(d => d.occPct)));
+                const chips = subirEscaladoDays.slice(0, 6).map(d => 
+                    makeDateChip(d, `+${d.yieldInfo.diffAmount}€ (${Math.round(d.occPct)}%)`, '#10b981')
+                );
+                addExpertInsightCard({
+                    type: 'subir-escalado',
+                    icon: '📈',
+                    title: 'Subida por Escalado (Yielding)',
+                    badge: `${subirEscaladoDays.length} fecha${subirEscaladoDays.length !== 1 ? 's' : ''}`,
+                    desc: `Ocupación en tramos de rendimiento (${minOcc}%–${maxOcc}%). La estrategia recomienda subir tarifa (+${avgDiff}€ media) para rentabilizar la alta demanda y optimizar las últimas plazas disponibles.`,
+                    chips: chips,
+                    filterType: 'subir_escalado',
+                    filterCount: subirEscaladoDays.length
+                });
+            }
+
+            // --- INSIGHT 2: BAJO BAR BASE (ALINEAR A SUELO ESTRATÉGICO) ---
+            if (subirBarDays.length > 0) {
+                alertCount++;
+                subirBarDays.sort((a, b) => (b.yieldInfo.diffAmount || 0) - (a.yieldInfo.diffAmount || 0));
+                const avgDiff = Math.round(subirBarDays.reduce((s, d) => s + (d.yieldInfo.diffAmount || 0), 0) / subirBarDays.length);
+                const chips = subirBarDays.slice(0, 6).map(d => {
+                    const currentP = Math.round(d.hotels[activeHotel]?.price || 0);
+                    return makeDateChip(d, `${currentP}€ ➔ ${d.yieldInfo.targetPrice}€`, '#059669');
+                });
+                addExpertInsightCard({
+                    type: 'subir-bar',
+                    icon: '🛡️',
+                    title: 'Bajo BAR Base (Alinear Tarifa)',
+                    badge: `${subirBarDays.length} fecha${subirBarDays.length !== 1 ? 's' : ''}`,
+                    desc: `Tarifas publicadas por debajo de la BAR base fijada para ${activeHotel} (+${avgDiff}€ media). Se recomienda alinear al suelo comercial de partida para evitar fugas de ingresos.`,
+                    chips: chips,
+                    filterType: 'subir_bar',
+                    filterCount: subirBarDays.length
+                });
+            }
+
+            // --- INSIGHT 3: REVISAR BAJADA (FUERA DE RANGO COMERCIAL) ---
+            if (revisarBajadaDays.length > 0) {
+                alertCount++;
+                revisarBajadaDays.sort((a, b) => Math.abs(b.yieldInfo.diffAmount || 0) - Math.abs(a.yieldInfo.diffAmount || 0));
+                const avgDiff = Math.round(Math.abs(revisarBajadaDays.reduce((s, d) => s + (d.yieldInfo.diffAmount || 0), 0) / revisarBajadaDays.length));
+                const chips = revisarBajadaDays.slice(0, 6).map(d => {
+                    const currentP = Math.round(d.hotels[activeHotel]?.price || 0);
+                    return makeDateChip(d, `${currentP}€ ➔ ${d.yieldInfo.targetPrice}€ (${d.yieldInfo.diffAmount}€)`, '#d97706');
+                });
+                addExpertInsightCard({
+                    type: 'revisar-bajada',
+                    icon: '⚠️',
+                    title: 'Revisar Bajada (Fuera de Rango)',
+                    badge: `${revisarBajadaDays.length} fecha${revisarBajadaDays.length !== 1 ? 's' : ''}`,
+                    desc: `Tarifa superior al techo comercial recomendado con ocupación moderada y antelación sin pickup (-${avgDiff}€ media). Riesgo de frenar conversión frente a los competidores.`,
+                    chips: chips,
+                    filterType: 'revisar_bajada',
+                    filterCount: revisarBajadaDays.length
+                });
+            }
+
+            // --- INSIGHT 4: PENDIENTE EVALUACIÓN DE DEMANDA (EN OBSERVACIÓN) ---
+            if (pendienteDemandaDays.length > 0) {
+                alertCount++;
+                pendienteDemandaDays.sort((a, b) => (a.daysOutVal || 999) - (b.daysOutVal || 999));
+                const chips = pendienteDemandaDays.slice(0, 6).map(d => {
+                    const currentP = Math.round(d.hotels[activeHotel]?.price || 0);
+                    return makeDateChip(d, `${currentP}€ (BAR ${d.yieldInfo.baseBar || '-'}€)`, '#6366f1');
+                });
+                addExpertInsightCard({
+                    type: 'pendiente-demanda',
+                    icon: '📋',
+                    title: 'Pendiente Evaluación Demanda',
+                    badge: `${pendienteDemandaDays.length} en observación`,
+                    desc: `El precio difiere de la BAR base pero no consta suficiente histórico de pickup para justificar la prima sobre el mercado. Mantener en observación comercial (no clasificar como en rango).`,
+                    chips: chips,
+                    filterType: 'pendiente_demanda',
+                    filterCount: pendienteDemandaDays.length
+                });
+            }
+
+            // --- INSIGHT 5: ACELERACIÓN DE PICK-UP (+) ---
             if (posPickup.length > 0) {
                 alertCount++;
                 posPickup.sort((a, b) => (b.otbChange || 0) - (a.otbChange || 0));
                 const totalGain = posPickup.reduce((sum, d) => sum + (d.otbChange || 0), 0);
-                const chips = posPickup.slice(0, 4).map(d => 
-                    makeDateChip(d, `+${d.otbChange}`, '#10b981')
+                const chips = posPickup.slice(0, 6).map(d => 
+                    makeDateChip(d, `+${d.otbChange} RN`, '#10b981')
                 );
                 addExpertInsightCard({
                     type: 'pickup-pos',
-                    icon: '🚀',
+                    icon: '⚡',
                     title: 'Aceleración de Reservas',
                     badge: `${posPickup.length} fecha${posPickup.length !== 1 ? 's' : ''}`,
-                    desc: `Fuerte entrada de reservas (+${totalGain} habs en total). Alta velocidad de demanda; momento óptimo para revisar tarifas al alza.`,
+                    desc: `Fuerte entrada de reservas (+${totalGain} habs en total). Velocidad de demanda acelerada; momento idóneo para validar subidas y blindar inventario.`,
                     chips: chips,
                     filterType: 'pickup_pos',
                     filterCount: posPickup.length
                 });
             }
 
-            // --- INSIGHT 2: Caída de Pick-up / Cancelaciones (-) ---
+            // --- INSIGHT 6: CAÍDA DE PICK-UP / CANCELACIONES (-) ---
             if (negPickup.length > 0) {
                 alertCount++;
                 negPickup.sort((a, b) => (a.otbChange || 0) - (b.otbChange || 0));
                 const totalLoss = Math.abs(negPickup.reduce((sum, d) => sum + (d.otbChange || 0), 0));
-                const chips = negPickup.slice(0, 4).map(d => 
-                    makeDateChip(d, `${d.otbChange}`, '#ef4444')
+                const chips = negPickup.slice(0, 6).map(d => 
+                    makeDateChip(d, `${d.otbChange} RN`, '#ef4444')
                 );
                 addExpertInsightCard({
                     type: 'pickup-neg',
                     icon: '📉',
-                    title: 'Caída de Reservas',
+                    title: 'Caída Reservas / Cancelaciones',
                     badge: `${negPickup.length} fecha${negPickup.length !== 1 ? 's' : ''}`,
-                    desc: `Pérdida neta o cancelaciones (-${totalLoss} habs en total). Verifica si tus tarifas o condiciones están frenando la conversión.`,
+                    desc: `Pérdida neta de reservas (-${totalLoss} habs en total). Verificar si tus tarifas o condiciones de cancelación están frenando la demanda.`,
                     chips: chips,
                     filterType: 'pickup_neg',
                     filterCount: negPickup.length
                 });
             }
 
-            // --- INSIGHT 3: Demanda Pico de Mercado (Compresión) ---
-            const allCompression = data.filter(d => (d.compAvg || 0) > globalAvg * 1.35);
-            const unshieldedCompression = allCompression.filter(d => {
-                const my = d.hotels[activeHotel];
-                return my && !my.sold && my.price > 0 && my.price < d.compAvg;
-            });
-            const shieldedCompression = allCompression.filter(d => {
-                const my = d.hotels[activeHotel];
-                return my && !my.sold && my.price > 0 && my.price >= d.compAvg;
-            });
-
-            if (unshieldedCompression.length > 0) {
+            // --- INSIGHT 7: COMPETIDORES LLENOS (SOLD OUT) ---
+            if (soldOutDays.length > 0) {
                 alertCount++;
-                unshieldedCompression.sort((a, b) => (b.compAvg || 0) - (a.compAvg || 0));
-                const chips = unshieldedCompression.slice(0, 4).map(d => {
+                soldOutDays.sort((a, b) => (b.soldComps || 0) - (a.soldComps || 0));
+                const chips = soldOutDays.slice(0, 6).map(d => 
+                    makeDateChip(d, `${d.soldComps} comp.`, '#8b5cf6')
+                );
+                addExpertInsightCard({
+                    type: 'soldout',
+                    icon: '🏆',
+                    title: 'Competencia Completa (Sold Out)',
+                    badge: `${soldOutDays.length} fecha${soldOutDays.length !== 1 ? 's' : ''}`,
+                    desc: `Hoteles competidores sin plazas disponibles con nuestro hotel aún con inventario disponible. Oportunidad directa de yielding para captar demanda residual a tarifa premium.`,
+                    chips: chips,
+                    filterType: 'sold_out',
+                    filterCount: soldOutDays.length
+                });
+            }
+
+            // --- INSIGHT 8: DEMANDA PICO DE MERCADO (COMPRESIÓN) ---
+            if (compressionUnshieldedDays.length > 0) {
+                alertCount++;
+                compressionUnshieldedDays.sort((a, b) => (b.compAvg || 0) - (a.compAvg || 0));
+                const chips = compressionUnshieldedDays.slice(0, 6).map(d => {
                     const myP = Math.round(d.hotels[activeHotel]?.price || 0);
                     const compP = Math.round(d.compAvg || 0);
                     return makeDateChip(d, `${myP}€ < ${compP}€`, '#f97316');
@@ -4302,15 +4523,15 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     type: 'compression',
                     icon: '🔥',
                     title: 'Demanda Pico de Mercado',
-                    badge: `${unshieldedCompression.length} pendiente${unshieldedCompression.length !== 1 ? 's' : ''}`,
-                    desc: `Tarifas de mercado >35% sobre la media (${Math.round(globalAvg * 1.35)}€). Tu tarifa actual está por debajo del pico de mercado (${shieldedCompression.length} ya blindada${shieldedCompression.length !== 1 ? 's' : ''}); momento ideal para blindar precio y exigir estancias mínimas.`,
+                    badge: `${compressionUnshieldedDays.length} pendiente${compressionUnshieldedDays.length !== 1 ? 's' : ''}`,
+                    desc: `Tarifas de mercado >35% sobre la media (${Math.round(globalAvg * 1.35)}€). Tu tarifa actual está por debajo del pico (${compressionShieldedDays.length} protegidas); momento ideal para blindar precio y exigir estancias mínimas.`,
                     chips: chips,
                     filterType: 'compression',
-                    filterCount: unshieldedCompression.length
+                    filterCount: compressionUnshieldedDays.length
                 });
-            } else if (allCompression.length > 0 && shieldedCompression.length > 0) {
-                allCompression.sort((a, b) => (b.compAvg || 0) - (a.compAvg || 0));
-                const chips = allCompression.slice(0, 4).map(d => {
+            } else if (compressionShieldedDays.length > 0) {
+                compressionShieldedDays.sort((a, b) => (b.compAvg || 0) - (a.compAvg || 0));
+                const chips = compressionShieldedDays.slice(0, 6).map(d => {
                     const myP = Math.round(d.hotels[activeHotel]?.price || 0);
                     return makeDateChip(d, `${myP}€ ✓`, '#10b981');
                 });
@@ -4318,96 +4539,11 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     type: 'pickup-pos',
                     icon: '🛡️',
                     title: 'Demanda Pico Blindada',
-                    badge: `${allCompression.length} protegidas`,
+                    badge: `${compressionShieldedDays.length} protegidas`,
                     desc: `Todas las fechas con alta compresión de mercado tienen tus tarifas correctamente blindadas y alineadas con el pico de demanda.`,
                     chips: chips,
                     filterType: 'compression_all',
-                    filterCount: allCompression.length
-                });
-            }
-
-            // --- INSIGHT 4: Oportunidad de Revenue (Tarifa Baja) ---
-            if (opps.length > 0) {
-                alertCount++;
-                opps.sort((a, b) => {
-                    const gapA = (a.compAvg || 0) - (a.hotels[activeHotel]?.price || 0);
-                    const gapB = (b.compAvg || 0) - (b.hotels[activeHotel]?.price || 0);
-                    return gapB - gapA;
-                });
-                const avgDiff = Math.round(opps.reduce((sum, d) => sum + ((d.compAvg || 0) - (d.hotels[activeHotel]?.price || 0)), 0) / opps.length);
-                const chips = opps.slice(0, 4).map(d => 
-                    makeDateChip(d, `${Math.round(d.hotels[activeHotel]?.price || 0)}€`, '#059669')
-                );
-                addExpertInsightCard({
-                    type: 'opp',
-                    icon: '💰',
-                    title: 'Oportunidad Tarifaria',
-                    badge: `${opps.length} fecha${opps.length !== 1 ? 's' : ''}`,
-                    desc: `Tu tarifa está >15% por debajo del mercado (diferencia media: -${avgDiff}€). Posible fuga de ingresos con margen de subida.`,
-                    chips: chips,
-                    filterType: 'opp',
-                    filterCount: opps.length
-                });
-            }
-
-            // --- INSIGHT 5: Riesgo de Sobreprecio (Tarifa Alta) ---
-            if (risks.length > 0) {
-                alertCount++;
-                risks.sort((a, b) => {
-                    const gapA = (a.hotels[activeHotel]?.price || 0) - (a.compAvg || 0);
-                    const gapB = (b.hotels[activeHotel]?.price || 0) - (b.compAvg || 0);
-                    return gapB - gapA;
-                });
-                const chips = risks.slice(0, 4).map(d => 
-                    makeDateChip(d, `${Math.round(d.hotels[activeHotel]?.price || 0)}€`, '#e11d48')
-                );
-                addExpertInsightCard({
-                    type: 'risk',
-                    icon: '⚠️',
-                    title: 'Riesgo de Sobreprecio',
-                    badge: `${risks.length} fecha${risks.length !== 1 ? 's' : ''}`,
-                    desc: `Tarifa >25% por encima del mercado. Sin ocupación crítica (>80%), corres riesgo de frenar ventas ante la competencia.`,
-                    chips: chips,
-                    filterType: 'risk',
-                    filterCount: risks.length
-                });
-            }
-
-            // --- INSIGHT 6: Competidores Llenos (Sold Out) ---
-            if (soldOutDays.length > 0) {
-                alertCount++;
-                soldOutDays.sort((a, b) => (b.activeSoldComps || 0) - (a.activeSoldComps || 0));
-                const chips = soldOutDays.slice(0, 4).map(d => 
-                    makeDateChip(d, `${d.activeSoldComps} comp.`, '#8b5cf6')
-                );
-                addExpertInsightCard({
-                    type: 'soldout',
-                    icon: '🏆',
-                    title: 'Competencia Completa',
-                    badge: `${soldOutDays.length} fecha${soldOutDays.length !== 1 ? 's' : ''}`,
-                    desc: `Hoteles competidores sin plazas disponibles. Oportunidad directa de yielding para captar demanda a precio premium.`,
-                    chips: chips,
-                    filterType: 'sold_out',
-                    filterCount: soldOutDays.length
-                });
-            }
-
-            // --- INSIGHT 7: Carga Avanzada / Yielding de Cierre (>75%) ---
-            if (highOccDays.length > 0) {
-                alertCount++;
-                highOccDays.sort((a, b) => b.occPct - a.occPct);
-                const chips = highOccDays.slice(0, 4).map(d => 
-                    makeDateChip(d, `${Math.round(d.occPct)}%`, '#3b82f6')
-                );
-                addExpertInsightCard({
-                    type: 'high-occ',
-                    icon: '🎯',
-                    title: 'Carga Avanzada (>75%)',
-                    badge: `${highOccDays.length} fecha${highOccDays.length !== 1 ? 's' : ''}`,
-                    desc: `Ocupación alta sin prima sobre el mercado. Cierra tarifas promocionales y aplica precio dinámico de últimas plazas.`,
-                    chips: chips,
-                    filterType: 'high_occ',
-                    filterCount: highOccDays.length
+                    filterCount: compressionShieldedDays.length
                 });
             }
 
@@ -4418,7 +4554,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     icon: '✅',
                     title: 'Posicionamiento Equilibrado',
                     badge: 'Óptimo',
-                    desc: 'Tus tarifas y ritmo de reservas están correctamente alineados con la estrategia de mercado para este período.',
+                    desc: `Todas las tarifas y ritmos de venta están correctamente alineados con la matriz BAR base, escalados de ocupación y estrategia de mercado para ${activeHotel}.`,
                     chips: []
                 });
             }
