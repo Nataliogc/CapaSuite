@@ -22,9 +22,9 @@
     <script src="js/nav.js"></script>
     <script src="js/theme-manager.js"></script>
     <script src="js/firebase-auth.js?v=20261001-sync3"></script>
-    <script src="js/version.js?v=20261030-0246"></script>
-    <script src="js/pricing-intelligence.js?v=20261030-0246"></script>
-    <script src="js/competencia-intelligence-ui.js?v=20261030-0246"></script>
+    <script src="js/version.js?v=20261030-0252"></script>
+    <script src="js/pricing-intelligence.js?v=20261030-0252"></script>
+    <script src="js/competencia-intelligence-ui.js?v=20261030-0252"></script>
 
     <link rel="stylesheet" href="css/tokens.css">
     <link rel="stylesheet" href="css/nav.css">
@@ -4925,12 +4925,17 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 if (cfg.occPct) {
                     // Barra de datos estilo Excel (relleno proporcional al % de ocupación)
                     const occBarPct = Math.max(0, Math.min(100, occPct2 || 0));
+                    // Intensidad progresiva: cuanto más cerca del 100%, más oscuro/saturado el azul
+                    const occT = occBarPct / 100;
+                    const occL = Math.round(82 - occT * 40);   // luminosidad 82% → 42%
+                    const occS = Math.round(55 + occT * 20);   // saturación 55% → 75%
+                    const occBarStrong = `hsl(213, ${occS}%, ${occL}%)`;
+                    const occBarMid = `hsl(213, ${occS}%, ${Math.round(occL + (92 - occL) * 0.5)}%)`;
                     html += `<td style="padding:3px 6px; min-width:78px;" title="${occPct2.toFixed(0)}% · ${currentOcc}/${capacityVal} habs">
                         <div style="position:relative; height:20px; border-radius:2px; overflow:hidden;">
-                            <div style="position:absolute; left:0; top:2px; bottom:2px; width:${occBarPct}%; background:linear-gradient(90deg, #4f81bd 0%, #4f81bd 55%, #b8cce4 100%); border:1px solid #4f81bd; border-left:none; box-sizing:border-box;"></div>
-                            <div style="position:relative; display:flex; justify-content:flex-end; align-items:center; height:100%; gap:3px; padding-right:2px; white-space:nowrap;">
-                                <span style="font-weight:700; font-size:0.78rem; color:var(--text-main, #1e293b);">${occPct2.toFixed(0)}%</span>
-                                <span style="font-size:0.62rem; color:var(--text-muted);">(${currentOcc}/${capacityVal})</span>
+                            <div style="position:absolute; left:0; top:2px; bottom:2px; width:${occBarPct}%; background:linear-gradient(90deg, ${occBarStrong} 0%, ${occBarMid} 60%, #e3edf9 100%); border:1px solid ${occBarStrong}; box-sizing:border-box;"></div>
+                            <div style="position:relative; display:flex; justify-content:flex-end; align-items:center; height:100%; padding-right:4px; white-space:nowrap;">
+                                <span style="font-weight:800; font-size:0.8rem; color:#0f172a; text-shadow:0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff;">${occPct2.toFixed(0)}%</span>
                             </div>
                         </div>
                     </td>`;
