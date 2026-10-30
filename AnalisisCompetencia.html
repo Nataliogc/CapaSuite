@@ -22,9 +22,9 @@
     <script src="js/nav.js"></script>
     <script src="js/theme-manager.js"></script>
     <script src="js/firebase-auth.js?v=20261001-sync3"></script>
-    <script src="js/version.js?v=20261030-0110"></script>
-    <script src="js/pricing-intelligence.js?v=20261030-0110"></script>
-    <script src="js/competencia-intelligence-ui.js?v=20261030-0110"></script>
+    <script src="js/version.js?v=20261030-0246"></script>
+    <script src="js/pricing-intelligence.js?v=20261030-0246"></script>
+    <script src="js/competencia-intelligence-ui.js?v=20261030-0246"></script>
 
     <link rel="stylesheet" href="css/tokens.css">
     <link rel="stylesheet" href="css/nav.css">
@@ -4923,7 +4923,17 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 const daysOutVal = Math.ceil((targetDt.getTime() - todayDt.getTime()) / (1000 * 60 * 60 * 24));
 
                 if (cfg.occPct) {
-                    html += `<td style="text-align:center;"><span style="font-weight:700;">${occPct2.toFixed(0)}%</span> <span style="font-size:0.7rem; color:var(--text-muted);">(${currentOcc}/${capacityVal})</span></td>`;
+                    // Barra de datos estilo Excel (relleno proporcional al % de ocupación)
+                    const occBarPct = Math.max(0, Math.min(100, occPct2 || 0));
+                    html += `<td style="padding:3px 6px; min-width:78px;" title="${occPct2.toFixed(0)}% · ${currentOcc}/${capacityVal} habs">
+                        <div style="position:relative; height:20px; border-radius:2px; overflow:hidden;">
+                            <div style="position:absolute; left:0; top:2px; bottom:2px; width:${occBarPct}%; background:linear-gradient(90deg, #4f81bd 0%, #4f81bd 55%, #b8cce4 100%); border:1px solid #4f81bd; border-left:none; box-sizing:border-box;"></div>
+                            <div style="position:relative; display:flex; justify-content:flex-end; align-items:center; height:100%; gap:3px; padding-right:2px; white-space:nowrap;">
+                                <span style="font-weight:700; font-size:0.78rem; color:var(--text-main, #1e293b);">${occPct2.toFixed(0)}%</span>
+                                <span style="font-size:0.62rem; color:var(--text-muted);">(${currentOcc}/${capacityVal})</span>
+                            </div>
+                        </div>
+                    </td>`;
                 }
                 if (cfg.pickup24h) {
                     const p24Val = (pData?.h24h?.available) ? pData.h24h.diffRooms : ((activeOtbChange !== undefined && activeOtbChange !== null) ? activeOtbChange : null);
