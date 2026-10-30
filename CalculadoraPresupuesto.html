@@ -1614,17 +1614,34 @@
             }
 
             // In 2026: Official Budget is already configured and approved. Only official is valid!
-            if (currentYear === '2026') {
-                if (scTitle) scTitle.innerText = 'Presupuesto Oficial 2026';
-                if (scDesc) scDesc.innerText = 'Presupuesto oficial configurado y vigente para el ejercicio actual. Para simular y comparar escenarios, pasa a 2027.';
+            // Cualquier año con presupuesto CERRADO (bloqueado): escenarios y recomendaciones ya no aplican → solo se muestra el oficial.
+            const is2026Official = (currentYear === '2026');
+            if (is2026Official || isBudgetLocked) {
+                if (scTitle) scTitle.innerText = `Presupuesto Oficial ${currentYear}`;
+                if (scDesc) scDesc.innerText = is2026Official
+                    ? 'Presupuesto oficial configurado y vigente para el ejercicio actual. Para simular y comparar escenarios, pasa a 2027.'
+                    : `Presupuesto oficial de ${currentYear} cerrado. Los escenarios y recomendaciones se ocultan porque ya no aplican; desbloquéalo con clave si necesitas revisarlo.`;
                 if (scMatrixBtn) scMatrixBtn.style.display = 'none';
 
-                const orig = h.strategies && h.strategies.original;
-                const offRevTot = orig ? orig.rev.reduce((a, b) => a + b, 0) : currentRev.reduce((a, b) => a + b, 0);
-                const offRnTot = orig ? orig.rev.reduce((acc, v, i) => acc + (orig.adr[i] > 0 ? Math.round(v / orig.adr[i]) : 0), 0) : 0;
+                const orig = is2026Official ? (h.strategies && h.strategies.original) : null;
+                const offRevArr = orig ? orig.rev : currentRev;
+                const offAdrArr = orig ? orig.adr : currentAdr;
+                const offRevTot = offRevArr.reduce((a, b) => a + b, 0);
+                const offRnTot = offRevArr.reduce((acc, v, i) => acc + (offAdrArr[i] > 0 ? Math.round(v / offAdrArr[i]) : 0), 0);
                 const offAdr = offRnTot > 0 ? offRevTot / offRnTot : 0;
                 const offOcc = totalCap > 0 ? (offRnTot / totalCap) * 100 : 0;
                 const varVs25 = baseRevTotal > 0 ? ((offRevTot - baseRevTotal) / baseRevTotal * 100) : 0;
+                const nextYear = String(parseInt(currentYear) + 1);
+                const offDescHtml = is2026Official
+                    ? `El presupuesto de 2026 ya fue configurado y aprobado formalmente por la Dirección General (Total: <b>${formatMoney(offRevTot)}</b>). En 2026 únicamente rige este presupuesto oficial y no se admiten escenarios alternativos. Para elaborar, comparar opciones y fijar objetivos futuros, utiliza el elaborador de <b>2027</b>.`
+                    : `El presupuesto de ${currentYear} está grabado y cerrado (Total: <b>${formatMoney(offRevTot)}</b>). Al estar cerrado, la comparativa de escenarios y las recomendaciones ya no tienen sentido y se ocultan. Si necesitas modificarlo, pulsa <b>Desbloquear</b> e introduce la clave.`;
+                const nextYearAvailable = !!document.querySelector(`#yearSelector option[value="${nextYear}"]`);
+                const offActionBtn = nextYearAvailable
+                    ? `<button onclick="goToYear('${nextYear}')" class="btn btn-primary"
+                                style="background: linear-gradient(135deg, #4f46e5, #4338ca); color: #fff; font-size: 0.85rem; font-weight: 800; padding: 8px 18px; border-radius: 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35); border: none;">
+                                🚀 Elaborar Presupuesto ${nextYear} →
+                            </button>`
+                    : '';
 
                 grid.innerHTML = `
                 <div style="grid-column: 1 / -1; background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%); border: 2px solid #93c5fd; border-radius: 16px; padding: 20px 24px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.08);">
@@ -1632,34 +1649,31 @@
                         <div>
                             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
                                 <span style="background: #1e40af; color: #fff; font-size: 0.72rem; font-weight: 800; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.05em;">
-                                    🔒 OFICIAL CERRADO Y VIGENTE
+                                    🔒 OFICIAL CERRADO${is2026Official ? ' Y VIGENTE' : ''}
                                 </span>
                                 <h4 style="margin: 0; font-size: 1.15rem; color: #1e293b; font-weight: 800;">
-                                    Presupuesto Oficial 2026 (${currentHotel})
+                                    Presupuesto Oficial ${currentYear} (${currentHotel})
                                 </h4>
                             </div>
                             <p style="margin: 0; font-size: 0.85rem; color: #475569; max-width: 800px; line-height: 1.5;">
-                                El presupuesto de 2026 ya fue configurado y aprobado formalmente por la Dirección General (Total: <b>${formatMoney(offRevTot)}</b>). En 2026 únicamente rige este presupuesto oficial y no se admiten escenarios alternativos. Para elaborar, comparar opciones y fijar objetivos futuros, utiliza el elaborador de <b>2027</b>.
+                                ${offDescHtml}
                             </p>
                         </div>
                         <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                            <button onclick="openScenarioDetailModal('official_2026')" class="btn"
+                            <button onclick="openScenarioDetailModal('${is2026Official ? 'official_2026' : 'official_locked'}')" class="btn"
                                 style="background: #fff; color: #1e40af; border: 1.5px solid #bfdbfe; font-size: 0.82rem; font-weight: 700; padding: 8px 14px; border-radius: 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                                🔍 Ver Detalle Mensual 2026
+                                🔍 Ver Detalle Mensual ${currentYear}
                             </button>
-                            <button onclick="goToYear('2027')" class="btn btn-primary"
-                                style="background: linear-gradient(135deg, #4f46e5, #4338ca); color: #fff; font-size: 0.85rem; font-weight: 800; padding: 8px 18px; border-radius: 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35); border: none;">
-                                🚀 Elaborar Presupuesto 2027 →
-                            </button>
+                            ${offActionBtn}
                         </div>
                     </div>
 
-                    <!-- KPIs Summary Bar for 2026 Official -->
+                    <!-- KPIs Summary Bar for Official (closed) budget -->
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; background: #fff; padding: 14px 18px; border-radius: 12px; border: 1px solid #dbeafe;">
                         <div>
-                            <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Revenue Habitaciones 2026</div>
+                            <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Revenue Habitaciones ${currentYear}</div>
                             <div style="font-size: 1.35rem; font-weight: 800; color: #1e40af; margin-top: 2px;">${formatMoney(offRevTot)}</div>
-                            <div style="font-size: 0.72rem; color: #10b981; font-weight: 700;">+${varVs25.toFixed(1)}% vs Real 2025</div>
+                            <div style="font-size: 0.72rem; color: ${varVs25 >= 0 ? '#10b981' : '#ef4444'}; font-weight: 700;">${varVs25 >= 0 ? '+' : ''}${varVs25.toFixed(1)}% vs Real ${prevYear}</div>
                         </div>
                         <div>
                             <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase;">ADR Medio Oficial</div>
@@ -1781,6 +1795,20 @@
                     border: '#93c5fd',
                     rev: orig ? [...orig.rev] : [...currentRev],
                     adr: orig ? [...orig.adr] : [...currentAdr]
+                };
+            } else if (key === 'official_locked') {
+                // Presupuesto oficial cerrado (bloqueado) del año activo
+                sc = {
+                    key: 'official_locked',
+                    title: `Presupuesto Oficial ${currentYear} (${currentHotel})`,
+                    subtitle: '🔒 Oficial Cerrado',
+                    desc: `Presupuesto oficial de ${currentYear} grabado y cerrado. Escenarios y recomendaciones no aplican.`,
+                    isRecommended: false,
+                    color: '#1e40af',
+                    accentBg: '#eff6ff',
+                    border: '#93c5fd',
+                    rev: [...currentRev],
+                    adr: [...currentAdr]
                 };
             } else {
                 const scenarios = getScenarioList();
@@ -1930,10 +1958,11 @@
                 }).join('');
             }
 
-            // Buttons inside modal
+            // Buttons inside modal (año 2026 o presupuesto cerrado: solo lectura, sin aplicar/grabar)
+            const isReadOnlyOfficial = (currentYear === '2026' || isBudgetLocked || key === 'official_locked');
             const applyBtn = document.getElementById('scDetailApplyBtn');
             if (applyBtn) {
-                if (currentYear === '2026') {
+                if (isReadOnlyOfficial) {
                     applyBtn.innerText = '👁️ Ver en Tabla';
                     applyBtn.onclick = () => {
                         closeScenarioDetailModal();
@@ -1949,7 +1978,7 @@
             }
             const saveBtn = document.getElementById('scDetailSaveBtn');
             if (saveBtn) {
-                if (currentYear === '2026') {
+                if (isReadOnlyOfficial) {
                     saveBtn.style.display = 'none';
                 } else {
                     saveBtn.style.display = 'inline-flex';
@@ -4628,6 +4657,8 @@
 
             const isNetView = !!window.__segBudgetNetMode;
             const expandedSegs = window.__segBudgetExpandedSegs || new Set();
+            // Presupuesto cerrado: el reparto por segmento pasa a solo lectura (sin ajustes ni avisos de cuadre)
+            const segLocked = !!isBudgetLocked;
 
             const rowsHtml = segments.map((seg, idx) => {
                 const growthColor = seg.growthRevPct > 0 ? '#16a34a' : (seg.growthRevPct < 0 ? '#dc2626' : '#64748b');
@@ -4668,8 +4699,11 @@
                             ${shareHistPct}%
                         </td>
 
-                        <!-- Target Actual (Editable si bruto, reflejado si neto) -->
+                        <!-- Target Actual (Editable si bruto, reflejado si neto; solo lectura si el presupuesto está cerrado) -->
                         <td style="padding: 8px 8px; text-align: right; background: #fdf4ff; white-space: nowrap;">
+                            ${segLocked ? `
+                            <span style="font-weight: 800; font-size: 0.85rem; color: ${isNetView ? '#059669' : '#6b21a8'};">${formatInt(dispTargetRev)} €</span>
+                            ` : `
                             <div style="display: inline-flex; align-items: center; justify-content: flex-end; gap: 4px;">
                                 <input type="text" inputmode="numeric" value="${formatInt(dispTargetRev)}" 
                                     style="width: 105px; padding: 5px 8px; text-align: right; font-weight: 800; font-size: 0.85rem; color: ${isNetView ? '#059669' : '#6b21a8'}; background: #ffffff; border: 1px solid ${isNetView ? '#a7f3d0' : '#d8b4fe'}; border-radius: 6px;"
@@ -4677,9 +4711,12 @@
                                     onchange="onSegmentTargetInputChange(${idx}, 'targetRev', this.value)"
                                     title="${isNetView ? 'Producción Neta estimada' : 'Modificar ingresos brutos objetivo de este segmento'}">
                                 <span style="font-weight: 700; color: ${isNetView ? '#059669' : '#6b21a8'}; font-size: 0.82rem;">€</span>
-                            </div>
+                            </div>`}
                         </td>
                         <td style="padding: 8px 8px; text-align: right; background: #fdf4ff; white-space: nowrap;">
+                            ${segLocked ? `
+                            <span style="font-weight: 700; font-size: 0.85rem; color: #581c87;">${formatInt(seg.targetRN)} habs</span>
+                            ` : `
                             <div style="display: inline-flex; align-items: center; justify-content: flex-end; gap: 4px;">
                                 <input type="text" inputmode="numeric" value="${formatInt(seg.targetRN)}" 
                                     style="width: 75px; padding: 5px 8px; text-align: right; font-weight: 700; font-size: 0.85rem; color: #581c87; background: #ffffff; border: 1px solid #d8b4fe; border-radius: 6px;"
@@ -4687,7 +4724,7 @@
                                     onchange="onSegmentTargetInputChange(${idx}, 'targetRN', this.value)"
                                     title="Modificar habitaciones objetivo de este segmento">
                                 <span style="font-weight: 700; color: #581c87; font-size: 0.8rem;">habs</span>
-                            </div>
+                            </div>`}
                         </td>
                         <td style="padding: 10px 8px; text-align: center; font-weight: 800; color: ${isNetView ? '#059669' : '#4338ca'}; background: #fdf4ff; white-space: nowrap;">
                             ${dispTargetAdr.toFixed(2)} €
@@ -4796,6 +4833,14 @@
                             </p>
                         </div>
                         <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            ${segLocked ? `
+                            <span style="background:#fee2e2; color:#991b1b; padding:6px 12px; border-radius:8px; font-weight:700; font-size:0.78rem; display:inline-flex; align-items:center; gap:6px; border:1px solid #fecaca;" title="El presupuesto de ${year} está cerrado: el reparto por segmento es de solo lectura">
+                                🔒 Reparto Oficial Cerrado
+                            </span>
+                            <button onclick="promptUnlockBudget()" class="btn" style="background:#fef3c7; color:#92400e; border:1px solid #fde68a; padding:6px 12px; font-size:0.78rem; font-weight:700; border-radius:8px; cursor:pointer;">
+                                🔓 Desbloquear
+                            </button>
+                            ` : `
                             ${balanceStatusBadge}
                             <button onclick="autoBalanceSegmentTargets()" class="btn" style="background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; padding: 6px 12px; border-radius: 8px; font-weight: 700; font-size: 0.78rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="Ajusta proporcionalmente los segmentos para que sumen exactamente el 100% del objetivo del mes">
                                 ⚖️ Auto-Equilibrar al 100%
@@ -4806,6 +4851,7 @@
                             <button onclick="saveCustomSegmentBudget()" class="btn" style="background: #4f46e5; color: #ffffff; border: none; padding: 6px 14px; border-radius: 8px; font-weight: 700; font-size: 0.78rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 6px rgba(79, 70, 229, 0.3);" title="Guardar este reparto para que persista al consultar o exportar el presupuesto">
                                 💾 Guardar Reparto
                             </button>
+                            `}
                             <button onclick="manualSyncNexusGroups()" class="btn" style="background: #0284c7; color: #ffffff; border: none; padding: 6px 14px; border-radius: 8px; font-weight: 700; font-size: 0.78rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);" title="Enviar y sincronizar los objetivos fijados para el segmento Grupos con Nexus Groups">
                                 🎯 Sincronizar Nexus Groups
                             </button>
