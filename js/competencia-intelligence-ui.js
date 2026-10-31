@@ -722,14 +722,14 @@
             };
 
             const bgtHtml = bgt ? `
-                <div style="background:var(--bg-deep); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:12px;">
+                <div style="background:var(--bg-deep); border:1px solid var(--border); border-radius:14px; padding:12px 14px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                         <span style="font-weight:800; font-size:0.75rem; color:var(--primary); text-transform:uppercase;">
                             🎯 Contexto Presupuestario Mensual (${bgt.monthName} ${stayYear} · ${currentHotel})
                         </span>
                         <span style="font-size:0.7rem; color:var(--text-muted); font-weight:600;">Escenario: ${bgt.scenario}</span>
                     </div>
-                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:8px;">
+                    <div style="display:grid; grid-template-columns:1fr 1.2fr; gap:8px;">
                         <div style="background:var(--bg-surface); padding:8px 10px; border-radius:6px; border-left:3px solid var(--primary);">
                             <div style="font-size:0.68rem; color:var(--text-muted); font-weight:700;">OBJETIVO MENSUAL</div>
                             <div style="font-size:1.05rem; font-weight:800; color:var(--text-main); margin:1px 0;">${bgt.targetRev.toLocaleString('es-ES')} €</div>
@@ -744,6 +744,8 @@
                     </div>
                 </div>
             ` : '';
+            const bgtCont = document.getElementById('dayDetailBudgetContainer');
+            if (bgtCont) bgtCont.innerHTML = bgtHtml;
 
             recCont.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
@@ -778,7 +780,7 @@
                     </div>
                 </div>
 
-                ${bgtHtml}
+                ${document.getElementById('dayDetailBudgetContainer') ? '' : bgtHtml}
 
                 <!-- DESGLOSE: RANGO COMERCIAL vs BANDA MATEMÁTICA -->
                 <div style="background:var(--bg-deep); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:12px;">
