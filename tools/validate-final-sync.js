@@ -610,15 +610,15 @@ async function runValidationProtocol() {
     console.log('\n--- 6. PROTECCIÓN DE DATOS Y AISLAMIENTO ---');
     try {
         // Verificar que existe la copia de respaldo intacta
-        const backupExists = fs.existsSync('js/firebase-auth.backup-v2.7.32.js');
-        const backupContent = backupExists ? fs.readFileSync('js/firebase-auth.backup-v2.7.32.js', 'utf8') : '';
+        const backupExists = fs.existsSync('_backup/firebase-auth.backup-v2.7.32.js');
+        const backupContent = backupExists ? fs.readFileSync('_backup/firebase-auth.backup-v2.7.32.js', 'utf8') : '';
         const okBackup = backupExists && backupContent.length > 5000;
 
         report(
             'Fase 6.1',
             'Copia de seguridad recuperable v2.7.32 verificada en disco',
             okBackup,
-            `Archivo js/firebase-auth.backup-v2.7.32.js disponible (${backupContent.length} bytes).`
+            `Archivo _backup/firebase-auth.backup-v2.7.32.js disponible (${backupContent.length} bytes).`
         );
 
         // Verificar particionamiento estricto por UID

@@ -13,3 +13,5 @@ debug_pdf_text.txt
 .agent/
 .antigravityignore
 js/firebase-config-env.js
+
+*.backup*

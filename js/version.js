@@ -8,7 +8,7 @@
 (function () {
     'use strict';
 
-    const APP_VERSION = '2.7.36';
+    const APP_VERSION = '2.7.34';
     const BUILD_DATE = '31/10/2026';
     const BUILD_TIMESTAMP = '2026-10-31 03:26';
 
