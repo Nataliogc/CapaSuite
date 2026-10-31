@@ -229,30 +229,42 @@
 .logout-btn {
     display: inline-flex !important;
     align-items: center !important;
-    color: #ef4444 !important;
-    background: rgba(239, 68, 68, 0.08) !important;
-    border: 1px solid rgba(239, 68, 68, 0.25) !important;
-    border-radius: 6px !important;
-    padding: 2px 7px !important;
-    font-size: 0.67rem !important;
-    font-weight: 800 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.5px !important;
+    justify-content: center !important;
+    color: #94a3b8 !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 50% !important;
+    width: 24px !important;
+    height: 24px !important;
+    padding: 0 !important;
+    font-size: 0.75rem !important;
+    text-decoration: none !important;
     cursor: pointer !important;
-    opacity: 0.9 !important;
+    opacity: 0.75 !important;
     transition: all 0.2s ease !important;
     white-space: nowrap !important;
     user-select: none !important;
     margin-left: 2px !important;
+    flex-shrink: 0 !important;
+}
+
+[data-theme="light"] .logout-btn {
+    color: #64748b !important;
+}
+
+.logout-btn svg {
+    width: 14px !important;
+    height: 14px !important;
+    stroke: currentColor !important;
+    display: block !important;
 }
 
 .logout-btn:hover {
     opacity: 1 !important;
-    background: #ef4444 !important;
-    color: #ffffff !important;
-    border-color: #ef4444 !important;
-    transform: translateY(-1px) !important;
-    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3) !important;
+    background: rgba(239, 68, 68, 0.12) !important;
+    color: #ef4444 !important;
+    transform: translateX(1px) !important;
+    box-shadow: none !important;
 }
 
 /* ─── SYNC STATUS BADGE ─────────────────────────────────── */
