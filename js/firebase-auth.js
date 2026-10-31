@@ -195,13 +195,26 @@ function syncStatus(message, failed = false) {
     if (!status && anchor && anchor.parentNode) {
         status = document.createElement('span');
         status.id = 'capasuiteSyncStatus';
-        status.style.cssText = 'font-size:11px;margin-left:8px;';
         status.setAttribute('role', 'status');
         anchor.parentNode.insertBefore(status, anchor.nextSibling);
     }
     if (status) {
-        status.textContent = message;
-        status.style.color = failed ? '#dc2626' : '#64748b';
+        status.setAttribute('title', message);
+        let display = message;
+        const isPending = /guardando|descargando|comprobando|pendientes/i.test(message);
+        if (/sincronizado|descargados|confirmados/i.test(message) && !failed) {
+            display = '☁️ Conectado';
+            status.className = 'sync-badge sync-synced';
+        } else if (isPending && !failed) {
+            display = '⏳ Guardando…';
+            status.className = 'sync-badge sync-pending';
+        } else if (failed) {
+            display = '⚠️ Offline';
+            status.className = 'sync-badge sync-failed';
+        } else {
+            status.className = 'sync-badge';
+        }
+        status.textContent = display;
     }
 }
 
@@ -484,7 +497,7 @@ async function downloadFromCloud() {
             const localTime = localVersions[field] || 0;
             const localExists = CapaStorage.getItem(key) != null;
 
-            if (remoteTime && (!localExists || remoteTime > localTime)) {
+            if (!localExists || (remoteTime && remoteTime > localTime)) {
                 fieldsToFetch.push(field);
             }
         }
