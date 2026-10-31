@@ -205,18 +205,29 @@
     // =========================================================================
     // 2. GESTIÓN MULTI-HOTEL Y MULTI-AÑO DE MATRICES DE TARIFAS BASE
     // =========================================================================
+    let _memMasterMatrixRaw = null;
+    let _memMasterMatrixDB = null;
+
     function getMasterMatrixDB() {
         const raw = getStoredItem(STORAGE_KEY_MASTER_MATRIX);
+        if (_memMasterMatrixDB && _memMasterMatrixRaw === raw) return _memMasterMatrixDB;
+        _memMasterMatrixRaw = raw;
         if (raw) {
             try {
                 const parsed = JSON.parse(raw);
-                if (parsed && typeof parsed === 'object') return parsed;
+                if (parsed && typeof parsed === 'object') {
+                    _memMasterMatrixDB = parsed;
+                    return parsed;
+                }
             } catch (e) {}
         }
-        return {};
+        _memMasterMatrixDB = {};
+        return _memMasterMatrixDB;
     }
 
     function saveMasterMatrixDB(db) {
+        _memMasterMatrixRaw = null;
+        _memMasterMatrixDB = null;
         if (!db || typeof db !== 'object') return false;
         return setStoredItem(STORAGE_KEY_MASTER_MATRIX, JSON.stringify(db));
     }
@@ -305,18 +316,29 @@
     // =========================================================================
     // 3. GESTIÓN DE ESCALADOS POR OCUPACIÓN (POR HOTEL, AÑO Y MES)
     // =========================================================================
+    let _memMasterTiersRaw = null;
+    let _memMasterTiersDB = null;
+
     function getMasterTiersDB() {
         const raw = getStoredItem(STORAGE_KEY_MASTER_TIERS);
+        if (_memMasterTiersDB && _memMasterTiersRaw === raw) return _memMasterTiersDB;
+        _memMasterTiersRaw = raw;
         if (raw) {
             try {
                 const parsed = JSON.parse(raw);
-                if (parsed && typeof parsed === 'object') return parsed;
+                if (parsed && typeof parsed === 'object') {
+                    _memMasterTiersDB = parsed;
+                    return parsed;
+                }
             } catch(e) {}
         }
-        return {};
+        _memMasterTiersDB = {};
+        return _memMasterTiersDB;
     }
 
     function saveMasterTiersDB(db) {
+        _memMasterTiersRaw = null;
+        _memMasterTiersDB = null;
         if (!db || typeof db !== 'object') return false;
         return setStoredItem(STORAGE_KEY_MASTER_TIERS, JSON.stringify(db));
     }
@@ -367,18 +389,29 @@
     // =========================================================================
     // 4. EXCEPCIONES TARIFARIAS Y FECHAS ESPECIALES
     // =========================================================================
+    let _memExceptionsRaw = null;
+    let _memExceptionsDB = null;
+
     function getPricingExceptions() {
         const raw = getStoredItem(STORAGE_KEY_EXCEPTIONS);
+        if (_memExceptionsDB && _memExceptionsRaw === raw) return _memExceptionsDB;
+        _memExceptionsRaw = raw;
         if (raw) {
             try {
                 const parsed = JSON.parse(raw);
-                if (parsed && typeof parsed === 'object') return parsed;
+                if (parsed && typeof parsed === 'object') {
+                    _memExceptionsDB = parsed;
+                    return parsed;
+                }
             } catch (e) {}
         }
-        return {};
+        _memExceptionsDB = {};
+        return _memExceptionsDB;
     }
 
     function savePricingExceptions(exceptions) {
+        _memExceptionsRaw = null;
+        _memExceptionsDB = null;
         if (!exceptions || typeof exceptions !== 'object') return false;
         return setStoredItem(STORAGE_KEY_EXCEPTIONS, JSON.stringify(exceptions));
     }
@@ -640,14 +673,34 @@
         return compact;
     }
 
+    let _memSnapshotsRaw = null;
+    let _memSnapshotsDB = null;
+    let _memPickupCache = new Map();
+
+    function invalidateSnapshotsCache() {
+        _memSnapshotsRaw = null;
+        _memSnapshotsDB = null;
+        _memPickupCache.clear();
+    }
+
     function getSnapshotsDB() {
         const raw = getStoredItem(STORAGE_KEY_SNAPSHOTS);
+        if (_memSnapshotsDB && _memSnapshotsRaw === raw) {
+            return _memSnapshotsDB;
+        }
+        _memSnapshotsRaw = raw;
         const result = { Guadiana: {}, Cumbria: {} };
-        if (!raw) return result;
+        if (!raw) {
+            _memSnapshotsDB = result;
+            return result;
+        }
 
         try {
             const parsed = JSON.parse(raw);
-            if (!parsed || typeof parsed !== 'object') return result;
+            if (!parsed || typeof parsed !== 'object') {
+                _memSnapshotsDB = result;
+                return result;
+            }
 
             ['Guadiana', 'Cumbria'].forEach(hKey => {
                 const hotelObj = parsed[hKey];
@@ -670,10 +723,12 @@
         } catch (e) {
             console.warn('[PricingIntelligence] Error al leer snapshots DB:', e);
         }
+        _memSnapshotsDB = result;
         return result;
     }
 
     function saveSnapshotsDB(db) {
+        invalidateSnapshotsCache();
         if (!db || typeof db !== 'object') return false;
 
         const compactDB = { Guadiana: {}, Cumbria: {} };
@@ -845,6 +900,11 @@
 
     function calculateDailyPickup(hotelName, dateISO, currentMetrics = null, referenceDate = new Date()) {
         const hKey = normalizeHotel(hotelName);
+        const refTime = (referenceDate instanceof Date) ? referenceDate.getTime() : new Date(referenceDate).getTime();
+        const cacheKey = hKey + '|' + dateISO + '|' + (currentMetrics ? (currentMetrics.rooms + '_' + currentMetrics.otbChange + '_' + currentMetrics.occupancyPct) : '') + '|' + Math.floor(refTime / 3600000);
+        if (_memPickupCache.has(cacheKey)) {
+            return _memPickupCache.get(cacheKey);
+        }
         const result = {
             dateISO: dateISO,
             current: { rooms: 0, revenue: 0, adr: 0, occPct: 0 },
@@ -903,8 +963,6 @@
             }
             return result;
         }
-
-        const refTime = (referenceDate instanceof Date) ? referenceDate.getTime() : new Date(referenceDate).getTime();
         const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
         const horizons = [
@@ -993,7 +1051,20 @@
             }
         });
 
+        if (typeof _memPickupCache !== "undefined" && typeof cacheKey !== "undefined") {
+            _memPickupCache.set(cacheKey, result);
+        }
         return result;
+    }
+
+    function invalidatePricingCache() {
+        _memMasterMatrixRaw = null;
+        _memMasterMatrixDB = null;
+        _memMasterTiersRaw = null;
+        _memMasterTiersDB = null;
+        _memExceptionsRaw = null;
+        _memExceptionsDB = null;
+        if (typeof invalidateSnapshotsCache === "function") invalidateSnapshotsCache();
     }
 
     // =========================================================================
@@ -2027,7 +2098,9 @@
         evaluateOccupancyForecast,
         evaluateDailyRecommendation,
         aggregateByDayOfWeek,
-        aggregateMonthSummary
+        aggregateMonthSummary,
+        invalidatePricingCache,
+        invalidateSnapshotsCache
     };
 
     if (typeof module === 'object' && module.exports) {
