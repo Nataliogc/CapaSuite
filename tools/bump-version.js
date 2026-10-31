@@ -102,7 +102,7 @@ function run() {
         let modified = false;
 
         // Reemplazar ?v=... en scripts clave
-        const scriptsToBust = ['version.js', 'pricing-intelligence.js', 'competencia-intelligence-ui.js'];
+        const scriptsToBust = ['version.js', 'pricing-intelligence.js', 'competencia-intelligence-ui.js', 'nav.js', 'firebase-auth.js'];
         scriptsToBust.forEach(script => {
             const regex = new RegExp(`(src=["'][^"']*${script}\\?v=)[^"']+`, 'g');
             if (regex.test(content)) {
@@ -116,6 +116,15 @@ function run() {
             updatedCount++;
         }
     });
+
+    // Actualizar CACHE_NAME en service-worker.js para forzar actualización de PWA y vaciado de caché
+    const swPath = path.join(ROOT_DIR, 'service-worker.js');
+    if (fs.existsSync(swPath)) {
+        let swContent = fs.readFileSync(swPath, 'utf8');
+        swContent = swContent.replace(/const\s+CACHE_NAME\s*=\s*['"][^'"]+['"]/, `const CACHE_NAME = 'capasuite-v${nextVersion}'`);
+        fs.writeFileSync(swPath, swContent, 'utf8');
+        console.log(`📦 Service Worker actualizado con CACHE_NAME: 'capasuite-v${nextVersion}'`);
+    }
 
     console.log(`✨ Cache-busting sincronizado en ${updatedCount} archivos HTML.`);
     console.log('✅ Incremento de versión completado con éxito.');
