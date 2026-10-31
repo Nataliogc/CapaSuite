@@ -350,14 +350,10 @@
                                                     actCls = 'subir';
                                                     actLabel = 'Subir Tarifa';
                                                     actIcon = '▲';
-                                                } else if (r.action === 'REVISAR BAJADA') {
-                                                    actCls = 'bajar';
-                                                    actLabel = 'Revisar Bajada';
-                                                    actIcon = '▼';
-                                                } else if (r.action === 'REVISIÓN MANUAL') {
+                                                } else if (r.action === 'REVISAR' || r.action === 'REVISIÓN MANUAL' || r.action === 'REVISAR BAJADA') {
                                                     actCls = 'manual';
-                                                    actLabel = 'Revisión Manual';
-                                                    actIcon = '⚙️';
+                                                    actLabel = 'Revisar';
+                                                    actIcon = '⚠️';
                                                 } else {
                                                     actCls = 'mantener';
                                                     actLabel = 'Mantener';
@@ -712,8 +708,9 @@
         const recCont = document.getElementById('dayDetailRecContainer');
         if (recCont) {
             const isPendingDem = (rec.demandStatus === 'PENDIENTE DE EVALUACIÓN DE DEMANDA' || rec.triggerText?.includes('Pend. Demanda'));
-            const actCls = isPendingDem ? 'alerta' : (rec.action === 'SUBIR' ? 'subir' : (rec.action === 'REVISAR BAJADA' ? 'bajar' : (rec.action === 'REVISIÓN MANUAL' ? 'manual' : 'mantener')));
-            const actLabel = isPendingDem ? '⚠️ PENDIENTE DE EVALUACIÓN DE DEMANDA' : rec.action;
+            const isRevisar = (rec.action === 'REVISAR' || rec.action === 'REVISIÓN MANUAL' || rec.action === 'REVISAR BAJADA');
+            const actCls = isPendingDem ? 'alerta' : (rec.action === 'SUBIR' ? 'subir' : (isRevisar ? 'manual' : 'mantener'));
+            const actLabel = isPendingDem ? '⚠️ PENDIENTE DE EVALUACIÓN DE DEMANDA' : (isRevisar ? 'REVISAR' : rec.action);
             const diffBadge = (rec.diffAmount !== 0) 
                 ? `<span style="font-size:0.95rem; font-weight:700; color:${rec.diffAmount > 0 ? '#10b981' : '#f59e0b'};">(${rec.diffAmount > 0 ? '+' : ''}${rec.diffAmount} € / ${rec.diffPct.toFixed(1)}%)</span>` 
                 : '';
@@ -825,24 +822,22 @@
         // Configurar botón de aplicar recomendación (Acciones sin efecto corregidas)
         const applyBtn = document.getElementById('dayDetailApplyBtn');
         if (applyBtn) {
-            if (rec.diffAmount === 0 || rec.proposedPrice === currentPrice) {
-                applyBtn.innerText = `✓ Tarifa ya aplicada (${currentPrice > 0 ? currentPrice + ' €' : rec.proposedPrice + ' €'})`;
+            if (rec.action === 'REVISAR' || rec.action === 'REVISIÓN MANUAL') {
+                applyBtn.innerText = `⚠️ Requiere Revisión Comercial`;
                 applyBtn.disabled = true;
                 applyBtn.style.background = '#64748b';
                 applyBtn.style.cursor = 'default';
                 applyBtn.style.opacity = '0.75';
-                applyBtn.title = 'La tarifa vigente coincide con el precio recomendado. No procede cambio de precio.';
+                applyBtn.title = 'Requiere revisión comercial antes de cualquier modificación. No se aplican cambios automáticos.';
                 applyBtn.onclick = null;
-            } else if (rec.action === 'REVISIÓN MANUAL') {
-                applyBtn.innerText = `⚠️ Requiere Intervención Manual en PMS`;
-                applyBtn.disabled = false;
-                applyBtn.style.background = '#f59e0b';
-                applyBtn.style.cursor = 'pointer';
-                applyBtn.style.opacity = '1';
-                applyBtn.title = 'Requiere revisión comercial antes de cualquier modificación.';
-                applyBtn.onclick = function() {
-                    alert(`⚠️ REVISIÓN MANUAL:\nFecha: ${dateISO}\nTarifa Vigente: ${currentPrice} €\nBAR Base: ${rec.baseBar} €\nDiagnóstico: ${rec.triggerText}\n\nLas bajadas automáticas están bloqueadas por seguridad. Revisa la situación comercial en el PMS antes de modificar la tarifa.`);
-                };
+            } else if (rec.diffAmount === 0 || rec.proposedPrice === currentPrice) {
+                applyBtn.innerText = `✓ Tarifa vigente conservada (${currentPrice > 0 ? currentPrice + ' €' : rec.proposedPrice + ' €'})`;
+                applyBtn.disabled = true;
+                applyBtn.style.background = '#64748b';
+                applyBtn.style.cursor = 'default';
+                applyBtn.style.opacity = '0.75';
+                applyBtn.title = 'La tarifa propuesta coincide con la vigente. No procede cambio de precio.';
+                applyBtn.onclick = null;
             } else {
                 applyBtn.innerText = `Aplicar Precio Recomendado (${rec.proposedPrice} €)`;
                 applyBtn.disabled = false;

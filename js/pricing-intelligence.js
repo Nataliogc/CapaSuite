@@ -1017,19 +1017,53 @@
             net = gross - cancel;
         }
 
-        const p24h = (pickupData?.h24h?.available) ? pickupData.h24h.diffRooms : (net !== null ? net : (instantPickup || 0));
-        const p7d = (pickupData?.d7?.available) ? pickupData.d7.diffRooms : (net !== null ? net : (instantPickup || 0));
-        const p14d = (pickupData?.d14?.available) ? pickupData.d14.diffRooms : null;
-        const p30d = (pickupData?.d30?.available) ? pickupData.d30.diffRooms : null;
-
-        const bestPickup = Math.max(p24h || 0, p7d || 0, net || 0, instantPickup || 0);
+        const p24h = (pickupData?.h24h?.available && pickupData.h24h.diffRooms !== null) 
+            ? Number(pickupData.h24h.diffRooms) 
+            : (net !== null ? net : (instantPickup !== null ? instantPickup : null));
+            
+        const p7d = (pickupData?.d7?.available && pickupData.d7.diffRooms !== null) 
+            ? Number(pickupData.d7.diffRooms) 
+            : null;
+            
+        const p14d = (pickupData?.d14?.available && pickupData.d14.diffRooms !== null) 
+            ? Number(pickupData.d14.diffRooms) 
+            : null;
+            
+        const p30d = (pickupData?.d30?.available && pickupData.d30.diffRooms !== null) 
+            ? Number(pickupData.d30.diffRooms) 
+            : null;
 
         // Histórico suficiente: existen snapshots registrados o comparativas explícitas
         const hasSufficientHistory = !!(
-            (pickupData && (pickupData.h24h?.available || pickupData.d7?.available || (pickupData.snapshotsCount && pickupData.snapshotsCount >= 2))) ||
+            (pickupData && ((pickupData.h24h?.available && pickupData.h24h.diffRooms !== null) || 
+                            (pickupData.d7?.available && pickupData.d7.diffRooms !== null) || 
+                            (pickupData.snapshotsCount && pickupData.snapshotsCount >= 2))) ||
             (otbChange !== undefined && otbChange !== null) ||
-            (gross !== null && cancel !== null)
+            (gross !== null && cancel !== null) ||
+            (net !== null)
         );
+
+        const candidatePickups = [];
+        if (p24h !== null) candidatePickups.push(p24h);
+        if (p7d !== null) candidatePickups.push(p7d);
+        if (net !== null) candidatePickups.push(net);
+        if (instantPickup !== null) candidatePickups.push(instantPickup);
+
+        const primaryPickup = (p24h !== null) ? p24h : ((net !== null) ? net : (instantPickup !== null ? instantPickup : null));
+        const bestPickup = candidatePickups.length > 0 ? Math.max(...candidatePickups) : 0;
+        const minPickup = candidatePickups.length > 0 ? Math.min(...candidatePickups) : 0;
+
+        // Clasificación estricta de pickup requerida por la regla 5:
+        // Diferenciar: Pickup positivo real, Pickup cero confirmado, Pickup negativo real, Histórico insuficiente.
+        const isNegative = hasSufficientHistory && (
+            (primaryPickup !== null && primaryPickup < 0) || 
+            (minPickup < 0) || 
+            (cancel !== null && cancel > 0 && (gross === null || gross < cancel))
+        );
+        const isConfirmedZero = hasSufficientHistory && !isNegative && (
+            (primaryPickup === 0) || (candidatePickups.length > 0 && candidatePickups.every(v => v === 0))
+        );
+        const isPositive = hasSufficientHistory && !isNegative && (bestPickup > 0);
 
         const hotelScale = capacity / 100; // Normalización por tamaño del establecimiento (1.08 Guadiana, 0.59 Cumbria)
         let referenceVelocity = 1.0 * hotelScale;
@@ -1047,19 +1081,19 @@
 
         const pickupPressure = (availableRooms > 0) ? (bestPickup / availableRooms) : 0;
 
-        const isFavorable = (bestPickup > 0) && (
+        const isFavorable = isPositive && !isNegative && (
             (bestPickup >= referenceVelocity) ||
             (pickupPressure >= 0.12 && bestPickup >= 1)
         );
 
         const isWeak = hasSufficientHistory && (
-            (bestPickup <= 0) || (daysOut <= 30 && bestPickup < (referenceVelocity * 0.5))
+            isNegative || isConfirmedZero || (daysOut <= 30 && bestPickup < (referenceVelocity * 0.5))
         );
 
         return {
             gross,
             cancellations: cancel,
-            net: net !== null ? net : bestPickup,
+            net: net !== null ? net : (primaryPickup !== null ? primaryPickup : bestPickup),
             p24h,
             p7d,
             p14d,
@@ -1070,6 +1104,9 @@
             expectedVelocity: referenceVelocity, // Retrocompatibilidad
             isFavorable,
             isWeak,
+            isNegative,
+            isConfirmedZero,
+            isPositive,
             hasSufficientHistory
         };
     }
@@ -1216,7 +1253,7 @@
                 dateISO,
                 hotelName,
                 year: yearNum,
-                action: 'REVISIÓN MANUAL',
+                action: 'REVISAR',
                 baseBar,
                 barVigente,
                 barObjetivo: baseBar,
@@ -1381,15 +1418,16 @@
             reasons.push('Sin tarifas observables en el set competitivo de Expedia. Referencia de mercado no disponible.');
         }
 
-        // --- SUB-CASO A: BAR VIGENTE INFERIOR A BAR BASE (Suelo inviolable) ---
+        // --- SUB-CASO A: BAR VIGENTE INFERIOR A BAR BASE (Suelo oficial) ---
         if (barVigente < baseBar) {
-            action = 'SUBIR';
-            proposedPrice = baseBar;
-            triggerText = `Alinear a Base (${baseBar}€)`;
-            demandStatus = 'POR DEBAJO DE BAR BASE';
+            action = 'REVISAR';
+            proposedPrice = barVigente; // No alterar precio automáticamente
+            triggerText = '⚠️ REVISAR — TARIFA INFERIOR A BAR BASE';
+            demandStatus = 'TARIFA INFERIOR A BAR BASE';
             isCommerciallyOptimal = false;
-            reasons.push(`Tarifa vigente (${barVigente} €) por debajo de la BAR base oficial de la fecha (${baseBar} €).`);
-            reasons.push(`Alinear tarifa a la BAR base (${baseBar} €); no se admiten descuentos automáticos que perforen el suelo.`);
+            reasons.push(`Tarifa vigente (${barVigente} €) inferior a la BAR base oficial de la fecha (${baseBar} €).`);
+            reasons.push(`No recomendar subida automática. Verificar si la diferencia responde a una excepción comercial, promoción autorizada, tarifa manual o error de configuración en PMS.`);
+            reasons.push(`Solo proceder a alinear la tarifa con la BAR base (${baseBar} €) tras confirmar que no existe una excepción comercial válida aprobada.`);
         }
         // --- SUB-CASO B: OCUPACIÓN DEL 0 % AL 50 % ---
         else if (occTierCheck <= 50) {
@@ -1397,7 +1435,7 @@
             const hasCompRisk = (marketAvg > 0 && barVigente > (marketAvg * 1.25) && pickupMetrics.isWeak && daysOut <= 45);
 
             if (hasCompRisk) {
-                action = 'REVISIÓN MANUAL';
+                action = 'REVISAR';
                 proposedPrice = barVigente; // NUNCA proponer bajada automática
                 triggerText = '⚠️ REVISAR TARIFA (Competitividad)';
                 demandStatus = 'REVISAR COMPETITIVIDAD';
@@ -1406,7 +1444,7 @@
                 reasons.push(`Pick-up débil o nulo con antelación de ${daysOut} días. Posible pérdida de competitividad en captación.`);
                 reasons.push(`Bajadas automáticas bloqueadas: MANTENER tarifa en ${barVigente} € y someter a REVISIÓN COMERCIAL para valorar promociones segmentadas antes de alterar la tarifa pública.`);
             } else if (daysOut >= 0 && daysOut <= 7 && pickupMetrics.isWeak) {
-                action = 'REVISIÓN MANUAL';
+                action = 'REVISAR';
                 proposedPrice = barVigente;
                 triggerText = 'REVISAR (Última Hora)';
                 demandStatus = 'REVISAR PROMOCIÓN';
@@ -1438,7 +1476,14 @@
         }
         // --- SUB-CASO C: OCUPACIÓN DEL 51 % AL 60 % (Condicionada a pickup y demanda favorables) ---
         else if (occTierCheck <= 60) {
-            if (pickupMetrics.isFavorable) {
+            if (pickupMetrics.isNegative) {
+                action = 'MANTENER';
+                proposedPrice = barVigente;
+                triggerText = 'MANTENER (Pickup Negativo)';
+                demandStatus = 'REVISAR PICKUP NEGATIVO';
+                isCommerciallyOptimal = true;
+                reasons.push(`Ocupación en ${effectiveOcc.toFixed(0)}% (tramo 51–60%), pero con pickup negativo reciente. Las cancelaciones no justifican subida condicional (+5%). MANTENER tarifa vigente (${barVigente} €).`);
+            } else if (pickupMetrics.isFavorable && !pickupMetrics.isNegative) {
                 if (barVigente < barObjetivo) {
                     action = 'SUBIR';
                     proposedPrice = barObjetivo;
@@ -1466,19 +1511,35 @@
         }
         // --- SUB-CASO D: OCUPACIÓN DEL 61 % AL 80 % (Escalado orientativo 13% o 21%) ---
         else if (occTierCheck <= 80) {
-            if (pickupMetrics.isWeak && daysOut > 14) {
+            if (pickupMetrics.isNegative) {
+                action = 'MANTENER';
+                proposedPrice = barVigente;
+                triggerText = 'MANTENER (Pickup Negativo)';
+                demandStatus = 'REVISAR PICKUP NEGATIVO';
+                isCommerciallyOptimal = true;
+                reasons.push(`Ocupación en ${effectiveOcc.toFixed(0)}% (tramo ${tierLabel}), pero con pickup negativo (${(pickupMetrics.p24h !== null && pickupMetrics.p24h < 0) ? pickupMetrics.p24h : pickupMetrics.net} RN). Las cancelaciones no justifican subida tarifaria sin demanda confirmada o inventario crítico. MANTENER tarifa vigente (${barVigente} €).`);
+            } else if (pickupMetrics.isWeak && daysOut > 14) {
                 action = 'MANTENER';
                 proposedPrice = barVigente;
                 triggerText = 'MANTENER (Demanda Débil)';
                 demandStatus = 'REVISAR DEMANDA';
                 reasons.push(`Ocupación en ${effectiveOcc.toFixed(0)}% (tramo ${tierLabel}), pero pick-up débil. MANTENER tarifa vigente (${barVigente} €) y revisar demanda.`);
             } else if (barVigente < barObjetivo) {
-                action = 'SUBIR';
-                proposedPrice = barObjetivo;
-                triggerText = `📈 Evaluar +${incPct}% (${barObjetivo}€)`;
-                demandStatus = `SUBIDA ORIENTATIVA +${incPct}%`;
-                reasons.push(`Ocupación en ${effectiveOcc.toFixed(0)}% (tramo ${tierLabel}).`);
-                reasons.push(`Escalado orientativo (+${incPct}% sobre BAR base ${baseBar} € = ${barObjetivo} €) con demanda favorable. Tarifa vigente (${barVigente} €) inferior al objetivo.`);
+                if (pickupMetrics.isFavorable || (daysOut <= 14 && !pickupMetrics.isWeak && !pickupMetrics.isNegative)) {
+                    action = 'SUBIR';
+                    proposedPrice = barObjetivo;
+                    triggerText = `📈 Evaluar +${incPct}% (${barObjetivo}€)`;
+                    demandStatus = `SUBIDA ORIENTATIVA +${incPct}%`;
+                    reasons.push(`Ocupación en ${effectiveOcc.toFixed(0)}% (tramo ${tierLabel}).`);
+                    reasons.push(`Escalado orientativo (+${incPct}% sobre BAR base ${baseBar} € = ${barObjetivo} €) con demanda favorable. Tarifa vigente (${barVigente} €) inferior al objetivo.`);
+                } else {
+                    action = 'MANTENER';
+                    proposedPrice = barVigente;
+                    triggerText = 'MANTENER (Evaluar Demanda)';
+                    demandStatus = 'EVALUAR DEMANDA';
+                    isCommerciallyOptimal = true;
+                    reasons.push(`Ocupación en ${effectiveOcc.toFixed(0)}% (tramo ${tierLabel}). BAR base: ${baseBar} €. BAR objetivo: ${barObjetivo} € (+${incPct}%). MANTENER ${barVigente} € hasta confirmar mayor tracción.`);
+                }
             } else {
                 action = 'MANTENER';
                 proposedPrice = barVigente;
@@ -1490,8 +1551,15 @@
         }
         // --- SUB-CASO E: OCUPACIÓN DEL 81 % AL 95 % (Proteger inventario / limitar descuentos) ---
         else if (occTierCheck <= 95) {
-            if (barVigente < barObjetivo) {
-                if (pickupMetrics.isFavorable || daysOut <= 14) {
+            if (pickupMetrics.isNegative && availableRooms > 5) {
+                action = 'MANTENER';
+                proposedPrice = barVigente;
+                triggerText = '🔒 MANTENER (Pickup Negativo)';
+                demandStatus = 'REVISAR PICKUP NEGATIVO';
+                isCommerciallyOptimal = true;
+                reasons.push(`Alta ocupación en ${effectiveOcc.toFixed(0)}% (tramo ${tierLabel} · ${availableRooms} habs libres), pero con pickup negativo reciente. MANTENER tarifa vigente (${barVigente} €).`);
+            } else if (barVigente < barObjetivo) {
+                if ((pickupMetrics.isFavorable || (daysOut <= 14 && availableRooms <= 10)) && !pickupMetrics.isNegative) {
                     action = 'SUBIR';
                     proposedPrice = barObjetivo;
                     triggerText = (effectiveOcc <= 90) ? `🔒 Proteger +${incPct}% (${barObjetivo}€)` : `🔒 Limitar Desc. +${incPct}% (${barObjetivo}€)`;
@@ -1517,32 +1585,38 @@
             }
             reasons.push('Revisar y limitar tarifas promocionales, descuentos y canales de menor rentabilidad.');
         }
-        // --- SUB-CASO F: OCUPACIÓN MÁS DEL 95 % Y MENOS DEL 100 % (Maximizar ingresos +77%) ---
+        // --- SUB-CASO F: OCUPACIÓN MÁS DEL 95 % Y MENOS DEL 100 % (Proteger últimas plazas) ---
         else {
+            // El escalado del +77% es una referencia comercial orientativa, no una instrucción obligatoria.
+            // Evaluar antelación, pickup, tarifas vigentes, demanda pendiente y posibles eventos.
+            const hasConfirmedPeakDemand = (pickupMetrics.isPositive && (pickupMetrics.isFavorable || pickupMetrics.pickupPressure >= 0.25) && !pickupMetrics.isNegative);
+
             if (barVigente < barObjetivo) {
-                if (pickupMetrics.isFavorable || daysOut <= 21) {
+                if (hasConfirmedPeakDemand) {
                     action = 'SUBIR';
                     proposedPrice = barObjetivo;
-                    triggerText = `🔥 Max. Ingresos +77% (${barObjetivo}€)`;
-                    demandStatus = 'MAXIMIZAR INGRESOS';
-                    reasons.push(`Ocupación crítica (${effectiveOcc.toFixed(0)}% · ${availableRooms} habs libres).`);
-                    reasons.push(`Objetivo pico (+77% sobre BAR base ${baseBar} € = ${barObjetivo} €) en las últimas plazas.`);
+                    triggerText = `🔥 Evaluar Pico +77% (${barObjetivo}€)`;
+                    demandStatus = 'DEMANDA PICO CONFIRMADA';
+                    reasons.push(`Ocupación crítica (${effectiveOcc.toFixed(0)}% · ${availableRooms} habs libres). Demanda activa confirmada (+${pickupMetrics.bestPickup} RN).`);
+                    reasons.push(`Escalado orientativo (+77% sobre BAR base ${baseBar} € = ${barObjetivo} €) aplicable por presión de absorción en las últimas plazas.`);
                 } else {
                     action = 'MANTENER';
                     proposedPrice = barVigente;
-                    triggerText = `🔥 MANTENER (Evaluar ${barObjetivo}€)`;
-                    demandStatus = 'EVALUAR SUBIDA A PICO';
+                    triggerText = `🔒 REVISAR PROMOCIONES (${effectiveOcc.toFixed(0)}%)`;
+                    demandStatus = 'REVISAR PROMOCIONES Y CANALES';
                     isCommerciallyOptimal = true;
-                    reasons.push(`Ocupación crítica (${effectiveOcc.toFixed(0)}% · ${availableRooms} habs libres). BAR base: ${baseBar} €. BAR objetivo: ${barObjetivo} € (+77%).`);
-                    reasons.push(`Tarifa vigente (${barVigente} €). Pick-up reciente estable (+${pickupMetrics.bestPickup} RN). MANTENER ${barVigente} €; evaluar subida a ${barObjetivo} € ante nueva demanda.`);
+                    reasons.push(`Ocupación muy alta (${effectiveOcc.toFixed(0)}% · ${availableRooms} habs libres). BAR base: ${baseBar} €. BAR objetivo orientativo: ${barObjetivo} € (+77%).`);
+                    reasons.push(`Tarifa vigente (${barVigente} €). El escalado del +77% es una referencia orientativa y no debe aplicarse automáticamente sin demanda activa contrastada.`);
+                    reasons.push(`Recomendación: MANTENER tarifa en ${barVigente} € y REVISAR PROMOCIONES Y CANALES DE BAJO RENDIMIENTO para proteger las últimas habitaciones sin cerrar la venta de inventario disponible.`);
                 }
             } else {
                 action = 'MANTENER';
                 proposedPrice = barVigente;
-                triggerText = `🔥 MANTENER (${barVigente}€)`;
-                demandStatus = 'MÁXIMO RENDIMIENTO';
+                triggerText = `🔒 MANTENER (${barVigente}€)`;
+                demandStatus = 'INVENTARIO PROTEGIDO';
                 isCommerciallyOptimal = true;
                 reasons.push(`Ocupación crítica (${effectiveOcc.toFixed(0)}% · ${availableRooms} habs libres). Tarifa vigente (${barVigente} €) cubre la BAR objetivo (${barObjetivo} €). MANTENER.`);
+                reasons.push('Revisar y limitar tarifas promocionales, descuentos y canales de menor rentabilidad sin cerrar inventario.');
             }
         }
 

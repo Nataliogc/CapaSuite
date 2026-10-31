@@ -104,7 +104,7 @@ assert(
 
 // -----------------------------------------------------------------------------
 // CASO 5: BAR vigente inferior a BAR base
-// Debe recomendar SUBIR inmediatamente para alinear a BAR base (suelo inviolable).
+// Nueva regla: NO mostrar automáticamente SUBIR. Mostrar REVISAR — TARIFA INFERIOR A BAR BASE.
 // -----------------------------------------------------------------------------
 const r5 = PI.evaluateDailyRecommendation({
     hotelName: 'Guadiana',
@@ -116,9 +116,9 @@ const r5 = PI.evaluateDailyRecommendation({
     otbChange: 0
 });
 assert(
-    r5.action === 'SUBIR' && r5.proposedPrice === 66 && r5.triggerText.includes('Alinear a Base (66€)'),
-    'Caso 5: BAR vigente (60 €) inferior a BAR base (66 €)',
-    `Acción: ${r5.action}, Propuesto: ${r5.proposedPrice} € (Alineado a base), Trigger: ${r5.triggerText}`
+    r5.action === 'REVISAR' && r5.proposedPrice === 60 && r5.triggerText.includes('TARIFA INFERIOR A BAR BASE'),
+    'Caso 5: BAR vigente (60 €) inferior a BAR base (66 €) -> REVISAR comercialmente',
+    `Acción: ${r5.action}, Propuesto: ${r5.proposedPrice} € (Tarifa protegida sin subida automática), Trigger: ${r5.triggerText}`
 );
 
 // -----------------------------------------------------------------------------
@@ -153,7 +153,7 @@ const r7 = PI.evaluateDailyRecommendation({
     otbChange: 1
 });
 assert(
-    r7.action === 'REVISIÓN MANUAL' && r7.triggerText === '100% LLENO' && r7.demandStatus === 'INVENTARIO AGOTADO' && r7.proposedPrice === 120,
+    r7.action === 'REVISAR' && r7.triggerText === '100% LLENO' && r7.demandStatus === 'INVENTARIO AGOTADO' && r7.proposedPrice === 120,
     'Caso 7: Inventario agotado (108/108 habs)',
     `Acción: ${r7.action}, Trigger: ${r7.triggerText}, Diagnóstico: ${r7.demandStatus}`
 );
@@ -233,7 +233,7 @@ const r11Custom = PI.evaluateDailyRecommendation({
     otbChange: 0
 });
 assert(
-    r11Custom.action === 'REVISIÓN MANUAL' && r11Custom.proposedPrice === 95 && r11Custom.diffAmount === 0 && r11Custom.triggerText.includes('Competitividad'),
+    r11Custom.action === 'REVISAR' && r11Custom.proposedPrice === 95 && r11Custom.diffAmount === 0 && r11Custom.triggerText.includes('Competitividad'),
     'Caso 11: Alerta comercial de competitividad (Tarifa 95€ vs Mercado 70€ con ocupación 18% y pickup nulo)',
     `Acción: ${r11Custom.action}, Propuesto: ${r11Custom.proposedPrice} € (0 bajada automática), Trigger: ${r11Custom.triggerText}`
 );
@@ -595,7 +595,7 @@ const rManual = PI.evaluateDailyRecommendation({
     otbChange: 0
 });
 assert(
-    rManual.action === 'REVISIÓN MANUAL' && rManual.proposedPrice === 95 && rManual.diffAmount === 0,
+    rManual.action === 'REVISAR' && rManual.proposedPrice === 95 && rManual.diffAmount === 0,
     'Prueba Ficha 9: Recomendación manual sin cambio de precio (diffAmount = 0, tarifa protegida en 95 €)',
     `Acción: ${rManual.action}, Propuesto: ${rManual.proposedPrice} €, diffAmount: ${rManual.diffAmount} €`
 );
@@ -740,6 +740,156 @@ assert(
     snapC.rooms === 45 && snapC.occupancyPct === 76.3,  // 45 / 59 = 76.27% -> 76.3%
     'Optimización 6: Separación estricta de snapshots y capacidades entre Guadiana (108) y Cumbria (59)',
     `Guadiana: 54 habs = ${snapG.occupancyPct}% (cap 108) | Cumbria: 45 habs = ${snapC.occupancyPct}% (cap 59)`
+);
+
+// =========================================================================
+// VALIDACIONES OBLIGATORIAS: 10 ESCENARIOS CLAVE EXIGIDOS
+// =========================================================================
+console.log('\n--- VALIDACIONES OBLIGATORIAS: 10 ESCENARIOS CLAVE ---');
+
+// 1. Cumbria con tarifa inferior a BAR base y ocupación del 32 %: REVISAR, no SUBIR automáticamente
+const v1 = PI.evaluateDailyRecommendation({
+    hotelName: 'Cumbria',
+    dateISO: '2026-11-02', // Lunes Nov 2026 Cumbria base = 61 €
+    currentPrice: 56,      // 56 € < 61 €
+    otbRooms: 19,          // 19/59 = 32%
+    occupancyPct: 32,
+    otbChange: 0
+});
+assert(
+    v1.action === 'REVISAR' && v1.proposedPrice === 56 && v1.diffAmount === 0 && v1.triggerText.includes('TARIFA INFERIOR A BAR BASE'),
+    'Validación 1: Cumbria tarifa inferior a base y ocupación 32% -> REVISAR, no SUBIR automáticamente',
+    `Acción: ${v1.action}, Propuesto: ${v1.proposedPrice} € (Vigente: 56 €, Base: 61 €), Trigger: ${v1.triggerText}`
+);
+
+// 2. Cumbria con ocupación del 63 % y pickup -1: no recomendar subida sin justificación adicional
+const v2 = PI.evaluateDailyRecommendation({
+    hotelName: 'Cumbria',
+    dateISO: '2026-11-09', // Lunes Cumbria base 61 €, target +13% = 69 €
+    currentPrice: 67,
+    otbRooms: 37,          // 37/59 = 63%
+    occupancyPct: 63,
+    otbChange: -1          // Pickup negativo -1 RN
+});
+assert(
+    v2.action === 'MANTENER' && v2.proposedPrice === 67 && v2.diffAmount === 0 && v2.triggerText.includes('Pickup Negativo'),
+    'Validación 2: Cumbria ocupación 63% y pickup -1 -> MANTENER 67 € sin subir a 69 €',
+    `Acción: ${v2.action}, Propuesto: ${v2.proposedPrice} € (Base: 61 €, Objetivo: 69 €), Trigger: ${v2.triggerText}`
+);
+
+// 3. Cumbria con ocupación del 97 % y pickup cero: proteger inventario sin obligar a aplicar el +77 %
+const v3 = PI.evaluateDailyRecommendation({
+    hotelName: 'Cumbria',
+    dateISO: '2026-11-06', // Viernes Cumbria base 72 €, target +77% = 127 €
+    currentPrice: 99,
+    otbRooms: 57,          // 57/59 = 97%, 2 libres
+    occupancyPct: 97,
+    otbChange: 0           // Pickup plano 0 RN
+});
+assert(
+    v3.action === 'MANTENER' && v3.proposedPrice === 99 && v3.diffAmount === 0 && v3.triggerText.includes('REVISAR PROMOCIONES'),
+    'Validación 3: Cumbria ocupación 97% y pickup cero -> MANTENER 99 € y REVISAR PROMOCIONES sin cerrar venta',
+    `Acción: ${v3.action}, Propuesto: ${v3.proposedPrice} € (Sin auto-subida a +77%), Trigger: ${v3.triggerText}`
+);
+
+// 4. Cumbria con ocupación del 51 % y pickup positivo: comprobar el condicionamiento del +5 %
+const v4 = PI.evaluateDailyRecommendation({
+    hotelName: 'Cumbria',
+    dateISO: '2026-11-02', // Lunes Cumbria base 61 €, target +5% = 64 €
+    currentPrice: 61,
+    otbRooms: 30,          // 30/59 = 51%
+    occupancyPct: 51,
+    otbChange: 2           // Pickup positivo +2 RN
+});
+assert(
+    v4.action === 'SUBIR' && v4.proposedPrice === 64 && v4.triggerText.includes('+5%'),
+    'Validación 4: Cumbria ocupación 51% con pickup positivo -> SUBIR a 64 € (+5% condicionado)',
+    `Acción: ${v4.action}, Propuesto: ${v4.proposedPrice} € (Base: 61 € -> Objetivo: 64 €), Trigger: ${v4.triggerText}`
+);
+
+// 5. Guadiana con ocupación del 18 % y pickup +5: MANTENER salvo excepción justificada
+const v5 = PI.evaluateDailyRecommendation({
+    hotelName: 'Guadiana',
+    dateISO: '2027-04-14',
+    currentPrice: 80,
+    otbRooms: 20,
+    occupancyPct: 18.5,
+    otbChange: 5
+});
+assert(
+    v5.action === 'MANTENER' && v5.proposedPrice === 80 && v5.diffAmount === 0 && v5.triggerText.includes('Vigilar (+5)'),
+    'Validación 5: Guadiana ocupación 18% con pickup +5 RN -> MANTENER tarifa vigente 80 €',
+    `Acción: ${v5.action}, Propuesto: ${v5.proposedPrice} € (Diff: 0 €), Trigger: ${v5.triggerText}`
+);
+
+// 6. Fecha con BAR vigente superior al objetivo: no recomendar bajada automática
+const v6 = PI.evaluateDailyRecommendation({
+    hotelName: 'Guadiana',
+    dateISO: '2027-03-10', // Base 66 €, Target 70 €
+    currentPrice: 85,      // Vigente 85 € > Objetivo 70 €
+    otbRooms: 30,
+    occupancyPct: 28,
+    otbChange: 0
+});
+assert(
+    v6.action === 'MANTENER' && v6.proposedPrice === 85 && v6.diffAmount === 0,
+    'Validación 6: BAR vigente (85 €) superior al objetivo (70 €) -> MANTENER sin bajada automática',
+    `Acción: ${v6.action}, Propuesto: ${v6.proposedPrice} € (Tarifa vigente protegida), Diff: ${v6.diffAmount} €`
+);
+
+// 7. Fecha con tarifa especial aprobada: respetar la excepción
+const v7 = PI.evaluateDailyRecommendation({
+    hotelName: 'Guadiana',
+    dateISO: '2027-09-15',
+    currentPrice: 90,
+    customEvent: { name: 'Congreso Médico Provincial', barBase: 110 }
+});
+assert(
+    v7.action === 'SUBIR' && v7.proposedPrice === 110 && v7.isException === true && v7.triggerText.includes('Alinear a Evento (110€)'),
+    'Validación 7: Tarifa especial aprobada (110 €) -> Respetar la excepción prioritariamente',
+    `Acción: ${v7.action}, Propuesto: ${v7.proposedPrice} € (Evento: ${v7.eventName}), Trigger: ${v7.triggerText}`
+);
+
+// 8. Competidores sin tarifa en Expedia: no generar falsas alertas de hotel completo
+const v8 = PI.evaluateDailyRecommendation({
+    hotelName: 'Guadiana',
+    dateISO: '2027-05-20',
+    currentPrice: 70,
+    otbRooms: 20,
+    occupancyPct: 18.5,
+    soldCompsCount: 2, // 2 competidores sin tarifa observable
+    marketAvg: 0
+});
+assert(
+    v8.action === 'MANTENER' && v8.proposedPrice === 70 && v8.reasons.some(r => r.includes('Hipótesis comercial')),
+    'Validación 8: Competidores sin tarifa en Expedia -> Tratado como hipótesis comercial, sin falso lleno',
+    `Acción: ${v8.action}, Propuesto: ${v8.proposedPrice} €, Competidores sin tarifa: 2`
+);
+
+// 9. Histórico insuficiente: no mostrar pickup cero ficticio
+const v9 = PI.evaluateDailyRecommendation({
+    hotelName: 'Guadiana',
+    dateISO: '2027-11-20',
+    currentPrice: 68,
+    otbRooms: 15,
+    pickupData: { snapshotsCount: 0, h24h: { available: false, diffRooms: null } }
+});
+assert(
+    v9.hasSufficientPickupHistory === false && v9.forecastStatus === 'Previsión no disponible' && v9.confidenceScore === 'Media',
+    'Validación 9: Histórico insuficiente -> Sin pickup cero ficticio, confianza Media y previsión no disponible',
+    `Histórico suficiente: ${v9.hasSufficientPickupHistory}, Previsión: ${v9.forecastStatus}, Confianza: ${v9.confidenceScore}`
+);
+
+// 10. Carga repetida de datos OTB: no duplicar snapshots ni escrituras innecesarias
+const v10Date = '2027-12-20';
+PI.recordDailySnapshot('Cumbria', v10Date, { rooms: 25, revenue: 1750, publishedBar: 70 }, new Date('2026-10-31T09:00:00'));
+PI.recordDailySnapshot('Cumbria', v10Date, { rooms: 26, revenue: 1820, publishedBar: 70 }, new Date('2026-10-31T15:00:00'));
+const dbV10 = PI.getSnapshotsDB();
+const v10List = dbV10.Cumbria[v10Date];
+assert(
+    v10List.length === 1 && v10List[0].rooms === 26,
+    'Validación 10: Carga repetida de OTB en el mismo día -> Consolida captura en 1 registro sin duplicar',
+    `Registros para la fecha: ${v10List.length}, Habitaciones actualizadas: ${v10List[0].rooms}`
 );
 
 console.log('\n================================================================');
