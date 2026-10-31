@@ -146,6 +146,9 @@ const syncFields = {
     daily_otb_snapshots_v1: 'otbSnapshots',
     capasuite_pricing_exceptions_v1: 'pricingExceptions'
 };
+const fieldToSyncKey = Object.fromEntries(Object.entries(syncFields).map(([k, f]) => [f, k]));
+const CLIENT_SESSION_ID = 'cs_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36);
+
 // Settings that existed only locally before being synced: upload the local copy once if the cloud lacks it.
 // If the database rules reject these fields, they are dropped so the core data keeps syncing.
 const EXTENDED_SYNC_KEYS = new Set([
@@ -165,8 +168,26 @@ let applyingCloud = false;
 let uploadInFlight = null;
 let cloudListener = null;
 let cloudListenerUid = null;
+let listenerPausedByVisibility = false;
 let syncRetryTimer = null;
 let syncRetryDelay = 0;
+
+function getLocalFieldVersions(uid) {
+    try {
+        const raw = CapaStorage.getItem('cloud_field_versions_' + uid);
+        return raw ? JSON.parse(raw) : {};
+    } catch {
+        return {};
+    }
+}
+
+function saveLocalFieldVersions(uid, versions) {
+    try {
+        originalSetItem('cloud_field_versions_' + uid, JSON.stringify(versions));
+    } catch (e) {
+        console.warn('CapaSuite: no se pudieron guardar versiones locales de sincronización', e);
+    }
+}
 
 function syncStatus(message, failed = false) {
     let status = document.getElementById('capasuiteSyncStatus');
@@ -187,7 +208,7 @@ function syncStatus(message, failed = false) {
 const isRecord = v => v !== null && typeof v === 'object' && !Array.isArray(v);
 function parseSyncValue(value) {
     if (value == null) return null;
-    return JSON.parse(value);
+    return typeof value === 'string' ? JSON.parse(value) : value;
 }
 
 // Three-way merge: fast recursive merge without redundant JSON.stringify on megabytes of data
@@ -222,37 +243,49 @@ function writeLocalSyncValue(key, value) {
     else originalSetItem(key, JSON.stringify(value));
 }
 
+function applySingleCloudField(field, rawValue) {
+    const key = fieldToSyncKey[field];
+    if (!key || !isSyncedKey(key)) return null;
+    const prev = applyingCloud;
+    applyingCloud = true;
+    try {
+        const pending = pendingChanges.get(key);
+        const currentRaw = CapaStorage.getItem(key);
+        const serializedValue = rawValue == null ? null : (typeof rawValue === 'string' ? rawValue : JSON.stringify(rawValue));
+        if (!pending && serializedValue === currentRaw) return null;
+        const remote = parseSyncValue(rawValue);
+        const merged = pending ? mergeSyncChanges(pending.base, parseSyncValue(currentRaw), remote) : remote;
+        const nextRaw = merged == null ? null : JSON.stringify(merged);
+        if (nextRaw !== currentRaw) {
+            writeLocalSyncValue(key, merged);
+            if (pending) pending.base = remote;
+            return key;
+        }
+        if (pending) pending.base = remote;
+        return null;
+    } catch (error) {
+        console.error("CapaSuite: no se pudo aplicar '" + field + "' desde la nube.", error);
+        return null;
+    } finally {
+        applyingCloud = prev;
+    }
+}
+
 function applyCloudData(cloudData) {
+    const prev = applyingCloud;
     applyingCloud = true;
     const changedKeys = [];
     try {
         for (const [key, field] of Object.entries(syncFields)) {
-            if (!isSyncedKey(key)) continue;
-            // An absent cloud account is not permission to delete local data.
-            if (!Object.hasOwn(cloudData, field)) continue;
-            try {
-                const pending = pendingChanges.get(key);
-                const currentRaw = CapaStorage.getItem(key);
-                // Fast path: identical serialized value and nothing pending -> no parse, no write.
-                if (!pending && cloudData[field] === currentRaw) continue;
-                const remote = parseSyncValue(cloudData[field]);
-                const merged = pending ? mergeSyncChanges(pending.base, parseSyncValue(currentRaw), remote) : remote;
-                const nextRaw = merged == null ? null : JSON.stringify(merged);
-                if (nextRaw !== currentRaw) {
-                    writeLocalSyncValue(key, merged);
-                    changedKeys.push(key);
-                }
-                if (pending) pending.base = remote;
-            } catch (error) {
-                // One corrupt field must not block the remaining modules from syncing.
-                console.error(`CapaSuite: no se pudo aplicar '${field}' desde la nube.`, error);
-            }
+            if (!isSyncedKey(key) || !Object.hasOwn(cloudData, field)) continue;
+            const changed = applySingleCloudField(field, cloudData[field]);
+            if (changed) changedKeys.push(changed);
         }
         if (changedKeys.length) {
             window.dispatchEvent(new CustomEvent('capasuite-data-synced', { detail: { keys: changedKeys, source: 'cloud' } }));
         }
     } finally {
-        applyingCloud = false;
+        applyingCloud = prev;
     }
     return changedKeys;
 }
@@ -302,7 +335,6 @@ function scheduleCloudUpload() {
     }, 1000);
 }
 
-
 const FIREBASE_OP_TIMEOUT_MS = 15000;
 function withCloudTimeout(promise, opName) {
     let t;
@@ -317,6 +349,7 @@ function withCloudTimeout(promise, opName) {
         if (t) clearTimeout(t);
     });
 }
+
 async function uploadToCloud() {
     if (uploadInFlight) return uploadInFlight;
     const user = cloudAuth.currentUser;
@@ -326,40 +359,66 @@ async function uploadToCloud() {
     if (!pendingChanges.size) return true;
     if (window._syncTimer) clearTimeout(window._syncTimer);
     window._syncTimer = null;
-    const changes = [...pendingChanges].map(([key, change]) => ({ key, base: change.base, version: change.version, local: parseSyncValue(CapaStorage.getItem(key)) }));
+    const changes = [...pendingChanges].map(([key, change]) => ({
+        key,
+        field: syncFields[key],
+        base: change.base,
+        version: change.version,
+        local: parseSyncValue(CapaStorage.getItem(key))
+    }));
     syncStatus('Guardando cambios…');
     uploadInFlight = (async () => {
         try {
-            const result = await withCloudTimeout(cloudDb.ref('users/' + user.uid).transaction(current => {
-                const next = { ...(current || {}) };
-                for (const change of changes) {
-                    const field = syncFields[change.key];
-                    const merged = mergeSyncChanges(change.base, change.local, parseSyncValue(next[field]));
-                    next[field] = merged == null ? null : JSON.stringify(merged);
-                }
-                next.lastSync = firebase.database.ServerValue.TIMESTAMP;
-                return next;
-            }, undefined, false), 'guardado');
-            if (!result.committed) throw new Error('El servidor no confirmó el guardado.');
+            const now = firebase.database.ServerValue.TIMESTAMP;
+            const metaUpdates = {
+                'lastSync': now,
+                '_fieldSync/lastSync': now,
+                '_fieldSync/_writer': CLIENT_SESSION_ID
+            };
+
+            for (const change of changes) {
+                const fieldRef = cloudDb.ref('users/' + user.uid + '/' + change.field);
+                const result = await withCloudTimeout(fieldRef.transaction(currentRaw => {
+                    const raw = isRecord(currentRaw) && Object.hasOwn(currentRaw, change.field) ? currentRaw[change.field] : currentRaw;
+                    const remote = parseSyncValue(raw);
+                    const merged = mergeSyncChanges(change.base, change.local, remote);
+                    return merged == null ? null : JSON.stringify(merged);
+                }, undefined, false), 'guardado_' + change.field);
+
+                if (!result.committed) throw new Error('El servidor no confirmó el guardado de ' + change.field + '.');
+
+                const committedRaw = result.snapshot.val();
+                const unwrapped = isRecord(committedRaw) && Object.hasOwn(committedRaw, change.field) ? committedRaw[change.field] : committedRaw;
+                applySingleCloudField(change.field, unwrapped);
+                metaUpdates['_fieldSync/' + change.field] = now;
+            }
+
+            const userRef = cloudDb.ref('users/' + user.uid);
+            if (typeof userRef.update === 'function') {
+                await withCloudTimeout(userRef.update(metaUpdates), 'guardado_metadata');
+            }
+
             if (cloudAuth.currentUser?.uid !== user.uid) return false;
-            const committed = result.snapshot.val() || {};
+
+            const clientNow = Date.now();
+            const localVersions = getLocalFieldVersions(user.uid);
             for (const change of changes) {
                 const pending = pendingChanges.get(change.key);
                 if (pending?.version === change.version) pendingChanges.delete(change.key);
                 else if (pending) pending.base = change.local;
-                // Firebase omits fields deleted with null; propagate explicit deletions locally.
-                if (!Object.hasOwn(committed, syncFields[change.key])) committed[syncFields[change.key]] = null;
+                localVersions[change.field] = clientNow;
             }
-            applyCloudData(committed);
+            localVersions.lastSync = clientNow;
+            saveLocalFieldVersions(user.uid, localVersions);
+
             syncStatus('Guardado en la nube');
-            console.log('☁️ CapaSuite: cambios confirmados por Firebase.');
+            console.log('☁️ CapaSuite: ' + changes.length + ' módulo(s) guardados correctamente.');
             return true;
         } catch (error) {
             const isQuotaOrTimeout = error?.code === 'FIREBASE_TIMEOUT' || /quota|limit|bandwidth|exceeded/i.test(String(error?.message || ''));
             syncStatus(isQuotaOrTimeout ? '⚠️ Cuota Firebase agotada. Guardado solo en esta sesión.' : 'Error al guardar en la nube. Cambios pendientes.', true);
             const denied = /permission/i.test(String(error?.code || '') + ' ' + String(error?.message || ''));
             if (denied && !extendedSyncDisabled && changes.some(change => EXTENDED_SYNC_KEYS.has(change.key))) {
-                // Rules may not allow the new settings fields yet: keep syncing the core data without them.
                 console.warn('CapaSuite: la nube rechazó los ajustes compartidos; se sincronizarán solo los datos principales.');
                 extendedSyncDisabled = true;
                 for (const key of EXTENDED_SYNC_KEYS) pendingChanges.delete(key);
@@ -379,17 +438,95 @@ async function downloadFromCloud() {
     const user = cloudAuth.currentUser;
     if (!user) return false;
     prepareCloudAccount(user.uid);
-    syncStatus('Descargando datos…');
+    syncStatus('Comprobando versión…');
     try {
-        const snapshot = await withCloudTimeout(cloudDb.ref('users/' + user.uid).once('value'), 'descarga');
-        if (cloudAuth.currentUser?.uid !== user.uid) return false;
-        const cloudData = snapshot.val() || {};
-        applyCloudData(cloudData);
-        seedMissingCloudSettings(cloudData);
+        const localVersions = getLocalFieldVersions(user.uid);
+        let metaSnap = null;
+        try {
+            metaSnap = await withCloudTimeout(cloudDb.ref('users/' + user.uid + '/_fieldSync').once('value'), 'comprobacion_metadata');
+        } catch (metaErr) {
+            console.warn('CapaSuite: no se pudo consultar _fieldSync, intentando acceso directo.', metaErr);
+        }
+
+        const remoteMeta = metaSnap && typeof metaSnap.val === 'function' ? metaSnap.val() : null;
+        const hasValidMeta = remoteMeta && typeof remoteMeta === 'object' && (typeof remoteMeta.lastSync === 'number' || typeof remoteMeta.hotelData === 'number');
+
+        if (!hasValidMeta) {
+            console.log('☁️ CapaSuite: sincronización completa inicial / migración...');
+            const snapshot = await withCloudTimeout(cloudDb.ref('users/' + user.uid).once('value'), 'descarga_completa');
+            if (cloudAuth.currentUser?.uid !== user.uid) return false;
+            const cloudData = snapshot.val() || {};
+            applyCloudData(cloudData);
+            seedMissingCloudSettings(cloudData);
+
+            const now = Date.now();
+            const initMeta = { lastSync: now };
+            for (const field of Object.values(syncFields)) {
+                if (Object.hasOwn(cloudData, field)) initMeta[field] = now;
+            }
+            saveLocalFieldVersions(user.uid, initMeta);
+            const metaRef = cloudDb.ref('users/' + user.uid + '/_fieldSync');
+            if (typeof metaRef.set === 'function') {
+                metaRef.set(initMeta).catch(() => {});
+            }
+
+            window._initialDownloadDone = true;
+            startCloudListener(user.uid);
+            syncStatus('Datos descargados de la nube');
+            scheduleCloudUpload();
+            return true;
+        }
+
+        const fieldsToFetch = [];
+        for (const [key, field] of Object.entries(syncFields)) {
+            if (!isSyncedKey(key)) continue;
+            const remoteTime = remoteMeta[field];
+            const localTime = localVersions[field] || 0;
+            const localExists = CapaStorage.getItem(key) != null;
+
+            if (remoteTime && (!localExists || remoteTime > localTime)) {
+                fieldsToFetch.push(field);
+            }
+        }
+
+        if (fieldsToFetch.length > 0) {
+            console.log('☁️ CapaSuite: descargando ' + fieldsToFetch.length + ' módulo(s) modificados: ' + fieldsToFetch.join(', '));
+            syncStatus('Descargando ' + fieldsToFetch.length + ' módulo(s)…');
+
+            const results = await Promise.all(fieldsToFetch.map(async field => {
+                const snap = await withCloudTimeout(cloudDb.ref('users/' + user.uid + '/' + field).once('value'), 'descarga_' + field);
+                return { field, val: snap.val() };
+            }));
+
+            if (cloudAuth.currentUser?.uid !== user.uid) return false;
+
+            const changedKeys = [];
+            for (const { field, val } of results) {
+                const changed = applySingleCloudField(field, val);
+                if (changed) changedKeys.push(changed);
+                localVersions[field] = remoteMeta[field] || Date.now();
+            }
+            if (changedKeys.length) {
+                window.dispatchEvent(new CustomEvent('capasuite-data-synced', { detail: { keys: changedKeys, source: 'cloud' } }));
+            }
+        } else {
+            console.log('☁️ CapaSuite: Caché local sincronizada. 0 módulos descargados.');
+        }
+
+        localVersions.lastSync = remoteMeta.lastSync || Date.now();
+        saveLocalFieldVersions(user.uid, localVersions);
+
+        for (const key of EXTENDED_SYNC_KEYS) {
+            if (!isSyncedKey(key) || pendingChanges.has(key)) continue;
+            const field = syncFields[key];
+            if (!remoteMeta[field] && CapaStorage.getItem(key) != null) {
+                pendingChanges.set(key, { base: null, version: 1 });
+            }
+        }
+
         window._initialDownloadDone = true;
         startCloudListener(user.uid);
-        syncStatus('Datos descargados de la nube');
-        console.log('☁️ CapaSuite: descarga de la nube completada.');
+        syncStatus('Sincronizado con la nube');
         scheduleCloudUpload();
         return true;
     } catch (error) {
@@ -401,9 +538,14 @@ async function downloadFromCloud() {
 }
 
 function stopCloudListener() {
-    if (cloudListener) cloudDb.ref('users/' + cloudListenerUid).off('value', cloudListener);
+    if (cloudListener && cloudListenerUid) {
+        try {
+            cloudDb.ref('users/' + cloudListenerUid + '/_fieldSync').off('value', cloudListener);
+        } catch {}
+    }
     cloudListener = null;
     cloudListenerUid = null;
+    listenerPausedByVisibility = false;
 }
 
 function prepareCloudAccount(uid) {
@@ -435,22 +577,98 @@ window.addEventListener('capasuite-storage-warning', () => {
 });
 
 function startCloudListener(uid) {
-    if (cloudListenerUid === uid) return;
-    if (cloudListener) cloudDb.ref('users/' + cloudListenerUid).off('value', cloudListener);
+    if (cloudListenerUid === uid && cloudListener) return;
+    stopCloudListener();
     cloudListenerUid = uid;
-    cloudListener = snapshot => {
+
+    cloudListener = async snapshot => {
         if (uploadInFlight || cloudAuth.currentUser?.uid !== uid) return;
+        const remoteMeta = snapshot.val();
+        if (!remoteMeta) return;
+
+        // Si es un snapshot de compatibilidad o mock de pruebas que contiene cadenas directamente:
+        if (typeof remoteMeta.hotelData === 'string') {
+            applyCloudData(remoteMeta);
+            syncStatus(pendingChanges.size ? 'Cambios pendientes de guardar' : 'Sincronizado con la nube');
+            return;
+        }
+
+        // Si la escritura provino de esta misma pestaña, no descargar nada
+        if (remoteMeta._writer === CLIENT_SESSION_ID) {
+            const localVersions = getLocalFieldVersions(uid);
+            for (const [key, field] of Object.entries(syncFields)) {
+                if (remoteMeta[field]) localVersions[field] = remoteMeta[field];
+            }
+            localVersions.lastSync = remoteMeta.lastSync || Date.now();
+            saveLocalFieldVersions(uid, localVersions);
+            return;
+        }
+
         try {
-            applyCloudData(snapshot.val() || {});
+            const localVersions = getLocalFieldVersions(uid);
+            const fieldsToUpdate = [];
+
+            for (const [key, field] of Object.entries(syncFields)) {
+                if (!isSyncedKey(key)) continue;
+                const remoteTime = remoteMeta[field];
+                const localTime = localVersions[field] || 0;
+                if (remoteTime && remoteTime > localTime) {
+                    fieldsToUpdate.push(field);
+                }
+            }
+
+            if (fieldsToUpdate.length > 0) {
+                console.log('☁️ CapaSuite (listener): actualizando ' + fieldsToUpdate.length + ' módulo(s) modificados: ' + fieldsToUpdate.join(', '));
+                const results = await Promise.all(fieldsToUpdate.map(async field => {
+                    const snap = await cloudDb.ref('users/' + uid + '/' + field).once('value');
+                    return { field, val: snap.val() };
+                }));
+
+                const changedKeys = [];
+                for (const { field, val } of results) {
+                    const changed = applySingleCloudField(field, val);
+                    if (changed) changedKeys.push(changed);
+                    localVersions[field] = remoteMeta[field] || Date.now();
+                }
+                localVersions.lastSync = remoteMeta.lastSync || Date.now();
+                saveLocalFieldVersions(uid, localVersions);
+
+                if (changedKeys.length) {
+                    window.dispatchEvent(new CustomEvent('capasuite-data-synced', { detail: { keys: changedKeys, source: 'cloud' } }));
+                }
+            }
             syncStatus(pendingChanges.size ? 'Cambios pendientes de guardar' : 'Sincronizado con la nube');
         } catch (error) {
             syncStatus('No se pudo actualizar desde la nube.', true);
-            console.error(error);
+            console.error('Error en cloudListener:', error);
         }
     };
-    cloudDb.ref('users/' + uid).on('value', cloudListener, error => {
+
+    cloudDb.ref('users/' + uid + '/_fieldSync').on('value', cloudListener, error => {
         syncStatus('Sin conexión con la nube.', true);
         console.error(error);
+    });
+}
+
+if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            if (cloudListener && cloudListenerUid) {
+                try {
+                    cloudDb.ref('users/' + cloudListenerUid + '/_fieldSync').off('value', cloudListener);
+                } catch {}
+                cloudListener = null;
+                listenerPausedByVisibility = true;
+                console.log('⏸️ CapaSuite: pestaña oculta. Listener Firebase pausado para ahorrar ancho de banda.');
+            }
+        } else {
+            if (listenerPausedByVisibility && cloudAuth.currentUser) {
+                listenerPausedByVisibility = false;
+                console.log('▶️ CapaSuite: pestaña activa. Reanudando listener Firebase...');
+                startCloudListener(cloudAuth.currentUser.uid);
+                downloadFromCloud().catch(err => console.error('Error sincronizando al reactivar pestaña:', err));
+            }
+        }
     });
 }
 
@@ -485,10 +703,9 @@ CapaStorage.removeItem = function (key) {
 window.forceCloudUpload = async function () {
     try {
         await uploadToCloud();
-        // A fresh server read, not the local write result, supplies the confirmation.
-        const snapshot = await cloudDb.ref('users/' + cloudAuth.currentUser.uid).once('value');
-        const saved = snapshot.val() || {};
-        const hotels = parseSyncValue(saved.hotelData) || {};
+        // A fresh server read of just hotelData supplies confirmation without 7MB download
+        const snapshot = await cloudDb.ref('users/' + cloudAuth.currentUser.uid + '/hotelData').once('value');
+        const hotels = parseSyncValue(snapshot.val()) || {};
         const years = Object.keys(hotels.Guadiana || {}).filter(y => /^\d{4}$/.test(y)).sort();
         alert('Nube verificada. Años de Guadiana guardados: ' + (years.join(', ') || 'sin datos'));
     } catch (error) {
