@@ -565,23 +565,154 @@
 
     // =========================================================================
     // 5. HISTÓRICO DE SNAPSHOTS MULTI-HORIZONTE (DEDUPLICACIÓN Y PERSISTENCIA)
+    // Esquema compacto optimizado para Firebase Realtime DB y local storage:
+    // { d: "YYYY-MM-DD", r: rooms, rev: revenue, bar: barPrice, t: "HH:mm" }
+    // Mantiene compatibilidad total con snapshots legacy en lectura.
     // =========================================================================
-    function getSnapshotsDB() {
-        const raw = getStoredItem(STORAGE_KEY_SNAPSHOTS);
-        if (raw) {
-            try {
-                const parsed = JSON.parse(raw);
-                if (parsed && typeof parsed === 'object') return parsed;
-            } catch (e) {
-                console.warn('[PricingIntelligence] Error al parsear snapshots DB:', e);
+    function normalizeSnapshotEntry(entry, hotelCapacity = 108) {
+        if (!entry || typeof entry !== 'object') return null;
+        const d = String(entry.d || entry.captureDate || '').trim();
+        if (!d) return null;
+        const t = String(entry.t || entry.captureTime || '').trim();
+        const captureDateTime = entry.captureDateTime || (t ? `${d} ${t}` : d);
+
+        let timestamp = Number(entry.timestamp);
+        if (!timestamp || isNaN(timestamp)) {
+            if (t && /^\d{1,2}:\d{2}/.test(t)) {
+                const timePart = t.length === 5 ? `${t}:00` : t;
+                timestamp = new Date(`${d}T${timePart}`).getTime();
+            } else {
+                timestamp = new Date(`${d}T12:00:00`).getTime();
+            }
+            if (isNaN(timestamp)) {
+                timestamp = new Date(d).getTime() || Date.now();
             }
         }
-        return { Guadiana: {}, Cumbria: {} };
+
+        const rooms = Math.round(Number(entry.r !== undefined ? entry.r : entry.rooms) || 0);
+        const revenue = Number(entry.rev !== undefined ? entry.rev : entry.revenue) || 0;
+        const adr = (rooms > 0 && revenue > 0)
+            ? Number((revenue / rooms).toFixed(2))
+            : (Number(entry.adr) || 0);
+        const publishedBar = Number(entry.bar !== undefined ? entry.bar : (entry.publishedBar || entry.currentPrice)) || null;
+        const occupancyPct = entry.occupancyPct !== undefined && !isNaN(entry.occupancyPct)
+            ? Number(Number(entry.occupancyPct).toFixed(1))
+            : Number(((rooms / hotelCapacity) * 100).toFixed(1));
+        const availableRooms = entry.availableRooms !== undefined
+            ? Number(entry.availableRooms)
+            : Math.max(0, hotelCapacity - rooms);
+
+        return {
+            captureDate: d,
+            captureTime: t,
+            captureDateTime: captureDateTime,
+            timestamp: timestamp,
+            rooms: rooms,
+            revenue: revenue,
+            adr: adr,
+            publishedBar: publishedBar,
+            occupancyPct: occupancyPct,
+            availableRooms: availableRooms,
+            d: d,
+            t: t,
+            r: rooms,
+            rev: revenue,
+            bar: publishedBar
+        };
+    }
+
+    function compactSnapshotEntry(entry) {
+        if (!entry || typeof entry !== 'object') return null;
+        const d = String(entry.d || entry.captureDate || '').trim();
+        if (!d) return null;
+        const r = Math.round(Number(entry.r !== undefined ? entry.r : entry.rooms) || 0);
+        const compact = { d, r };
+
+        const rev = Number(entry.rev !== undefined ? entry.rev : entry.revenue) || 0;
+        if (rev > 0) compact.rev = Number(rev.toFixed(2));
+
+        const bar = Number(entry.bar !== undefined ? entry.bar : (entry.publishedBar || entry.currentPrice)) || 0;
+        if (bar > 0) compact.bar = Math.round(bar);
+
+        const t = String(entry.t || entry.captureTime || '').trim();
+        if (t) compact.t = t.slice(0, 8);
+
+        return compact;
+    }
+
+    function getSnapshotsDB() {
+        const raw = getStoredItem(STORAGE_KEY_SNAPSHOTS);
+        const result = { Guadiana: {}, Cumbria: {} };
+        if (!raw) return result;
+
+        try {
+            const parsed = JSON.parse(raw);
+            if (!parsed || typeof parsed !== 'object') return result;
+
+            ['Guadiana', 'Cumbria'].forEach(hKey => {
+                const hotelObj = parsed[hKey];
+                if (!hotelObj || typeof hotelObj !== 'object') return;
+                const cap = (hKey === 'Cumbria') ? 59 : 108;
+
+                Object.entries(hotelObj).forEach(([dateISO, list]) => {
+                    if (!Array.isArray(list) || list.length === 0) return;
+                    const normalizedList = [];
+                    for (const item of list) {
+                        const norm = normalizeSnapshotEntry(item, cap);
+                        if (norm) normalizedList.push(norm);
+                    }
+                    if (normalizedList.length > 0) {
+                        normalizedList.sort((a, b) => a.timestamp - b.timestamp);
+                        result[hKey][dateISO] = normalizedList;
+                    }
+                });
+            });
+        } catch (e) {
+            console.warn('[PricingIntelligence] Error al leer snapshots DB:', e);
+        }
+        return result;
     }
 
     function saveSnapshotsDB(db) {
         if (!db || typeof db !== 'object') return false;
-        return setStoredItem(STORAGE_KEY_SNAPSHOTS, JSON.stringify(db));
+
+        const compactDB = { Guadiana: {}, Cumbria: {} };
+
+        ['Guadiana', 'Cumbria'].forEach(hKey => {
+            const hotelObj = db[hKey];
+            if (!hotelObj || typeof hotelObj !== 'object') return;
+
+            Object.entries(hotelObj).forEach(([dateISO, list]) => {
+                if (!Array.isArray(list) || list.length === 0) return;
+
+                // Agrupar por fecha de captura 'd', consolidando capturas intradiarias en la última
+                const dayMap = new Map();
+                for (const item of list) {
+                    const compact = compactSnapshotEntry(item);
+                    if (!compact || !compact.d) continue;
+                    dayMap.set(compact.d, compact);
+                }
+
+                const compactList = Array.from(dayMap.values());
+                compactList.sort((a, b) => (a.d > b.d ? 1 : (a.d < b.d ? -1 : 0)));
+
+                // Límite de retención provisional (90 capturas por fecha de estancia)
+                const trimmedList = compactList.length > 90 ? compactList.slice(-90) : compactList;
+                if (trimmedList.length > 0) {
+                    compactDB[hKey][dateISO] = trimmedList;
+                }
+            });
+        });
+
+        const serialized = JSON.stringify(compactDB);
+        const currentRaw = getStoredItem(STORAGE_KEY_SNAPSHOTS);
+
+        // Idempotencia: evitar escrituras idénticas y prevenir eventos de sincronización en Firebase
+        if (currentRaw === serialized) {
+            return true;
+        }
+
+        return setStoredItem(STORAGE_KEY_SNAPSHOTS, serialized);
     }
 
     function recordDailySnapshot(hotelName, dateISO, metrics, captureDate = new Date()) {
@@ -592,40 +723,49 @@
         db[hKey][dateISO] = db[hKey][dateISO] || [];
 
         const capDt = (captureDate instanceof Date) ? captureDate : new Date(captureDate);
-        const captureDayKey = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Madrid' }).format(capDt);
-        const captureTimeKey = new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(capDt);
-        const captureDateTime = `${captureDayKey} ${captureTimeKey}`;
-        const timestamp = capDt.getTime();
+        let captureDayKey = '';
+        let captureTimeKey = '';
+        try {
+            captureDayKey = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Madrid' }).format(capDt);
+            captureTimeKey = new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(capDt);
+        } catch (e) {
+            captureDayKey = capDt.toISOString().slice(0, 10);
+            captureTimeKey = capDt.toTimeString().slice(0, 8);
+        }
         const capacity = (hKey === 'Cumbria') ? 59 : 108;
         const rooms = Math.round(Number(metrics.rooms) || 0);
         const revenue = Number(metrics.revenue) || 0;
-        const adr = (rooms > 0 && revenue > 0) ? Number((revenue / rooms).toFixed(2)) : (Number(metrics.adr) || 0);
         const pubBar = Number(metrics.publishedBar || metrics.currentPrice || 0) || null;
 
-        const entry = {
-            captureDate: captureDayKey,
-            captureTime: captureTimeKey,
-            captureDateTime: captureDateTime,
-            timestamp: timestamp,
-            rooms: rooms,
-            revenue: revenue,
-            adr: adr,
-            publishedBar: pubBar,
-            occupancyPct: Number(metrics.occupancyPct) || ((rooms / capacity) * 100),
-            availableRooms: Math.max(0, capacity - rooms)
-        };
-
         const list = db[hKey][dateISO];
-        const existingIdx = list.findIndex(item => item.captureDate === captureDayKey);
-        if (existingIdx >= 0) {
-            list[existingIdx] = entry;
-        } else {
-            list.push(entry);
-        }
+        const existingIdx = list.findIndex(item => (item.d === captureDayKey || item.captureDate === captureDayKey));
 
-        list.sort((a, b) => a.timestamp - b.timestamp);
-        if (list.length > 90) {
-            db[hKey][dateISO] = list.slice(-90);
+        if (existingIdx >= 0) {
+            const existing = list[existingIdx];
+            if (existing.rooms === rooms && existing.revenue === revenue && (existing.publishedBar || null) === pubBar) {
+                return true; // Sin cambios, no-op idempotente
+            }
+            existing.rooms = rooms;
+            existing.r = rooms;
+            existing.revenue = revenue;
+            existing.rev = revenue;
+            existing.adr = (rooms > 0 && revenue > 0) ? Number((revenue / rooms).toFixed(2)) : (Number(metrics.adr) || 0);
+            existing.publishedBar = pubBar;
+            existing.bar = pubBar;
+            existing.captureTime = captureTimeKey;
+            existing.t = captureTimeKey;
+            existing.captureDateTime = `${captureDayKey} ${captureTimeKey}`;
+            existing.occupancyPct = Number(((rooms / capacity) * 100).toFixed(1));
+            existing.availableRooms = Math.max(0, capacity - rooms);
+        } else {
+            const entry = normalizeSnapshotEntry({
+                d: captureDayKey,
+                t: captureTimeKey,
+                r: rooms,
+                rev: revenue,
+                bar: pubBar
+            }, capacity);
+            list.push(entry);
         }
 
         return saveSnapshotsDB(db);
@@ -638,50 +778,66 @@
         db[hKey] = db[hKey] || {};
 
         const capDt = (captureDate instanceof Date) ? captureDate : new Date(captureDate);
-        const captureDayKey = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Madrid' }).format(capDt);
-        const captureTimeKey = new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(capDt);
-        const captureDateTime = `${captureDayKey} ${captureTimeKey}`;
-        const timestamp = capDt.getTime();
+        let captureDayKey = '';
+        let captureTimeKey = '';
+        try {
+            captureDayKey = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Madrid' }).format(capDt);
+            captureTimeKey = new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(capDt);
+        } catch (e) {
+            captureDayKey = capDt.toISOString().slice(0, 10);
+            captureTimeKey = capDt.toTimeString().slice(0, 8);
+        }
         const capacity = (hKey === 'Cumbria') ? 59 : 108;
 
         let count = 0;
+        let hasAnyChange = false;
+
         Object.entries(dailyMap).forEach(([iso, val]) => {
             if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return;
             const rooms = Math.round(typeof val === 'object' ? (val.rooms ?? val.otbRooms ?? 0) : Number(val) || 0);
             const revenue = typeof val === 'object' ? (val.revenue ?? 0) : 0;
-            const adr = (rooms > 0 && revenue > 0) ? Number((revenue / rooms).toFixed(2)) : (typeof val === 'object' ? (val.adr || 0) : 0);
             const pubBar = typeof val === 'object' ? (val.price ?? val.bar ?? 0) : 0;
-            const occPct = (rooms / capacity) * 100;
 
             db[hKey][iso] = db[hKey][iso] || [];
             const list = db[hKey][iso];
-            const entry = {
-                captureDate: captureDayKey,
-                captureTime: captureTimeKey,
-                captureDateTime: captureDateTime,
-                timestamp: timestamp,
-                rooms: rooms,
-                revenue: revenue,
-                adr: adr,
-                publishedBar: pubBar || null,
-                occupancyPct: occPct,
-                availableRooms: Math.max(0, capacity - rooms)
-            };
+            const existingIdx = list.findIndex(item => (item.d === captureDayKey || item.captureDate === captureDayKey));
 
-            const existingIdx = list.findIndex(item => item.captureDate === captureDayKey);
             if (existingIdx >= 0) {
-                list[existingIdx] = entry;
-            } else {
-                list.push(entry);
-            }
+                const existing = list[existingIdx];
+                const existingRooms = existing.rooms !== undefined ? existing.rooms : existing.r;
+                const existingRev = existing.revenue !== undefined ? existing.revenue : (existing.rev || 0);
+                const existingBar = existing.publishedBar !== undefined ? existing.publishedBar : (existing.bar || 0);
 
-            if (list.length > 90) {
-                db[hKey][iso] = list.slice(-90);
+                if (existingRooms !== rooms || existingRev !== revenue || (existingBar || 0) !== (pubBar || 0)) {
+                    existing.rooms = rooms;
+                    existing.r = rooms;
+                    existing.revenue = revenue;
+                    existing.rev = revenue;
+                    existing.adr = (rooms > 0 && revenue > 0) ? Number((revenue / rooms).toFixed(2)) : (typeof val === 'object' ? (val.adr || 0) : 0);
+                    existing.publishedBar = pubBar || null;
+                    existing.bar = pubBar || null;
+                    existing.t = captureTimeKey;
+                    existing.captureTime = captureTimeKey;
+                    existing.captureDateTime = `${captureDayKey} ${captureTimeKey}`;
+                    existing.occupancyPct = Number(((rooms / capacity) * 100).toFixed(1));
+                    existing.availableRooms = Math.max(0, capacity - rooms);
+                    hasAnyChange = true;
+                }
+            } else {
+                const entry = normalizeSnapshotEntry({
+                    d: captureDayKey,
+                    t: captureTimeKey,
+                    r: rooms,
+                    rev: revenue,
+                    bar: pubBar || null
+                }, capacity);
+                list.push(entry);
+                hasAnyChange = true;
             }
             count++;
         });
 
-        if (count > 0) {
+        if (hasAnyChange) {
             saveSnapshotsDB(db);
         }
         return count;
@@ -1786,6 +1942,8 @@
         savePricingExceptions,
         setDateException,
         getBaseBarForDate,
+        normalizeSnapshotEntry,
+        compactSnapshotEntry,
         getSnapshotsDB,
         saveSnapshotsDB,
         recordDailySnapshot,

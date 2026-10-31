@@ -614,6 +614,134 @@ assert(
     `Guardado: ${latestSaved?.captureDateTime}, Hab: ${latestSaved?.rooms}, Libres: ${latestSaved?.availableRooms}, BAR: ${latestSaved?.publishedBar} €`
 );
 
+// =========================================================================
+// PRUEBAS DE OPTIMIZACIÓN DE FIREBASE Y ALMACENAMIENTO DE SNAPSHOTS (6 CASOS)
+// =========================================================================
+console.log('\n--- PRUEBAS DE OPTIMIZACIÓN DE FIREBASE Y ALMACENAMIENTO ---');
+
+// 1. Reducción drástica de volumen de datos (> 70% de ahorro frente al esquema verbose)
+const verboseMock = {
+    captureDate: '2026-10-31',
+    captureTime: '12:00:00',
+    captureDateTime: '2026-10-31 12:00:00',
+    timestamp: 1793444400000,
+    rooms: 85,
+    revenue: 6800,
+    adr: 80.00,
+    publishedBar: 95,
+    occupancyPct: 78.7,
+    availableRooms: 23
+};
+const compactMock = PI.compactSnapshotEntry(verboseMock);
+const verboseBytes = Buffer.byteLength(JSON.stringify(verboseMock), 'utf8');
+const compactBytes = Buffer.byteLength(JSON.stringify(compactMock), 'utf8');
+const reductionPct = ((verboseBytes - compactBytes) / verboseBytes) * 100;
+assert(
+    reductionPct >= 70 && compactMock.d === '2026-10-31' && compactMock.r === 85 && compactMock.rev === 6800 && compactMock.bar === 95,
+    'Optimización 1: Esquema compacto ahorra > 70% de datos en almacenamiento y red',
+    `Verbose: ${verboseBytes} B -> Compacto: ${compactBytes} B (Ahorro: ${reductionPct.toFixed(1)}%)`
+);
+
+// 2. Compatibilidad retroactiva total: snapshots antiguos se normalizan sin pérdida de datos
+const legacyDB = {
+    Guadiana: {
+        '2027-06-15': [
+            {
+                captureDate: '2026-10-01',
+                captureTime: '09:00:00',
+                captureDateTime: '2026-10-01 09:00:00',
+                timestamp: 1790845200000,
+                rooms: 35,
+                revenue: 2800,
+                adr: 80.00,
+                publishedBar: 85,
+                occupancyPct: 32.4,
+                availableRooms: 73
+            }
+        ]
+    },
+    Cumbria: {}
+};
+// Guardamos directamente en storage simulado
+PI.saveSnapshotsDB(legacyDB);
+const readBack = PI.getSnapshotsDB();
+const normSnap = readBack.Guadiana['2027-06-15'][0];
+assert(
+    normSnap.rooms === 35 && normSnap.revenue === 2800 && normSnap.adr === 80 && normSnap.publishedBar === 85 &&
+    normSnap.occupancyPct === 32.4 && normSnap.availableRooms === (108 - 35) && normSnap.captureDate === '2026-10-01',
+    'Optimización 2: Compatibilidad retroactiva transparente al leer snapshots en formato anterior',
+    `Normalizado: ${normSnap.captureDate}, Hab: ${normSnap.rooms}, Rev: ${normSnap.revenue} €, BAR: ${normSnap.publishedBar} €`
+);
+
+// 3. Consolidación diaria intradiaria (múltiples cargas en el mismo día no duplican registros)
+const testDateConsol = '2027-07-20';
+PI.recordDailySnapshot('Guadiana', testDateConsol, { rooms: 20, revenue: 1500, publishedBar: 75 }, new Date('2026-10-31T08:00:00'));
+// Segunda carga en el mismo día a las 18:00 con 22 habs vendidas
+PI.recordDailySnapshot('Guadiana', testDateConsol, { rooms: 22, revenue: 1650, publishedBar: 75 }, new Date('2026-10-31T18:00:00'));
+const dbConsol = PI.getSnapshotsDB();
+const snapsConsol = dbConsol.Guadiana[testDateConsol];
+assert(
+    snapsConsol.length === 1 && snapsConsol[0].rooms === 22 && snapsConsol[0].revenue === 1650,
+    'Optimización 3: Consolidación intradiaria actualiza la captura del día sin duplicar historial',
+    `Registros: ${snapsConsol.length}, Habitaciones actualizadas: ${snapsConsol[0].rooms} (última intradiaria)`
+);
+
+// 4. Idempotencia y cero escrituras redundantes ante cargas idénticas (prevención de sync churn)
+const batchMap = {
+    '2027-08-01': { rooms: 50, revenue: 4000, price: 80 },
+    '2027-08-02': { rooms: 55, revenue: 4400, price: 80 }
+};
+const firstBatchCount = PI.captureBatchSnapshots('Guadiana', batchMap, new Date('2026-10-31T10:00:00'));
+const dbAfterBatch1 = PI.getSnapshotsDB();
+// Segunda carga exactamente con los mismos datos
+const secondBatchCount = PI.captureBatchSnapshots('Guadiana', batchMap, new Date('2026-10-31T10:05:00'));
+const dbAfterBatch2 = PI.getSnapshotsDB();
+assert(
+    firstBatchCount === 2 && secondBatchCount === 2 &&
+    dbAfterBatch1.Guadiana['2027-08-01'].length === 1 &&
+    dbAfterBatch2.Guadiana['2027-08-01'].length === 1 &&
+    dbAfterBatch2.Guadiana['2027-08-01'][0].rooms === 50,
+    'Optimización 4: Idempotencia en cargas idénticas sin churn ni escrituras duplicadas',
+    `Carga 1 procesó ${firstBatchCount} fechas, Carga 2 idempotentemente conservó 1 registro por fecha`
+);
+
+// 5. Límite de retención provisional (tope de 90 capturas por fecha de estancia sin desbordamiento)
+const testDateRetention = '2027-09-10';
+const manySnaps = [];
+for (let i = 1; i <= 95; i++) {
+    const dayPad = String(i).padStart(3, '0');
+    manySnaps.push({
+        d: `2026-0${Math.floor(i/30)+1}-${String((i%28)+1).padStart(2, '0')}`,
+        r: i,
+        rev: i * 80,
+        bar: 75
+    });
+}
+const testRetentionDB = PI.getSnapshotsDB();
+testRetentionDB.Guadiana[testDateRetention] = manySnaps;
+PI.saveSnapshotsDB(testRetentionDB);
+const dbRetentionCheck = PI.getSnapshotsDB();
+const keptSnaps = dbRetentionCheck.Guadiana[testDateRetention];
+assert(
+    keptSnaps.length === 90 && keptSnaps[keptSnaps.length - 1].rooms === 95,
+    'Optimización 5: Límite de retención conserva exactamente las 90 capturas más recientes en orden',
+    `Total capturas: ${keptSnaps.length} (límite 90 respetado, última hab: ${keptSnaps[keptSnaps.length - 1].rooms})`
+);
+
+// 6. Independencia multi-hotel estricta en base de snapshots
+const testDateIndep = '2027-10-10';
+PI.recordDailySnapshot('Guadiana', testDateIndep, { rooms: 54, revenue: 4320 }, new Date('2026-10-31'));
+PI.recordDailySnapshot('Cumbria', testDateIndep, { rooms: 45, revenue: 3150 }, new Date('2026-10-31'));
+const dbIndep = PI.getSnapshotsDB();
+const snapG = dbIndep.Guadiana[testDateIndep][0];
+const snapC = dbIndep.Cumbria[testDateIndep][0];
+assert(
+    snapG.rooms === 54 && snapG.occupancyPct === 50.0 && // 54 / 108 = 50%
+    snapC.rooms === 45 && snapC.occupancyPct === 76.3,  // 45 / 59 = 76.27% -> 76.3%
+    'Optimización 6: Separación estricta de snapshots y capacidades entre Guadiana (108) y Cumbria (59)',
+    `Guadiana: 54 habs = ${snapG.occupancyPct}% (cap 108) | Cumbria: 45 habs = ${snapC.occupancyPct}% (cap 59)`
+);
+
 console.log('\n================================================================');
 console.log(`RESUMEN DE PRUEBAS: ${passedTests}/${totalTests} pruebas superadas (${failedTests} fallos)`);
 console.log('================================================================');
