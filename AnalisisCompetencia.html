@@ -21,10 +21,10 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="js/nav.js"></script>
     <script src="js/theme-manager.js"></script>
-    <script src="js/firebase-auth.js?v=20261031-0326"></script>
-    <script src="js/version.js?v=20261031-0326"></script>
-    <script src="js/pricing-intelligence.js?v=20261031-0326"></script>
-    <script src="js/competencia-intelligence-ui.js?v=20261031-0326"></script>
+    <script src="js/firebase-auth.js?v=20261031-0349"></script>
+    <script src="js/version.js?v=20261031-0349"></script>
+    <script src="js/pricing-intelligence.js?v=20261031-0349"></script>
+    <script src="js/competencia-intelligence-ui.js?v=20261031-0349"></script>
 
     <link rel="stylesheet" href="css/tokens.css">
     <link rel="stylesheet" href="css/nav.css">
@@ -2122,13 +2122,28 @@
         }
 
         // Global function for top-nav unification
+        let _isSwitchingHotel = false;
         function switchHotel(h) {
+            if (!h || (h !== 'Guadiana' && h !== 'Cumbria')) return;
             const hSel = document.getElementById('hotelSelector');
-            if (hSel) hSel.value = h;
-            activeHotel = h;
-            updateHotelLogo();
-            renderAll();
+            if (hSel && hSel.value !== h) hSel.value = h;
+            if (activeHotel === h && !_forceRefreshHotel) return;
+            if (_isSwitchingHotel) return;
+            _isSwitchingHotel = true;
+            try {
+                activeHotel = h;
+                if (window.CapaState && window.CapaState.activeHotel !== h) {
+                    window.CapaState.setActiveHotel(h);
+                } else {
+                    try { localStorage.setItem('active_hotel_suite', h); } catch (e) {}
+                }
+                updateHotelLogo();
+                renderAll();
+            } finally {
+                _isSwitchingHotel = false;
+            }
         }
+        let _forceRefreshHotel = false;
 
         // --- UI TOGGLES ---
         function toggleSidebar() {
@@ -2283,11 +2298,17 @@
         });
 
         function calculateSmartYield(d, hotel) {
+            if (!d) return null;
             ensureHotelStructure(d, hotel);
+            d._yieldInfo = d._yieldInfo || {};
+            if (d._yieldInfo[hotel] !== undefined && !d._yieldDirty) {
+                return d._yieldInfo[hotel];
+            }
             const my = d.hotels[hotel];
             const myP = (my && !my.sold) ? my.price : 0;
             const mktPrice = d.compAvg || 0;
             if (!my || my.sold || myP === 0) {
+                d._yieldInfo[hotel] = null;
                 return null;
             }
 
@@ -2359,7 +2380,7 @@
                 actionText = `En Rango (${targetPrice}€)`;
             }
 
-            return {
+            const yieldResult = {
                 targetPrice: targetPrice,
                 diffAmount: diffAmount,
                 minRange: minRange,
@@ -2379,6 +2400,8 @@
                 baseBar: rec.baseBar,
                 mathToleranceBand: rec.mathToleranceBand
             };
+            d._yieldInfo[hotel] = yieldResult;
+            return yieldResult;
         }
 
         function setManualPrice(dayIndex, hotelName, newPrice) {
@@ -3969,18 +3992,33 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 data = data.filter(d => d.month === selectedMonth);
             }
 
-            // Load Previous Snapshot for Pick-up comparison (if not already done in analyze)
+            // Load Previous Snapshot for Pick-up comparison (with memory cache)
             let prevMapLite = {};
             try {
                 const liteJson = CapaStorage.getItem('revenue_history_lite');
-                if (liteJson) prevMapLite = JSON.parse(liteJson);
+                if (liteJson) {
+                    if (window._memLiteJson === liteJson && window._memPrevMapLite) {
+                        prevMapLite = window._memPrevMapLite;
+                    } else {
+                        prevMapLite = JSON.parse(liteJson);
+                        window._memLiteJson = liteJson;
+                        window._memPrevMapLite = prevMapLite;
+                    }
+                }
             } catch(e) {}
 
-            // NEW: Robust & Optimized Occupancy Sync
+            // NEW: Robust & Optimized Occupancy Sync (with memory cache)
             try {
                 const dbRaw = CapaStorage.getItem('hotel_manager_db_v2');
                 if (!dbRaw) return;
-                const pDb = (typeof dbRaw === 'string') ? JSON.parse(dbRaw) : dbRaw;
+                let pDb;
+                if (window._memDbRaw === dbRaw && window._memPDb) {
+                    pDb = window._memPDb;
+                } else {
+                    pDb = (typeof dbRaw === 'string') ? JSON.parse(dbRaw) : dbRaw;
+                    window._memDbRaw = dbRaw;
+                    window._memPDb = pDb;
+                }
                 const dbKeys = Object.keys(pDb);
                 
                 // 1. Fuzzy match active hotel
@@ -4020,13 +4058,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     delete d.otbChange;
                     ensureHotelStructure(d, activeHotel);
 
-                    // Sync Active Hotel
-                    const dbActiveKey = dbKeys.find(k => {
-                        const kLow = k.toLowerCase().replace(/hotel|sercotel|villa|spa/g, '').trim();
-                        const aLow = activeHotel.toLowerCase().replace(/hotel|sercotel|villa|spa/g, '').trim();
-                        return kLow.includes(aLow) || aLow.includes(kLow);
-                    });
-
+                    // Sync Active Hotel (reutiliza dbActiveKey precalculado)
                     let otb = null, prod = null;
                     if (dbActiveKey && pDb[dbActiveKey]) {
                         const hD = pDb[dbActiveKey];
@@ -5096,7 +5128,22 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 return html;
             }).join('');
 
-            tbody.innerHTML = rowsHTML;
+            if (data.length <= 40) {
+                tbody.innerHTML = rowsHTML;
+            } else {
+                const splitIndex = 35;
+                const rows = rowsHTML.split('</tr>');
+                const firstBatch = rows.slice(0, splitIndex).join('</tr>') + '</tr>';
+                tbody.innerHTML = firstBatch;
+                if (typeof requestAnimationFrame === 'function') {
+                    requestAnimationFrame(() => {
+                        const remaining = rows.slice(splitIndex).join('</tr>');
+                        tbody.insertAdjacentHTML('beforeend', remaining);
+                    });
+                } else {
+                    tbody.innerHTML = rowsHTML;
+                }
+            }
             if (!tbody.rowSelectionBound) {
                 tbody.addEventListener('click', event => {
                     const row = event.target.closest('tr');
@@ -5108,6 +5155,11 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
 
         function renderChart(data) {
+            const chartModal = document.getElementById('chartModal');
+            if (!chartModal || chartModal.style.display === 'none' || !chartModal.style.display) {
+                window._pendingChartData = data;
+                return;
+            }
             const ctx = document.getElementById('mainChart').getContext('2d');
             if (chartInstance) chartInstance.destroy();
 
@@ -5231,7 +5283,23 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             initApp();
         };
 
+        function invalidateLocalYieldCache() {
+            window._memDbRaw = null;
+            window._memPDb = null;
+            window._memManualCuposRaw = null;
+            window._memManualCuposDB = null;
+            window._memLiteJson = null;
+            window._memPrevMapLite = null;
+            if (Array.isArray(processedData)) {
+                processedData.forEach(d => { if (d) delete d._yieldInfo; });
+            }
+            if (window.PricingIntelligence && typeof window.PricingIntelligence.invalidatePricingCache === 'function') {
+                window.PricingIntelligence.invalidatePricingCache();
+            }
+        }
+
         window.addEventListener('capasuite-data-synced', () => {
+            invalidateLocalYieldCache();
             if (typeof window.updateAll === 'function') window.updateAll();
         });
 
@@ -5605,10 +5673,16 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
         }
 
         // --- GESTIÓN MANUAL DE CUPOS Y BLOQUEOS ---
+        let _memManualCuposRaw = null;
+        let _memManualCuposDB = null;
         function getManualCuposDB() {
             try {
                 const raw = CapaStorage.getItem('manual_cupos_v1');
-                return raw ? JSON.parse(raw) : {};
+                if (!raw) return {};
+                if (_memManualCuposRaw === raw && _memManualCuposDB) return _memManualCuposDB;
+                _memManualCuposRaw = raw;
+                _memManualCuposDB = JSON.parse(raw);
+                return _memManualCuposDB;
             } catch(e) {
                 return {};
             }
@@ -6495,7 +6569,11 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 modalSel.value = mainSel.value;
             }
 
-            if (chartInstance) chartInstance.resize();
+            if (window._pendingChartData) {
+                renderChart(window._pendingChartData);
+            } else if (chartInstance) {
+                chartInstance.resize();
+            }
         }
 
         function filterChartFromModal() {
