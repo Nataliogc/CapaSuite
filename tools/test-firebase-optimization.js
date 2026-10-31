@@ -101,7 +101,7 @@ function createEnv(initialStorage = {}, initialCloud = {}, sharedListeners = nul
                     bytesUploaded += calcBytes(val);
                 }
                 // Trigger any listeners on these paths
-                for (const [lPath, cb] of listeners) {
+                for (const [lPath, cbSet] of listeners) {
                     if (lPath === cleanPath || lPath.startsWith(cleanPath + '/')) {
                         let lVal = cloud;
                         for (const lp of lPath.split('/')) {
@@ -109,8 +109,10 @@ function createEnv(initialStorage = {}, initialCloud = {}, sharedListeners = nul
                             else { lVal = undefined; break; }
                         }
                         const b = calcBytes(lVal);
-                        bytesDownloaded += b;
-                        cb({ val: () => lVal });
+                        for (const { cb, countBytes } of cbSet) {
+                            countBytes(b);
+                            cb({ val: () => lVal });
+                        }
                     }
                 }
                 return true;
@@ -129,10 +131,15 @@ function createEnv(initialStorage = {}, initialCloud = {}, sharedListeners = nul
                 return true;
             },
             on(event, cb) {
-                listeners.set(cleanPath, cb);
+                if (!listeners.has(cleanPath)) listeners.set(cleanPath, new Set());
+                listeners.get(cleanPath).add({ cb, countBytes: b => { bytesDownloaded += b; } });
             },
             off(event, cb) {
-                listeners.delete(cleanPath);
+                if (listeners.has(cleanPath)) {
+                    for (const item of listeners.get(cleanPath)) {
+                        if (item.cb === cb) listeners.get(cleanPath).delete(item);
+                    }
+                }
             }
         };
     };
