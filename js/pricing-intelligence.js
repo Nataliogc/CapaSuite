@@ -433,6 +433,130 @@
     }
 
     // =========================================================================
+    // 4B. PRESUPUESTO OFICIAL MENSUAL 2027 & 2026 (RECONCILIACIÓN Y CONTROL)
+    // Sercotel Guadiana V2 (108 habs) & Cumbria Spa & Hotel (59 habs)
+    // =========================================================================
+    const OFFICIAL_BUDGET_2027 = {
+        Guadiana: {
+            scenario: 'V2',
+            hotel: 'Guadiana',
+            note: 'Presupuesto Oficial 2027 V2 Sercotel Guadiana (108 habitaciones). 1.575.124,93 € / 22.954 RN / 68,62 € ADR / 58,23% Occ. Sin asumir crecimiento 7,5% sobre cierre 2026 sin validar base.',
+            capacity: 108,
+            annualAvailableRN: 39420,
+            annualRevenue: 1575124.93,
+            annualRN: 22954,
+            annualADR: 68.62,
+            annualOccPct: 58.23,
+            //         Ene     Feb     Mar      Abr      May      Jun      Jul      Ago      Sep      Oct      Nov      Dic
+            rev: [  70866,  85178, 121998,  147962,  200620,  142146,  116525,  151078,  150492,  173575,  113556,  101128 ],
+            adr: [  63.27,  62.49,  72.62,   61.78,   82.05,   74.00,   68.50,   69.69,   66.50,   68.53,   62.22,   65.67 ],
+            rn:  [   1120,   1363,   1680,    2395,    2445,    1921,    1701,    2168,    2263,    2533,    1825,    1540 ]
+        },
+        Cumbria: {
+            scenario: 'Oficial 2027',
+            hotel: 'Cumbria',
+            note: 'Presupuesto 2027 Cumbria Spa & Hotel (59 habitaciones). 992.145,45 € / 15.434 RN / 64,28 € ADR / 71,67% Occ. Crecimiento +7,50% sobre base 2026 (922.926 €). Sin considerar la 4ª estrella como categoría reconocida.',
+            capacity: 59,
+            annualAvailableRN: 21535,
+            annualRevenue: 992145.45,
+            annualRN: 15434,
+            annualADR: 64.28,
+            annualOccPct: 71.67,
+            //         Ene     Feb     Mar      Abr      May      Jun      Jul      Ago      Sep      Oct      Nov      Dic
+            rev: [  50949,  51684,  74623,   90604,  107569,   83637,   82135,   80777,   83835,  108129,   94745,   83459 ],
+            adr: [  54.32,  54.81,  63.73,   68.02,   70.63,   61.91,   59.22,   56.41,   61.92,   66.83,   74.84,   74.58 ],
+            rn:  [    938,    943,   1171,    1332,    1523,    1351,    1387,    1432,    1354,    1618,    1266,    1119 ]
+        }
+    };
+
+    const OFFICIAL_BUDGET_2026 = {
+        Guadiana: {
+            scenario: 'Aprobado 2026',
+            hotel: 'Guadiana',
+            note: 'Presupuesto Oficial 2026 Sercotel Guadiana (108 habitaciones). 1.395.371 € / 21.232 RN / 65,72 € ADR / 56,96% Occ.',
+            capacity: 108,
+            annualAvailableRN: 39420,
+            annualRevenue: 1395371,
+            annualRN: 21232,
+            annualADR: 65.72,
+            annualOccPct: 56.96,
+            rev: [ 66789, 71441, 106875, 130251, 125308, 118652, 121962, 131039, 148593, 163911, 114738, 95813 ],
+            adr: [ 61.50, 61.80,  75.00,  70.33,  69.50,  70.50,  69.10,  61.09,  62.91,  62.16,  64.28, 62.50 ],
+            rn:  [  1086,  1156,   1425,   1852,   1803,   1683,   1765,   2145,   2362,   2637,   1785,  1533 ]
+        },
+        Cumbria: {
+            scenario: 'Aprobado 2026',
+            hotel: 'Cumbria',
+            note: 'Presupuesto 2026 Cumbria Spa & Hotel (59 habitaciones).',
+            capacity: 59,
+            annualAvailableRN: 21535,
+            annualRevenue: 1255000,
+            annualRN: 15484,
+            annualADR: 81.05,
+            annualOccPct: 71.90,
+            rev: [ 66000, 69000, 81000, 101000, 118000, 108000, 126000, 118000, 116000, 111000, 96000, 86000 ],
+            adr: [ 70.00, 70.00, 75.00,  78.00,  87.00,  83.00,  91.00,  87.00,  86.00,  81.00,  78.00, 77.00 ],
+            rn:  [   943,   986,  1080,   1295,   1356,   1301,   1385,   1356,   1349,   1370,   1231,  1117 ]
+        }
+    };
+
+    function getMonthlyBudget(hotelName = 'Guadiana', year = 2027, monthNum = 1) {
+        const hKey = normalizeHotel(hotelName);
+        const yNum = Number(year) || 2027;
+        const mIdx = Math.max(0, Math.min(11, (Number(monthNum) || 1) - 1));
+        const capacity = (hKey === 'Cumbria') ? 59 : 108;
+        const daysInMonth = new Date(yNum, mIdx + 1, 0).getDate();
+        const availableRN = daysInMonth * capacity;
+
+        // Comprobar si existe presupuesto personalizado en hotel_manager_db_v2
+        let customBudget = null;
+        try {
+            const rawDb = getStoredItem('hotel_manager_db_v2');
+            if (rawDb) {
+                const db = JSON.parse(rawDb);
+                const customKey = `custom_budget_${yNum}`;
+                if (db && db[hKey] && db[hKey][customKey]) {
+                    customBudget = db[hKey][customKey];
+                }
+            }
+        } catch (e) {}
+
+        const officialData = (yNum === 2026) ? OFFICIAL_BUDGET_2026[hKey] : OFFICIAL_BUDGET_2027[hKey];
+        const isCustomValid = !!(customBudget && Array.isArray(customBudget.rev) && customBudget.rev.length === 12 && customBudget.rev.some(v => v > 0));
+
+        const targetRev = isCustomValid ? Number(customBudget.rev[mIdx]) : Number(officialData.rev[mIdx]);
+        const targetAdr = isCustomValid && customBudget.adr ? Number(customBudget.adr[mIdx]) : Number(officialData.adr[mIdx]);
+        const targetRN = (officialData.rn && !isCustomValid) 
+            ? Number(officialData.rn[mIdx]) 
+            : (targetAdr > 0 ? Math.round(targetRev / targetAdr) : 0);
+        const targetOccPct = availableRN > 0 ? (targetRN / availableRN) * 100 : 0;
+
+        return {
+            hotel: hKey,
+            year: yNum,
+            monthNum: mIdx + 1,
+            monthName: MONTH_NAMES_ES[mIdx],
+            daysInMonth,
+            capacity,
+            availableRN,
+            targetRev: Math.round(targetRev),
+            targetRN,
+            targetAdr: Number(targetAdr.toFixed(2)),
+            targetOccPct: Number(targetOccPct.toFixed(2)),
+            isCustom: isCustomValid,
+            scenario: isCustomValid ? 'Personalizado (Usuario)' : officialData.scenario,
+            scenarioNote: officialData.note,
+            annualTotals: {
+                availableRN: officialData.annualAvailableRN,
+                revenue: officialData.annualRevenue,
+                rn: officialData.annualRN,
+                adr: officialData.annualADR,
+                occupancyPct: officialData.annualOccPct
+            }
+        };
+    }
+
+    // =========================================================================
     // 5. HISTÓRICO DE SNAPSHOTS MULTI-HORIZONTE (DEDUPLICACIÓN Y PERSISTENCIA)
     // =========================================================================
     function getSnapshotsDB() {
@@ -462,15 +586,26 @@
 
         const capDt = (captureDate instanceof Date) ? captureDate : new Date(captureDate);
         const captureDayKey = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Madrid' }).format(capDt);
+        const captureTimeKey = new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(capDt);
+        const captureDateTime = `${captureDayKey} ${captureTimeKey}`;
         const timestamp = capDt.getTime();
+        const capacity = (hKey === 'Cumbria') ? 59 : 108;
+        const rooms = Math.round(Number(metrics.rooms) || 0);
+        const revenue = Number(metrics.revenue) || 0;
+        const adr = (rooms > 0 && revenue > 0) ? Number((revenue / rooms).toFixed(2)) : (Number(metrics.adr) || 0);
+        const pubBar = Number(metrics.publishedBar || metrics.currentPrice || 0) || null;
 
         const entry = {
             captureDate: captureDayKey,
+            captureTime: captureTimeKey,
+            captureDateTime: captureDateTime,
             timestamp: timestamp,
-            rooms: Math.round(Number(metrics.rooms) || 0),
-            revenue: Number(metrics.revenue) || 0,
-            adr: (metrics.rooms > 0 && metrics.revenue > 0) ? (metrics.revenue / metrics.rooms) : (Number(metrics.adr) || 0),
-            occupancyPct: Number(metrics.occupancyPct) || 0
+            rooms: rooms,
+            revenue: revenue,
+            adr: adr,
+            publishedBar: pubBar,
+            occupancyPct: Number(metrics.occupancyPct) || ((rooms / capacity) * 100),
+            availableRooms: Math.max(0, capacity - rooms)
         };
 
         const list = db[hKey][dateISO];
@@ -497,6 +632,8 @@
 
         const capDt = (captureDate instanceof Date) ? captureDate : new Date(captureDate);
         const captureDayKey = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Madrid' }).format(capDt);
+        const captureTimeKey = new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(capDt);
+        const captureDateTime = `${captureDayKey} ${captureTimeKey}`;
         const timestamp = capDt.getTime();
         const capacity = (hKey === 'Cumbria') ? 59 : 108;
 
@@ -505,18 +642,23 @@
             if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return;
             const rooms = Math.round(typeof val === 'object' ? (val.rooms ?? val.otbRooms ?? 0) : Number(val) || 0);
             const revenue = typeof val === 'object' ? (val.revenue ?? 0) : 0;
-            const adr = (rooms > 0 && revenue > 0) ? (revenue / rooms) : (typeof val === 'object' ? (val.adr || 0) : 0);
+            const adr = (rooms > 0 && revenue > 0) ? Number((revenue / rooms).toFixed(2)) : (typeof val === 'object' ? (val.adr || 0) : 0);
+            const pubBar = typeof val === 'object' ? (val.price ?? val.bar ?? 0) : 0;
             const occPct = (rooms / capacity) * 100;
 
             db[hKey][iso] = db[hKey][iso] || [];
             const list = db[hKey][iso];
             const entry = {
                 captureDate: captureDayKey,
+                captureTime: captureTimeKey,
+                captureDateTime: captureDateTime,
                 timestamp: timestamp,
                 rooms: rooms,
                 revenue: revenue,
                 adr: adr,
-                occupancyPct: occPct
+                publishedBar: pubBar || null,
+                occupancyPct: occPct,
+                availableRooms: Math.max(0, capacity - rooms)
             };
 
             const existingIdx = list.findIndex(item => item.captureDate === captureDayKey);
@@ -543,11 +685,11 @@
         const result = {
             dateISO: dateISO,
             current: { rooms: 0, revenue: 0, adr: 0, occPct: 0 },
-            h24h: { available: false, diffRooms: 0, diffRev: 0, adrPickup: 0, diffOccPct: 0, label: 'Sin histórico suficiente' },
-            d3:   { available: false, diffRooms: 0, diffRev: 0, adrPickup: 0, diffOccPct: 0, label: 'Sin histórico suficiente' },
-            d7:   { available: false, diffRooms: 0, diffRev: 0, adrPickup: 0, diffOccPct: 0, label: 'Sin histórico suficiente' },
-            d14:  { available: false, diffRooms: 0, diffRev: 0, adrPickup: 0, diffOccPct: 0, label: 'Sin histórico suficiente' },
-            d30:  { available: false, diffRooms: 0, diffRev: 0, adrPickup: 0, diffOccPct: 0, label: 'Sin histórico suficiente' },
+            h24h: { available: false, diffRooms: null, diffRev: null, diffAdr: null, adrPickup: null, diffOccPct: null, label: 'Sin datos', status: 'NO_DATA' },
+            d3:   { available: false, diffRooms: null, diffRev: null, diffAdr: null, adrPickup: null, diffOccPct: null, label: 'Sin datos', status: 'NO_DATA' },
+            d7:   { available: false, diffRooms: null, diffRev: null, diffAdr: null, adrPickup: null, diffOccPct: null, label: 'Sin datos', status: 'NO_DATA' },
+            d14:  { available: false, diffRooms: null, diffRev: null, diffAdr: null, adrPickup: null, diffOccPct: null, label: 'Sin datos', status: 'NO_DATA' },
+            d30:  { available: false, diffRooms: null, diffRev: null, diffAdr: null, adrPickup: null, diffOccPct: null, label: 'Sin datos', status: 'NO_DATA' },
             snapshotsCount: 0
         };
 
@@ -579,15 +721,21 @@
 
         if (list.length === 0) {
             if (instantPickup !== null) {
+                const status = instantPickup > 0 ? 'GROWTH' : (instantPickup < 0 ? 'CANCELLATION' : 'STABLE');
+                const label = instantPickup === 0 
+                    ? '0 RN' 
+                    : (instantPickup > 0 ? `+${instantPickup} RN` : `${instantPickup} RN (Cancelaciones: ${Math.abs(instantPickup)} habs)`);
                 result.h24h = {
                     available: true,
                     diffRooms: instantPickup,
                     diffRev: 0,
+                    diffAdr: 0,
                     adrPickup: 0,
                     diffOccPct: 0,
                     baselineRooms: current.rooms - instantPickup,
                     baselineDate: 'Última carga',
-                    label: `${instantPickup >= 0 ? '+' : ''}${instantPickup} RN`
+                    label: label,
+                    status: status
                 };
             }
             return result;
@@ -628,38 +776,56 @@
             if (bestMatch) {
                 const diffRooms = current.rooms - bestMatch.rooms;
                 const diffRev = current.revenue - bestMatch.revenue;
-                const adrPickup = (diffRooms !== 0 && diffRev !== 0) ? (diffRev / diffRooms) : 0;
+                const prevAdr = (bestMatch.rooms > 0 && bestMatch.revenue > 0) ? (bestMatch.revenue / bestMatch.rooms) : (bestMatch.adr || 0);
+                const diffAdr = (current.adr > 0 && prevAdr > 0) ? Number((current.adr - prevAdr).toFixed(2)) : 0;
+                const adrPickup = (diffRooms !== 0 && diffRev !== 0) ? Number((diffRev / diffRooms).toFixed(2)) : 0;
                 const diffOccPct = current.occupancyPct - bestMatch.occupancyPct;
+
+                const status = diffRooms > 0 ? 'GROWTH' : (diffRooms < 0 ? 'CANCELLATION' : 'STABLE');
+                const label = diffRooms === 0 
+                    ? '0 RN' 
+                    : (diffRooms > 0 ? `+${diffRooms} RN` : `${diffRooms} RN (Cancelaciones: ${Math.abs(diffRooms)} habs)`);
 
                 result[h.key] = {
                     available: true,
                     diffRooms: diffRooms,
                     diffRev: diffRev,
+                    diffAdr: diffAdr,
                     adrPickup: adrPickup,
                     diffOccPct: diffOccPct,
                     baselineRooms: bestMatch.rooms,
                     baselineDate: bestMatch.captureDate,
-                    label: `${diffRooms >= 0 ? '+' : ''}${diffRooms} RN`
+                    baselineTime: bestMatch.captureTime || '',
+                    label: label,
+                    status: status
                 };
             } else if (h.key === 'h24h' && instantPickup !== null) {
+                const status = instantPickup > 0 ? 'GROWTH' : (instantPickup < 0 ? 'CANCELLATION' : 'STABLE');
+                const label = instantPickup === 0 
+                    ? '0 RN' 
+                    : (instantPickup > 0 ? `+${instantPickup} RN` : `${instantPickup} RN (Cancelaciones: ${Math.abs(instantPickup)} habs)`);
                 result.h24h = {
                     available: true,
                     diffRooms: instantPickup,
                     diffRev: 0,
+                    diffAdr: 0,
                     adrPickup: 0,
                     diffOccPct: 0,
                     baselineRooms: current.rooms - instantPickup,
                     baselineDate: 'Última carga',
-                    label: `${instantPickup >= 0 ? '+' : ''}${instantPickup} RN`
+                    label: label,
+                    status: status
                 };
             } else {
                 result[h.key] = {
                     available: false,
-                    diffRooms: 0,
-                    diffRev: 0,
-                    adrPickup: 0,
-                    diffOccPct: 0,
-                    label: 'Sin histórico suficiente'
+                    diffRooms: null,
+                    diffRev: null,
+                    diffAdr: null,
+                    adrPickup: null,
+                    diffOccPct: null,
+                    label: 'Sin datos',
+                    status: 'NO_DATA'
                 };
             }
         });
@@ -698,7 +864,7 @@
         // Histórico suficiente: existen snapshots registrados o comparativas explícitas
         const hasSufficientHistory = !!(
             (pickupData && (pickupData.h24h?.available || pickupData.d7?.available || (pickupData.snapshotsCount && pickupData.snapshotsCount >= 2))) ||
-            (otbChange !== undefined && otbChange !== null && otbChange !== 0) ||
+            (otbChange !== undefined && otbChange !== null) ||
             (gross !== null && cancel !== null)
         );
 
@@ -723,8 +889,8 @@
             (pickupPressure >= 0.12 && bestPickup >= 1)
         );
 
-        const isWeak = (bestPickup <= 0) || (
-            (daysOut <= 30 && bestPickup < (referenceVelocity * 0.5))
+        const isWeak = hasSufficientHistory && (
+            (bestPickup <= 0) || (daysOut <= 30 && bestPickup < (referenceVelocity * 0.5))
         );
 
         return {
@@ -761,6 +927,7 @@
         let isForecastReliable = false;
         let forecastMethod = 'CONFIRMED_OTB';
         let forecastNote = '';
+        let forecastStatus = 'Previsión no disponible';
 
         if (hasManualForecast) {
             projectedOccPct = Math.min(100, Math.max(0, Number(projectedOccupancyPct)));
@@ -768,6 +935,7 @@
             isForecastReliable = true;
             forecastMethod = 'PARAM_PROJECTED';
             forecastNote = `Ocupación final prevista informada: ${projectedOccPct.toFixed(0)}% (${projectedRooms} habs)`;
+            forecastStatus = `${projectedOccPct.toFixed(0)}% (${projectedRooms} habs)`;
         } else if (pickupMetrics?.hasSufficientHistory && daysOut > 0 && daysOut <= 60 && pickupMetrics.bestPickup > 0) {
             const remainingPaceDaily = Math.min(2.0, (pickupMetrics.bestPickup / (pickupMetrics.p7d ? 7 : 1)));
             const estimatedRemainingRooms = Math.round(remainingPaceDaily * Math.min(daysOut, 14) * 0.7);
@@ -777,10 +945,12 @@
             isForecastReliable = true;
             forecastMethod = 'PACE_EXTRAPOLATION';
             forecastNote = `Estimación estadística inicial: ${projectedOccPct.toFixed(0)}% (OTB ${confirmedRooms} + ${estimatedRemainingRooms} proyectadas)`;
+            forecastStatus = `${projectedOccPct.toFixed(0)}% (${projectedRooms} habs)`;
         } else {
             isForecastReliable = false;
             forecastMethod = 'CONFIRMED_OTB_FALLBACK';
             forecastNote = 'Sin histórico estadístico suficiente para curva de pickup. Se utiliza ocupación confirmada PMS.';
+            forecastStatus = 'Previsión no disponible';
         }
 
         const effectiveOcc = (isForecastReliable && projectedOccPct > confirmedOccPct) ? projectedOccPct : confirmedOccPct;
@@ -794,7 +964,8 @@
             effectiveOcc,
             isForecastReliable,
             forecastMethod,
-            forecastNote
+            forecastNote,
+            forecastStatus
         };
     }
 
@@ -1017,6 +1188,14 @@
         let confidenceScore = pickupMetrics.hasSufficientHistory ? 'Alta' : 'Media';
         let riskAssessment = 'Riesgo bajo';
 
+        const confidenceDetails = {
+            pms: 'Alta (100% certificado por carga PMS)',
+            expedia: (soldCompsCount > 0) 
+                ? 'Media (alerta: competidores sin tarifas observadas no certifican lleno)' 
+                : 'Alta (tarifas públicas observables)',
+            revenue: pickupMetrics.hasSufficientHistory ? 'Alta' : 'Prudencial (sin histórico de pickup)'
+        };
+
         if (!pickupMetrics.hasSufficientHistory) {
             reasons.push('Información histórica insuficiente de pickup: ritmo evaluado con baremo de referencia por tamaño (' + capacity + ' habs) y antelación (' + daysOut + 'd), no sobre histórico confirmado.');
         } else {
@@ -1024,6 +1203,8 @@
         }
         if (occData.isForecastReliable) {
             reasons.push(occData.forecastNote);
+        } else {
+            reasons.push('Previsión de demanda: No disponible por falta de histórico de pickup suficiente. Se opera con OTB confirmado.');
         }
 
         // --- Contexto de Competencia Observable (Expedia / OTA) ---
@@ -1212,6 +1393,7 @@
         const roundedCurrent = barVigente;
         const diffAmount = roundedProposed - roundedCurrent;
         const diffPct = (roundedCurrent > 0) ? ((diffAmount / roundedCurrent) * 100) : 0;
+        const budgetContext = getMonthlyBudget(hotelName, yearNum, monthNum);
 
         return {
             dateISO,
@@ -1230,6 +1412,9 @@
             reasons,
             fullReasonText: reasons.join(' '),
             confidenceScore,
+            confidenceDetails,
+            forecastStatus: occData.forecastStatus,
+            budgetContext,
             riskAssessment,
             isException,
             eventName,
@@ -1509,6 +1694,30 @@
         const forecastADR = sumRooms > 0 ? (sumRevenue / sumRooms) : avgCur;
         const compGap = (avgCur > 0 && avgMkt > 0) ? (((avgCur - avgMkt) / avgMkt) * 100) : 0;
 
+        const bgt = getMonthlyBudget(hotelName, detectedYear, selectedMonthNum);
+        const targetRev = bgt.targetRev;
+        const targetRN = bgt.targetRN;
+        const targetAdr = bgt.targetAdr;
+        const targetOcc = bgt.targetOccPct;
+
+        const pendingRev = Math.max(0, targetRev - Math.round(sumRevenue));
+        const pendingRN = Math.max(0, targetRN - sumRooms);
+        const revCoveragePct = targetRev > 0 ? Number(((sumRevenue / targetRev) * 100).toFixed(1)) : 0;
+        const rnCoveragePct = targetRN > 0 ? Number(((sumRooms / targetRN) * 100).toFixed(1)) : 0;
+        const gapRevenue = Math.round(sumRevenue - targetRev);
+        const gapRN = sumRooms - targetRN;
+        const gapOccPct = Number((avgOcc - targetOcc).toFixed(1));
+
+        const pacing = {
+            hasHistoricalPace: hasHist,
+            paceStatus: hasHist 
+                ? (p7dSum > 0 ? `Ritmo positivo (+${p7dSum} RN en 7d)` : (p7dSum < 0 ? `Ritmo negativo (${p7dSum} RN en 7d)` : `Ritmo estable (0 RN en 7d)`))
+                : 'Ritmo histórico no disponible',
+            paceDetails: hasHist
+                ? `Pick-up acumulado en los últimos 7 días: ${p7dSum >= 0 ? '+' : ''}${p7dSum} RN.`
+                : 'Sin capturas históricas previas suficientes para este mes. No clasificar la cobertura (% captado) de forma aislada sin ponderar los días de antelación (lead time).'
+        };
+
         return {
             year: detectedYear,
             monthNum: selectedMonthNum,
@@ -1526,13 +1735,35 @@
             pickupAccum14d: hasHist ? p14dSum : null,
             pickupAccum30d: hasHist ? p30dSum : null,
             avgMarketPrice: avgMkt,
-            compGapPct: compGap
+            compGapPct: compGap,
+            budget: bgt,
+            budgetMetrics: {
+                targetRevenue: targetRev,
+                targetRN: targetRN,
+                targetADR: targetAdr,
+                targetOccPct: targetOcc,
+                confirmedRevenue: Math.round(sumRevenue),
+                confirmedRN: sumRooms,
+                confirmedADR: Math.round(forecastADR),
+                confirmedOccPct: Number(avgOcc.toFixed(1)),
+                pendingRevenue: pendingRev,
+                pendingRN: pendingRN,
+                revenueCoveragePct: revCoveragePct,
+                rnCoveragePct: rnCoveragePct,
+                gapRevenue: gapRevenue,
+                gapRN: gapRN,
+                gapOccPct: gapOccPct
+            },
+            pacing: pacing
         };
     }
 
     const api = {
         DEFAULT_BAR_MATRICES,
         DEFAULT_OCC_TIERS,
+        OFFICIAL_BUDGET_2027,
+        OFFICIAL_BUDGET_2026,
+        getMonthlyBudget,
         DOW_NAMES_ES,
         MONTH_NAMES_ES,
         normalizeHotel,
