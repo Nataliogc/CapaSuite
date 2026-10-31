@@ -438,6 +438,182 @@ assert(
     `Acción: ${exp8.action}, Propuesto: ${exp8.proposedPrice} €, Trigger: ${exp8.triggerText}`
 );
 
+// =============================================================================
+// PRUEBAS DE VALIDACIÓN: FICHA DE ANÁLISIS REVENUE, PICKUP Y PRESUPUESTO 2027
+// 10 Casos de Prueba Obligatorios
+// =============================================================================
+console.log('\n--- PRUEBAS DE LA FICHA DE ANÁLISIS REVENUE (10 CASOS OBLIGATORIOS) ---');
+
+// 1. Fecha con una sola captura
+// No debe inventar curva de evolución; horizontes multidiarios deben indicar 'Sin datos' (diffRooms: null).
+const snapDbSingle = {
+    Guadiana: {
+        '2027-05-10': [
+            { captureDate: '2026-10-31', timestamp: Date.now(), rooms: 20, revenue: 1400, adr: 70, occupancyPct: 18.5 }
+        ]
+    },
+    Cumbria: {}
+};
+PI.saveSnapshotsDB(snapDbSingle);
+const pSingle = PI.calculateDailyPickup('Guadiana', '2027-05-10', { rooms: 20, revenue: 1400, adr: 70, occupancyPct: 18.5 });
+assert(
+    pSingle.snapshotsCount === 1 &&
+    pSingle.d7.available === false && pSingle.d7.diffRooms === null && pSingle.d7.label === 'Sin datos' &&
+    pSingle.d3.available === false && pSingle.d3.diffRooms === null,
+    'Prueba Ficha 1: Fecha con una sola captura (Horizontes multi-día = "Sin datos", diffRooms: null)',
+    `Snapshots: ${pSingle.snapshotsCount}, 7d Available: ${pSingle.d7.available}, 7d Label: "${pSingle.d7.label}"`
+);
+
+// 2. Fecha con varias capturas y pickup positivo
+// Debe reflejar la diferencia real observada entre snapshots comparables.
+const snapDbMulti = {
+    Guadiana: {
+        '2027-06-15': [
+            { captureDate: '2026-10-24', timestamp: Date.now() - (7 * 24 * 3600 * 1000), rooms: 30, revenue: 2100, adr: 70, occupancyPct: 27.7 },
+            { captureDate: '2026-10-31', timestamp: Date.now(), rooms: 36, revenue: 2592, adr: 72, occupancyPct: 33.3 }
+        ]
+    },
+    Cumbria: {}
+};
+PI.saveSnapshotsDB(snapDbMulti);
+const pMulti = PI.calculateDailyPickup('Guadiana', '2027-06-15', { rooms: 36, revenue: 2592, adr: 72, occupancyPct: 33.3 });
+assert(
+    pMulti.snapshotsCount === 2 && pMulti.d7.available === true && pMulti.d7.diffRooms === 6 && pMulti.d7.label === '+6 RN' && pMulti.d7.status === 'GROWTH',
+    'Prueba Ficha 2: Fecha con varias capturas y pickup positivo (+6 RN en 7d)',
+    `Snapshots: ${pMulti.snapshotsCount}, 7d: ${pMulti.d7.label}, Status: ${pMulti.d7.status}`
+);
+
+// 3. Fecha con pickup neto cero real
+// Debe diferenciar '0 RN' de 'Sin datos' cuando existe una captura comparable sin variación de plazas.
+const snapDbZero = {
+    Guadiana: {
+        '2027-07-20': [
+            { captureDate: '2026-10-24', timestamp: Date.now() - (7 * 24 * 3600 * 1000), rooms: 45, revenue: 3150, adr: 70, occupancyPct: 41.6 },
+            { captureDate: '2026-10-31', timestamp: Date.now(), rooms: 45, revenue: 3150, adr: 70, occupancyPct: 41.6 }
+        ]
+    },
+    Cumbria: {}
+};
+PI.saveSnapshotsDB(snapDbZero);
+const pZero = PI.calculateDailyPickup('Guadiana', '2027-07-20', { rooms: 45, revenue: 3150, adr: 70, occupancyPct: 41.6 });
+assert(
+    pZero.d7.available === true && pZero.d7.diffRooms === 0 && pZero.d7.label === '0 RN' && pZero.d7.status === 'STABLE',
+    'Prueba Ficha 3: Fecha con pickup neto cero real (Diferenciado de falta de datos: "0 RN")',
+    `7d Available: ${pZero.d7.available}, Diff: ${pZero.d7.diffRooms}, Label: "${pZero.d7.label}"`
+);
+
+// 4. Fecha con cancelaciones
+// Debe reflejar decrementos de reservas observados (pickup negativo) con indicación de cancelaciones.
+const snapDbCancel = {
+    Guadiana: {
+        '2027-08-10': [
+            { captureDate: '2026-10-24', timestamp: Date.now() - (7 * 24 * 3600 * 1000), rooms: 50, revenue: 3500, adr: 70, occupancyPct: 46.3 },
+            { captureDate: '2026-10-31', timestamp: Date.now(), rooms: 46, revenue: 3220, adr: 70, occupancyPct: 42.6 }
+        ]
+    },
+    Cumbria: {}
+};
+PI.saveSnapshotsDB(snapDbCancel);
+const pCancel = PI.calculateDailyPickup('Guadiana', '2027-08-10', { rooms: 46, revenue: 3220, adr: 70, occupancyPct: 42.6 });
+assert(
+    pCancel.d7.available === true && pCancel.d7.diffRooms === -4 && pCancel.d7.status === 'CANCELLATION' && pCancel.d7.label.includes('-4 RN'),
+    'Prueba Ficha 4: Fecha con cancelaciones (-4 RN en 7d, status: CANCELLATION)',
+    `7d: ${pCancel.d7.label}, Status: ${pCancel.d7.status}`
+);
+
+// 5. Fecha sin histórico suficiente
+// Previsión de demanda no disponible, confianza adaptada y sin afirmar 'pickup débil' por falta de datos.
+const rNoHist = PI.evaluateDailyRecommendation({
+    hotelName: 'Guadiana',
+    dateISO: '2027-10-14',
+    currentPrice: 70,
+    otbRooms: 15,
+    occupancyPct: 13.8,
+    pickupData: null
+});
+assert(
+    rNoHist.hasSufficientPickupHistory === false &&
+    rNoHist.confidenceScore === 'Media' &&
+    rNoHist.forecastStatus === 'Previsión no disponible' &&
+    rNoHist.reasons.some(r => r.includes('insuficiente')),
+    'Prueba Ficha 5: Fecha sin histórico suficiente (Previsión no disponible, confianza Media, sin alertar pickup débil)',
+    `Histórico suficiente: ${rNoHist.hasSufficientPickupHistory}, Confianza: ${rNoHist.confidenceScore}, Previsión: ${rNoHist.forecastStatus}`
+);
+
+// 6. Evolución económica con datos disponibles
+// Snapshots conservan revenue y adr, calculando variaciones económicas entre capturas.
+const snapDbEco = {
+    Guadiana: {
+        '2027-09-25': [
+            { captureDate: '2026-10-24', timestamp: Date.now() - (7 * 24 * 3600 * 1000), rooms: 40, revenue: 2800, adr: 70, occupancyPct: 37 },
+            { captureDate: '2026-10-31', timestamp: Date.now(), rooms: 45, revenue: 3375, adr: 75, occupancyPct: 41.6 }
+        ]
+    },
+    Cumbria: {}
+};
+PI.saveSnapshotsDB(snapDbEco);
+const pEco = PI.calculateDailyPickup('Guadiana', '2027-09-25', { rooms: 45, revenue: 3375, adr: 75, occupancyPct: 41.6 });
+assert(
+    pEco.d7.diffRev === 575 && pEco.d7.diffAdr === 5 && pEco.d7.adrPickup === 115,
+    'Prueba Ficha 6: Evolución económica (diffRev: +575 €, diffAdr: +5 €, adrPickup: 115 €)',
+    `diffRev: ${pEco.d7.diffRev} €, diffAdr: ${pEco.d7.diffAdr} €, adrPickup: ${pEco.d7.adrPickup} €`
+);
+
+// 7. Separación entre ambos hoteles
+// Validar aislamiento total de snapshots y presupuestos entre Guadiana (108 habs) y Cumbria (59 habs).
+const bgtGuadiana = PI.getMonthlyBudget('Guadiana', 2027, 5); // Mayo Guadiana V2
+const bgtCumbria = PI.getMonthlyBudget('Cumbria', 2027, 5);   // Mayo Cumbria
+assert(
+    bgtGuadiana.capacity === 108 && bgtGuadiana.targetRev === 200620 && bgtGuadiana.targetRN === 2445 &&
+    bgtCumbria.capacity === 59 && bgtCumbria.targetRev === 107569 && bgtCumbria.targetRN === 1523 &&
+    bgtGuadiana.annualTotals.revenue === 1575124.93 && bgtCumbria.annualTotals.revenue === 992145.45,
+    'Prueba Ficha 7: Separación estricta entre hoteles y conciliación presupuestaria (Guadiana 1.575.124,93 € vs Cumbria 992.145,45 €)',
+    `Guadiana Mayo: ${bgtGuadiana.targetRev} € (${bgtGuadiana.targetRN} RN) | Cumbria Mayo: ${bgtCumbria.targetRev} € (${bgtCumbria.targetRN} RN)`
+);
+
+// 8. Ejercicios 2026 y 2027
+// Comprobar procedencia de BAR base y ejercicio dinámico en ficha (2026 vs 2027).
+const r2026 = PI.evaluateDailyRecommendation({ hotelName: 'Guadiana', dateISO: '2026-11-02', currentPrice: 66, otbRooms: 20 });
+const r2027 = PI.evaluateDailyRecommendation({ hotelName: 'Guadiana', dateISO: '2027-11-02', currentPrice: 68, otbRooms: 20 });
+assert(
+    r2026.year === 2026 && r2026.baseBar === 64 &&
+    r2027.year === 2027 && r2027.baseBar === 68 &&
+    r2026.budgetContext.year === 2026 && r2027.budgetContext.year === 2027,
+    'Prueba Ficha 8: Ejercicios 2026 y 2027 (Lunes Nov 2026 = 64 € vs Martes Nov 2027 = 68 €)',
+    `2026 Base: ${r2026.baseBar} € (Año: ${r2026.year}) | 2027 Base: ${r2027.baseBar} € (Año: ${r2027.year})`
+);
+
+// 9. Recomendación manual sin cambio de precio
+// Si la tarifa recomendada coincide con la vigente o es REVISIÓN MANUAL, diffAmount es 0 y se exige intervención manual.
+const rManual = PI.evaluateDailyRecommendation({
+    hotelName: 'Guadiana',
+    dateISO: '2026-11-15',
+    currentPrice: 95,
+    marketAvg: 70,
+    otbRooms: 19,
+    occupancyPct: 17.5,
+    otbChange: 0
+});
+assert(
+    rManual.action === 'REVISIÓN MANUAL' && rManual.proposedPrice === 95 && rManual.diffAmount === 0,
+    'Prueba Ficha 9: Recomendación manual sin cambio de precio (diffAmount = 0, tarifa protegida en 95 €)',
+    `Acción: ${rManual.action}, Propuesto: ${rManual.proposedPrice} €, diffAmount: ${rManual.diffAmount} €`
+);
+
+// 10. Correcta conservación de la información entre actualizaciones
+// Snapshots registran captureDateTime, publishedBar, availableRooms y persisten sin corrupción.
+const testSnapDate = '2027-12-05';
+PI.recordDailySnapshot('Guadiana', testSnapDate, { rooms: 40, revenue: 2600, adr: 65, publishedBar: 75 }, new Date('2026-10-31T14:30:00'));
+const dbCheck = PI.getSnapshotsDB();
+const savedSnaps = dbCheck.Guadiana[testSnapDate];
+const latestSaved = savedSnaps ? savedSnaps[savedSnaps.length - 1] : null;
+assert(
+    latestSaved && latestSaved.rooms === 40 && latestSaved.revenue === 2600 && latestSaved.publishedBar === 75 &&
+    latestSaved.availableRooms === (108 - 40) && latestSaved.captureDateTime.includes('2026-10-31'),
+    'Prueba Ficha 10: Conservación inmutable de snapshots (rooms, revenue, adr, publishedBar, availableRooms, captureDateTime)',
+    `Guardado: ${latestSaved?.captureDateTime}, Hab: ${latestSaved?.rooms}, Libres: ${latestSaved?.availableRooms}, BAR: ${latestSaved?.publishedBar} €`
+);
+
 console.log('\n================================================================');
 console.log(`RESUMEN DE PRUEBAS: ${passedTests}/${totalTests} pruebas superadas (${failedTests} fallos)`);
 console.log('================================================================');

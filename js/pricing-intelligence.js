@@ -157,6 +157,8 @@
     ];
 
     // Helper de almacenamiento seguro
+    const _memoryStorage = new Map();
+
     function getStoredItem(key) {
         try {
             if (typeof CapaStorage !== 'undefined' && CapaStorage.getItem) {
@@ -164,6 +166,9 @@
             }
             if (typeof localStorage !== 'undefined') {
                 return localStorage.getItem(key);
+            }
+            if (_memoryStorage.has(key)) {
+                return _memoryStorage.get(key);
             }
         } catch (e) {
             console.warn('[PricingIntelligence] Error al leer storage:', key, e);
@@ -181,6 +186,8 @@
                 localStorage.setItem(key, val);
                 return true;
             }
+            _memoryStorage.set(key, String(val));
+            return true;
         } catch (e) {
             console.warn('[PricingIntelligence] Error al escribir storage:', key, e);
         }
