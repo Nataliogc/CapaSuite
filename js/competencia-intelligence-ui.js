@@ -627,14 +627,21 @@
             minFloorPrice: minFloor
         });
 
-        // Título
+        // Parseo de fecha para ejercicio dinámico y día de la semana
         const dtParts = dateISO.split('-');
-        const dtObj = new Date(parseInt(dtParts[0], 10), parseInt(dtParts[1], 10) - 1, parseInt(dtParts[2], 10));
+        const stayYear = dtParts[0] || '2027';
+        const stayMonthNum = parseInt(dtParts[1], 10) || 1;
+        const dtObj = new Date(parseInt(dtParts[0], 10), stayMonthNum - 1, parseInt(dtParts[2], 10));
         const dowName = PricingIntelligence.DOW_NAMES_ES[dtObj.getDay()];
+
+        // Obtener presupuesto oficial del mes para contexto presupuestario
+        const bgt = (typeof PricingIntelligence.getMonthlyBudget === 'function') 
+            ? PricingIntelligence.getMonthlyBudget(currentHotel, stayYear, stayMonthNum) 
+            : null;
 
         document.getElementById('dayDetailTitle').innerText = `Ficha de Análisis: ${d.label || dateISO}`;
         document.getElementById('dayDetailDowBadge').innerText = dowName;
-        document.getElementById('dayDetailSubtitle').innerText = `${currentHotel} · Antelación: ${rec.daysOut} días para la llegada · BAR Base Excel: ${rec.baseBar} €`;
+        document.getElementById('dayDetailSubtitle').innerText = `${currentHotel} · Antelación: ${rec.daysOut} días para la llegada · BAR Base Oficial (${stayYear}): ${rec.baseBar} €`;
 
         // Status badge
         const statusBadge = document.getElementById('dayDetailStatusBadge');
@@ -651,46 +658,57 @@
         // 1. Grid de Situación Actual
         const kpiGrid = document.getElementById('dayDetailKpiGrid');
         if (kpiGrid) {
-            const p24 = pData.h24h.available ? `${pData.h24h.diffRooms >= 0 ? '+' : ''}${pData.h24h.diffRooms} RN` : 'Sin histórico';
-            const p7  = pData.d7.available ? `${pData.d7.diffRooms >= 0 ? '+' : ''}${pData.d7.diffRooms} RN` : 'Sin histórico';
-            const p14 = pData.d14.available ? `${pData.d14.diffRooms >= 0 ? '+' : ''}${pData.d14.diffRooms} RN` : 'Sin histórico';
+            const formatP = (horizon) => {
+                if (!horizon || !horizon.available || horizon.diffRooms === null) {
+                    return '<span style="color:var(--text-muted); font-size:0.75rem;">Sin datos</span>';
+                }
+                const diff = horizon.diffRooms;
+                if (diff > 0) return `<strong style="color:#10b981;">+${diff} RN</strong>`;
+                if (diff < 0) return `<strong style="color:#ef4444;">${diff} RN</strong>`;
+                return `<strong style="color:var(--text-main);">0 RN</strong>`;
+            };
 
             kpiGrid.innerHTML = `
                 <div class="day-detail-box">
-                    <div class="box-lbl">Tarifa BAR Base 2027</div>
+                    <div class="box-lbl">Tarifa BAR Base ${stayYear}</div>
                     <div class="box-val">${rec.baseBar} €</div>
                     <div style="font-size:0.75rem; color:var(--text-muted); margin-top:3px;">
-                        Publicado actual: <b>${currentPrice > 0 ? currentPrice + ' €' : 'Sin tarifa'}</b>
+                        Publicado: <b>${currentPrice > 0 ? currentPrice + ' €' : 'Sin tarifa'}</b> · Objetivo: <b>${rec.barObjetivo} €</b>
                     </div>
                 </div>
                 <div class="day-detail-box">
                     <div class="box-lbl">Ocupación / Disponibilidad</div>
                     <div class="box-val">${occPct.toFixed(1)}%</div>
                     <div style="font-size:0.75rem; color:var(--text-muted); margin-top:3px;">
-                        <b>${rooms}</b> vendidas / <b>${availableRooms}</b> libres
+                        <b>${rooms}</b> vendidas / <b>${availableRooms}</b> libres (${capacity} habs)
                     </div>
                 </div>
                 <div class="day-detail-box">
-                    <div class="box-lbl">Pick-up Dinámico</div>
-                    <div class="box-val" style="font-size:1.1rem; color:#10b981;">${p7} (7d)</div>
-                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:3px;">
-                        24h: ${p24} | 14d: ${p14}
+                    <div class="box-lbl">Pick-up Multi-Horizonte</div>
+                    <div class="box-val" style="font-size:1.05rem;">
+                        7d: ${formatP(pData.d7)}
+                    </div>
+                    <div style="font-size:0.73rem; color:var(--text-muted); margin-top:3px; display:flex; flex-wrap:wrap; gap:6px;">
+                        <span>24h: ${formatP(pData.h24h)}</span>
+                        <span>3d: ${formatP(pData.d3)}</span>
+                        <span>14d: ${formatP(pData.d14)}</span>
+                        <span>30d: ${formatP(pData.d30)}</span>
                     </div>
                 </div>
                 <div class="day-detail-box">
                     <div class="box-lbl">Mercado y Competencia</div>
-                    <div class="box-val">${mktPrice > 0 ? mktPrice.toFixed(0) + ' €' : '-'}</div>
+                    <div class="box-val">${mktPrice > 0 ? mktPrice.toFixed(0) + ' €' : 'Sin datos'}</div>
                     <div style="font-size:0.75rem; color:var(--text-muted); margin-top:3px;">
-                        Gap: <b>${currentPrice > 0 && mktPrice > 0 ? (((currentPrice - mktPrice) / mktPrice) * 100).toFixed(0) + '%' : '-'}</b>
+                        Gap: <b>${currentPrice > 0 && mktPrice > 0 ? (((currentPrice - mktPrice) / mktPrice) * 100).toFixed(0) + '%' : '-'}</b> · Expedia: ${d.activeSoldComps ? d.activeSoldComps + ' sin tarifa' : 'Observables'}
                     </div>
                 </div>
             `;
         }
 
-        // 2. Gráfico de Evolución de 30 Días
-        renderDayDetailChart(dateISO, rooms, currentHotel);
+        // 2. Gráfico de Evolución y Snapshots Reales
+        renderDayDetailChart(dateISO, rooms, currentHotel, { currentPrice, capacity, revenue: (my?.revenue || (rooms * (currentPrice || rec.baseBar))) });
 
-        // 3. Recomendación
+        // 3. Recomendación y Explicación Estructurada
         const recCont = document.getElementById('dayDetailRecContainer');
         if (recCont) {
             const isPendingDem = (rec.demandStatus === 'PENDIENTE DE EVALUACIÓN DE DEMANDA' || rec.triggerText?.includes('Pend. Demanda'));
@@ -699,6 +717,36 @@
             const diffBadge = (rec.diffAmount !== 0) 
                 ? `<span style="font-size:0.95rem; font-weight:700; color:${rec.diffAmount > 0 ? '#10b981' : '#f59e0b'};">(${rec.diffAmount > 0 ? '+' : ''}${rec.diffAmount} € / ${rec.diffPct.toFixed(1)}%)</span>` 
                 : '';
+
+            const confDetails = rec.confidenceDetails || {
+                pms: 'Alta (100% certificado)',
+                expedia: 'Media (muestra observable)',
+                revenue: rec.confidenceScore || 'Media'
+            };
+
+            const bgtHtml = bgt ? `
+                <div style="background:var(--bg-deep); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:12px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                        <span style="font-weight:800; font-size:0.75rem; color:var(--primary); text-transform:uppercase;">
+                            🎯 Contexto Presupuestario Mensual (${bgt.monthName} ${stayYear} · ${currentHotel})
+                        </span>
+                        <span style="font-size:0.7rem; color:var(--text-muted); font-weight:600;">Escenario: ${bgt.scenario}</span>
+                    </div>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:8px;">
+                        <div style="background:var(--bg-surface); padding:8px 10px; border-radius:6px; border-left:3px solid var(--primary);">
+                            <div style="font-size:0.68rem; color:var(--text-muted); font-weight:700;">OBJETIVO MENSUAL</div>
+                            <div style="font-size:1.05rem; font-weight:800; color:var(--text-main); margin:1px 0;">${bgt.targetRev.toLocaleString('es-ES')} €</div>
+                            <div style="font-size:0.7rem; color:var(--text-muted);">${bgt.targetRN} RN · ADR: ${bgt.targetAdr} € · Occ: ${bgt.targetOccPct}%</div>
+                        </div>
+                        <div style="background:var(--bg-surface); padding:8px 10px; border-radius:6px; border-left:3px solid #10b981;">
+                            <div style="font-size:0.68rem; color:var(--text-muted); font-weight:700;">CRITERIO COMERCIAL</div>
+                            <div style="font-size:0.72rem; color:var(--text-main); line-height:1.35; margin-top:2px;">
+                                Referencia complementaria de seguimiento. No impone subidas ni bajadas automáticas sobre la BAR base.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ` : '';
 
             recCont.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
@@ -709,10 +757,31 @@
                         </span>
                     </div>
                     <div style="display:flex; gap:8px; font-size:0.75rem;">
-                        <span style="background:var(--bg-deep); padding:3px 8px; border-radius:6px; border:1px solid var(--border);">Confianza: <b>${rec.confidenceScore}</b></span>
                         <span style="background:var(--bg-deep); padding:3px 8px; border-radius:6px; border:1px solid var(--border);">Diagnóstico: <b>${rec.demandStatus || 'Evaluado'}</b></span>
                     </div>
                 </div>
+
+                <!-- 4 PILARES DE CONFIANZA Y PREVISIÓN -->
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:8px; margin-bottom:12px; font-size:0.75rem;">
+                    <div style="background:var(--bg-deep); padding:6px 10px; border-radius:6px; border:1px solid var(--border);">
+                        <span style="color:var(--text-muted); display:block; font-size:0.68rem; font-weight:700;">FIABILIDAD PMS</span>
+                        <strong style="color:#10b981;">${confDetails.pms}</strong>
+                    </div>
+                    <div style="background:var(--bg-deep); padding:6px 10px; border-radius:6px; border:1px solid var(--border);">
+                        <span style="color:var(--text-muted); display:block; font-size:0.68rem; font-weight:700;">COMPETENCIA EXPEDIA</span>
+                        <strong>${confDetails.expedia}</strong>
+                    </div>
+                    <div style="background:var(--bg-deep); padding:6px 10px; border-radius:6px; border:1px solid var(--border);">
+                        <span style="color:var(--text-muted); display:block; font-size:0.68rem; font-weight:700;">CONFIANZA REVENUE</span>
+                        <strong style="color:${rec.confidenceScore === 'Alta' ? '#10b981' : '#f59e0b'};">${confDetails.revenue}</strong>
+                    </div>
+                    <div style="background:var(--bg-deep); padding:6px 10px; border-radius:6px; border:1px solid var(--border);">
+                        <span style="color:var(--text-muted); display:block; font-size:0.68rem; font-weight:700;">PREVISIÓN DEMANDA</span>
+                        <strong>${rec.forecastStatus || 'Previsión no disponible'}</strong>
+                    </div>
+                </div>
+
+                ${bgtHtml}
 
                 <!-- DESGLOSE: RANGO COMERCIAL vs BANDA MATEMÁTICA -->
                 <div style="background:var(--bg-deep); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:12px;">
@@ -739,7 +808,7 @@
                 </div>
 
                 <div style="font-size:0.83rem; line-height:1.5; color:var(--text-main); margin-bottom:10px;">
-                    <b>Justificación de la recomendación:</b>
+                    <b>Justificación detallada de Revenue:</b>
                     <ul style="margin:6px 0 0 18px; padding:0;">
                         ${rec.reasons.map(r => `<li style="margin-bottom:3px;">${r}</li>`).join('')}
                     </ul>
@@ -753,15 +822,41 @@
         document.getElementById('dayDetailCustomBar').value = curExc ? curExc.barBase : '';
         document.getElementById('dayDetailCustomEvent').value = curExc ? curExc.eventName : '';
 
-        // Configurar botón de aplicar recomendación
+        // Configurar botón de aplicar recomendación (Acciones sin efecto corregidas)
         const applyBtn = document.getElementById('dayDetailApplyBtn');
         if (applyBtn) {
-            applyBtn.onclick = function() {
-                if (typeof setManualPrice === 'function') {
-                    setManualPrice(d.dayIndex, currentHotel, rec.proposedPrice);
-                }
-                closeDayDetailModal();
-            };
+            if (rec.diffAmount === 0 || rec.proposedPrice === currentPrice) {
+                applyBtn.innerText = `✓ Tarifa ya aplicada (${currentPrice > 0 ? currentPrice + ' €' : rec.proposedPrice + ' €'})`;
+                applyBtn.disabled = true;
+                applyBtn.style.background = '#64748b';
+                applyBtn.style.cursor = 'default';
+                applyBtn.style.opacity = '0.75';
+                applyBtn.title = 'La tarifa vigente coincide con el precio recomendado. No procede cambio de precio.';
+                applyBtn.onclick = null;
+            } else if (rec.action === 'REVISIÓN MANUAL') {
+                applyBtn.innerText = `⚠️ Requiere Intervención Manual en PMS`;
+                applyBtn.disabled = false;
+                applyBtn.style.background = '#f59e0b';
+                applyBtn.style.cursor = 'pointer';
+                applyBtn.style.opacity = '1';
+                applyBtn.title = 'Requiere revisión comercial antes de cualquier modificación.';
+                applyBtn.onclick = function() {
+                    alert(`⚠️ REVISIÓN MANUAL:\nFecha: ${dateISO}\nTarifa Vigente: ${currentPrice} €\nBAR Base: ${rec.baseBar} €\nDiagnóstico: ${rec.triggerText}\n\nLas bajadas automáticas están bloqueadas por seguridad. Revisa la situación comercial en el PMS antes de modificar la tarifa.`);
+                };
+            } else {
+                applyBtn.innerText = `Aplicar Precio Recomendado (${rec.proposedPrice} €)`;
+                applyBtn.disabled = false;
+                applyBtn.style.background = 'var(--primary)';
+                applyBtn.style.cursor = 'pointer';
+                applyBtn.style.opacity = '1';
+                applyBtn.title = `Aplicar cambio de tarifa a ${rec.proposedPrice} € (${rec.diffAmount > 0 ? '+' : ''}${rec.diffAmount} €)`;
+                applyBtn.onclick = function() {
+                    if (typeof setManualPrice === 'function') {
+                        setManualPrice(d.dayIndex, currentHotel, rec.proposedPrice);
+                    }
+                    closeDayDetailModal();
+                };
+            }
         }
 
         modal.style.display = 'block';
@@ -772,29 +867,188 @@
         if (modal) modal.style.display = 'none';
     }
 
-    function renderDayDetailChart(dateISO, currentRooms, hotelName) {
+    function renderDayDetailChart(dateISO, currentRooms, hotelName, extra = {}) {
         const canvas = document.getElementById('dayDetailChart');
         if (!canvas || !window.PricingIntelligence) return;
 
+        const capacity = (hotelName === 'Cumbria') ? 59 : 108;
         const db = getSnapshotsSafely();
         const snaps = (db[hotelName] && db[hotelName][dateISO]) ? [...db[hotelName][dateISO]] : [];
 
-        if (snaps.length === 0) {
-            snaps.push({
-                captureDate: 'Hoy',
-                rooms: currentRooms,
-                revenue: 0
-            });
-            document.getElementById('dayDetailHistoryNote').innerText = 'Sin histórico previo suficiente (mostrando fotografía actual)';
-        } else {
-            document.getElementById('dayDetailHistoryNote').innerText = `${snaps.length} capturas inmutables registradas`;
+        // Contenedores dinámicos para alertas y métricas del gráfico
+        let alertBox = document.getElementById('dayDetailChartAlert');
+        let statsBox = document.getElementById('dayDetailChartStats');
+        const parent = canvas.parentElement;
+
+        if (!alertBox && parent) {
+            alertBox = document.createElement('div');
+            alertBox.id = 'dayDetailChartAlert';
+            parent.parentNode.insertBefore(alertBox, parent.nextSibling);
+        }
+        if (!statsBox && parent) {
+            statsBox = document.createElement('div');
+            statsBox.id = 'dayDetailChartStats';
+            if (alertBox) {
+                alertBox.parentNode.insertBefore(statsBox, alertBox.nextSibling);
+            } else {
+                parent.parentNode.insertBefore(statsBox, parent.nextSibling);
+            }
         }
 
-        const labels = snaps.map(s => s.captureDate);
-        const dataRooms = snaps.map(s => s.rooms);
+        const note = document.getElementById('dayDetailHistoryNote');
 
         if (dayDetailChartInstance) {
             dayDetailChartInstance.destroy();
+            dayDetailChartInstance = null;
+        }
+
+        // CASO 1: Sin snapshots previos o solo fotografía actual (0 o 1 captura)
+        if (snaps.length < 2) {
+            const hasSingle = snaps.length === 1;
+            const singleSnap = hasSingle ? snaps[0] : { captureDate: 'Hoy', rooms: currentRooms, revenue: extra.revenue || 0, adr: extra.adr || 0 };
+            const obsDate = singleSnap.captureDateTime || singleSnap.captureDate || 'Hoy';
+
+            if (note) {
+                note.innerText = hasSingle ? '1 observación registrada (sin histórico previo)' : 'Fotografía actual PMS (sin capturas previas)';
+            }
+
+            if (alertBox) {
+                alertBox.innerHTML = `
+                    <div style="margin-top:10px; background:rgba(245, 158, 11, 0.08); border:1px solid rgba(245, 158, 11, 0.25); border-radius:8px; padding:10px 12px; font-size:0.76rem; color:#d97706; line-height:1.4;">
+                        ⚠️ <b>Histórico insuficiente para trazar curva de evolución:</b> ${hasSingle ? `Solo se dispone de 1 captura registrada (${obsDate}).` : `No constan capturas previas para el ${dateISO}.`} 
+                        Se muestra la observación puntual de ocupación actual confirmada (${singleSnap.rooms} habs vendidas / ${capacity - singleSnap.rooms} libres). 
+                        No se traza una curva artificial; la evolución temporal se generará automáticamente cuando se registren nuevos snapshots en fechas distintas.
+                    </div>
+                `;
+            }
+            if (statsBox) {
+                statsBox.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; font-size:0.73rem; color:var(--text-muted); background:var(--bg-surface); padding:6px 12px; border-radius:6px; border:1px solid var(--border);">
+                        <span>Última observación: <b>${obsDate}</b></span>
+                        <span>Confirmadas: <b>${singleSnap.rooms} habs</b> (${((singleSnap.rooms / capacity) * 100).toFixed(1)}%)</span>
+                        <span>Disponibles: <b>${capacity - singleSnap.rooms} habs libres</b></span>
+                    </div>
+                `;
+            }
+
+            // Representación puntual sin línea continua ficticia
+            const ctx = canvas.getContext('2d');
+            dayDetailChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [obsDate],
+                    datasets: [{
+                        label: 'Habitaciones Vendidas (OTB puntual)',
+                        data: [singleSnap.rooms],
+                        backgroundColor: '#6366f1',
+                        borderRadius: 6,
+                        barThickness: 36
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => `OTB: ${ctx.parsed.y} habs (${capacity - ctx.parsed.y} libres)`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: capacity,
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { font: { size: 10 } }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { size: 10 } }
+                        }
+                    }
+                }
+            });
+            return;
+        }
+
+        // CASO 2: Dos o más snapshots válidos (Curva de evolución real)
+        if (alertBox) alertBox.innerHTML = '';
+
+        const lastSnap = snaps[snaps.length - 1];
+        const firstSnap = snaps[0];
+        const netGrowth = lastSnap.rooms - firstSnap.rooms;
+        const lastUpdateStr = lastSnap.captureDateTime || `${lastSnap.captureDate} ${lastSnap.captureTime || ''}`;
+
+        if (note) {
+            note.innerText = `${snaps.length} capturas reales registradas · Última: ${lastUpdateStr}`;
+        }
+
+        // Comprobar si hay datos económicos disponibles en los snapshots
+        const hasEconomicData = snaps.some(s => (s.revenue && s.revenue > 0) || (s.adr && s.adr > 0));
+
+        // Calcular deltas entre observaciones consecutivas
+        let deltaHtml = '';
+        for (let i = 1; i < snaps.length; i++) {
+            const dDiff = snaps[i].rooms - snaps[i - 1].rooms;
+            const dSign = dDiff >= 0 ? '+' : '';
+            const dColor = dDiff > 0 ? '#10b981' : (dDiff < 0 ? '#ef4444' : 'var(--text-muted)');
+            const dDate = snaps[i].captureDate;
+            deltaHtml += `<span style="font-size:0.7rem; background:var(--bg-deep); padding:2px 6px; border-radius:4px; border:1px solid var(--border); margin-right:4px;">${dDate}: <b style="color:${dColor};">${dSign}${dDiff} RN</b></span>`;
+        }
+
+        if (statsBox) {
+            statsBox.innerHTML = `
+                <div style="margin-top:10px; background:var(--bg-surface); padding:10px 12px; border-radius:8px; border:1px solid var(--border); font-size:0.73rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
+                        <span>Evolución total acumulada: <b style="color:${netGrowth >= 0 ? '#10b981' : '#ef4444'}; font-size:0.85rem;">${netGrowth >= 0 ? '+' : ''}${netGrowth} RN</b></span>
+                        <span>Disponibilidad actual: <b>${capacity - lastSnap.rooms} habs libres</b></span>
+                        <span>Última captura: <b>${lastUpdateStr}</b></span>
+                    </div>
+                    <div style="display:flex; align-items:center; flex-wrap:wrap; gap:4px; margin-top:4px;">
+                        <span style="color:var(--text-muted); font-size:0.7rem; font-weight:700;">Variaciones observadas:</span>
+                        ${deltaHtml}
+                    </div>
+                    ${!hasEconomicData ? `
+                        <div style="margin-top:6px; font-size:0.7rem; color:var(--text-muted); border-top:1px dashed var(--border); padding-top:4px;">
+                            ℹ️ Datos económicos (Ingresos / ADR) no disponibles en estas capturas históricas; se registrarán en los próximos snapshots.
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        const labels = snaps.map(s => s.captureDate + (s.captureTime ? ' ' + s.captureTime.slice(0, 5) : ''));
+        const dataRooms = snaps.map(s => s.rooms);
+
+        const datasets = [{
+            label: 'Habitaciones Vendidas (OTB)',
+            data: dataRooms,
+            borderColor: '#6366f1',
+            backgroundColor: 'rgba(99, 102, 241, 0.12)',
+            fill: true,
+            tension: 0.15,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            pointBackgroundColor: '#6366f1',
+            yAxisID: 'y'
+        }];
+
+        if (hasEconomicData) {
+            const dataAdr = snaps.map(s => s.adr || (s.revenue && s.rooms > 0 ? Math.round(s.revenue / s.rooms) : null));
+            datasets.push({
+                label: 'ADR (€)',
+                data: dataAdr,
+                borderColor: '#10b981',
+                backgroundColor: 'transparent',
+                borderDash: [4, 4],
+                fill: false,
+                tension: 0.15,
+                pointRadius: 4,
+                pointBackgroundColor: '#10b981',
+                yAxisID: 'y1'
+            });
         }
 
         const ctx = canvas.getContext('2d');
@@ -802,32 +1056,54 @@
             type: 'line',
             data: {
                 labels: labels,
-                datasets: [{
-                    label: 'Habitaciones Vendidas (OTB)',
-                    data: dataRooms,
-                    borderColor: '#6366f1',
-                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                    fill: true,
-                    tension: 0.2,
-                    pointRadius: 4,
-                    pointBackgroundColor: '#6366f1'
-                }]
+                datasets: datasets
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
                 plugins: {
-                    legend: { display: false }
+                    legend: {
+                        display: hasEconomicData,
+                        position: 'top',
+                        labels: { font: { size: 10 } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => {
+                                if (ctx.dataset.label.includes('Habitaciones')) {
+                                    return `OTB: ${ctx.parsed.y} habs (${capacity - ctx.parsed.y} libres)`;
+                                }
+                                return `ADR: ${ctx.parsed.y} €`;
+                            }
+                        }
+                    }
                 },
                 scales: {
                     y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
                         beginAtZero: true,
+                        max: capacity,
                         grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                        ticks: { font: { size: 10 } }
+                        ticks: { font: { size: 10 } },
+                        title: { display: true, text: 'Habitaciones', font: { size: 10 } }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: hasEconomicData,
+                        position: 'right',
+                        grid: { drawOnChartArea: false },
+                        ticks: { font: { size: 10 } },
+                        title: { display: true, text: 'ADR (€)', font: { size: 10 } }
                     },
                     x: {
                         grid: { display: false },
-                        ticks: { font: { size: 10 } }
+                        ticks: { font: { size: 9 }, maxRotation: 45 }
                     }
                 }
             }
