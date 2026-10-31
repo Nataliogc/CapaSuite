@@ -224,12 +224,16 @@ function parseSyncValue(value) {
     return typeof value === 'string' ? JSON.parse(value) : value;
 }
 
-// Three-way merge: fast recursive merge without redundant JSON.stringify on megabytes of data
+// Three-way merge: fast recursive merge with deep equality checks on sub-branches
 function mergeSyncChanges(base, local, remote) {
     if (base === local) return remote;
     if (local == null || base == null || typeof local !== 'object' || typeof base !== 'object') {
         return base === local ? remote : local;
     }
+    const baseStr = JSON.stringify(base);
+    if (baseStr === JSON.stringify(local)) return remote;
+    if (baseStr === JSON.stringify(remote)) return local;
+
     if (Array.isArray(local)) {
         if (!Array.isArray(base) || !Array.isArray(remote) || base.length !== local.length || remote.length !== local.length) {
             return local;
