@@ -28,14 +28,17 @@
             if (prodLink && prodLink.nextSibling) links.insertBefore(hLink, prodLink.nextSibling);
             else links.append(hLink);
         }
-        if (links && !links.querySelector('a[href="SeguimientoRevenue.html"]')) {
-            const link = document.createElement('a'); link.href = 'SeguimientoRevenue.html'; link.textContent = 'Seguimiento';
-            link.classList.toggle('active', page === 'SeguimientoRevenue.html'); links.append(link);
+        if (links) {
+            links.querySelectorAll('a[href="SeguimientoRevenue.html"]').forEach(el => el.remove());
         }
-        const user = window.auth?.currentUser;
+        if (links && !links.querySelector('a[href="CargarDatos.html"]')) {
+            const link = document.createElement('a'); link.href = 'CargarDatos.html'; link.textContent = 'Cargar Datos';
+            link.classList.toggle('active', page === 'CargarDatos.html'); links.append(link);
+        }
+        const user = window.auth?.currentUser || (window.getSavedAuthSession && window.getSavedAuthSession());
         const email = nav.querySelector('#userEmailNav');
         if (email && window._capasuite_local_mode && !user) email.textContent = 'Modo local';
-        if (email && user) email.textContent = window.getUserDisplayName ? window.getUserDisplayName(user) : user.email;
+        if (email && user) email.textContent = window.getUserDisplayName ? window.getUserDisplayName(user) : (user.displayName || user.email);
         if (window.CAPASUITE_VERSION) {
             nav.querySelectorAll('.app-version-badge, [data-version-badge]').forEach(el => {
                 el.innerHTML = `<span class="version-dot"></span><span>v${window.CAPASUITE_VERSION.version}</span>`;

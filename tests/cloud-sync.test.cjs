@@ -161,3 +161,15 @@ test('upload failure or quota error retains pending work and updates sync status
     });
     assert.equal(s.run('pendingChanges.size'), 1);
 });
+
+
+test('installed app persists user session across restarts unless user explicitly signs out', async () => {
+    const s = setup({});
+    s.run("window.saveAuthSession({ uid: 'u1', email: 'comunicaciones@hotelguadiana.es' }, { email: 'comunicaciones@hotelguadiana.es', pass: 'secret123' })");
+    const saved = s.run("window.getSavedAuthSession()");
+    assert.equal(saved.displayName, 'Natalio');
+    assert.equal(saved.email, 'comunicaciones@hotelguadiana.es');
+
+    s.run("window.clearSavedAuthSession()");
+    assert.equal(s.run("window.getSavedAuthSession()"), null);
+});

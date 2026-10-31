@@ -134,3 +134,31 @@ test('empty home navigation is filled without replacing its visibility state', a
     assert.equal(existing.innerHTML, '<a>Inicio</a>');
     assert.equal(existing.style.display, 'none');
 });
+
+
+test('top navigation bar excludes Seguimiento and includes Cargar Datos on all pages while index.html keeps Seguimiento module card', () => {
+    const partialNav = fs.readFileSync('partials/nav.html', 'utf8');
+    assert.ok(!partialNav.includes('SeguimientoRevenue.html'), 'partials/nav.html should not include SeguimientoRevenue.html');
+    assert.ok(partialNav.includes('href="CargarDatos.html"'), 'partials/nav.html should include CargarDatos.html');
+
+    const indexHtml = fs.readFileSync('index.html', 'utf8');
+    assert.ok(indexHtml.includes('href="SeguimientoRevenue.html" class="card"'), 'index.html should keep Seguimiento card in the home module');
+
+    const pagesWithInlineNav = [
+        'AnalisisCalendario.html',
+        'AnalisisIA.html',
+        'AnalisisPersonal.html',
+        'AnalisisProduccion.html',
+        'AnalisisSegmentos.html',
+        'CalculadoraPresupuesto.html',
+        'CargarDatos.html',
+        'HistoricoAlojamiento.html'
+    ];
+    for (const file of pagesWithInlineNav) {
+        const html = fs.readFileSync(file, 'utf8');
+        const navMatch = html.match(/<div class="nav-links">([\s\S]*?)<\/div>/);
+        assert.ok(navMatch, `${file} should have .nav-links`);
+        assert.ok(!navMatch[1].includes('SeguimientoRevenue.html'), `${file} .nav-links should not include SeguimientoRevenue.html`);
+        assert.ok(navMatch[1].includes('CargarDatos.html'), `${file} .nav-links should include CargarDatos.html`);
+    }
+});

@@ -646,19 +646,63 @@ async function handleFiles(files) {
     if (pInput) pInput.value = periodStr;
 
     // Highlight recommended hotel button
+    const segHotelBadge = el('detectSegHotelBadge');
+    if (segHotelBadge) {
+        if (detectedHotel) {
+            const logoSrc = detectedHotel === 'Guadiana' ? 'Imagen/logo-guadiana.svg' : 'Imagen/logo-cumbria.svg';
+            const fullHotelName = detectedHotel === 'Guadiana' ? 'HOTEL GUADIANA' : 'HOTEL CUMBRIA';
+            segHotelBadge.style.display = 'flex';
+            segHotelBadge.innerHTML = `
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-size:1.25rem; line-height:1;">✅</span>
+                    <div style="text-align:left; line-height:1.2;">
+                        <div style="font-size:0.65rem; font-weight:800; color:#047857; letter-spacing:0.6px;">HOTEL RECONOCIDO AUTOMÁTICAMENTE</div>
+                        <div style="font-size:1rem; font-weight:900; color:#064e3b;">${fullHotelName}</div>
+                    </div>
+                </div>
+                <img src="${logoSrc}" alt="${detectedHotel}" style="height:32px; background:#ffffff; padding:3px 8px; border-radius:6px; border:1px solid #6ee7b7; object-fit:contain;">
+            `;
+        } else {
+            segHotelBadge.style.display = 'none';
+        }
+    }
+
     const btnG = el('btnSegGuadiana');
     const btnC = el('btnSegCumbria');
+    const tagG = el('badgeSegGuadiana');
+    const tagC = el('badgeSegCumbria');
     if (btnG && btnC) {
         btnG.style.transform = 'scale(1)'; btnG.style.boxShadow = 'none'; btnG.style.opacity = '1';
+        btnG.style.background = '#4f46e5'; btnG.style.color = '#ffffff'; btnG.style.border = '2px solid transparent';
         btnC.style.transform = 'scale(1)'; btnC.style.boxShadow = 'none'; btnC.style.opacity = '1';
+        btnC.style.background = '#6366f1'; btnC.style.color = '#ffffff'; btnC.style.border = '2px solid transparent';
+        if (tagG) tagG.style.display = 'none';
+        if (tagC) tagC.style.display = 'none';
+
         if (detectedHotel === 'Guadiana') {
-            btnG.style.transform = 'scale(1.05)';
-            btnG.style.boxShadow = '0 0 20px rgba(79, 70, 229, 0.4)';
-            btnC.style.opacity = '0.7';
+            btnG.style.background = 'linear-gradient(135deg, #059669 0%, #10b981 100%)';
+            btnG.style.border = '3px solid #047857';
+            btnG.style.boxShadow = '0 10px 25px -5px rgba(16, 185, 129, 0.55), 0 0 0 4px rgba(16, 185, 129, 0.2)';
+            btnG.style.transform = 'scale(1.04)';
+            if (tagG) tagG.style.display = 'inline-block';
+
+            btnC.style.background = '#f1f5f9';
+            btnC.style.color = '#64748b';
+            btnC.style.border = '1.5px dashed #cbd5e1';
+            btnC.style.opacity = '0.55';
+            btnC.style.transform = 'scale(0.95)';
         } else if (detectedHotel === 'Cumbria') {
-            btnC.style.transform = 'scale(1.05)';
-            btnC.style.boxShadow = '0 0 20px rgba(99, 102, 241, 0.4)';
-            btnG.style.opacity = '0.7';
+            btnC.style.background = 'linear-gradient(135deg, #059669 0%, #10b981 100%)';
+            btnC.style.border = '3px solid #047857';
+            btnC.style.boxShadow = '0 10px 25px -5px rgba(16, 185, 129, 0.55), 0 0 0 4px rgba(16, 185, 129, 0.2)';
+            btnC.style.transform = 'scale(1.04)';
+            if (tagC) tagC.style.display = 'inline-block';
+
+            btnG.style.background = '#f1f5f9';
+            btnG.style.color = '#64748b';
+            btnG.style.border = '1.5px dashed #cbd5e1';
+            btnG.style.opacity = '0.55';
+            btnG.style.transform = 'scale(0.95)';
         }
     }
 

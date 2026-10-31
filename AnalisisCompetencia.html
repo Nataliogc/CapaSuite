@@ -21,10 +21,10 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="js/nav.js"></script>
     <script src="js/theme-manager.js"></script>
-    <script src="js/firebase-auth.js?v=20261031-0349"></script>
-    <script src="js/version.js?v=20261031-0349"></script>
-    <script src="js/pricing-intelligence.js?v=20261031-0349"></script>
-    <script src="js/competencia-intelligence-ui.js?v=20261031-0349"></script>
+    <script src="js/firebase-auth.js?v=20261031-1528"></script>
+    <script src="js/version.js?v=20261031-1528"></script>
+    <script src="js/pricing-intelligence.js?v=20261031-1528"></script>
+    <script src="js/competencia-intelligence-ui.js?v=20261031-1528"></script>
 
     <link rel="stylesheet" href="css/tokens.css">
     <link rel="stylesheet" href="css/nav.css">
@@ -551,6 +551,13 @@
         .date-chip:hover * {
             color: #ffffff !important;
         }
+        .date-chip.active-chip {
+            background: #fef08a !important;
+            border-color: #eab308 !important;
+            color: #713f12 !important;
+            box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.35);
+            font-weight: 800;
+        }
 
         .expert-actions-row {
             display: flex;
@@ -989,8 +996,8 @@
         }
 
         thead th.th-action {
-            width: 15%;
-            min-width: 160px;
+            width: 16%;
+            min-width: 176px;
             white-space: nowrap !important;
             text-align: center;
         }
@@ -1048,8 +1055,28 @@
         }
 
         #tableBody tr.row-selected > td,
+        #tableBody tr.row-selected:hover > td,
+        #tableBody tr.row-selected > td:first-child,
         #tableBody tr.row-selected:hover > td:first-child {
-            background-color: #dbeafe !important;
+            background: #fef08a !important;
+            background-color: #fef08a !important;
+            border-top: 1.5px solid #eab308 !important;
+            border-bottom: 1.5px solid #eab308 !important;
+        }
+
+        #tableBody tr.row-selected > td:first-child,
+        #tableBody tr.row-selected:hover > td:first-child {
+            box-shadow: inset 4px 0 0 #eab308 !important;
+        }
+
+        [data-theme="dark"] #tableBody tr.row-selected > td,
+        [data-theme="dark"] #tableBody tr.row-selected:hover > td,
+        [data-theme="dark"] #tableBody tr.row-selected > td:first-child,
+        [data-theme="dark"] #tableBody tr.row-selected:hover > td:first-child {
+            background: rgba(250, 204, 21, 0.28) !important;
+            background-color: rgba(250, 204, 21, 0.28) !important;
+            border-top: 1.5px solid #eab308 !important;
+            border-bottom: 1.5px solid #eab308 !important;
         }
 
         /* BADGES & PILLS */
@@ -1476,8 +1503,8 @@
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
             user-select: none;
             width: 100%;
-            min-width: 155px;
-            max-width: 180px;
+            min-width: 170px;
+            max-width: 200px;
             margin: 0 auto;
             box-sizing: border-box;
         }
@@ -1574,9 +1601,9 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            font-size: 0.7rem;
+            font-size: 0.68rem;
             color: var(--text-muted);
-            margin-top: 2px;
+            margin-top: 1px;
             gap: 6px;
             white-space: nowrap !important;
         }
@@ -1584,15 +1611,35 @@
             font-weight: 700;
             color: var(--text-main);
             white-space: nowrap !important;
-            display: inline-flex;
-            align-items: center;
-            gap: 2px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 108px;
+            display: inline-block;
+            vertical-align: bottom;
         }
         .yield-pill-range {
-            font-size: 0.66rem;
-            color: var(--text-muted);
+            font-size: 0.7rem;
+            font-weight: 800;
+            color: #059669;
             white-space: nowrap !important;
-            opacity: 0.85;
+            flex-shrink: 0;
+        }
+        .yield-pill-calc {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            border-top: 1px dashed rgba(148, 163, 184, 0.35);
+            margin-top: 2px;
+            padding-top: 2px;
+            white-space: nowrap !important;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 3px;
+            line-height: 1.15;
+        }
+        .yield-pill-calc b {
+            color: var(--text-main);
+            font-weight: 700;
         }
 
         /* Badges de Acción del Motor */
@@ -2301,9 +2348,6 @@
             if (!d) return null;
             ensureHotelStructure(d, hotel);
             d._yieldInfo = d._yieldInfo || {};
-            if (d._yieldInfo[hotel] !== undefined && !d._yieldDirty) {
-                return d._yieldInfo[hotel];
-            }
             const my = d.hotels[hotel];
             const myP = (my && !my.sold) ? my.price : 0;
             const mktPrice = d.compAvg || 0;
@@ -2318,6 +2362,11 @@
             const occPct = (currentOcc / cap) * 100;
             const minFloor = getHotelMinPrice(hotel);
             const otbChange = (my.otbChange !== undefined) ? my.otbChange : (dynamic.pickup || 0);
+
+            const cacheSig = `${myP}|${mktPrice.toFixed(2)}|${currentOcc}|${minFloor}|${otbChange}|${d.activeSoldComps || 0}`;
+            if (d._yieldInfo[hotel] && d._yieldInfo[hotel]._sig === cacheSig && !d._yieldDirty) {
+                return d._yieldInfo[hotel];
+            }
 
             const pData = (window.PricingIntelligence) 
                 ? PricingIntelligence.calculateDailyPickup(hotel, d.dateISO, { rooms: currentOcc, occupancyPct: occPct, otbChange: otbChange }) 
@@ -2381,6 +2430,7 @@
             }
 
             const yieldResult = {
+                _sig: cacheSig,
                 targetPrice: targetPrice,
                 diffAmount: diffAmount,
                 minRange: minRange,
@@ -2398,6 +2448,8 @@
                 demandStatus: rec.demandStatus,
                 rangeCalculation: rec.rangeCalculation,
                 baseBar: rec.baseBar,
+                barObjetivo: rec.barObjetivo || rec.baseBar,
+                barVigente: rec.barVigente || Math.round(myP),
                 mathToleranceBand: rec.mathToleranceBand
             };
             d._yieldInfo[hotel] = yieldResult;
@@ -2427,6 +2479,7 @@
             h.price = num;
             h.sold = false;
             if (num > 0) h.status = 'available';
+            delete day._yieldInfo;
 
             const isUnsaved = (h.price !== h.savedPrice || h.sold !== h.savedSold);
             h.isModified = isUnsaved;
@@ -2749,19 +2802,31 @@
         }
 
         function focusRow(idx) {
+            const targetObj = processedData.find(d => d.dayIndex === idx);
+            if (targetObj && targetObj.dateISO) {
+                selectedTableDate = targetObj.dateISO;
+            }
             let row = document.getElementById(`row-${idx}`);
             if (!row && activeTableFilter) {
                 clearTableFilter();
             }
+            if (!row && targetObj) {
+                const monthSel = document.getElementById('monthSelector');
+                if (monthSel && monthSel.value !== 'all' && monthSel.value !== targetObj.month) {
+                    monthSel.value = 'all';
+                    refreshActiveView();
+                }
+            }
             setTimeout(() => {
                 row = document.getElementById(`row-${idx}`);
                 if (row) {
+                    selectTableRow(row);
                     row.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     row.classList.remove('highlight-row');
                     void row.offsetWidth; // trigger reflow
                     row.classList.add('highlight-row');
                 }
-            }, 60);
+            }, 80);
         }
 
         function clearTableFilter() {
@@ -4202,7 +4267,8 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             const dayNum = d.dateISO ? parseInt(d.dateISO.split('-')[2], 10) : d.label.split(' ')[0];
             const mShort = (d.dateMeta?.mShort || d.month || '').substring(0, 3);
             const metricHtml = metricText ? `<span style="color:${metricColor}; font-weight:700; margin-left:3px;">${metricText}</span>` : '';
-            return `<span class="date-chip" onclick="focusRow(${d.dayIndex})" title="${d.label} (Click para ver en tabla)">${dayNum} ${mShort}${metricHtml}</span>`;
+            const isSelected = (selectedTableDate && selectedTableDate === d.dateISO) ? ' active-chip' : '';
+            return `<span class="date-chip${isSelected}" data-date="${d.dateISO || ''}" onclick="focusRow(${d.dayIndex})" title="${d.label} (Click para ver en tabla)">${dayNum} ${mShort}${metricHtml}</span>`;
         }
 
         function addExpertInsightCard({ type, icon, title, badge, desc, chips = [], filterType = null, filterCount = 0 }) {
@@ -4644,9 +4710,13 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
         let selectedTableDate = null;
 
         function selectTableRow(row) {
+            if (!row) return;
             selectedTableDate = row.dataset.date;
             document.querySelectorAll('#tableBody tr').forEach(tableRow => {
                 tableRow.classList.toggle('row-selected', tableRow === row);
+            });
+            document.querySelectorAll('.date-chip').forEach(chip => {
+                chip.classList.toggle('active-chip', chip.dataset.date === selectedTableDate);
             });
         }
 
@@ -4737,9 +4807,21 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     if (yieldInfo) {
                         gapHtml = `<span class="gap-badge ${yieldInfo.cls}">${yieldInfo.diff > 0 ? '+' : ''}${yieldInfo.diff.toFixed(0)}%</span>`;
                         const isPendingDem = (yieldInfo.demandStatus === 'PENDIENTE DE EVALUACIÓN DE DEMANDA' || yieldInfo.triggerText?.includes('Pend. Demanda'));
-                        const actCls = isPendingDem ? 'pendiente' : (yieldInfo.action === 'SUBIR' ? 'subir' : (yieldInfo.action === 'REVISAR BAJADA' ? 'bajar' : (yieldInfo.action === 'REVISIÓN MANUAL' ? 'manual' : 'mantener')));
+                        const actCls = isPendingDem ? 'pendiente' : (yieldInfo.action === 'SUBIR' ? 'subir' : ((yieldInfo.action === 'REVISAR BAJADA' || yieldInfo.action === 'REVISAR') ? 'bajar' : (yieldInfo.action === 'REVISIÓN MANUAL' ? 'manual' : 'mantener')));
                         const diffBadge = (yieldInfo.diffAmount !== 0) 
                             ? `<span class="yield-pill-diff ${yieldInfo.diffAmount > 0 ? 'pos' : 'neg'}">${yieldInfo.diffAmount > 0 ? '+' : ''}${yieldInfo.diffAmount}€</span>` 
+                            : '';
+
+                        const shortTrigger = (yieldInfo.triggerText || '')
+                            .replace('⚠️ REVISAR — TARIFA INFERIOR A BAR BASE', '⚠️ Inf. BAR base')
+                            .replace('⚠️ REVISAR TARIFA (Competitividad)', '⚠️ Competitividad');
+
+                        const calcSummaryHtml = (yieldInfo.baseBar !== undefined && yieldInfo.baseBar !== null)
+                            ? `<div class="yield-pill-calc" title="Rango Comercial Recomendado: ${yieldInfo.rangeText} · ${yieldInfo.rangeCalculation || ''}">
+                                   <span>Suelo: <b>${yieldInfo.baseBar}€</b></span>
+                                   <span>Obj: <b>${yieldInfo.barObjetivo ?? yieldInfo.baseBar}€</b></span>
+                                   <span>Vig: <b>${yieldInfo.barVigente ?? Math.round(myP)}€</b></span>
+                               </div>`
                             : '';
 
                         const applyClick = yieldInfo.canApply 
@@ -4748,8 +4830,8 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         const applyTitle = isPendingDem
                             ? `MANTENER — PENDIENTE DE EVALUACIÓN DE DEMANDA\n\n• Tarifa Publicada: ${yieldInfo.targetPrice} €\n• BAR Base: ${yieldInfo.baseBar || '-'} €\n• Media Mercado: ${Math.round(d.compAvg || 0)} €\n• Rango Comercial Recomendado: ${yieldInfo.rangeText}\n• Cálculo de Rango: ${yieldInfo.rangeCalculation || ''}\n\nMotivo:\n${yieldInfo.fullReasonText}`
                             : (yieldInfo.canApply 
-                                ? `Click para aplicar recomendación de ${yieldInfo.targetPrice}€ a ${activeHotel}\n\nMotivo:\n${yieldInfo.fullReasonText}` 
-                                : `Tarifa actual (${yieldInfo.targetPrice}€).\n\nRango Comercial: ${yieldInfo.rangeText}\n${yieldInfo.rangeCalculation ? 'Cálculo: ' + yieldInfo.rangeCalculation + '\n\n' : ''}Motivo:\n${yieldInfo.fullReasonText}`);
+                                ? `Click para aplicar recomendación de ${yieldInfo.targetPrice}€ a ${activeHotel}\n\nRango Comercial Recomendado: ${yieldInfo.rangeText}\n${yieldInfo.rangeCalculation || ''}\n\nMotivo:\n${yieldInfo.fullReasonText}` 
+                                : `Tarifa actual (${yieldInfo.targetPrice}€).\n\nRango Comercial Recomendado: ${yieldInfo.rangeText}\n${yieldInfo.rangeCalculation ? yieldInfo.rangeCalculation + '\n\n' : ''}Motivo:\n${yieldInfo.fullReasonText}`);
 
                         actionHtml = `
                             <div class="yield-unified-pill ${yieldInfo.cls}" ${applyClick} title="${applyTitle}">
@@ -4759,9 +4841,10 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                                     <span class="yield-pill-badge ${actCls}">${yieldInfo.action}</span>
                                 </div>
                                 <div class="yield-pill-sub">
-                                    <span class="yield-pill-trigger" title="${yieldInfo.triggerText}">${yieldInfo.triggerText}</span>
-                                    <span class="yield-pill-range">${yieldInfo.rangeText}</span>
+                                    <span class="yield-pill-trigger" title="${yieldInfo.triggerText}">${shortTrigger}</span>
+                                    <span class="yield-pill-range" title="Rango Comercial Recomendado">${yieldInfo.rangeText}</span>
                                 </div>
+                                ${calcSummaryHtml}
                             </div>
                         `;
                     }

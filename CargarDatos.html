@@ -19,7 +19,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="js/version.js"></script>
     <script src="js/nav.js"></script>
-    <script src="js/firebase-auth.js?v=20261031-0349"></script>
+    <script src="js/firebase-auth.js?v=20261031-1528"></script>
     <script src="js/theme-manager.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -679,6 +679,7 @@
             <a href="CalculadoraPresupuesto.html">Presupuesto</a>
             <a href="Analisis360.html">Vista 360º</a>
             <a href="AnalisisIA.html">Conclusiones IA</a>
+            <a href="CargarDatos.html" class="active">Cargar Datos</a>
         </div>
         <div class="nav-user">
             <div class="user-chip">
@@ -1480,29 +1481,65 @@
             updateModalTypeHelp(finalType);
             
             const hotelBadge = document.getElementById('detectHotelBadge');
+            const modalTitle = document.getElementById('hotelConfirmModalTitle');
             if (detectedHotel) {
-                hotelBadge.style.display = 'inline-block';
-                hotelBadge.innerText = "RECOMENDADO: " + detectedHotel;
+                const logoSrc = detectedHotel === 'Guadiana' ? 'Imagen/logo-guadiana.svg' : 'Imagen/logo-cumbria.svg';
+                const fullHotelName = detectedHotel === 'Guadiana' ? 'HOTEL GUADIANA' : 'HOTEL CUMBRIA';
+                hotelBadge.style.display = 'flex';
+                hotelBadge.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:1.25rem; line-height:1;">✅</span>
+                        <div style="text-align:left; line-height:1.2;">
+                            <div style="font-size:0.65rem; font-weight:800; color:#047857; letter-spacing:0.6px;">HOTEL RECONOCIDO AUTOMÁTICAMENTE</div>
+                            <div style="font-size:1rem; font-weight:900; color:#064e3b;">${fullHotelName}</div>
+                        </div>
+                    </div>
+                    <img src="${logoSrc}" alt="${detectedHotel}" style="height:32px; background:#ffffff; padding:3px 8px; border-radius:6px; border:1px solid #6ee7b7; object-fit:contain;">
+                `;
+                if (modalTitle) modalTitle.innerHTML = `Confirmar Hotel <span style="display:block; font-size:0.95rem; color:#059669; font-weight:800; margin-top:4px;">Detectado: Hotel ${detectedHotel}</span>`;
             } else {
                 hotelBadge.style.display = 'none';
+                if (modalTitle) modalTitle.innerText = 'Confirmar Hotel';
             }
 
             // --- SMART HOTEL BUTTON HIGHLIGHTS ---
             const btnG = document.getElementById('btnConfirmGuadiana');
             const btnC = document.getElementById('btnConfirmCumbria');
+            const tagG = document.getElementById('badgeConfirmGuadiana');
+            const tagC = document.getElementById('badgeConfirmCumbria');
             
             // RESET HIGHLIGHTS
             btnG.style.boxShadow = 'none'; btnG.style.transform = 'scale(1)'; btnG.style.opacity = '1';
+            btnG.style.background = '#4f46e5'; btnG.style.color = '#ffffff'; btnG.style.border = '2px solid transparent';
             btnC.style.boxShadow = 'none'; btnC.style.transform = 'scale(1)'; btnC.style.opacity = '1';
+            btnC.style.background = '#6366f1'; btnC.style.color = '#ffffff'; btnC.style.border = '2px solid transparent';
+            if (tagG) tagG.style.display = 'none';
+            if (tagC) tagC.style.display = 'none';
             
             if (detectedHotel === 'Guadiana') {
-                btnG.style.boxShadow = '0 0 20px rgba(79, 70, 229, 0.4)';
-                btnG.style.transform = 'scale(1.05)';
-                btnC.style.opacity = '0.6';
+                btnG.style.background = 'linear-gradient(135deg, #059669 0%, #10b981 100%)';
+                btnG.style.border = '3px solid #047857';
+                btnG.style.boxShadow = '0 10px 25px -5px rgba(16, 185, 129, 0.55), 0 0 0 4px rgba(16, 185, 129, 0.2)';
+                btnG.style.transform = 'scale(1.04)';
+                if (tagG) tagG.style.display = 'inline-block';
+
+                btnC.style.background = '#f1f5f9';
+                btnC.style.color = '#64748b';
+                btnC.style.border = '1.5px dashed #cbd5e1';
+                btnC.style.opacity = '0.55';
+                btnC.style.transform = 'scale(0.95)';
             } else if (detectedHotel === 'Cumbria') {
-                btnC.style.boxShadow = '0 0 20px rgba(99, 102, 241, 0.4)';
-                btnC.style.transform = 'scale(1.05)';
-                btnG.style.opacity = '0.6';
+                btnC.style.background = 'linear-gradient(135deg, #059669 0%, #10b981 100%)';
+                btnC.style.border = '3px solid #047857';
+                btnC.style.boxShadow = '0 10px 25px -5px rgba(16, 185, 129, 0.55), 0 0 0 4px rgba(16, 185, 129, 0.2)';
+                btnC.style.transform = 'scale(1.04)';
+                if (tagC) tagC.style.display = 'inline-block';
+
+                btnG.style.background = '#f1f5f9';
+                btnG.style.color = '#64748b';
+                btnG.style.border = '1.5px dashed #cbd5e1';
+                btnG.style.opacity = '0.55';
+                btnG.style.transform = 'scale(0.95)';
             }
 
             document.getElementById('hotelConfirmModal').style.display = 'flex';
@@ -3553,16 +3590,20 @@
     <div id="hotelConfirmModal" class="modal" style="display: none;">
         <div class="modal-content"
             style="max-width: 420px; text-align: center; border: 2px solid var(--primary); padding: 35px;">
-            <div style="font-size: 3.5rem; margin-bottom: 15px;">🏨</div>
-            <h3 style="color: var(--primary); margin-bottom: 10px; font-size: 1.5rem; font-weight: 700;">Confirmar Hotel
+            <div style="font-size: 3rem; margin-bottom: 10px;">🏨</div>
+            <h3 id="hotelConfirmModalTitle" style="color: var(--primary); margin-bottom: 12px; font-size: 1.5rem; font-weight: 700;">Confirmar Hotel
             </h3>
 
             <!-- SMART DETECTION INFO -->
             <div id="smartDetectionInfo"
                 style="margin-bottom: 20px; padding: 15px; background: #f0f9ff; border-radius: 12px; border: 1.5px solid #bae6fd; text-align: left; font-size: 0.85rem; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
-                <p id="fileVersionNotice" role="status" style="color:var(--primary);font-weight:600;"></p>
+                <div id="detectHotelBadge"
+                    style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); color: #065f46; padding: 10px 12px; border-radius: 10px; font-weight: 800; font-size: 0.85rem; text-transform: uppercase; border: 2px solid #10b981; display: none; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);">
+                    HOTEL: -
+                </div>
+                <p id="fileVersionNotice" role="status" style="color:var(--primary);font-weight:600;margin-bottom:6px;"></p>
                 <div id="detectFileName"
-                    style="font-weight: 800; color: #0369a1; margin-bottom: 10px; word-break: break-all; font-size: 0.75rem; opacity: 0.8; font-family: monospace;">
+                    style="font-weight: 800; color: #0369a1; margin-bottom: 10px; word-break: break-all; font-size: 0.75rem; opacity: 0.85; font-family: monospace;">
                     Archivo: -</div>
                 <div style="display: flex; flex-direction: column; gap: 10px;">
                     <div>
@@ -3575,11 +3616,6 @@
                             <option value="Hist">📜 Histórico de Años Anteriores</option>
                             <option value="Eventos">📅 Calendario Estratégico / Eventos</option>
                         </select>
-                    </div>
-                    <div>
-                        <span id="detectHotelBadge"
-                            style="background: #ecfdf5; color: #059669; padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 0.65rem; text-transform: uppercase; border: 1px solid #6ee7b7; display: none;">HOTEL:
-                            -</span>
                     </div>
                 </div>
             </div>
@@ -3600,18 +3636,20 @@
                     archivo es un rango, pon la fecha final o deseada.</small>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; align-items: stretch;">
                 <button id="btnConfirmGuadiana" class="btn" onclick="confirmHotelUpload('Guadiana')"
-                    style="padding: 15px 10px; height: auto; flex-direction: column; gap: 10px; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;">
-                    <img src="Imagen/logo-guadiana.svg" style="height: 35px; filter: brightness(0) invert(1);"
+                    style="padding: 14px 10px; height: auto; flex-direction: column; gap: 8px; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; position: relative; border-radius: 14px;">
+                    <span id="badgeConfirmGuadiana" style="display: none; background: #ffffff; color: #047857; font-size: 0.65rem; font-weight: 900; padding: 3px 8px; border-radius: 999px; letter-spacing: 0.4px; box-shadow: 0 2px 5px rgba(0,0,0,0.12);">✓ RECONOCIDO</span>
+                    <img src="Imagen/logo-guadiana.svg" style="height: 42px; width: auto; max-width: 115px; object-fit: contain; background: #ffffff; padding: 5px 10px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.08);"
                         alt="Guadiana">
-                    <span style="font-size: 0.85rem; font-weight: 700;">Hotel Guadiana</span>
+                    <span style="font-size: 0.9rem; font-weight: 800;">Hotel Guadiana</span>
                 </button>
                 <button id="btnConfirmCumbria" class="btn" onclick="confirmHotelUpload('Cumbria')"
-                    style="padding: 15px 10px; height: auto; flex-direction: column; gap: 10px; display: flex; align-items: center; justify-content: center; background: #6366f1; transition: all 0.3s ease;">
-                    <img src="Imagen/logo-cumbria.svg" style="height: 35px; filter: brightness(0) invert(1);"
+                    style="padding: 14px 10px; height: auto; flex-direction: column; gap: 8px; display: flex; align-items: center; justify-content: center; background: #6366f1; transition: all 0.3s ease; position: relative; border-radius: 14px;">
+                    <span id="badgeConfirmCumbria" style="display: none; background: #ffffff; color: #047857; font-size: 0.65rem; font-weight: 900; padding: 3px 8px; border-radius: 999px; letter-spacing: 0.4px; box-shadow: 0 2px 5px rgba(0,0,0,0.12);">✓ RECONOCIDO</span>
+                    <img src="Imagen/logo-cumbria.svg" style="height: 42px; width: auto; max-width: 115px; object-fit: contain; background: #ffffff; padding: 5px 10px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.08);"
                         alt="Cumbria">
-                    <span style="font-size: 0.85rem; font-weight: 700;">Hotel Cumbria</span>
+                    <span style="font-size: 0.9rem; font-weight: 800;">Hotel Cumbria</span>
                 </button>
             </div>
 

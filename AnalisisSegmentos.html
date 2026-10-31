@@ -22,7 +22,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="js/version.js"></script>
     <script src="js/nav.js"></script>
-    <script src="js/firebase-auth.js?v=20261031-0349"></script>
+    <script src="js/firebase-auth.js?v=20261031-1528"></script>
     <script src="js/theme-manager.js"></script>
 
     <style>
@@ -596,6 +596,7 @@
             <a href="CalculadoraPresupuesto.html">Presupuesto</a>
             <a href="Analisis360.html">Vista 360º</a>
             <a href="AnalisisIA.html">Conclusiones IA</a>
+            <a href="CargarDatos.html">Cargar Datos</a>
         </div>
         <div class="nav-user">
             <div class="user-chip">
@@ -845,6 +846,10 @@
             <!-- SMART DETECTION INFO -->
             <div
                 style="margin-bottom: 18px; padding: 14px; background: rgba(99, 102, 241, 0.06); border-radius: 12px; border: 1.5px solid rgba(99, 102, 241, 0.2); text-align: left; font-size: 0.85rem;">
+                <div id="detectSegHotelBadge"
+                    style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); color: #065f46; padding: 10px 12px; border-radius: 10px; font-weight: 800; font-size: 0.85rem; text-transform: uppercase; border: 2px solid #10b981; display: none; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);">
+                    HOTEL: -
+                </div>
                 <div id="detectSegFileName"
                     style="font-weight: 800; color: var(--primary); margin-bottom: 8px; word-break: break-all; font-size: 0.75rem; font-family: monospace;">
                     Archivo: -</div>
@@ -880,18 +885,20 @@
                 ¿Para qué hotel deseas cargar esta segmentación?
             </p>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; align-items: stretch;">
                 <button id="btnSegGuadiana" class="btn" onclick="confirmSegUpload('Guadiana')"
-                    style="padding: 15px 10px; height: auto; flex-direction: column; gap: 10px; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; background: #4f46e5;">
-                    <img src="Imagen/logo-guadiana.svg" style="height: 35px; filter: brightness(0) invert(1);"
+                    style="padding: 14px 10px; height: auto; flex-direction: column; gap: 8px; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; background: #4f46e5; position: relative; border-radius: 14px;">
+                    <span id="badgeSegGuadiana" style="display: none; background: #ffffff; color: #047857; font-size: 0.65rem; font-weight: 900; padding: 3px 8px; border-radius: 999px; letter-spacing: 0.4px; box-shadow: 0 2px 5px rgba(0,0,0,0.12);">✓ RECONOCIDO</span>
+                    <img src="Imagen/logo-guadiana.svg" style="height: 42px; width: auto; max-width: 115px; object-fit: contain; background: #ffffff; padding: 5px 10px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.08);"
                         alt="Guadiana">
-                    <span style="font-size: 0.85rem; font-weight: 700;">Hotel Guadiana</span>
+                    <span style="font-size: 0.9rem; font-weight: 800;">Hotel Guadiana</span>
                 </button>
                 <button id="btnSegCumbria" class="btn" onclick="confirmSegUpload('Cumbria')"
-                    style="padding: 15px 10px; height: auto; flex-direction: column; gap: 10px; display: flex; align-items: center; justify-content: center; background: #6366f1; transition: all 0.3s ease;">
-                    <img src="Imagen/logo-cumbria.svg" style="height: 35px; filter: brightness(0) invert(1);"
+                    style="padding: 14px 10px; height: auto; flex-direction: column; gap: 8px; display: flex; align-items: center; justify-content: center; background: #6366f1; transition: all 0.3s ease; position: relative; border-radius: 14px;">
+                    <span id="badgeSegCumbria" style="display: none; background: #ffffff; color: #047857; font-size: 0.65rem; font-weight: 900; padding: 3px 8px; border-radius: 999px; letter-spacing: 0.4px; box-shadow: 0 2px 5px rgba(0,0,0,0.12);">✓ RECONOCIDO</span>
+                    <img src="Imagen/logo-cumbria.svg" style="height: 42px; width: auto; max-width: 115px; object-fit: contain; background: #ffffff; padding: 5px 10px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.08);"
                         alt="Cumbria">
-                    <span style="font-size: 0.85rem; font-weight: 700;">Hotel Cumbria</span>
+                    <span style="font-size: 0.9rem; font-weight: 800;">Hotel Cumbria</span>
                 </button>
             </div>
 

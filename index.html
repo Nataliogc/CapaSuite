@@ -22,14 +22,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="js/state.js"></script>
     <script src="js/storage.js?v=20261013-1"></script>
-    <script src="js/version.js?v=20261031-0349"></script>
+    <script src="js/version.js?v=20261031-1528"></script>
     <script src="js/nav.js"></script>
 
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="js/firebase-auth.js?v=20261031-0349"></script>
+    <script src="js/firebase-auth.js?v=20261031-1528"></script>
     <script src="js/theme-manager.js"></script>
 
     <link rel="stylesheet" href="css/tokens.css">
@@ -638,17 +638,23 @@
             const h = window.location.hostname;
             const isLocal = h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '' || window.location.protocol === 'file:';
             const forceLogin = localStorage.getItem('force_login_once');
-            if (isLocal && !forceLogin) {
+            const savedSession = window.getSavedAuthSession ? window.getSavedAuthSession() : null;
+            if ((isLocal && !forceLogin) || savedSession) {
                 document.documentElement.style.visibility = 'hidden'; 
                 document.addEventListener('DOMContentLoaded', () => {
                     const loginSection = document.getElementById('login-container');
                     const mainContent = document.getElementById('dashboard-main');
                     const mainHeader = document.getElementById('mainHeader');
                     const mainNav = document.getElementById('mainNav');
+                    const userEmailEl = document.getElementById('userEmailNav') || document.getElementById('userEmail');
                     if (loginSection) loginSection.style.display = 'none';
                     if (mainContent) mainContent.style.display = 'flex';
                     if (mainHeader) mainHeader.style.display = 'flex';
                     if (mainNav) mainNav.style.display = 'flex';
+                    if (savedSession && userEmailEl) {
+                        userEmailEl.innerText = savedSession.displayName || savedSession.email;
+                        userEmailEl.style.color = '';
+                    }
                     document.documentElement.style.visibility = 'visible';
                 });
             }
@@ -695,7 +701,13 @@
             }
 
             try {
-                await auth.signInWithEmailAndPassword(email, pass);
+                if (auth.setPersistence && firebase.auth?.Auth?.Persistence?.LOCAL) {
+                    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
+                }
+                const cred = await auth.signInWithEmailAndPassword(email, pass);
+                if (window.saveAuthSession) {
+                    window.saveAuthSession(cred?.user || { email }, { email, pass });
+                }
             } catch (error) {
                 errorEl.innerText = "Error: Acceso denegado. Verifica tus credenciales.";
                 errorEl.style.display = 'block';
@@ -716,6 +728,7 @@
             console.log("🔐 Auth Check:", { h, isLocal, forceLogin, user: user ? user.email : 'null' });
 
             if (user) {
+                if (window.saveAuthSession) window.saveAuthSession(user);
                 localStorage.removeItem('force_login_once'); // Reset
                 loginSection.style.display = 'none';
                 mainContent.style.display = 'flex';
@@ -736,7 +749,20 @@
                     }
                 }
             } else {
-                if (isLocal && !forceLogin) {
+                const savedSession = window.getSavedAuthSession ? window.getSavedAuthSession() : null;
+                if (savedSession) {
+                    loginSection.style.display = 'none';
+                    mainContent.style.display = 'flex';
+                    mainHeader.style.display = 'flex';
+                    mainNav.style.display = 'flex';
+                    if (userEmailEl) {
+                        userEmailEl.innerText = savedSession.displayName || savedSession.email;
+                        userEmailEl.style.color = '';
+                    }
+                    if (window.trySilentReconnect) {
+                        window.trySilentReconnect();
+                    }
+                } else if (isLocal && !forceLogin) {
                     // MODO LOCAL AUTOMÁTICO - Fuerza mostrar todo
                     loginSection.style.display = 'none';
                     mainContent.style.display = 'flex';

@@ -62,6 +62,132 @@ function getUserDisplayName(user) {
 window.getUserDisplayName = getUserDisplayName;
 window.CAPASUITE_USERS = USER_DISPLAY_NAMES;
 
+const AUTH_SESSION_KEY = 'capasuite_auth_session_v1';
+const AUTH_RECONNECT_KEY = 'capasuite_auth_reconnect_v1';
+const AUTH_LOGGED_OUT_KEY = 'capasuite_explicit_logout_v1';
+
+// Asegurar persistencia LOCAL permanente en navegador y PWA instalada
+if (cloudAuth && typeof cloudAuth.setPersistence === 'function' && firebase.auth?.Auth?.Persistence?.LOCAL) {
+    cloudAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
+}
+
+function _readStorage(key) {
+    try { if (typeof localStorage !== 'undefined' && typeof localStorage.getItem === 'function') { const v = localStorage.getItem(key); if (v != null) return v; } } catch {}
+    try { if (typeof CapaStorage !== 'undefined' && typeof CapaStorage.getItem === 'function') return CapaStorage.getItem(key); } catch {}
+    return null;
+}
+function _writeStorage(key, val) {
+    try { if (typeof localStorage !== 'undefined' && typeof localStorage.setItem === 'function') localStorage.setItem(key, val); } catch {}
+    try { if (typeof originalSetItem === 'function') originalSetItem(key, val); } catch {}
+}
+function _removeStorage(key) {
+    try { if (typeof localStorage !== 'undefined' && typeof localStorage.removeItem === 'function') localStorage.removeItem(key); } catch {}
+    try { if (typeof originalRemoveItem === 'function') originalRemoveItem(key); } catch {}
+}
+
+function saveAuthSession(user, reconnectCreds) {
+    if (!user) return null;
+    const session = {
+        uid: user.uid || 'saved',
+        email: (user.email || '').toLowerCase().trim(),
+        displayName: getUserDisplayName(user),
+        savedAt: Date.now()
+    };
+    _writeStorage(AUTH_SESSION_KEY, JSON.stringify(session));
+    _removeStorage(AUTH_LOGGED_OUT_KEY);
+    _removeStorage('force_login_once');
+    if (reconnectCreds && reconnectCreds.email && reconnectCreds.pass) {
+        try {
+            _writeStorage(AUTH_RECONNECT_KEY, btoa(unescape(encodeURIComponent(JSON.stringify({
+                email: reconnectCreds.email,
+                pass: reconnectCreds.pass
+            })))));
+        } catch {}
+    }
+    return session;
+}
+
+function getSavedAuthSession() {
+    if (_readStorage(AUTH_LOGGED_OUT_KEY) === '1') return null;
+    try {
+        const raw = _readStorage(AUTH_SESSION_KEY);
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && (parsed.email || parsed.uid)) {
+                parsed.displayName = parsed.displayName || getUserDisplayName(parsed.email || parsed);
+                return parsed;
+            }
+        }
+    } catch {}
+    return null;
+}
+
+function clearSavedAuthSession() {
+    _removeStorage(AUTH_SESSION_KEY);
+    _removeStorage(AUTH_RECONNECT_KEY);
+    _writeStorage(AUTH_LOGGED_OUT_KEY, '1');
+}
+
+let _reconnectInFlight = null;
+async function trySilentReconnect() {
+    if (_reconnectInFlight) return _reconnectInFlight;
+    if (_readStorage(AUTH_LOGGED_OUT_KEY) === '1') return null;
+    if (!cloudAuth || typeof cloudAuth.signInWithEmailAndPassword !== 'function') return null;
+    const raw = _readStorage(AUTH_RECONNECT_KEY);
+    if (!raw) return null;
+    _reconnectInFlight = (async () => {
+        try {
+            const creds = JSON.parse(decodeURIComponent(escape(atob(raw))));
+            if (!creds || !creds.email || !creds.pass) return null;
+            if (typeof cloudAuth.setPersistence === 'function' && firebase.auth?.Auth?.Persistence?.LOCAL) {
+                await cloudAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
+            }
+            const res = await cloudAuth.signInWithEmailAndPassword(creds.email, creds.pass);
+            if (res && res.user) saveAuthSession(res.user);
+            return res?.user || null;
+        } catch (err) {
+            console.warn('CapaSuite: reconexión silenciosa aplazada:', err?.message || err);
+            return null;
+        } finally {
+            _reconnectInFlight = null;
+        }
+    })();
+    return _reconnectInFlight;
+}
+
+window.saveAuthSession = saveAuthSession;
+window.getSavedAuthSession = getSavedAuthSession;
+window.clearSavedAuthSession = clearSavedAuthSession;
+window.trySilentReconnect = trySilentReconnect;
+
+if (cloudAuth && typeof cloudAuth.signOut === 'function') {
+    const _origSignOut = cloudAuth.signOut.bind(cloudAuth);
+    cloudAuth.signOut = async function (...args) {
+        clearSavedAuthSession();
+        _writeStorage('force_login_once', 'true');
+        stopCloudListener();
+        window._initialDownloadDone = false;
+        try {
+            await _origSignOut(...args);
+        } finally {
+            const currentPath = window.location.pathname || '';
+            const isHome = currentPath.endsWith('index.html') || currentPath.endsWith('/') || currentPath === '';
+            if (!isHome) {
+                window.location.href = 'index.html';
+            } else if (typeof document !== 'undefined') {
+                const loginSection = document.getElementById('login-container');
+                const mainContent = document.getElementById('dashboard-main');
+                const mainHeader = document.getElementById('mainHeader');
+                const mainNav = document.getElementById('mainNav');
+                if (loginSection) loginSection.style.display = 'flex';
+                if (mainContent) mainContent.style.display = 'none';
+                if (mainHeader) mainHeader.style.display = 'none';
+                if (mainNav) mainNav.style.display = 'none';
+            }
+        }
+    };
+}
+
 /**
  * Función para proteger las páginas
  */
@@ -83,11 +209,28 @@ function checkAuth() {
             return;
         }
 
+        if (typeof cloudAuth.onAuthStateChanged !== 'function') {
+            resolve(getSavedAuthSession());
+            return;
+        }
+
         cloudAuth.onAuthStateChanged(async (user) => {
             const currentPath = window.location.pathname;
             const isHome = currentPath.endsWith('index.html') || currentPath.endsWith('/') || currentPath === "";
 
             if (!user) {
+                const savedSession = getSavedAuthSession();
+                if (savedSession) {
+                    const navEmail = document.getElementById('userEmailNav');
+                    if (navEmail) navEmail.innerText = getUserDisplayName(savedSession);
+                    const reconnectedUser = await trySilentReconnect();
+                    if (reconnectedUser) {
+                        resolve(reconnectedUser);
+                        return;
+                    }
+                    resolve(savedSession);
+                    return;
+                }
                 stopCloudListener();
                 window._initialDownloadDone = false;
                 if (!isHome) {
@@ -95,6 +238,7 @@ function checkAuth() {
                 }
                 resolve(null);
             } else {
+                saveAuthSession(user);
                 prepareCloudAccount(user.uid);
                 console.log("👤 CapaSuite: Usuario identificado como " + user.email);
 
