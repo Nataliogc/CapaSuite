@@ -97,87 +97,210 @@
 }
 
 .user-chip {
-    display: flex !important;
+    display: inline-flex !important;
     align-items: center !important;
     gap: 8px !important;
-    background: rgba(255, 255, 255, 0.05);
-    padding: 4px 12px !important;
-    border-radius: 50px !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    background: rgba(15, 23, 42, 0.65) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    padding: 4px 10px !important;
+    border-radius: 9999px !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18) !important;
     white-space: nowrap !important;
+    transition: all 0.2s ease !important;
 }
 
 [data-theme="light"] .user-chip {
-    background: #f8fafc;
-    border-color: rgba(0, 0, 0, 0.07);
-    color: #1e293b;
+    background: #ffffff !important;
+    border-color: rgba(0, 0, 0, 0.08) !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+    color: #0f172a !important;
 }
 
 /* ─── SELECTOR DE HOTEL ──────────────────────────────────── */
 .nav-hotel-select {
-    background: transparent !important;
-    color: #f1f5f9;
-    border: none !important;
-    font-size: 0.76rem !important;
-    font-weight: 800;
-    outline: none;
-    cursor: pointer;
-    font-family: inherit;
-    padding: 2px 4px !important;
-    max-width: 125px !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #f8fafc !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 16px !important;
+    font-size: 0.77rem !important;
+    font-weight: 700 !important;
+    outline: none !important;
+    cursor: pointer !important;
+    font-family: inherit !important;
+    padding: 3px 8px !important;
+    min-width: 152px !important;
+    max-width: none !important;
     margin: 0 !important;
     box-shadow: none !important;
+    transition: all 0.2s ease !important;
+}
+
+.nav-hotel-select:hover {
+    background: rgba(255, 255, 255, 0.14) !important;
+    border-color: rgba(129, 140, 248, 0.6) !important;
+}
+
+.nav-hotel-select option {
+    background: #0f172a !important;
+    color: #f8fafc !important;
+    font-weight: 600 !important;
 }
 
 [data-theme="light"] .nav-hotel-select {
-    color: #1e293b;
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+    border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-theme="light"] .nav-hotel-select:hover {
+    background: #e2e8f0 !important;
+    border-color: #6366f1 !important;
+}
+
+[data-theme="light"] .nav-hotel-select option {
+    background: #ffffff !important;
+    color: #0f172a !important;
+}
+
+/* ─── THEME TOGGLE ───────────────────────────────────────── */
+#themeToggleBtn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 26px !important;
+    height: 26px !important;
+    border-radius: 50% !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    cursor: pointer !important;
+    font-size: 0.95rem !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+    transition: transform 0.2s ease, background 0.2s ease !important;
+    user-select: none !important;
+    flex-shrink: 0 !important;
+}
+
+#themeToggleBtn:hover {
+    transform: scale(1.1) !important;
+    background: rgba(255, 255, 255, 0.15) !important;
+}
+
+[data-theme="light"] #themeToggleBtn {
+    background: rgba(0, 0, 0, 0.04) !important;
+    border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme="light"] #themeToggleBtn:hover {
+    background: rgba(0, 0, 0, 0.08) !important;
 }
 
 /* ─── DOT DE ESTADO ──────────────────────────────────────── */
 .dot {
-    width: 7px;
-    height: 7px;
-    background: #10b981;
-    border-radius: 50%;
-    flex-shrink: 0;
+    width: 7px !important;
+    height: 7px !important;
+    background: #10b981 !important;
+    border-radius: 50% !important;
+    flex-shrink: 0 !important;
+    box-shadow: 0 0 6px rgba(16, 185, 129, 0.7) !important;
+    animation: pulse-nav-dot 2.5s infinite ease-in-out !important;
+}
+
+@keyframes pulse-nav-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(0.9); }
 }
 
 /* ─── USUARIO Y LOGOUT ───────────────────────────────────── */
 #userEmailNav {
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: var(--text-main, #0f172a);
-    white-space: nowrap;
-    max-width: 110px;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-size: 0.78rem !important;
+    font-weight: 700 !important;
+    color: #f8fafc !important;
+    white-space: nowrap !important;
+    letter-spacing: -0.2px !important;
+}
+
+[data-theme="light"] #userEmailNav {
+    color: #0f172a !important;
 }
 
 .logout-btn {
-    color: #ef4444;
-    font-size: 0.68rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    cursor: pointer;
-    opacity: 0.75;
-    transition: opacity 0.2s;
-    white-space: nowrap;
-    user-select: none;
-    margin-left: 4px;
+    display: inline-flex !important;
+    align-items: center !important;
+    color: #ef4444 !important;
+    background: rgba(239, 68, 68, 0.08) !important;
+    border: 1px solid rgba(239, 68, 68, 0.25) !important;
+    border-radius: 6px !important;
+    padding: 2px 7px !important;
+    font-size: 0.67rem !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    cursor: pointer !important;
+    opacity: 0.9 !important;
+    transition: all 0.2s ease !important;
+    white-space: nowrap !important;
+    user-select: none !important;
+    margin-left: 2px !important;
 }
 
 .logout-btn:hover {
-    opacity: 1;
+    opacity: 1 !important;
+    background: #ef4444 !important;
+    color: #ffffff !important;
+    border-color: #ef4444 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3) !important;
 }
 
-/* ─── SYNC STATUS ────────────────────────────────────────── */
+/* ─── SYNC STATUS BADGE ─────────────────────────────────── */
 #capasuiteSyncStatus {
-    font-size: 10px;
-    color: #64748b;
-    white-space: nowrap;
-    max-width: 115px;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    padding: 2px 8px !important;
+    border-radius: 9999px !important;
+    white-space: nowrap !important;
+    background: rgba(16, 185, 129, 0.12) !important;
+    color: #10b981 !important;
+    border: 1px solid rgba(16, 185, 129, 0.28) !important;
+    box-sizing: border-box !important;
+    transition: all 0.2s ease !important;
+    margin-left: 2px !important;
+}
+
+#capasuiteSyncStatus.sync-pending {
+    background: rgba(245, 158, 11, 0.14) !important;
+    color: #f59e0b !important;
+    border-color: rgba(245, 158, 11, 0.3) !important;
+}
+
+#capasuiteSyncStatus.sync-failed {
+    background: rgba(239, 68, 68, 0.14) !important;
+    color: #ef4444 !important;
+    border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+[data-theme="light"] #capasuiteSyncStatus {
+    background: rgba(16, 185, 129, 0.1) !important;
+    color: #059669 !important;
+    border-color: rgba(16, 185, 129, 0.25) !important;
+}
+
+[data-theme="light"] #capasuiteSyncStatus.sync-pending {
+    background: rgba(245, 158, 11, 0.1) !important;
+    color: #d97706 !important;
+    border-color: rgba(245, 158, 11, 0.25) !important;
+}
+
+[data-theme="light"] #capasuiteSyncStatus.sync-failed {
+    background: rgba(239, 68, 68, 0.1) !important;
+    color: #dc2626 !important;
+    border-color: rgba(239, 68, 68, 0.25) !important;
 }
 
 /* ─── RESPONSIVE ─────────────────────────────────────────── */
@@ -188,9 +311,6 @@
     .nav-links a {
         font-size: 0.67rem !important;
         padding: 5px 7px !important;
-    }
-    #capasuiteSyncStatus {
-        display: none !important;
     }
 }
 
@@ -207,12 +327,13 @@
         letter-spacing: 0.1px !important;
     }
     .user-chip {
-        padding: 4px 8px !important;
+        padding: 3px 8px !important;
         gap: 6px !important;
     }
     .nav-hotel-select {
-        font-size: 0.72rem !important;
-        max-width: 105px !important;
+        font-size: 0.74rem !important;
+        min-width: 142px !important;
+        padding: 2px 6px !important;
     }
 }
 
