@@ -657,6 +657,7 @@
             border-color: var(--primary);
         }
     </style>
+    <link rel="stylesheet" href="css/nav.css">
 </head>
 
 <body>
@@ -682,10 +683,10 @@
         <div class="nav-user">
             <div class="user-chip">
                 <select id="hotelSelector" class="nav-hotel-select" onchange="switchHotel(this.value)">
-                    <option value="Guadiana">Hotel Guadiana</option>
-                    <option value="Cumbria">Hotel Cumbria</option>
+                    <option value="Guadiana">Sercotel Guadiana</option>
+                    <option value="Cumbria">Cumbria Spa & Hotel</option>
                 </select>
-                <div id="themeToggleBtn" onclick="toggleTheme()" style="cursor:pointer; font-size:1.1rem;" title="Cambiar Modo">🌙</div>
+                <div id="themeToggleBtn" onclick="toggleTheme()" title="Cambiar Modo">🌙</div>
                 <span class="dot"></span>
                 <span id="userEmailNav" style="font-size:0.75rem; font-weight:700;">Conectando...</span>
                 <span onclick="auth.signOut()" class="logout-btn">Salir</span>
@@ -958,8 +959,8 @@
             <div style="margin-bottom: 16px;">
                 <label style="font-size:0.78rem; font-weight:700; color:var(--text-muted); display:block; margin-bottom:5px;">Configuración para el establecimiento:</label>
                 <select id="modalHotelSelect" class="control-select" style="width:100%;" onchange="loadStaffModalInputs(this.value)">
-                    <option value="Guadiana">Hotel Guadiana</option>
-                    <option value="Cumbria">Hotel Cumbria</option>
+                    <option value="Guadiana">Sercotel Guadiana</option>
+                    <option value="Cumbria">Cumbria Spa & Hotel</option>
                 </select>
             </div>
 
