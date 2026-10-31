@@ -1447,16 +1447,16 @@
                 insights.push({
                     id: 'ins_soldout',
                     category: 'pricing',
-                    priority: 'critical',
-                    badge: '🚨 ALERTA COMPSET • LLENO TÉCNICO',
-                    title: `Competidores completos en ${soldOutDates.length} fechas detectadas`,
-                    diagnostic: `Rivales directos del CompSet aparecen con el cartel de completo (Sold Out) en <b>${soldOutDates.length} fechas</b> (destacando ${soldSummaryList || 'hoteles del CompSet'}). Esto demuestra momentos de alta concentración de demanda y plazas agotadas en el mercado.`,
-                    strategy: `<b>Estrategia Revenue Experta:</b><br>
-• <b>Captura de Demanda Desplazada:</b> Cuando los hoteles de la plaza se llenan, la demanda sobrante no es sensible al precio. Sube de inmediato tu tarifa BAR un <b>+20% a +35%</b> en esas fechas exactas.<br>
-• <b>Retención de Últimas Unidades:</b> Reserva las últimas 10-15 habitaciones únicamente para venta a tarifa completa en tu canal directo.`,
+                    priority: 'info',
+                    badge: '🔍 AUDITORÍA DE MERCADO • DISPONIBILIDAD EN OTA',
+                    title: `Rivales sin tarifa pública en Expedia (${soldOutDates.length} fechas)`,
+                    diagnostic: `Competidores del CompSet sin tarifa visible en Expedia en <b>${soldOutDates.length} fechas</b> (destacando ${soldSummaryList || 'hoteles del CompSet'}). Hipótesis comercial: cierre táctico de canal OTA, restricciones de estancia mínima o cupos pendientes de carga por el establecimiento (Expedia no reporta ocupación real ni certifica lleno hotelero).`,
+                    strategy: `<b>Estrategia Revenue Prudencial:</b><br>
+• <b>No sobrestimar la demanda:</b> La ausencia de precio en OTA no equivale a hotel completo ni a habitaciones vendidas. No aplicar subidas automáticas exclusivamente por esta circunstancia.<br>
+• <b>Decisión basada en pickup propio:</b> Evaluar el ritmo de reservas y la ocupación OTB de nuestro hotel. Si existen varios días consecutivos sin tarifa en competidores, considerar la hipótesis de inventario pendiente de cargar.`,
                     dates: soldOutDates,
-                    datesTitle: 'Fechas con Rivales en Sold Out',
-                    datesSubtitle: `Detalle de los ${soldOutDates.length} días con competidores sin disponibilidad y oportunidad de Yield`,
+                    datesTitle: 'Fechas con Rivales sin Tarifa en OTA',
+                    datesSubtitle: `Detalle de los ${soldOutDates.length} días con competidores sin disponibilidad en Expedia`,
                     actionUrl: 'AnalisisCompetencia.html'
                 });
             }
@@ -2088,9 +2088,9 @@
                         complianceGoodDates.push({
                             dateISO: dateStr,
                             dayLabel: `${dayInfo.dayOfWeek} ${formatSpanishDate(dateStr)}`,
-                            status: 'Rival(es) en Sold Out',
-                            metrics: `${rivalsSoldOut.join(', ')} agotados · Tu BAR: ${my?.price ? my.price + '€' : '-'}`,
-                            tactic: `Rivales completos en la plaza. Demanda inelástica: elevar tarifa BAR +20% a +30% de inmediato y fijar estancia mínima (MLOS 2 noches).`
+                            status: 'Rival(es) sin tarifa en OTA',
+                            metrics: `${rivalsSoldOut.join(', ')} sin tarifa visible en Expedia · Tu BAR: ${my?.price ? my.price + '€' : '-'}`,
+                            tactic: `Competidores sin tarifa observable en canal OTA. Hipótesis: canal cerrado o inventario pendiente. No asumir ocupación al 100%; verificar demanda interna (pickup y OTB) antes de realizar ajustes tarifarios.`
                         });
                     }
 

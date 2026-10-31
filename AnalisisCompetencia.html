@@ -22,9 +22,9 @@
     <script src="js/nav.js"></script>
     <script src="js/theme-manager.js"></script>
     <script src="js/firebase-auth.js?v=20261001-sync3"></script>
-    <script src="js/version.js?v=20261031-0154"></script>
-    <script src="js/pricing-intelligence.js?v=20261031-0154"></script>
-    <script src="js/competencia-intelligence-ui.js?v=20261031-0154"></script>
+    <script src="js/version.js?v=20261031-0203"></script>
+    <script src="js/pricing-intelligence.js?v=20261031-0203"></script>
+    <script src="js/competencia-intelligence-ui.js?v=20261031-0203"></script>
 
     <link rel="stylesheet" href="css/tokens.css">
     <link rel="stylesheet" href="css/nav.css">
@@ -4491,7 +4491,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 });
             }
 
-            // --- INSIGHT 7: COMPETIDORES LLENOS (SOLD OUT) ---
+            // --- INSIGHT 7: COMPETIDORES SIN TARIFA VISIBLE EN OTA (EXPEDIA) ---
             if (soldOutDays.length > 0) {
                 alertCount++;
                 soldOutDays.sort((a, b) => (b.soldComps || 0) - (a.soldComps || 0));
@@ -4500,10 +4500,10 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 );
                 addExpertInsightCard({
                     type: 'soldout',
-                    icon: '🏆',
-                    title: 'Competencia Completa (Sold Out)',
+                    icon: '🔍',
+                    title: 'Sin Disponibilidad en OTA (Expedia)',
                     badge: `${soldOutDays.length} fecha${soldOutDays.length !== 1 ? 's' : ''}`,
-                    desc: `Hoteles competidores sin plazas disponibles con nuestro hotel aún con inventario disponible. Oportunidad directa de yielding para captar demanda residual a tarifa premium.`,
+                    desc: `Competidores sin tarifa visible en Expedia (${soldOutDays.length} fechas). Hipótesis comercial: canal cerrado, restricciones de estancia mínima o inventario pendiente de cargar (Expedia no reporta ocupación real ni certifica lleno hotelero). No sobrestimar la demanda ni subir tarifas exclusivamente por esta causa.`,
                     chips: chips,
                     filterType: 'sold_out',
                     filterCount: soldOutDays.length

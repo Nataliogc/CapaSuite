@@ -702,29 +702,29 @@
             (gross !== null && cancel !== null)
         );
 
-        const hotelScale = capacity / 100; // Normalización por escala (1.08 Guadiana, 0.59 Cumbria)
-        let expectedVelocity = 1.0 * hotelScale;
+        const hotelScale = capacity / 100; // Normalización por tamaño del establecimiento (1.08 Guadiana, 0.59 Cumbria)
+        let referenceVelocity = 1.0 * hotelScale;
         if (daysOut > 60) {
-            expectedVelocity = 0.8 * hotelScale;
+            referenceVelocity = 0.8 * hotelScale;
         } else if (daysOut > 30) {
-            expectedVelocity = 1.4 * hotelScale;
+            referenceVelocity = 1.4 * hotelScale;
         } else if (daysOut > 14) {
-            expectedVelocity = 2.0 * hotelScale;
+            referenceVelocity = 2.0 * hotelScale;
         } else if (daysOut > 7) {
-            expectedVelocity = 2.4 * hotelScale;
+            referenceVelocity = 2.4 * hotelScale;
         } else {
-            expectedVelocity = 1.5 * hotelScale;
+            referenceVelocity = 1.5 * hotelScale;
         }
 
         const pickupPressure = (availableRooms > 0) ? (bestPickup / availableRooms) : 0;
 
         const isFavorable = (bestPickup > 0) && (
-            (bestPickup >= expectedVelocity) ||
+            (bestPickup >= referenceVelocity) ||
             (pickupPressure >= 0.12 && bestPickup >= 1)
         );
 
         const isWeak = (bestPickup <= 0) || (
-            (daysOut <= 30 && bestPickup < (expectedVelocity * 0.5))
+            (daysOut <= 30 && bestPickup < (referenceVelocity * 0.5))
         );
 
         return {
@@ -737,7 +737,8 @@
             p30d,
             bestPickup,
             pickupPressure,
-            expectedVelocity,
+            referenceVelocity,
+            expectedVelocity: referenceVelocity, // Retrocompatibilidad
             isFavorable,
             isWeak,
             hasSufficientHistory
@@ -1017,10 +1018,23 @@
         let riskAssessment = 'Riesgo bajo';
 
         if (!pickupMetrics.hasSufficientHistory) {
-            reasons.push('Información de histórico de pickup limitada: recomendación basada en ocupación OTB y BAR base.');
+            reasons.push('Información histórica insuficiente de pickup: ritmo evaluado con baremo de referencia por tamaño (' + capacity + ' habs) y antelación (' + daysOut + 'd), no sobre histórico confirmado.');
+        } else {
+            reasons.push(`Histórico de pickup contrastado (+${pickupMetrics.bestPickup} RN recientes confirmadas en snapshots).`);
         }
         if (occData.isForecastReliable) {
             reasons.push(occData.forecastNote);
+        }
+
+        // --- Contexto de Competencia Observable (Expedia / OTA) ---
+        // Expedia proporciona precios y disponibilidad comercial observable, no la ocupación real ni habitaciones vendidas
+        if (soldCompsCount > 0) {
+            reasons.push(`Mercado OTA (Expedia): ${soldCompsCount} competidor(es) sin tarifa pública observable. Hipótesis comercial: canal cerrado o inventario pendiente de carga (no certifica ocupación al 100% ni habitaciones vendidas).`);
+        }
+        if (marketAvg > 0) {
+            reasons.push(`Estadística de mercado calculada exclusivamente sobre tarifas observadas válidas (media: ${Math.round(marketAvg)} €).`);
+        } else if (soldCompsCount > 0) {
+            reasons.push('Sin tarifas observables en el set competitivo de Expedia. Referencia de mercado no disponible.');
         }
 
         // --- SUB-CASO A: BAR VIGENTE INFERIOR A BAR BASE (Suelo inviolable) ---
@@ -1133,7 +1147,7 @@
         // --- SUB-CASO E: OCUPACIÓN DEL 81 % AL 95 % (Proteger inventario / limitar descuentos) ---
         else if (occTierCheck <= 95) {
             if (barVigente < barObjetivo) {
-                if (pickupMetrics.isFavorable || daysOut <= 14 || soldCompsCount >= 1) {
+                if (pickupMetrics.isFavorable || daysOut <= 14) {
                     action = 'SUBIR';
                     proposedPrice = barObjetivo;
                     triggerText = (effectiveOcc <= 90) ? `🔒 Proteger +${incPct}% (${barObjetivo}€)` : `🔒 Limitar Desc. +${incPct}% (${barObjetivo}€)`;
@@ -1162,7 +1176,7 @@
         // --- SUB-CASO F: OCUPACIÓN MÁS DEL 95 % Y MENOS DEL 100 % (Maximizar ingresos +77%) ---
         else {
             if (barVigente < barObjetivo) {
-                if (pickupMetrics.isFavorable || daysOut <= 21 || soldCompsCount >= 1) {
+                if (pickupMetrics.isFavorable || daysOut <= 21) {
                     action = 'SUBIR';
                     proposedPrice = barObjetivo;
                     triggerText = `🔥 Max. Ingresos +77% (${barObjetivo}€)`;

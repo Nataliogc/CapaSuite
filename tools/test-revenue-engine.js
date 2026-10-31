@@ -171,7 +171,7 @@ const r8 = PI.evaluateDailyRecommendation({
     pickupData: null // Sin snapshots ni histórico
 });
 assert(
-    r8.hasSufficientPickupHistory === false && r8.confidenceScore === 'Media' && r8.reasons.some(r => r.includes('limitada')),
+    r8.hasSufficientPickupHistory === false && r8.confidenceScore === 'Media' && r8.reasons.some(r => r.includes('insuficiente') || r.includes('limitada')),
     'Caso 8: Datos de pickup incompletos (sin inventar histórico)',
     `Histórico suficiente: ${r8.hasSufficientPickupHistory}, Confianza: ${r8.confidenceScore}, Razón: ${r8.reasons[0]}`
 );
@@ -283,6 +283,159 @@ assert(
     reg5.action === 'SUBIR' && reg5.proposedPrice === 71 && reg5.barObjetivo === 71,
     'Regresión 5: Cumbria Tramo 71–80% (+21% sobre base 59 € = 71 €)',
     `Base: ${reg5.baseBar} €, Objetivo: ${reg5.barObjetivo} €, Propuesto: ${reg5.proposedPrice} €`
+);
+
+// -----------------------------------------------------------------------------
+// PRUEBAS DE INTERPRETACIÓN DE EXPEDIA (8 ESCENARIOS OBLIGATORIOS)
+// -----------------------------------------------------------------------------
+console.log('\n--- PRUEBAS DE INTERPRETACIÓN DE DATOS DE EXPEDIA (8 ESCENARIOS) ---');
+
+// Escenario 1: Competidor sin tarifa durante un día
+// No debe considerarse lleno ni subir tarifa automáticamente; se trata como hipótesis
+const exp1 = PI.evaluateDailyRecommendation({
+    hotelName: 'Guadiana',
+    dateISO: '2027-02-17', // Miércoles base 2027 = 70 €
+    currentPrice: 70,
+    marketAvg: 75,
+    otbRooms: 20, // 18.5%
+    occupancyPct: 18.5,
+    soldCompsCount: 1, // 1 competidor sin tarifa en Expedia
+    otbChange: 0
+});
+assert(
+    exp1.action === 'MANTENER' && exp1.proposedPrice === 70 &&
+    exp1.reasons.some(r => r.includes('Hipótesis comercial') && r.includes('no certifica ocupación')),
+    'Escenario Expedia 1: Competidor sin tarifa 1 día (Tratado como hipótesis, sin subida automática)',
+    `Acción: ${exp1.action}, Propuesto: ${exp1.proposedPrice} €, Razón OTA: ${exp1.reasons.find(r => r.includes('Hipótesis'))}`
+);
+
+// Escenario 2: Competidor sin tarifa durante varios días consecutivos
+// Se evalúa como hipótesis de inventario pendiente de carga o cierre de canal
+const exp2 = PI.evaluateDailyRecommendation({
+    hotelName: 'Guadiana',
+    dateISO: '2027-02-18', // Jueves base 2027 = 68 €
+    currentPrice: 68,
+    marketAvg: 72,
+    otbRooms: 22,
+    occupancyPct: 20.3,
+    soldCompsCount: 1,
+    otbChange: 0
+});
+assert(
+    exp2.action === 'MANTENER' && exp2.proposedPrice === 68 &&
+    !exp2.reasons.some(r => r.includes('Lleno técnico') || r.includes('lleno confirmado')),
+    'Escenario Expedia 2: Sin tarifa en varios días consecutivos (Hipótesis inventario no cargado)',
+    `Acción: ${exp2.action}, Propuesto: ${exp2.proposedPrice} € (Sin inventar 100% de ocupación)`
+);
+
+// Escenario 3: Varios competidores sin disponibilidad en Expedia
+// Precios de mercado calculados solo con tarifas válidas observables
+const exp3 = PI.evaluateDailyRecommendation({
+    hotelName: 'Guadiana',
+    dateISO: '2027-03-24', // Miércoles base = 70 €
+    currentPrice: 70,
+    marketAvg: 82, // Calculado exclusivamente sobre competidores con tarifa válida
+    otbRooms: 25,
+    occupancyPct: 23,
+    soldCompsCount: 3, // 3 competidores sin tarifa
+    otbChange: 0
+});
+assert(
+    exp3.action === 'MANTENER' && exp3.proposedPrice === 70 &&
+    exp3.reasons.some(r => r.includes('exclusivamente sobre tarifas observadas válidas')),
+    'Escenario Expedia 3: Varios competidores sin tarifa (Muestra parcial, media solo con precios válidos)',
+    `Acción: ${exp3.action}, Propuesto: ${exp3.proposedPrice} €, Diagnóstico: ${exp3.demandStatus}`
+);
+
+// Escenario 4: Competidores con incrementos de precio
+// La subida ajena no provoca subida automática si la ocupación propia es baja
+const exp4 = PI.evaluateDailyRecommendation({
+    hotelName: 'Guadiana',
+    dateISO: '2027-03-16', // Martes base = 70 €
+    currentPrice: 70,
+    marketAvg: 95, // Competidores suben precios (+25 € sobre nuestro precio)
+    otbRooms: 20,  // Ocupación propia baja (18.5%)
+    occupancyPct: 18.5,
+    otbChange: 0
+});
+assert(
+    exp4.action === 'MANTENER' && exp4.proposedPrice === 70,
+    'Escenario Expedia 4: Competidores con subida de precio (No arrastra subida con ocupación baja 18.5%)',
+    `Acción: ${exp4.action}, Propuesto: ${exp4.proposedPrice} € (Mercado: 95 €)`
+);
+
+// Escenario 5: Guadiana con alta ocupación y mercado sin tarifas
+// Guadiana sube por su PROPIA demanda si hay pickup, o mantiene tarifa alta protegida si pickup es nulo
+const exp5 = PI.evaluateDailyRecommendation({
+    hotelName: 'Guadiana',
+    dateISO: '2027-04-24', // Sábado base = 85 €
+    currentPrice: 124,
+    marketAvg: 0,         // Mercado sin tarifas visibles en Expedia
+    soldCompsCount: 4,     // Todos sin disponibilidad
+    otbRooms: 98,          // 91% ocupación propia
+    occupancyPct: 91,
+    otbChange: 0
+});
+assert(
+    exp5.action === 'MANTENER' && exp5.proposedPrice === 124 && exp5.barObjetivo === 130,
+    'Escenario Expedia 5: Guadiana 91% con mercado sin tarifas (Mantiene 124 € y no baja por falta de mercado)',
+    `Acción: ${exp5.action}, Propuesto: ${exp5.proposedPrice} € (Base: ${exp5.baseBar} €, Objetivo: ${exp5.barObjetivo} €)`
+);
+
+// Escenario 6: Cumbria con baja ocupación y competidores sin disponibilidad
+// No se sube precio a Cumbria solo porque la competencia no tenga disponibilidad en Expedia
+const exp6 = PI.evaluateDailyRecommendation({
+    hotelName: 'Cumbria',
+    dateISO: '2027-02-10', // Miércoles base Cumbria = 61 €
+    currentPrice: 61,
+    marketAvg: 0,
+    soldCompsCount: 3,
+    otbRooms: 15,          // 25% ocupación baja (15/59)
+    occupancyPct: 25.4,
+    otbChange: 0
+});
+assert(
+    exp6.action === 'MANTENER' && exp6.proposedPrice === 61,
+    'Escenario Expedia 6: Cumbria 25% ocupación con competidores sin tarifa (Mantiene 61 €)',
+    `Acción: ${exp6.action}, Propuesto: ${exp6.proposedPrice} € (Sin subidas ficticias)`
+);
+
+// Escenario 7: Datos de competencia incompletos
+// Señala la limitación y toma decisión basada en ocupación confirmada OTB y BAR base
+const exp7 = PI.evaluateDailyRecommendation({
+    hotelName: 'Guadiana',
+    dateISO: '2027-05-12',
+    currentPrice: 70,
+    marketAvg: 0,
+    soldCompsCount: 0,
+    otbRooms: 30,
+    occupancyPct: 28,
+    otbChange: 0
+});
+assert(
+    exp7.action === 'MANTENER' && exp7.proposedPrice === 70 &&
+    exp7.reasons.some(r => r.includes('ocupación OTB y BAR base') || r.includes('MANTENER')),
+    'Escenario Expedia 7: Datos de competencia incompletos (Decisión fundamentada en OTB y BAR base)',
+    `Acción: ${exp7.action}, Propuesto: ${exp7.proposedPrice} €`
+);
+
+// Escenario 8: Evento especial con precio elevado y competencia sin disponibilidad
+// Se respeta la tarifa especial aprobada sin alteraciones por falta de datos en Expedia
+const exp8 = PI.evaluateDailyRecommendation({
+    hotelName: 'Guadiana',
+    dateISO: '2027-09-18', // Sábado con evento
+    currentPrice: 120,
+    marketAvg: 0,
+    soldCompsCount: 4,
+    otbRooms: 60,
+    occupancyPct: 55,
+    customEvent: { name: 'Feria Regional', barBase: 135 }
+});
+assert(
+    exp8.action === 'SUBIR' && exp8.proposedPrice === 135 && exp8.isException === true &&
+    exp8.triggerText.includes('Alinear a Evento'),
+    'Escenario Expedia 8: Evento especial con mercado sin tarifas (Prevalece tarifa de evento 135 €)',
+    `Acción: ${exp8.action}, Propuesto: ${exp8.proposedPrice} €, Trigger: ${exp8.triggerText}`
 );
 
 console.log('\n================================================================');
