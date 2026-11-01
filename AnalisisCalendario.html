@@ -21,7 +21,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="js/version.js"></script>
     <script src="js/nav.js"></script>
-    <script src="js/firebase-auth.js?v=20261101-0411"></script>
+    <script src="js/firebase-auth.js?v=20261101-0514"></script>
     <script src="js/theme-manager.js"></script>
 
     <style>
@@ -871,8 +871,56 @@
         .tt-hotel-info { font-size: 1.2rem; font-weight: 800; color: var(--primary); }
         .tt-price-info { text-align: right; }
         .tt-comp-section { margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border); }
-        .tt-comp-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
-        .tt-comp-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; }
+        .tt-comp-row { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 3px 6px; 
+            border-radius: 6px; 
+            margin-bottom: 3px; 
+            font-size: 0.82rem; 
+            color: var(--text-muted); 
+            font-weight: 600; 
+            transition: all 0.15s ease; 
+        }
+        .tt-comp-row.is-cumbria:not(.is-own) {
+            color: #818cf8;
+            font-weight: 700;
+        }
+        .tt-comp-row.is-own {
+            background: linear-gradient(90deg, rgba(99, 102, 241, 0.24) 0%, rgba(99, 102, 241, 0.12) 100%) !important;
+            border: 1px solid rgba(129, 140, 248, 0.5) !important;
+            border-left: 4px solid var(--primary) !important;
+            padding: 6px 10px !important;
+            margin: 6px 0 !important;
+            border-radius: 8px !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+        }
+        .tt-comp-row.is-own .tt-comp-name {
+            font-weight: 800 !important;
+            color: #e0e7ff !important;
+        }
+        .tt-comp-row.is-own .tt-comp-price {
+            font-weight: 900 !important;
+            font-size: 0.95rem !important;
+            color: #c7d2fe !important;
+            font-family: 'Outfit', sans-serif !important;
+        }
+        .tt-own-badge {
+            display: inline-flex;
+            align-items: center;
+            background: var(--primary);
+            color: #ffffff !important;
+            font-size: 0.62rem;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 12px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+            line-height: 1.2;
+        }
+        .tt-comp-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .tt-sold { color: var(--danger) !important; font-weight: 900; }
 
         /* LIGHT THEME REFINEMENTS */
@@ -901,6 +949,28 @@
         [data-theme="light"] .tt-date { color: #0f172a; }
         [data-theme="light"] .tt-comp-name { color: #475569; }
         [data-theme="light"] .tt-comp-price { color: #0f172a; }
+        [data-theme="light"] .tt-comp-row.is-own {
+            background: linear-gradient(90deg, #e0e7ff 0%, #eef2ff 100%) !important;
+            border: 1px solid #c7d2fe !important;
+            border-left: 4px solid #4f46e5 !important;
+            box-shadow: 0 2px 10px rgba(79, 70, 229, 0.15) !important;
+        }
+        [data-theme="light"] .tt-comp-row.is-own .tt-comp-name {
+            color: #3730a3 !important;
+            font-weight: 800 !important;
+        }
+        [data-theme="light"] .tt-comp-row.is-own .tt-comp-price {
+            color: #312e81 !important;
+            font-weight: 900 !important;
+        }
+        [data-theme="light"] .tt-own-badge {
+            background: #4f46e5 !important;
+            color: #ffffff !important;
+            box-shadow: 0 1px 3px rgba(79, 70, 229, 0.3) !important;
+        }
+        [data-theme="light"] .tt-comp-row.is-cumbria:not(.is-own) {
+            color: #6366f1;
+        }
         [data-theme="light"] .event-sidebar h3 { color: #0f172a; }
         
         select option {
@@ -2273,14 +2343,16 @@
                     const isCurrent = name.toLowerCase().includes(currentHotel.toLowerCase()) || currentHotel.toLowerCase().includes(name.toLowerCase());
                     const isCumbria = name.toLowerCase().includes('cumbria');
                     
-                    let highlightStyle = '';
-                    if (isCurrent) highlightStyle = 'font-weight:800; color:var(--primary);';
-                    else if (isCumbria) highlightStyle = 'color:#818cf8;';
+                    const rowClass = isCurrent ? 'tt-comp-row is-own' : (isCumbria ? 'tt-comp-row is-cumbria' : 'tt-comp-row');
 
                     html += `
-                        <div class="tt-comp-row" style="${highlightStyle}">
-                            <span class="tt-comp-name">${name} ${isCurrent ? '(Propio)' : ''}</span>
-                            <span class="tt-comp-price ${isSoldOut ? 'tt-sold' : ''}">
+                        <div class="${rowClass}">
+                            <div style="display:flex; align-items:center; gap:6px; min-width:0; flex:1; margin-right:8px;">
+                                ${isCurrent ? '<span style="font-size:0.9rem; flex-shrink:0;">🏨</span>' : ''}
+                                <span class="tt-comp-name" title="${name}">${name}</span>
+                                ${isCurrent ? '<span class="tt-own-badge" style="flex-shrink:0;">PROPIO</span>' : ''}
+                            </div>
+                            <span class="tt-comp-price ${isSoldOut ? 'tt-sold' : ''}" style="flex-shrink:0;">
                                 ${isSoldOut ? 'SOLD' : (price ? price + '€' : '--€')}
                             </span>
                         </div>
