@@ -140,7 +140,7 @@
 
         // Determinar mes numérico
         let monthNum = 1;
-        if (selectedMonth && selectedMonth !== 'all') {
+        if (selectedMonth && selectedMonth !== 'all' && selectedMonth !== 'next_90') {
             const idx = PricingIntelligence.MONTH_NAMES_ES.findIndex(m => m.toLowerCase().includes(selectedMonth.toLowerCase()) || selectedMonth.toLowerCase().includes(m.toLowerCase()));
             if (idx >= 0) monthNum = idx + 1;
         } else if (datesList[0]?.dateISO) {

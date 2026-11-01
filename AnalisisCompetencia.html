@@ -22,10 +22,10 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="js/nav.js"></script>
     <script src="js/theme-manager.js"></script>
-    <script src="js/firebase-auth.js?v=20261101-0329"></script>
-    <script src="js/version.js?v=20261101-0329"></script>
-    <script src="js/pricing-intelligence.js?v=20261101-0329"></script>
-    <script src="js/competencia-intelligence-ui.js?v=20261101-0329"></script>
+    <script src="js/firebase-auth.js?v=20261101-0348"></script>
+    <script src="js/version.js?v=20261101-0348"></script>
+    <script src="js/pricing-intelligence.js?v=20261101-0348"></script>
+    <script src="js/competencia-intelligence-ui.js?v=20261101-0348"></script>
 
     <link rel="stylesheet" href="css/tokens.css">
     <link rel="stylesheet" href="css/nav.css">
@@ -1817,8 +1817,9 @@
                 </div>
             </div>
             <div class="controls" id="dashboard-controls" style="display:none;">
-                <select id="monthSelector" class="form-select" onchange="renderAll()" title="Filtrar por mes">
-                    <option value="all">📅 Todo el Año</option>
+                <select id="monthSelector" class="form-select" onchange="renderAll()" title="Filtrar por periodo">
+                    <option value="next_90" selected>📅 Próximos 90 días (3 meses)</option>
+                    <option value="all">📅 Todo el Año (364 días)</option>
                 </select>
                 <button class="btn" onclick="openBarMatrixModal()" title="Gestor de Tarifas Base y Estrategia Yield por Hotel, Año y Mes">🏷️ Gestor de Tarifas y Yield</button>
                 <button class="btn" onclick="openMinPriceModal()" title="Configurar tarifas mínimas (suelo) para cada hotel">🏷️ Precios Mínimos</button>
@@ -2690,9 +2691,7 @@
         }
 
         function applyAllVisibleRecommendations() {
-            const activeMonth = document.getElementById('monthSelector').value;
-            let baseData = [...processedData];
-            if (activeMonth !== 'all') baseData = baseData.filter(d => d.month === activeMonth);
+            let baseData = getActiveFilteredData();
 
             let targetList = baseData;
             const globalAvg = processedData.reduce((a, b) => a + (b.compAvg || 0), 0) / (processedData.length || 1);
@@ -2793,15 +2792,12 @@
 
         function refreshActiveView() {
             activeHotel = document.getElementById('hotelSelector')?.value || window.CapaState?.activeHotel || localStorage.getItem('active_hotel_suite') || activeHotel || "Guadiana";
-            const selectedMonth = document.getElementById('monthSelector')?.value || 'all';
+            const selectedMonth = document.getElementById('monthSelector')?.value || 'next_90';
             
             // Recalcular promedios de mercado sobre todo el dataset para que cualquier cambio de precio se propague
             recalcMarketAverages(processedData);
 
-            let data = [...processedData];
-            if (selectedMonth !== 'all') {
-                data = data.filter(d => d.month === selectedMonth);
-            }
+            let data = getActiveFilteredData();
 
             renderKPIs(data);
             renderChart(data);
@@ -2819,7 +2815,13 @@
             if (!countEl) return;
             const simHtml = buildSimulationBannerHtml(0);
 
-            let statusHtml = `<span>${count} días analizados</span>`;
+            const sel = document.getElementById('monthSelector')?.value || 'next_90';
+            let scopeLabel = '';
+            if (sel === 'next_90') scopeLabel = ' (Próximos 90 días)';
+            else if (sel === 'all') scopeLabel = ' (Todo el año)';
+            else scopeLabel = ` (${sel})`;
+
+            let statusHtml = `<span>${count} días analizados${scopeLabel}</span>`;
             statusHtml += `<span onclick="diagnoseAllData()" style="font-size:0.6rem; color:#94a3b8; cursor:pointer; margin-left:6px; text-decoration:underline;" title="Diagnóstico">[Debug]</span>`;
             countEl.innerHTML = `<div style="display:flex; align-items:center; gap:8px;">${simHtml} ${statusHtml}</div>`;
         }
@@ -2835,7 +2837,7 @@
             }
             if (!row && targetObj) {
                 const monthSel = document.getElementById('monthSelector');
-                if (monthSel && monthSel.value !== 'all' && monthSel.value !== targetObj.month) {
+                if (monthSel && monthSel.value !== 'all' && (monthSel.value === 'next_90' ? idx >= 90 : monthSel.value !== targetObj.month)) {
                     monthSel.value = 'all';
                     refreshActiveView();
                 }
@@ -2854,20 +2856,14 @@
 
         function clearTableFilter() {
             activeTableFilter = null;
-            const activeMonth = document.getElementById('monthSelector').value;
-            let baseData = [...processedData];
-            if (activeMonth !== 'all') {
-                baseData = baseData.filter(d => d.month === activeMonth);
-            }
+            let baseData = getActiveFilteredData();
             renderTable(baseData);
             updateRecordCountDisplay(baseData.length);
         }
 
         function filterTable(type) {
             activeTableFilter = type;
-            const activeMonth = document.getElementById('monthSelector').value;
-            let baseData = [...processedData];
-            if (activeMonth !== 'all') baseData = baseData.filter(d => d.month === activeMonth);
+            let baseData = getActiveFilteredData();
 
             let filtered = [];
             let filterLabel = "";
@@ -4254,24 +4250,33 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             return { html: html, occ: occ, otb: otb };
         }
 
+        function getActiveFilteredData() {
+            const sel = document.getElementById('monthSelector')?.value || 'next_90';
+            if (sel === 'next_90') {
+                return processedData.slice(0, 90);
+            }
+            if (sel === 'all') {
+                return [...processedData];
+            }
+            return processedData.filter(d => d.month === sel);
+        }
+
         function populateMonths() {
             const sel = document.getElementById('monthSelector');
-            const selectedMonth = sel.value;
-            sel.innerHTML = '<option value="all">📅 Todo el Año</option>';
+            if (!sel) return;
+            const selectedMonth = sel.value || 'next_90';
+            sel.innerHTML = '<option value="next_90">📅 Próximos 90 días (3 meses)</option><option value="all">📅 Todo el Año (364 días)</option>';
             distinctMonths.forEach(m => sel.innerHTML += `<option value="${m}">${m}</option>`);
-            sel.value = distinctMonths.includes(selectedMonth) ? selectedMonth : 'all';
+            sel.value = (selectedMonth === 'next_90' || selectedMonth === 'all' || distinctMonths.includes(selectedMonth)) ? selectedMonth : 'next_90';
         }
 
         // --- RENDER ---
         function renderAll() {
             activeTableFilter = null;
             activeHotel = document.getElementById('hotelSelector')?.value || window.CapaState?.activeHotel || localStorage.getItem('active_hotel_suite') || activeHotel || "Guadiana";
-            const selectedMonth = document.getElementById('monthSelector')?.value || 'all';
+            const selectedMonth = document.getElementById('monthSelector')?.value || 'next_90';
 
-            let data = [...processedData];
-            if (selectedMonth !== 'all') {
-                data = data.filter(d => d.month === selectedMonth);
-            }
+            let data = getActiveFilteredData();
 
             // Load Previous Snapshot for Pick-up comparison (with memory cache)
             let prevMapLite = {};
@@ -4557,12 +4562,11 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             data.forEach(d => {
                 ensureHotelStructure(d, activeHotel);
                 const my = d.hotels[activeHotel];
-                const dynamic = getDynamicDateHtml(d, activeHotel);
-                const currentOcc = (dynamic.occ > 0) ? dynamic.occ : (dynamic.otb || my?.otbRooms || my?.occupancy || 0);
+                const currentOcc = (my?.occupancy > 0) ? my.occupancy : (my?.otbRooms || 0);
                 const occPct = (currentOcc / hotelCap) * 100;
                 const isOpen = (my && !my.sold && my.price > 0 && my.status !== 'sold');
                 const isSold = (my && (my.sold || my.status === 'sold'));
-                const myChange = (my?.otbChange !== undefined) ? my.otbChange : (dynamic.pickup || 0);
+                const myChange = (my?.otbChange !== undefined) ? my.otbChange : 0;
 
                 let daysOutVal = 999;
                 if (d.dateISO) {
@@ -4980,6 +4984,25 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 h += `<th class="th-sibling-hotel" title="${siblingName}" style="color:var(--primary); font-weight:800; border-left:2px solid var(--border); ${opacityStyle}">${siblingName}${sibMinBadge}</th>`;
             }
 
+            // Pre-evaluar ventas abiertas de competidores en una sola pasada rápida
+            const compOpenMap = Object.create(null);
+            const compClosedMap = Object.create(null);
+            for (let i = 0; i < data.length; i++) {
+                const dh = data[i].hotels;
+                if (!dh) continue;
+                for (let j = 0; j < competitorsList.length; j++) {
+                    const cName = competitorsList[j].name;
+                    const h = dh[cName];
+                    if (h) {
+                        if (!h.sold && h.status !== 'sold' && h.status !== 'noData' && !h.isMonthClosed && h.price > 0) {
+                            compOpenMap[cName] = true;
+                        } else if (h.sold || h.status === 'sold' || h.isMonthClosed) {
+                            compClosedMap[cName] = true;
+                        }
+                    }
+                }
+            }
+
             competitorsList.forEach(c => {
                 // Allow longer names since we now wrap text
                 const short = c.name.length > 25 ? c.name.substring(0, 25) + '..' : c.name;
@@ -4991,13 +5014,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     : '';
 
                 // Si el competidor no tiene ventas abiertas en este periodo analizado
-                const isCompAllClosed = data.length >= 5 && data.every(d => {
-                    const h = d.hotels && d.hotels[c.name];
-                    return !h || h.sold || h.status === 'sold' || h.status === 'noData' || h.isMonthClosed;
-                }) && data.some(d => {
-                    const h = d.hotels && d.hotels[c.name];
-                    return h && (h.sold || h.status === 'sold' || h.isMonthClosed);
-                });
+                const isCompAllClosed = data.length >= 5 && !compOpenMap[c.name] && !!compClosedMap[c.name];
                 const closedBadge = isCompAllClosed 
                     ? ` <span class="min-price-pill" style="background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1; font-weight:600;" title="Mes cerrado: Sin ventas abiertas en este periodo (excluido de recomendaciones de precio)">Sin ventas</span>` 
                     : '';
@@ -5009,7 +5026,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
 
-            const rowsHTML = data.map(d => {
+            const rowStrings = data.map(d => {
                 const my = d.hotels[activeHotel];
                 const myP = (my && !my.sold) ? my.price : 0;
                 const sold = my && my.sold;
@@ -5429,20 +5446,16 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 return html;
             }).join('');
 
-            if (data.length <= 40) {
-                tbody.innerHTML = rowsHTML;
+            if (rowStrings.length <= 40) {
+                tbody.innerHTML = rowStrings.join('');
             } else {
-                const splitIndex = 35;
-                const rows = rowsHTML.split('</tr>');
-                const firstBatch = rows.slice(0, splitIndex).join('</tr>') + '</tr>';
-                tbody.innerHTML = firstBatch;
+                tbody.innerHTML = rowStrings.slice(0, 40).join('');
                 if (typeof requestAnimationFrame === 'function') {
                     requestAnimationFrame(() => {
-                        const remaining = rows.slice(splitIndex).join('</tr>');
-                        tbody.insertAdjacentHTML('beforeend', remaining);
+                        tbody.insertAdjacentHTML('beforeend', rowStrings.slice(40).join(''));
                     });
                 } else {
-                    tbody.innerHTML = rowsHTML;
+                    tbody.innerHTML = rowStrings.join('');
                 }
             }
             if (!tbody.rowSelectionBound) {
@@ -6844,7 +6857,8 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     <h3 style="margin:0; color:var(--primary);">📈 Evolución de Tarifas</h3>
                     <select id="modalMonthSelect" onchange="filterChartFromModal()"
                         style="padding:6px; border-radius:6px; border:1px solid var(--border); font-size:0.85rem; color:var(--text-muted); cursor:pointer; background:var(--bg-surface);">
-                        <option value="all">📅 Todo el Año</option>
+                        <option value="next_90" selected>📅 Próximos 90 días (3 meses)</option>
+                        <option value="all">📅 Todo el Año (364 días)</option>
                     </select>
                 </div>
                 <div style="display:flex; gap:10px; font-size:0.8rem; align-items:center; margin-right: 20px;">

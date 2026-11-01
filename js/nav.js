@@ -19,7 +19,14 @@
             document.querySelectorAll('#hotelSelector, #hotelSelectorNav').forEach(sel => { sel.value = savedHotel(); });
         }
         const page = window.location.pathname.split('/').pop() || 'index.html';
-        nav.querySelectorAll('.nav-links a').forEach(a => a.classList.toggle('active', a.getAttribute('href') === page));
+        nav.querySelectorAll('.nav-links a').forEach(a => {
+            a.classList.toggle('active', a.getAttribute('href') === page);
+            a.addEventListener('click', () => {
+                if (window.manualPricesPending) return;
+                const heavyTable = document.getElementById('tableBody');
+                if (heavyTable) heavyTable.textContent = '';
+            });
+        });
         const links = nav.querySelector('.nav-links');
         if (links && !links.querySelector('a[href="HistoricoAlojamiento.html"]')) {
             const prodLink = links.querySelector('a[href="AnalisisProduccion.html"]');
