@@ -898,6 +898,216 @@
         return count;
     }
 
+        // =========================================================================
+    // 5.1 RECUPERACIÓN Y SINCRONIZACIÓN AUTOMÁTICA DE SNAPSHOTS HISTÓRICOS
+    // Si la base de datos de snapshots está vacía o incompleta, se reconstruye
+    // automáticamente a partir de CapaRevenueHistory (IndexedDB), baselines de
+    // hotel_manager_db_v2 y revenue_data_v2 guardados durante la última semana.
+    // =========================================================================
+
+    function parseCaptureDate(val) {
+        if (!val) return null;
+        if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+        if (typeof val === 'number') {
+            const d = new Date(val);
+            return isNaN(d.getTime()) ? null : d;
+        }
+        const str = String(val).trim();
+        if (!str || str === 'Pendiente' || str === 'N/A' || str === 'Antiguo') return null;
+
+        // ISO standard (YYYY-MM-DD o YYYY-MM-DDTHH:mm:ss)
+        if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+            const d = new Date(str);
+            if (!isNaN(d.getTime())) return d;
+        }
+
+        // Formatos españoles: "DD-MM-YYYY", "DD/MM/YYYY", con o sin hora
+        const m = str.match(/(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})(?:[,\s]+(\d{1,2}):(\d{2}))?/);
+        if (m) {
+            const day = parseInt(m[1], 10);
+            const month = parseInt(m[2], 10) - 1;
+            const year = parseInt(m[3], 10);
+            const hour = m[4] ? parseInt(m[4], 10) : 12;
+            const min = m[5] ? parseInt(m[5], 10) : 0;
+            const d = new Date(year, month, day, hour, min);
+            if (!isNaN(d.getTime())) return d;
+        }
+        return null;
+    }
+
+    async function syncSnapshotsFromRevenueHistory() {
+        if (typeof root.CapaRevenueHistory === 'undefined' || typeof root.CapaRevenueHistory.list !== 'function') return 0;
+        let totalSynced = 0;
+        try {
+            for (const h of ['Guadiana', 'Cumbria']) {
+                const records = await root.CapaRevenueHistory.list(h);
+                if (!Array.isArray(records) || records.length === 0) continue;
+                // Ordenar cronológicamente para que las capturas más recientes actualicen en orden
+                const sorted = [...records]
+                    .filter(r => r && r.status === 'committed' && r.observation && r.observation.days)
+                    .sort((a, b) => (a.capturedAt || '').localeCompare(b.capturedAt || ''));
+
+                for (const r of sorted) {
+                    const capDate = parseCaptureDate(r.capturedAt) || parseCaptureDate(r.source?.modifiedAt);
+                    if (!capDate) continue;
+                    const dailyMap = {};
+                    for (const [iso, day] of Object.entries(r.observation.days)) {
+                        if (day && typeof day.rooms === 'number') {
+                            dailyMap[iso] = {
+                                rooms: day.rooms,
+                                revenue: day.accommodation || 0
+                            };
+                        }
+                    }
+                    if (Object.keys(dailyMap).length > 0) {
+                        captureBatchSnapshots(h, dailyMap, capDate);
+                        totalSynced++;
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('[PricingIntelligence] Error al sincronizar desde CapaRevenueHistory:', e);
+        }
+        return totalSynced;
+    }
+
+    function syncSnapshotsFromManagerDB() {
+        let totalSynced = 0;
+        try {
+            const raw = getStoredItem('hotel_manager_db_v2');
+            if (!raw) return 0;
+            const pDb = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            if (!pDb || typeof pDb !== 'object') return 0;
+
+            for (const [hotelKey, hotelObj] of Object.entries(pDb)) {
+                const h = normalizeHotel(hotelKey);
+                if (!hotelObj || typeof hotelObj !== 'object') continue;
+
+                for (const [yearKey, yearObj] of Object.entries(hotelObj)) {
+                    if (!yearObj || typeof yearObj !== 'object') continue;
+
+                    // A. Pickup baselines históricos
+                    if (yearObj.pickupBaselines && typeof yearObj.pickupBaselines === 'object') {
+                        for (const baseline of Object.values(yearObj.pickupBaselines)) {
+                            if (!baseline) continue;
+                            const capDate = parseCaptureDate(baseline.day) || parseCaptureDate(baseline.label);
+                            if (capDate && baseline.values?.daily_otb && Object.keys(baseline.values.daily_otb).length > 0) {
+                                captureBatchSnapshots(h, baseline.values.daily_otb, capDate);
+                                totalSynced++;
+                            }
+                        }
+                    }
+
+                    // B. Captura previa de última subida (otb_last_upload_prev)
+                    if (yearObj.otb_last_upload_prev && yearObj.otb_last_upload_prev.daily_otb) {
+                        const prevObj = yearObj.otb_last_upload_prev;
+                        const prevDate = parseCaptureDate(prevObj.capturedAt) || parseCaptureDate(prevObj.snapshotDate);
+                        if (prevDate && Object.keys(prevObj.daily_otb).length > 0) {
+                            captureBatchSnapshots(h, prevObj.daily_otb, prevDate);
+                            totalSynced++;
+                        }
+                    }
+
+                    // C. Captura previa de OTB anual (otb_prev)
+                    if (yearObj.otb_prev && yearObj.otb_prev.daily_otb) {
+                        const prevOtb = yearObj.otb_prev;
+                        if (prevOtb.snapshotDate !== '31-12-2027') {
+                            const prevDate = parseCaptureDate(prevOtb.snapshotDate);
+                            if (prevDate && Object.keys(prevOtb.daily_otb).length > 0) {
+                                captureBatchSnapshots(h, prevOtb.daily_otb, prevDate);
+                                totalSynced++;
+                            }
+                        }
+                    }
+
+                    // D. OTB actual activo
+                    if (yearObj.daily_otb && Object.keys(yearObj.daily_otb).length > 0) {
+                        const curDate = parseCaptureDate(yearObj.lastOtbDate) || parseCaptureDate(yearObj.lastUpdate) || new Date();
+                        captureBatchSnapshots(h, yearObj.daily_otb, curDate);
+                        totalSynced++;
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('[PricingIntelligence] Error al sincronizar desde hotel_manager_db_v2:', e);
+        }
+        return totalSynced;
+    }
+
+    function syncSnapshotsFromRevenueDataV2() {
+        let totalSynced = 0;
+        try {
+            const raw = getStoredItem('revenue_data_v2');
+            if (!raw) return 0;
+            const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            if (!parsed || !Array.isArray(parsed.data) || parsed.data.length === 0) return 0;
+
+            const uploadDate = parseCaptureDate(parsed.lastUpdate) || new Date();
+            const activeHotel = normalizeHotel(parsed.activeHotel || 'Guadiana');
+
+            const currentDailyMap = {};
+            const prevDailyMap = {};
+            let hasPrev = false;
+
+            parsed.data.forEach(d => {
+                if (!d.dateISO) return;
+                const hData = d.hotels ? d.hotels[activeHotel] : null;
+                const rooms = hData?.otbRooms ?? d.otbRooms ?? hData?.occupancy ?? d.occupancy ?? null;
+                const price = hData?.price ?? null;
+
+                if (rooms !== null && rooms !== undefined && !isNaN(rooms)) {
+                    currentDailyMap[d.dateISO] = { rooms: Math.round(Number(rooms)), price: Number(price) || 0 };
+                }
+
+                const change = hData?.otbChange ?? d.otbChange;
+                if (typeof change === 'number' && rooms !== null) {
+                    prevDailyMap[d.dateISO] = { rooms: Math.max(0, Math.round(rooms - change)), price: Number(price) || 0 };
+                    hasPrev = true;
+                } else if (d.prevRooms !== undefined && d.prevRooms !== null) {
+                    prevDailyMap[d.dateISO] = { rooms: Math.max(0, Math.round(Number(d.prevRooms))), price: Number(price) || 0 };
+                    hasPrev = true;
+                }
+            });
+
+            if (Object.keys(currentDailyMap).length > 0) {
+                captureBatchSnapshots(activeHotel, currentDailyMap, uploadDate);
+                totalSynced++;
+            }
+            if (hasPrev && Object.keys(prevDailyMap).length > 0) {
+                const prevDate = new Date(uploadDate.getTime() - 24 * 60 * 60 * 1000);
+                captureBatchSnapshots(activeHotel, prevDailyMap, prevDate);
+                totalSynced++;
+            }
+        } catch (e) {
+            console.warn('[PricingIntelligence] Error al sincronizar desde revenue_data_v2:', e);
+        }
+        return totalSynced;
+    }
+
+    let _historySyncInProgress = false;
+    let _historySyncDone = false;
+
+    async function syncSnapshotsFromHistory(force = false) {
+        if (_historySyncInProgress) return getSnapshotsDB();
+        if (_historySyncDone && !force) return getSnapshotsDB();
+        _historySyncInProgress = true;
+
+        try {
+            syncSnapshotsFromManagerDB();
+            syncSnapshotsFromRevenueDataV2();
+            if (typeof root.CapaRevenueHistory !== 'undefined' && typeof root.CapaRevenueHistory.list === 'function') {
+                await syncSnapshotsFromRevenueHistory();
+            }
+            _historySyncDone = true;
+        } catch (e) {
+            console.warn('[PricingIntelligence] Error en syncSnapshotsFromHistory:', e);
+        } finally {
+            _historySyncInProgress = false;
+        }
+
+        return getSnapshotsDB();
+    }
+
     function calculateDailyPickup(hotelName, dateISO, currentMetrics = null, referenceDate = new Date()) {
         const hKey = normalizeHotel(hotelName);
         const refTime = (referenceDate instanceof Date) ? referenceDate.getTime() : new Date(referenceDate).getTime();
@@ -2093,6 +2303,7 @@
         saveSnapshotsDB,
         recordDailySnapshot,
         captureBatchSnapshots,
+        syncSnapshotsFromHistory,
         calculateDailyPickup,
         evaluatePickupPace,
         evaluateOccupancyForecast,

@@ -583,7 +583,16 @@
     // =========================================================================
     // FICHA DE ANÁLISIS DIARIA (MODAL POR FECHA)
     // =========================================================================
-    function openDayDetailModal(dateISO) {
+    async function openDayDetailModal(dateISO) {
+        // Si no hay suficientes snapshots, sincronizar automáticamente desde el historial de CapaSuite
+        if (window.PricingIntelligence && typeof window.PricingIntelligence.syncSnapshotsFromHistory === 'function') {
+            const curH = activeHotel || "Guadiana";
+            const curDb = getSnapshotsSafely();
+            const curSnaps = (curDb[curH] && curDb[curH][dateISO]) ? curDb[curH][dateISO] : [];
+            if (curSnaps.length < 2) {
+                try { await window.PricingIntelligence.syncSnapshotsFromHistory(); } catch(e) {}
+            }
+        }
         currentDetailDateISO = dateISO;
         const modal = document.getElementById('dayDetailModal');
         if (!modal || !window.PricingIntelligence) return;

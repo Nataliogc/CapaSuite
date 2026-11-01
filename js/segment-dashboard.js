@@ -772,6 +772,9 @@ async function confirmSegUpload(targetHotel) {
                 updatedDays++;
             }
             if (updatedDays > 0) CapaStorage.setItem('revenue_data_v2', JSON.stringify(revDB));
+            if (typeof PricingIntelligence !== 'undefined' && typeof PricingIntelligence.captureBatchSnapshots === 'function' && Object.keys(dailyTotals).length > 0) {
+                try { PricingIntelligence.captureBatchSnapshots(hotel, dailyTotals, new Date()); } catch(e) {}
+            }
 
             currentMode = 'forecast';
             if (el('modeSelector')) el('modeSelector').value = 'forecast';
