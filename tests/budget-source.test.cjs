@@ -11,7 +11,7 @@ test('default budget sources identify hotel and keep current amounts',()=>{
  const db={Guadiana:{},Cumbria:{}};
  const g=render('Guadiana','2026',db);
  assert.match(g['budget-source'].textContent,/Guadiana.*pendiente de conciliar/);
- assert.equal(g['budget-target-rev'].innerText,'(Obj: 1380239)');
+ assert.equal(g['budget-target-rev'].innerText,'(Obj: 1395372)');
  const c=render('Cumbria','2026',db);
  assert.match(c['budget-source'].textContent,/Cumbria.*pendiente de confirmar/);
  assert.equal(c['budget-target-rev'].innerText,'(Obj: 1196000)');

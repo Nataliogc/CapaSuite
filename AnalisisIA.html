@@ -17,7 +17,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="js/version.js"></script>
     <script src="js/nav.js"></script>
-    <script src="js/firebase-auth.js?v=20261101-0514"></script>
+    <script src="js/firebase-auth.js?v=20261101-0539"></script>
     <script src="js/segment-analysis.js?v=20261016-fix"></script>
 
     <link rel="stylesheet" href="css/tokens.css">
@@ -671,6 +671,36 @@
         let currentHotel = window.CapaState.activeHotel;
         let db = {};
         const DB_KEY = "hotel_manager_db_v2";
+        const DEFAULT_BUDGETS = {
+            "Guadiana": {
+                // Presupuesto Oficial 2026 (BGT 2026 aprobado por Dirección General)
+                "2026": {
+                    rev: [66789, 71441, 106875, 130251, 125308, 118652, 121962, 131039, 148593, 163911, 114738, 95813],
+                    adr: [61.50, 61.80, 75.00, 70.33, 69.50, 70.50, 69.10, 61.09, 62.91, 62.16, 64.28, 62.50],
+                    rn: [1086, 1156, 1425, 1852, 1803, 1683, 1765, 2145, 2362, 2637, 1785, 1533]
+                },
+                // Presupuesto Oficial 2027 V2 (1.575.124,93 € / 22.954 RN / 68,62 € ADR)
+                "2027": {
+                    rev: [70866, 85178, 121998, 147962, 200620, 142146, 116525, 151078, 150492, 173575, 113556, 101128],
+                    adr: [63.27, 62.49, 72.62, 61.78, 82.05, 74.00, 68.50, 69.69, 66.50, 68.53, 62.22, 65.67],
+                    rn: [1120, 1363, 1680, 2395, 2445, 1921, 1701, 2168, 2263, 2533, 1825, 1540]
+                }
+            },
+            "Cumbria": {
+                // Propuesta Habitación (Original) 2026
+                "2026": {
+                    rev: [66000, 69000, 81000, 101000, 118000, 108000, 126000, 118000, 116000, 111000, 96000, 86000],
+                    adr: [70.00, 70.00, 75.00, 78.00, 87.00, 83.00, 91.00, 87.00, 86.00, 81.00, 78.00, 77.00],
+                    rn: [943, 986, 1080, 1295, 1356, 1301, 1385, 1356, 1349, 1370, 1231, 1117]
+                },
+                // Presupuesto 2027 (992.145,45 € / 15.434 RN / 64,28 € ADR)
+                "2027": {
+                    rev: [50949, 51684, 74623, 90604, 107569, 83637, 82135, 80777, 83835, 108129, 94745, 83459],
+                    adr: [54.32, 54.81, 63.73, 68.02, 70.63, 61.91, 59.22, 56.41, 61.92, 66.83, 74.84, 74.58],
+                    rn: [938, 943, 1171, 1332, 1523, 1351, 1387, 1432, 1354, 1618, 1266, 1119]
+                }
+            }
+        };
 
         // Load AI Avatar from our generated image (we'll fetch the actual path from local later or use a generic one if not found)
         document.getElementById('aiAvatarImg').src = 'Imagen/Icono_AI.png'; // Fallback if we haven't renamed it yet
@@ -834,9 +864,9 @@
 
             // 2. Budget
             const budgetKey = `custom_budget_${lastYear}`;
-            const budget = hotelData[budgetKey] || hotelData[`custom_budget`];
+            const budget = hotelData[budgetKey] || hotelData[`custom_budget`] || (typeof DEFAULT_BUDGETS !== 'undefined' && DEFAULT_BUDGETS[currentHotel] && DEFAULT_BUDGETS[currentHotel][lastYear]);
             const budgetRev = (budget && budget.rev && budget.rev.some(v => v > 0)) ? budget.rev : null;
-            const budgetRN  = (budget && budget.rooms && budget.rooms.some(v => v > 0)) ? budget.rooms : null;
+            const budgetRN  = (budget && (budget.rn || budget.rooms) && (budget.rn || budget.rooms).some(v => v > 0)) ? (budget.rn || budget.rooms) : null;
 
             // 3. OTB
             let otbRev = new Array(12).fill(0);
