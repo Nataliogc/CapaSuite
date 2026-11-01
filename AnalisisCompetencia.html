@@ -16,15 +16,16 @@
     <script src="js/chart.js"></script>
     <script src="js/state.js"></script>
     <script src="js/storage.js?v=20261013-1"></script>
+    <script src="js/revenue-history.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="js/nav.js"></script>
     <script src="js/theme-manager.js"></script>
-    <script src="js/firebase-auth.js?v=20261101-0250"></script>
-    <script src="js/version.js?v=20261101-0250"></script>
-    <script src="js/pricing-intelligence.js?v=20261101-0250"></script>
-    <script src="js/competencia-intelligence-ui.js?v=20261101-0250"></script>
+    <script src="js/firebase-auth.js?v=20261101-0307"></script>
+    <script src="js/version.js?v=20261101-0307"></script>
+    <script src="js/pricing-intelligence.js?v=20261101-0307"></script>
+    <script src="js/competencia-intelligence-ui.js?v=20261101-0307"></script>
 
     <link rel="stylesheet" href="css/tokens.css">
     <link rel="stylesheet" href="css/nav.css">
@@ -1823,6 +1824,7 @@
                 <button class="btn" onclick="openMinPriceModal()" title="Configurar tarifas mínimas (suelo) para cada hotel">🏷️ Precios Mínimos</button>
                 <button class="btn"
                     onclick="openCompConfig()" title="Configurar lista de competidores y parámetros">⚙️ Competencia</button>
+                <button id="importHistoryBtn" class="btn" onclick="triggerHistoryUpload()" title="Cargar archivos de días anteriores para reconstruir la curva de evolución histórica" style="background:rgba(99,102,241,0.15); color:var(--primary); border:1px solid rgba(99,102,241,0.3); font-weight:700;">📂 Importar Histórico de Días</button>
                 <button id="updateBtn" class="btn btn-primary" onclick="clearData()" title="Subir nuevo archivo de datos">↺ Nuevo Archivo</button>
             </div>
         </header>
@@ -1832,8 +1834,9 @@
         <div class="upload-section" id="dropZone">
             <div style="font-size: 4rem; margin-bottom: 20px;">📊</div>
             <h2 style="margin: 0 0 10px 0; color: var(--primary-dark);">Sube tu archivo Expedia</h2>
-            <p style="color: var(--text-light);">Arrastra aquí el archivo .xlsx para generar el informe</p>
-            <input type="file" id="fileInput" hidden accept=".xlsx">
+            <p style="color: var(--text-light);">Arrastra aquí el archivo .xlsx diario (o selecciona varios archivos de días anteriores para reconstruir el histórico)</p>
+            <input type="file" id="fileInput" hidden accept=".xlsx" multiple>
+            <input type="file" id="historyFileInput" hidden accept=".xlsx" multiple>
         </div>
     </div>
 
@@ -3133,6 +3136,27 @@
                 const lite = getLiteData(processedData);
                 CapaStorage.setItem('revenue_history_lite', JSON.stringify(lite));
 
+                // 3. Registrar snapshot permanente en PricingIntelligence para ambos hoteles (Guadiana y Cumbria)
+                if (window.PricingIntelligence && typeof window.PricingIntelligence.captureBatchSnapshots === 'function') {
+                    try {
+                        ['Guadiana', 'Cumbria'].forEach(hName => {
+                            const dailyMap = {};
+                            processedData.forEach(d => {
+                                if (!d.dateISO) return;
+                                const hData = d.hotels ? d.hotels[hName] : null;
+                                const rooms = hData?.otbRooms ?? (hName === activeHotel ? d.otbRooms : null) ?? hData?.occupancy ?? 0;
+                                const price = hData?.price ?? 0;
+                                dailyMap[d.dateISO] = { rooms, price };
+                            });
+                            if (Object.keys(dailyMap).length > 0) {
+                                window.PricingIntelligence.captureBatchSnapshots(hName, dailyMap, new Date());
+                            }
+                        });
+                    } catch(snapErr) {
+                        console.warn('[AnalisisCompetencia] Error guardando batch snapshot en saveData:', snapErr);
+                    }
+                }
+
                 updateOutdatedStatus();
             } catch (e) {
                 console.warn("Quota exceeded, cannot save state");
@@ -3211,8 +3235,180 @@
         dropZone.onclick = () => fileInput.click();
         dropZone.ondragover = (e) => { e.preventDefault(); dropZone.style.background = '#eef2ff'; dropZone.style.borderColor = '#4f46e5'; };
         dropZone.ondragleave = (e) => { e.preventDefault(); dropZone.style.background = '#ffffff'; dropZone.style.borderColor = '#cbd5e1'; };
-        dropZone.ondrop = (e) => { e.preventDefault(); if (e.dataTransfer.files.length) processFile(e.dataTransfer.files[0]); };
-        fileInput.onchange = (e) => { if (e.target.files.length) processFile(e.target.files[0]); };
+        dropZone.ondrop = (e) => { e.preventDefault(); if (e.dataTransfer.files && e.dataTransfer.files.length) processFiles(e.dataTransfer.files); };
+        fileInput.onchange = (e) => { if (e.target.files && e.target.files.length) processFiles(e.target.files); };
+        const histInput = document.getElementById('historyFileInput');
+        if (histInput) histInput.onchange = (e) => { if (e.target.files && e.target.files.length) processFiles(e.target.files); };
+
+                function extractDateFromFile(file) {
+            if (!file) return new Date();
+            const name = file.name || '';
+            // 1. Probar patrones en el nombre del archivo: YYYY-MM-DD o DD-MM-YYYY
+            let m = name.match(/(\d{4})[-_.](\d{2})[-_.](\d{2})/);
+            if (m) {
+                const d = new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10), 12, 0);
+                if (!isNaN(d.getTime())) return d;
+            }
+            m = name.match(/(\d{2})[-_.](\d{2})[-_.](\d{4})/);
+            if (m) {
+                const d = new Date(parseInt(m[3], 10), parseInt(m[2], 10) - 1, parseInt(m[1], 10), 12, 0);
+                if (!isNaN(d.getTime())) return d;
+            }
+            // 2. Probar fecha de modificación del archivo descargado en el ordenador
+            if (file.lastModified) {
+                const d = new Date(file.lastModified);
+                if (!isNaN(d.getTime())) return d;
+            }
+            return new Date();
+        }
+
+        function triggerHistoryUpload() {
+            const hInput = document.getElementById('historyFileInput') || document.getElementById('fileInput');
+            if (hInput) {
+                hInput.value = '';
+                hInput.click();
+            }
+        }
+
+        async function processFiles(files) {
+            if (!files || files.length === 0) return;
+            const fileList = Array.from(files);
+            if (fileList.length === 1) {
+                processFile(fileList[0]);
+                return;
+            }
+
+            // Ordenar archivos cronológicamente (los más antiguos primero)
+            fileList.sort((a, b) => extractDateFromFile(a).getTime() - extractDateFromFile(b).getTime());
+
+            alert(`⏳ Procesando ${fileList.length} archivos de días anteriores para reconstruir la curva de evolución...`);
+
+            for (let i = 0; i < fileList.length; i++) {
+                const f = fileList[i];
+                const dt = extractDateFromFile(f);
+                const isLatest = (i === fileList.length - 1);
+                await processSingleFileHistorical(f, dt, isLatest);
+            }
+
+            if (window.PricingIntelligence && typeof window.PricingIntelligence.syncSnapshotsFromHistory === 'function') {
+                await window.PricingIntelligence.syncSnapshotsFromHistory(true);
+            }
+            renderAll();
+            alert(`✅ ¡Histórico reconstruido! Se han procesado ${fileList.length} archivos. La curva de evolución ahora muestra todos los días.`);
+        }
+
+        function processSingleFileHistorical(file, fileDate, isLatest) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const wb = XLSX.read(e.target.result, { type: 'array' });
+                        const sheet = wb.Sheets[wb.SheetNames[0]];
+                        if (sheet['!ref']) {
+                            const range = XLSX.utils.decode_range(sheet['!ref']);
+                            if (range.e.c < 35) {
+                                range.e.c = 40;
+                                sheet['!ref'] = XLSX.utils.encode_range(range);
+                            }
+                        }
+                        const fileRaw = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                        
+                        if (isLatest) {
+                            rawData = fileRaw;
+                            analyze(fileDate);
+                        } else {
+                            // Extraer snapshots para el histórico sin cambiar la vista activa
+                            extractSnapshotsFromFileData(fileRaw, fileDate);
+                        }
+                    } catch(err) {
+                        console.warn('Error procesando archivo histórico:', file.name, err);
+                    }
+                    resolve();
+                };
+                reader.onerror = () => resolve();
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        function extractSnapshotsFromFileData(dataRows, fileDate) {
+            if (!window.PricingIntelligence || typeof window.PricingIntelligence.captureBatchSnapshots !== 'function') return;
+            try {
+                let guadianaR = -1, cumbriaR = -1;
+                for (let r = 0; r < Math.min(dataRows.length, 100); r++) {
+                    const rowStr = (dataRows[r] || []).join(' ').toLowerCase();
+                    if (guadianaR === -1 && (rowStr.includes('guadiana') || rowStr.includes('your property')) && !rowStr.includes('tarifas') && (dataRows[r] || []).length > 2) {
+                        guadianaR = r;
+                    }
+                    if (cumbriaR === -1 && rowStr.includes('cumbria')) cumbriaR = r;
+                }
+                if (guadianaR === -1) return;
+
+                // Buscar fila de días
+                let dRow = -1;
+                for (let r = guadianaR - 1; r >= Math.max(0, guadianaR - 10); r--) {
+                    const row = dataRows[r] || [];
+                    let nums = 0;
+                    for (let c = 1; c < Math.min(row.length, 50); c++) {
+                        const val = parseInt(String(row[c]).replace(/[^0-9]/g, ''), 10);
+                        if (val >= 1 && val <= 31) nums++;
+                    }
+                    if (nums >= 15) { dRow = r; break; }
+                }
+                if (dRow === -1) return;
+
+                // Buscar fila de meses
+                let mRow = -1;
+                for (let r = dRow - 1; r >= Math.max(0, dRow - 5); r--) {
+                    const str = (dataRows[r] || []).join(' ').toLowerCase();
+                    if (str.includes('ene') || str.includes('feb') || str.includes('mar') || str.includes('abr') || str.includes('may')) {
+                        mRow = r; break;
+                    }
+                }
+
+                const guadianaMap = {};
+                const cumbriaMap = {};
+                let currentMonth = 0;
+                let currentYear = fileDate.getFullYear();
+
+                const rowDays = dataRows[dRow] || [];
+                const rowMonths = mRow !== -1 ? (dataRows[mRow] || []) : [];
+
+                for (let c = 1; c < rowDays.length; c++) {
+                    if (rowMonths[c]) {
+                        const mStr = String(rowMonths[c]).toLowerCase();
+                        for (let mi = 0; mi < 12; mi++) {
+                            if (mStr.includes(['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][mi])) {
+                                currentMonth = mi + 1;
+                                break;
+                            }
+                        }
+                    }
+                    const dVal = parseInt(String(rowDays[c]).replace(/[^0-9]/g, ''), 10);
+                    if (dVal >= 1 && dVal <= 31 && currentMonth > 0) {
+                        const iso = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(dVal).padStart(2, '0')}`;
+                        
+                        // Tarifa Guadiana
+                        const gPrice = parseFloat(String(dataRows[guadianaR]?.[c] || '').replace(/[^0-9.,]/g, '').replace(',', '.')) || 0;
+                        if (gPrice > 0) guadianaMap[iso] = { rooms: 0, price: gPrice };
+
+                        // Tarifa Cumbria
+                        if (cumbriaR !== -1) {
+                            const cPrice = parseFloat(String(dataRows[cumbriaR]?.[c] || '').replace(/[^0-9.,]/g, '').replace(',', '.')) || 0;
+                            if (cPrice > 0) cumbriaMap[iso] = { rooms: 0, price: cPrice };
+                        }
+                    }
+                }
+
+                if (Object.keys(guadianaMap).length > 0) {
+                    window.PricingIntelligence.captureBatchSnapshots('Guadiana', guadianaMap, fileDate);
+                }
+                if (Object.keys(cumbriaMap).length > 0) {
+                    window.PricingIntelligence.captureBatchSnapshots('Cumbria', cumbriaMap, fileDate);
+                }
+            } catch(e) {
+                console.warn('Error en extractSnapshotsFromFileData:', e);
+            }
+        }
 
         function processFile(file) {
             sessionStorage.removeItem('force_reset_pending');

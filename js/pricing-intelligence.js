@@ -935,19 +935,50 @@
         return null;
     }
 
+        function readAllIndexedDbImports() {
+        if (typeof window === 'undefined' || !window.indexedDB) return Promise.resolve([]);
+        return new Promise((resolve) => {
+            try {
+                const req = window.indexedDB.open('capasuite_revenue_history', 1);
+                req.onerror = () => resolve([]);
+                req.onupgradeneeded = () => resolve([]);
+                req.onsuccess = () => {
+                    const db = req.result;
+                    if (!db.objectStoreNames.contains('imports')) {
+                        db.close();
+                        return resolve([]);
+                    }
+                    const tx = db.transaction('imports', 'readonly');
+                    const store = tx.objectStore('imports');
+                    const getReq = store.getAll();
+                    getReq.onsuccess = () => {
+                        const res = getReq.result || [];
+                        db.close();
+                        resolve(res);
+                    };
+                    getReq.onerror = () => {
+                        db.close();
+                        resolve([]);
+                    };
+                };
+            } catch (e) {
+                resolve([]);
+            }
+        });
+    }
+
     async function syncSnapshotsFromRevenueHistory() {
-        if (typeof root.CapaRevenueHistory === 'undefined' || typeof root.CapaRevenueHistory.list !== 'function') return 0;
         let totalSynced = 0;
         try {
-            for (const h of ['Guadiana', 'Cumbria']) {
-                const records = await root.CapaRevenueHistory.list(h);
-                if (!Array.isArray(records) || records.length === 0) continue;
-                // Ordenar cronológicamente para que las capturas más recientes actualicen en orden
-                const sorted = [...records]
-                    .filter(r => r && r.status === 'committed' && r.observation && r.observation.days)
+            // 1. Leer directamente todas las importaciones guardadas en IndexedDB
+            const rawImports = await readAllIndexedDbImports();
+            if (Array.isArray(rawImports) && rawImports.length > 0) {
+                const sorted = rawImports
+                    .filter(r => r && (r.status === 'committed' || r.observation) && r.observation && r.observation.days)
                     .sort((a, b) => (a.capturedAt || '').localeCompare(b.capturedAt || ''));
 
                 for (const r of sorted) {
+                    const h = normalizeHotel(r.hotel || 'Guadiana');
                     const capDate = parseCaptureDate(r.capturedAt) || parseCaptureDate(r.source?.modifiedAt);
                     if (!capDate) continue;
                     const dailyMap = {};
@@ -965,8 +996,31 @@
                     }
                 }
             }
+
+            // 2. Si CapaRevenueHistory existe en root, probar también su listado
+            if (totalSynced === 0 && typeof root.CapaRevenueHistory !== 'undefined' && typeof root.CapaRevenueHistory.list === 'function') {
+                for (const h of ['Guadiana', 'Cumbria']) {
+                    const records = await root.CapaRevenueHistory.list(h);
+                    if (!Array.isArray(records)) continue;
+                    for (const r of records) {
+                        if (!r || !r.observation?.days) continue;
+                        const capDate = parseCaptureDate(r.capturedAt);
+                        if (!capDate) continue;
+                        const dailyMap = {};
+                        for (const [iso, day] of Object.entries(r.observation.days)) {
+                            if (day && typeof day.rooms === 'number') {
+                                dailyMap[iso] = { rooms: day.rooms, revenue: day.accommodation || 0 };
+                            }
+                        }
+                        if (Object.keys(dailyMap).length > 0) {
+                            captureBatchSnapshots(h, dailyMap, capDate);
+                            totalSynced++;
+                        }
+                    }
+                }
+            }
         } catch (e) {
-            console.warn('[PricingIntelligence] Error al sincronizar desde CapaRevenueHistory:', e);
+            console.warn('[PricingIntelligence] Error al sincronizar desde RevenueHistory:', e);
         }
         return totalSynced;
     }
@@ -1031,6 +1085,55 @@
         } catch (e) {
             console.warn('[PricingIntelligence] Error al sincronizar desde hotel_manager_db_v2:', e);
         }
+            // E. Segment Forecast DB (segment_forecast_v2)
+            try {
+                const segRaw = getStoredItem('segment_forecast_v2');
+                if (segRaw) {
+                    const segObj = typeof segRaw === 'string' ? JSON.parse(segRaw) : segRaw;
+                    for (const [hotelKey, hData] of Object.entries(segObj || {})) {
+                        const h = normalizeHotel(hotelKey);
+                        if (!hData || typeof hData !== 'object') continue;
+
+                        // Versión previa
+                        if (hData.segment_prev && hData.prevUpdatedAt) {
+                            const prevDate = parseCaptureDate(hData.prevUpdatedAt);
+                            if (prevDate) {
+                                const dailyMap = {};
+                                Object.values(hData.segment_prev).forEach(seg => {
+                                    Object.entries(seg.days || {}).forEach(([iso, dt]) => {
+                                        dailyMap[iso] = dailyMap[iso] || { rooms: 0, revenue: 0 };
+                                        dailyMap[iso].rooms += (dt.rooms || 0);
+                                        dailyMap[iso].revenue += (dt.accommodation || dt.revenue || 0);
+                                    });
+                                });
+                                if (Object.keys(dailyMap).length > 0) {
+                                    captureBatchSnapshots(h, dailyMap, prevDate);
+                                    totalSynced++;
+                                }
+                            }
+                        }
+
+                        // Versión actual
+                        if (hData.segment && hData.updatedAt) {
+                            const curDate = parseCaptureDate(hData.updatedAt);
+                            if (curDate) {
+                                const dailyMap = {};
+                                Object.values(hData.segment).forEach(seg => {
+                                    Object.entries(seg.days || {}).forEach(([iso, dt]) => {
+                                        dailyMap[iso] = dailyMap[iso] || { rooms: 0, revenue: 0 };
+                                        dailyMap[iso].rooms += (dt.rooms || 0);
+                                        dailyMap[iso].revenue += (dt.accommodation || dt.revenue || 0);
+                                    });
+                                });
+                                if (Object.keys(dailyMap).length > 0) {
+                                    captureBatchSnapshots(h, dailyMap, curDate);
+                                    totalSynced++;
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch(e) {}
         return totalSynced;
     }
 
@@ -2317,6 +2420,16 @@
     if (typeof module === 'object' && module.exports) {
         module.exports = api;
     }
+        if (typeof window !== 'undefined') {
+        window.addEventListener('capasuite-data-synced', (e) => {
+            const keys = e.detail?.keys || [];
+            if (keys.includes('daily_otb_snapshots_v1') || keys.includes('hotel_manager_db_v2') || keys.includes('revenue_data_v2')) {
+                invalidateSnapshotsCache();
+                invalidatePricingCache();
+            }
+        });
+    }
+
     root.PricingIntelligence = api;
 
 })(typeof window === 'object' ? window : globalThis);
