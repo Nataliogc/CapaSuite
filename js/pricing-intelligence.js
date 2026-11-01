@@ -207,6 +207,8 @@
     // =========================================================================
     let _memMasterMatrixRaw = null;
     let _memMasterMatrixDB = null;
+    let _barMatrixCache = new Map();
+    let _baseBarCache = new Map();
 
     function getMasterMatrixDB() {
         const raw = getStoredItem(STORAGE_KEY_MASTER_MATRIX);
@@ -1247,7 +1249,7 @@
             current = list[list.length - 1];
         }
 
-        if (!current) return result;
+        if (!current) { _memPickupCache.set(cacheKey, result); return result; }
         result.current = current;
 
         // Si tenemos métrica directa de otbChange (pickup de la última carga / 24h)
@@ -1371,6 +1373,8 @@
     }
 
     function invalidatePricingCache() {
+        _barMatrixCache.clear();
+        _baseBarCache.clear();
         _memMasterMatrixRaw = null;
         _memMasterMatrixDB = null;
         _memMasterTiersRaw = null;

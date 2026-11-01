@@ -22,10 +22,10 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="js/nav.js"></script>
     <script src="js/theme-manager.js"></script>
-    <script src="js/firebase-auth.js?v=20261101-0307"></script>
-    <script src="js/version.js?v=20261101-0307"></script>
-    <script src="js/pricing-intelligence.js?v=20261101-0307"></script>
-    <script src="js/competencia-intelligence-ui.js?v=20261101-0307"></script>
+    <script src="js/firebase-auth.js?v=20261101-0329"></script>
+    <script src="js/version.js?v=20261101-0329"></script>
+    <script src="js/pricing-intelligence.js?v=20261101-0329"></script>
+    <script src="js/competencia-intelligence-ui.js?v=20261101-0329"></script>
 
     <link rel="stylesheet" href="css/tokens.css">
     <link rel="stylesheet" href="css/nav.css">
@@ -4331,7 +4331,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     const iso = d.dateISO;
                     const yrStr = iso.split('-')[0];
                     const yrShort = yrStr.slice(-2);
-                    const yearsToTry = [yrStr, yrShort, "2025", "25", "2026", "26", "2027", "27"];
+                    const yearsToTry = [yrStr, yrShort];
 
                     // === PUNTO 4: Validación estructural + limpieza global ===
                     delete d.occupancy;
@@ -4464,8 +4464,9 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 updateRecordCountDisplay(data.length);
 
                 if (window.CompetenciaIntelUI) {
-                    CompetenciaIntelUI.renderMonthAndDowView(data, selectedMonth);
-                    CompetenciaIntelUI.runComparisonAnalysis();
+                    const curTab = CompetenciaIntelUI.activeIntelTab || 'daily';
+                    if (curTab === 'month_dow') CompetenciaIntelUI.renderMonthAndDowView(data, selectedMonth);
+                    else if (curTab === 'comparison') CompetenciaIntelUI.runComparisonAnalysis();
                 }
 
             } catch (e) {
@@ -5235,8 +5236,9 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
                 // Columnas opcionales de Inteligencia de Precios
                 const activeOtbChange = (my && my.otbChange !== undefined) ? my.otbChange : ((dynamic && dynamic.pickup !== undefined) ? dynamic.pickup : 0);
-                const pData = (window.PricingIntelligence) ? PricingIntelligence.calculateDailyPickup(activeHotel, d.dateISO, { rooms: currentOcc, occupancyPct: occPct2, otbChange: activeOtbChange }) : null;
-                const rec = (window.PricingIntelligence) ? PricingIntelligence.evaluateDailyRecommendation({
+                const yieldInfo = (d._yieldInfo && d._yieldInfo[activeHotel]) ? d._yieldInfo[activeHotel] : null;
+                const pData = yieldInfo?._pData || ((window.PricingIntelligence) ? PricingIntelligence.calculateDailyPickup(activeHotel, d.dateISO, { rooms: currentOcc, occupancyPct: occPct2, otbChange: activeOtbChange }) : null);
+                const rec = yieldInfo?._rec || (window.PricingIntelligence ? PricingIntelligence.evaluateDailyRecommendation({
                     hotelName: activeHotel,
                     dateISO: d.dateISO,
                     currentPrice: myP,
@@ -5247,7 +5249,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     otbChange: activeOtbChange,
                     pickupData: pData,
                     minFloorPrice: getHotelMinPrice(activeHotel)
-                }) : null;
+                }) : null);
 
                 const todayDt = new Date(); todayDt.setHours(0,0,0,0);
                 const targetDt = new Date(d.dateISO);
