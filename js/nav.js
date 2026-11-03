@@ -42,30 +42,62 @@
             const link = document.createElement('a'); link.href = 'CargarDatos.html'; link.textContent = 'Cargar Datos';
             link.classList.toggle('active', page === 'CargarDatos.html'); links.append(link);
         }
-        const activeNavUser = window.auth?.currentUser || (window.getSavedAuthSession && window.getSavedAuthSession());
-        const navEmailLow = (activeNavUser?.email || '').toLowerCase().trim();
-        const isAdminNavUser = window._capasuite_local_mode || 
-            navEmailLow === 'comunicaciones@hotelguadiana.es' || 
-            navEmailLow === 'admin@capasuite.com' ||
-            activeNavUser?.role === 'Administrador' ||
-            (function() {
-                try {
-                    const uList = window.getSystemUsers ? window.getSystemUsers() : [];
-                    const m = uList.find(u => u.email && u.email.toLowerCase().trim() === navEmailLow);
-                    return m && m.role === 'Administrador';
-                } catch { return false; }
-            })();
-        if (links && isAdminNavUser && !links.querySelector('a[href="Usuarios.html"]')) {
-            const uLink = document.createElement('a');
-            uLink.href = 'Usuarios.html';
-            uLink.textContent = 'Usuarios';
-            uLink.classList.toggle('active', page === 'Usuarios.html');
-            links.append(uLink);
-        }
+
         const user = window.auth?.currentUser || (window.getSavedAuthSession && window.getSavedAuthSession());
-        const email = nav.querySelector('#userEmailNav');
-        if (email && window._capasuite_local_mode && !user) email.textContent = 'Modo local';
-        if (email && user) email.textContent = window.getUserDisplayName ? window.getUserDisplayName(user) : (user.displayName || user.email);
+        const emailEl = nav.querySelector('#userEmailNav');
+        if (emailEl) {
+            if (window._capasuite_local_mode && !user) {
+                emailEl.innerHTML = '<span style="color:#ef4444; font-weight:800; cursor:pointer;" onclick="localStorage.setItem(\'force_login_once\', \'true\'); location.reload()">🚀 MODO LOCAL</span>';
+            } else if (user) {
+                const displayName = window.getUserDisplayName ? window.getUserDisplayName(user) : (user.displayName || user.email || 'Usuario');
+                const userInitial = displayName.charAt(0).toUpperCase();
+                const userEmail = (user.email || '').toLowerCase().trim();
+
+                // Resolver Rol
+                let userRole = user.role;
+                if (!userRole) {
+                    try {
+                        const sysUsers = window.getSystemUsers ? window.getSystemUsers() : [];
+                        const m = sysUsers.find(u => u.email && u.email.toLowerCase().trim() === userEmail);
+                        if (m && m.role) userRole = m.role;
+                    } catch {}
+                }
+                if (!userRole) {
+                    if (userEmail === 'comunicaciones@hotelguadiana.es' || userEmail === 'admin@capasuite.com') {
+                        userRole = 'Administrador';
+                    } else if (userEmail.includes('guadiana')) {
+                        userRole = 'Dirección';
+                    } else {
+                        userRole = 'Comercial';
+                    }
+                }
+
+                const isAdmin = (userRole.toLowerCase() === 'administrador' || userEmail === 'comunicaciones@hotelguadiana.es' || userEmail === 'admin@capasuite.com' || window._capasuite_local_mode);
+
+                const shieldIconSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>';
+                const keyIconSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>';
+
+                emailEl.innerHTML = `
+                    <div class="capa-user-nexus-widget" style="display:inline-flex; align-items:center; gap:6px; padding:2px 8px 2px 5px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:9999px; box-shadow:0 1px 3px rgba(0,0,0,0.1); select-none;" title="Usuario: ${displayName} (${userEmail})">
+                        <div style="width:20px; height:20px; border-radius:50%; background:linear-gradient(135deg, #065f46, #10b981); color:#fff; font-size:10px; font-weight:900; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                            ${userInitial}
+                        </div>
+                        <div style="display:flex; flex-direction:column; text-align:left; line-height:1; padding-right:2px;">
+                            <span style="font-size:11px; font-weight:800; color:var(--text-main, #f9fafb);">${displayName}</span>
+                            <span style="font-size:7.5px; font-weight:800; color:#10b981; text-transform:uppercase; letter-spacing:0.04em; margin-top:1px;">${userRole}</span>
+                        </div>
+                        <button type="button" onclick="window.openChangeMyPasswordModal && window.openChangeMyPasswordModal()" style="background:transparent; border:none; padding:2px; color:var(--text-muted, #94a3b8); cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:50%; transition:all 0.2s;" title="Cambiar mi contraseña" onmouseover="this.style.color='#f59e0b'" onmouseout="this.style.color='var(--text-muted)'">
+                            ${keyIconSvg}
+                        </button>
+                        ${isAdmin ? `
+                        <a href="Usuarios.html" style="background:transparent; border:none; padding:2px; color:var(--text-muted, #94a3b8); cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:50%; text-decoration:none; transition:all 0.2s;" title="Gestión de usuarios y credenciales (Solo Admin)" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='var(--text-muted)'">
+                            ${shieldIconSvg}
+                        </a>
+                        ` : ''}
+                    </div>
+                `;
+            }
+        }
         if (window.CAPASUITE_VERSION) {
             nav.querySelectorAll('.app-version-badge, [data-version-badge]').forEach(el => {
                 el.innerHTML = `<span class="version-dot"></span><span>v${window.CAPASUITE_VERSION.version}</span>`;

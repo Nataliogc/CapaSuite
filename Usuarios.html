@@ -1235,8 +1235,49 @@
             return div.innerHTML;
         }
 
+        function checkAdminAccess() {
+            let user = window.auth?.currentUser;
+            if (!user && window.getSavedAuthSession) {
+                user = window.getSavedAuthSession();
+            }
+            if (!user && !window._capasuite_local_mode) {
+                window.location.href = 'index.html';
+                return false;
+            }
+
+            const email = (user?.email || '').toLowerCase().trim();
+            const sysUsers = window.getSystemUsers ? window.getSystemUsers() : [];
+            const matched = sysUsers.find(u => u.email && u.email.toLowerCase().trim() === email);
+            const role = (matched?.role || user?.role || '').toLowerCase();
+
+            const isNatalio = email === 'comunicaciones@hotelguadiana.es';
+            const isAdmin = isNatalio || email === 'admin@capasuite.com' || role === 'administrador' || window._capasuite_local_mode;
+
+            if (!isAdmin) {
+                document.body.innerHTML = `
+                    <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #0b0f19; color: #f9fafb; font-family: 'Plus Jakarta Sans', sans-serif; padding: 20px; text-align: center;">
+                        <div style="background: #111827; border: 1px solid rgba(244, 63, 94, 0.3); border-radius: 28px; padding: 40px; max-width: 480px; box-shadow: 0 25px 50px rgba(0,0,0,0.5);">
+                            <div style="font-size: 3rem; margin-bottom: 16px;">🛡️</div>
+                            <h2 style="font-size: 1.4rem; font-weight: 800; margin-bottom: 12px; color: #f43f5e;">Acceso Restringido</h2>
+                            <p style="font-size: 0.9rem; color: #9ca3af; margin-bottom: 24px; line-height: 1.5;">
+                                Esta sección es de uso exclusivo para <strong>Administradores</strong> de CapaSuite.<br>
+                                Tu cuenta actual (<span style="color:#ffffff; font-weight:700;">${escapeHtml(email || 'Usuario')}</span>) no dispone de permisos para gestionar credenciales o usuarios.
+                            </p>
+                            <a href="index.html" style="display: inline-block; background: #10b981; color: white; text-decoration: none; padding: 12px 24px; border-radius: 14px; font-weight: 800; font-size: 0.85rem; box-shadow: 0 8px 16px rgba(16,185,129,0.3);">
+                                &larr; Volver a CapaSuite
+                            </a>
+                        </div>
+                    </div>
+                `;
+                return false;
+            }
+            return true;
+        }
+
         window.addEventListener('load', () => {
-            initDirectory();
+            if (checkAdminAccess()) {
+                initDirectory();
+            }
         });
     </script>
 
