@@ -22,7 +22,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="js/version.js"></script>
     <script src="js/nav.js"></script>
-    <script src="js/firebase-auth.js?v=20261104-0010"></script>
+    <script src="js/firebase-auth.js?v=20261104-0033"></script>
     <script src="js/theme-manager.js"></script>
     <script src="js/production-groups.js?v=20261001-exclude-segments"></script>
 
@@ -1245,7 +1245,7 @@
         auth.onAuthStateChanged((user) => {
             const emailSpan = document.getElementById('userEmailNav');
             if (user) {
-                if (emailSpan) emailSpan.innerText = window.getUserDisplayName ? window.getUserDisplayName(user) : (user.displayName || user.email);
+                if (window.renderNexusUserWidget) window.renderNexusUserWidget(user);
             } else {
                 if (emailSpan) emailSpan.innerText = "Modo Local";
             }

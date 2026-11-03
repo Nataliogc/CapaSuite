@@ -23,7 +23,7 @@
     <script src="js/version.js"></script>
     <script src="js/nav.js"></script>
     <script src="js/pricing-intelligence.js"></script>
-    <script src="js/firebase-auth.js?v=20261104-0010"></script>
+    <script src="js/firebase-auth.js?v=20261104-0033"></script>
     <script src="js/theme-manager.js"></script>
 
     <style>
@@ -646,7 +646,7 @@
                 auth.onAuthStateChanged(user => {
                     if (user) {
                         const el = document.getElementById('userEmailNav');
-                        if (el) el.innerText = window.getUserDisplayName ? window.getUserDisplayName(user) : (user.displayName || user.email);
+                        if (window.renderNexusUserWidget) window.renderNexusUserWidget(user);
                     }
                 });
             </script>

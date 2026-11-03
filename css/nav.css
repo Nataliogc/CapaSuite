@@ -387,3 +387,92 @@
     #userEmailNav { display: none !important; }
     .user-chip { padding: 4px 8px !important; gap: 5px !important; }
 }
+
+/* ─── NEXUS USER PILL WIDGET ────────────────────────────── */
+.nexus-user-pill-widget {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 3px 10px 3px 5px !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    border-radius: 9999px !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12) !important;
+    user-select: none !important;
+    vertical-align: middle !important;
+}
+
+[data-theme="light"] .nexus-user-pill-widget {
+    background: #ffffff !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05) !important;
+}
+
+.nexus-user-pill-widget .user-nav-avatar {
+    width: 22px !important;
+    height: 22px !important;
+    border-radius: 50% !important;
+    background: linear-gradient(135deg, #166534, #15803d) !important;
+    color: #ffffff !important;
+    font-size: 11px !important;
+    font-weight: 900 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+}
+
+.nexus-user-pill-widget .user-nav-info {
+    display: flex !important;
+    flex-direction: column !important;
+    text-align: left !important;
+    line-height: 1.1 !important;
+    padding-right: 4px !important;
+}
+
+.nexus-user-pill-widget .user-nav-name {
+    font-size: 11.5px !important;
+    font-weight: 800 !important;
+    color: var(--text-main, #f8fafc) !important;
+    letter-spacing: -0.01em !important;
+}
+
+[data-theme="light"] .nexus-user-pill-widget .user-nav-name {
+    color: #0f172a !important;
+}
+
+.nexus-user-pill-widget .user-nav-role {
+    font-size: 7.5px !important;
+    font-weight: 900 !important;
+    color: #10b981 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+    margin-top: 1px !important;
+}
+
+[data-theme="light"] .nexus-user-pill-widget .user-nav-role {
+    color: #15803d !important;
+}
+
+.nexus-user-pill-widget .user-nav-btn {
+    background: transparent !important;
+    border: none !important;
+    padding: 3px !important;
+    color: var(--text-muted, #94a3b8) !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50% !important;
+    transition: all 0.2s ease !important;
+    text-decoration: none !important;
+}
+
+[data-theme="light"] .nexus-user-pill-widget .user-nav-btn {
+    color: #64748b !important;
+}
+
+.nexus-user-pill-widget .user-nav-btn:hover {
+    background: rgba(0, 0, 0, 0.05) !important;
+}

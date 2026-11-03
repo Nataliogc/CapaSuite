@@ -356,8 +356,7 @@ function checkAuth() {
             if (!user) {
                 const savedSession = getSavedAuthSession();
                 if (savedSession) {
-                    const navEmail = document.getElementById('userEmailNav');
-                    if (navEmail) navEmail.innerText = getUserDisplayName(savedSession);
+                    if (window.renderNexusUserWidget) window.renderNexusUserWidget(savedSession);
                     const reconnectedUser = await trySilentReconnect();
                     if (reconnectedUser) {
                         resolve(reconnectedUser);
@@ -378,10 +377,7 @@ function checkAuth() {
                 console.log("👤 CapaSuite: Usuario identificado como " + user.email);
 
                 // Actualizar nombre de usuario en la barra de navegación si existe el elemento
-                const navEmail = document.getElementById('userEmailNav');
-                if (navEmail) {
-                    navEmail.innerText = getUserDisplayName(user);
-                }
+                if (window.renderNexusUserWidget) window.renderNexusUserWidget(user);
 
                 // Si acabamos de entrar, descargar datos
                 if (!window._initialDownloadDone) {
