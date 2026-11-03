@@ -66,10 +66,29 @@ const AUTH_SESSION_KEY = 'capasuite_auth_session_v1';
 const AUTH_RECONNECT_KEY = 'capasuite_auth_reconnect_v1';
 const AUTH_LOGGED_OUT_KEY = 'capasuite_explicit_logout_v1';
 
-// Asegurar persistencia LOCAL permanente en navegador y PWA instalada
-if (cloudAuth && typeof cloudAuth.setPersistence === 'function' && firebase.auth?.Auth?.Persistence?.LOCAL) {
-    cloudAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
-}
+// Asegurar persistencia permanente de forma segura (LOCAL con fallback a SESSION / NONE si el entorno no lo soporta)
+(function _initAuthPersistence() {
+    try {
+        if (cloudAuth && typeof cloudAuth.setPersistence === 'function' && firebase?.auth?.Auth?.Persistence) {
+            const P = firebase.auth.Auth.Persistence;
+            if (P.LOCAL) {
+                cloudAuth.setPersistence(P.LOCAL).catch((err) => {
+                    console.warn('CapaSuite: persistencia LOCAL asíncrona no disponible, probando SESSION:', err?.message || err);
+                    try {
+                        if (P.SESSION) cloudAuth.setPersistence(P.SESSION).catch(() => {});
+                    } catch {}
+                });
+            }
+        }
+    } catch (err) {
+        console.warn('CapaSuite: persistencia LOCAL no soportada en este entorno:', err?.message || err);
+        try {
+            if (cloudAuth && typeof cloudAuth.setPersistence === 'function' && firebase?.auth?.Auth?.Persistence?.SESSION) {
+                cloudAuth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(() => {});
+            }
+        } catch {}
+    }
+})();
 
 function _readStorage(key) {
     try { if (typeof localStorage !== 'undefined' && typeof localStorage.getItem === 'function') { const v = localStorage.getItem(key); if (v != null) return v; } } catch {}
@@ -139,8 +158,15 @@ async function trySilentReconnect() {
         try {
             const creds = JSON.parse(decodeURIComponent(escape(atob(raw))));
             if (!creds || !creds.email || !creds.pass) return null;
-            if (typeof cloudAuth.setPersistence === 'function' && firebase.auth?.Auth?.Persistence?.LOCAL) {
-                await cloudAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
+            if (typeof cloudAuth.setPersistence === 'function' && firebase?.auth?.Auth?.Persistence) {
+                try {
+                    const P = firebase.auth.Auth.Persistence;
+                    await cloudAuth.setPersistence(P.LOCAL).catch(async () => {
+                        if (P.SESSION) await cloudAuth.setPersistence(P.SESSION).catch(() => {});
+                    });
+                } catch (persErr) {
+                    console.warn('CapaSuite: persistencia en reconexión no disponible:', persErr?.message || persErr);
+                }
             }
             const res = await cloudAuth.signInWithEmailAndPassword(creds.email, creds.pass);
             if (res && res.user) saveAuthSession(res.user);

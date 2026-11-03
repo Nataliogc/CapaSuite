@@ -22,14 +22,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="js/state.js"></script>
     <script src="js/storage.js?v=20261013-1"></script>
-    <script src="js/version.js?v=20261101-0539"></script>
+    <script src="js/version.js?v=20261103-2320"></script>
     <script src="js/nav.js"></script>
 
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="js/firebase-auth.js?v=20261101-0539"></script>
+    <script src="js/firebase-auth.js?v=20261103-2320"></script>
     <script src="js/theme-manager.js"></script>
 
     <link rel="stylesheet" href="css/tokens.css">
@@ -677,16 +677,33 @@
                         autocomplete="current-password">
                 </div>
                 <button type="submit" class="login-btn">Entrar al Portal</button>
+                <button type="button" class="login-btn" onclick="continueInLocalMode()" style="background: transparent; border: 1px solid var(--border); color: var(--text-muted); margin-top: 10px;">Continuar en Modo Local</button>
             </form>
             <p id="login-error" style="color: #ef4444; font-size: 0.8rem; margin-top: 15px; display: none;"></p>
         </div>
     </div>
 
     <script>
+        function continueInLocalMode() {
+            localStorage.removeItem('force_login_once');
+            location.reload();
+        }
+
         async function handleLogin() {
-            let email = document.getElementById('email').value.trim();
-            const pass = document.getElementById('password').value;
+            const emailInput = document.getElementById('email');
+            const passInput = document.getElementById('password');
+            let email = (emailInput?.value || '').trim();
+            const pass = passInput?.value || '';
             const errorEl = document.getElementById('login-error');
+            const submitBtn = document.querySelector('.login-btn');
+
+            if (!email || !pass) {
+                if (errorEl) {
+                    errorEl.innerText = "Por favor, introduce tu usuario y contraseña.";
+                    errorEl.style.display = 'block';
+                }
+                return;
+            }
 
             const usernameMap = {
                 'admin': 'admin@capasuite.com',
@@ -700,21 +717,58 @@
                 email = usernameMap[lower];
             }
 
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerText = "Verificando...";
+            }
+            if (errorEl) errorEl.style.display = 'none';
+
             try {
-                if (auth.setPersistence && firebase.auth?.Auth?.Persistence?.LOCAL) {
-                    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
+                // Configurar persistencia de forma segura
+                if (auth && typeof auth.setPersistence === 'function' && firebase?.auth?.Auth?.Persistence) {
+                    try {
+                        const P = firebase.auth.Auth.Persistence;
+                        await auth.setPersistence(P.LOCAL).catch(async () => {
+                            if (P.SESSION) await auth.setPersistence(P.SESSION).catch(() => {});
+                        });
+                    } catch (persErr) {
+                        console.warn("CapaSuite: fallo al fijar persistencia:", persErr);
+                    }
                 }
+
                 const cred = await auth.signInWithEmailAndPassword(email, pass);
                 if (window.saveAuthSession) {
                     window.saveAuthSession(cred?.user || { email }, { email, pass });
                 }
             } catch (error) {
-                errorEl.innerText = "Error: Acceso denegado. Verifica tus credenciales.";
-                errorEl.style.display = 'block';
+                console.error("Error en autenticación:", error);
+                let msg = "Error: Acceso denegado. Verifica tus credenciales.";
+                if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                    msg = "Contraseña incorrecta. Por favor, compruébala.";
+                } else if (error.code === 'auth/user-not-found') {
+                    msg = "No existe ninguna cuenta registrada con este correo.";
+                } else if (error.code === 'auth/invalid-email') {
+                    msg = "El formato de correo no es válido.";
+                } else if (error.code === 'auth/network-request-failed') {
+                    msg = "No se pudo conectar con el servidor de autenticación (sin conexión a internet).";
+                } else if (error.code === 'auth/too-many-requests') {
+                    msg = "Demasiados intentos fallidos. Inténtalo de nuevo en unos minutos.";
+                } else if (error.message) {
+                    msg = error.message;
+                }
+                if (errorEl) {
+                    errorEl.innerText = msg;
+                    errorEl.style.display = 'block';
+                }
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = "Entrar al Portal";
+                }
             }
         }
 
-        auth.onAuthStateChanged(async (user) => {
+        function updateUIAuthState(user) {
             const loginSection = document.getElementById('login-container');
             const mainContent = document.getElementById('dashboard-main');
             const mainHeader = document.getElementById('mainHeader');
@@ -730,10 +784,10 @@
             if (user) {
                 if (window.saveAuthSession) window.saveAuthSession(user);
                 localStorage.removeItem('force_login_once'); // Reset
-                loginSection.style.display = 'none';
-                mainContent.style.display = 'flex';
-                mainHeader.style.display = 'flex';
-                mainNav.style.display = 'flex';
+                if (loginSection) loginSection.style.display = 'none';
+                if (mainContent) mainContent.style.display = 'flex';
+                if (mainHeader) mainHeader.style.display = 'flex';
+                if (mainNav) mainNav.style.display = 'flex';
 
                 const displayName = window.getUserDisplayName ? window.getUserDisplayName(user) : (user.displayName || user.email);
                 if (userEmailEl) {
@@ -741,20 +795,23 @@
                     userEmailEl.style.color = ''; 
                 }
 
-                const hasCloudData = await downloadFromCloud();
-                if (!hasCloudData) {
-                    const localData = CapaStorage.getItem('hotel_manager_db_v2');
-                    if (localData && localData !== '{}') {
-                        await uploadToCloud();
-                    }
+                if (typeof downloadFromCloud === 'function') {
+                    downloadFromCloud().then(hasCloudData => {
+                        if (!hasCloudData) {
+                            const localData = typeof CapaStorage !== 'undefined' ? CapaStorage.getItem('hotel_manager_db_v2') : null;
+                            if (localData && localData !== '{}' && typeof uploadToCloud === 'function') {
+                                uploadToCloud();
+                            }
+                        }
+                    }).catch(e => console.warn('Sync inicial diferido:', e));
                 }
             } else {
                 const savedSession = window.getSavedAuthSession ? window.getSavedAuthSession() : null;
                 if (savedSession) {
-                    loginSection.style.display = 'none';
-                    mainContent.style.display = 'flex';
-                    mainHeader.style.display = 'flex';
-                    mainNav.style.display = 'flex';
+                    if (loginSection) loginSection.style.display = 'none';
+                    if (mainContent) mainContent.style.display = 'flex';
+                    if (mainHeader) mainHeader.style.display = 'flex';
+                    if (mainNav) mainNav.style.display = 'flex';
                     if (userEmailEl) {
                         userEmailEl.innerText = savedSession.displayName || savedSession.email;
                         userEmailEl.style.color = '';
@@ -764,23 +821,33 @@
                     }
                 } else if (isLocal && !forceLogin) {
                     // MODO LOCAL AUTOMÁTICO - Fuerza mostrar todo
-                    loginSection.style.display = 'none';
-                    mainContent.style.display = 'flex';
-                    mainHeader.style.display = 'flex';
-                    mainNav.style.display = 'flex';
+                    if (loginSection) loginSection.style.display = 'none';
+                    if (mainContent) mainContent.style.display = 'flex';
+                    if (mainHeader) mainHeader.style.display = 'flex';
+                    if (mainNav) mainNav.style.display = 'flex';
                     
                     if (userEmailEl) {
                         userEmailEl.innerHTML = '<span style="color:#ef4444; font-weight:800; cursor:pointer;" onclick="localStorage.setItem(\'force_login_once\', \'true\'); location.reload()">🚀 MODO LOCAL (Conectar Nube)</span>';
                     }
                     console.log("🛡️ MODO LOCAL: Acceso directo concedido.");
                 } else {
-                    loginSection.style.display = 'flex';
-                    mainContent.style.display = 'none';
-                    mainHeader.style.display = 'none';
-                    mainNav.style.display = 'none';
+                    if (loginSection) loginSection.style.display = 'flex';
+                    if (mainContent) mainContent.style.display = 'none';
+                    if (mainHeader) mainHeader.style.display = 'none';
+                    if (mainNav) mainNav.style.display = 'none';
                 }
             }
-        });
+        }
+
+        if (typeof auth !== 'undefined' && auth.onAuthStateChanged) {
+            auth.onAuthStateChanged((user) => {
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', () => updateUIAuthState(user), { once: true });
+                } else {
+                    updateUIAuthState(user);
+                }
+            });
+        }
     </script>
 
     <nav class="top-nav" id="mainNav" style="display: none;"></nav>
