@@ -42,6 +42,26 @@
             const link = document.createElement('a'); link.href = 'CargarDatos.html'; link.textContent = 'Cargar Datos';
             link.classList.toggle('active', page === 'CargarDatos.html'); links.append(link);
         }
+        const activeNavUser = window.auth?.currentUser || (window.getSavedAuthSession && window.getSavedAuthSession());
+        const navEmailLow = (activeNavUser?.email || '').toLowerCase().trim();
+        const isAdminNavUser = window._capasuite_local_mode || 
+            navEmailLow === 'comunicaciones@hotelguadiana.es' || 
+            navEmailLow === 'admin@capasuite.com' ||
+            activeNavUser?.role === 'Administrador' ||
+            (function() {
+                try {
+                    const uList = window.getSystemUsers ? window.getSystemUsers() : [];
+                    const m = uList.find(u => u.email && u.email.toLowerCase().trim() === navEmailLow);
+                    return m && m.role === 'Administrador';
+                } catch { return false; }
+            })();
+        if (links && isAdminNavUser && !links.querySelector('a[href="Usuarios.html"]')) {
+            const uLink = document.createElement('a');
+            uLink.href = 'Usuarios.html';
+            uLink.textContent = 'Usuarios';
+            uLink.classList.toggle('active', page === 'Usuarios.html');
+            links.append(uLink);
+        }
         const user = window.auth?.currentUser || (window.getSavedAuthSession && window.getSavedAuthSession());
         const email = nav.querySelector('#userEmailNav');
         if (email && window._capasuite_local_mode && !user) email.textContent = 'Modo local';

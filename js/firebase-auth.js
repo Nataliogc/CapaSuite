@@ -38,7 +38,101 @@ if (_isLocalBypass) {
     window._capasuite_local_mode = true;
 }
 
-/// Nombres amigables para los usuarios de CapaSuite
+/// Directorio central y nombres amigables de usuarios de CapaSuite
+const DEFAULT_SYSTEM_USERS = [
+    {
+        name: 'Diana',
+        email: 'dianahotelguadiana@gmail.com',
+        role: 'Comercial',
+        pass: '1234',
+        active: true,
+        revoked: false
+    },
+    {
+        name: 'Sergio',
+        email: 'ssanchez@hotelguadiana.es',
+        role: 'Dirección',
+        pass: '1234',
+        active: true,
+        revoked: false
+    },
+    {
+        name: 'Oscar',
+        email: 'osanchez@hotelguadiana.es',
+        role: 'Dirección',
+        pass: '1234',
+        active: true,
+        revoked: false
+    },
+    {
+        name: 'Natalio',
+        email: 'comunicaciones@hotelguadiana.es',
+        role: 'Administrador',
+        pass: '1234',
+        active: true,
+        revoked: false
+    },
+    {
+        name: 'Administrador CapaSuite',
+        email: 'admin@capasuite.com',
+        role: 'Administrador',
+        pass: 'admin',
+        active: true,
+        revoked: false
+    }
+];
+
+const SYSTEM_USERS_STORAGE_KEY = 'capasuite_system_users_v1';
+
+function getLocalSystemUsers() {
+    try {
+        const raw = _readStorage(SYSTEM_USERS_STORAGE_KEY);
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+    } catch {}
+    return DEFAULT_SYSTEM_USERS.map(u => ({ ...u }));
+}
+
+async function getSystemUsersAsync() {
+    let users = getLocalSystemUsers();
+    if (cloudDb && typeof cloudDb.ref === 'function') {
+        try {
+            const snap = await cloudDb.ref('system_users').once('value');
+            const val = snap ? snap.val() : null;
+            if (val) {
+                const cloudList = Array.isArray(val) ? val : Object.values(val);
+                if (cloudList && cloudList.length > 0) {
+                    users = cloudList;
+                    _writeStorage(SYSTEM_USERS_STORAGE_KEY, JSON.stringify(users));
+                }
+            }
+        } catch (e) {
+            console.warn('CapaSuite: usando directorio local de usuarios:', e?.message || e);
+        }
+    }
+    return users;
+}
+
+async function saveSystemUsers(usersList) {
+    if (!Array.isArray(usersList)) return false;
+    _writeStorage(SYSTEM_USERS_STORAGE_KEY, JSON.stringify(usersList));
+    usersList.forEach(u => {
+        if (u.email && u.name) {
+            USER_DISPLAY_NAMES[u.email.toLowerCase().trim()] = u.name;
+        }
+    });
+    if (cloudDb && typeof cloudDb.ref === 'function') {
+        try {
+            await cloudDb.ref('system_users').set(usersList);
+        } catch (e) {
+            console.warn('CapaSuite: no se pudo guardar en nube system_users:', e);
+        }
+    }
+    return true;
+}
+
 const USER_DISPLAY_NAMES = {
     'dianahotelguadiana@gmail.com': 'Diana',
     'ssanchez@hotelguadiana.es': 'Sergio',
@@ -53,6 +147,11 @@ function getUserDisplayName(user) {
     if (USER_DISPLAY_NAMES[email]) {
         return USER_DISPLAY_NAMES[email];
     }
+    try {
+        const sysUsers = getLocalSystemUsers();
+        const found = sysUsers.find(u => u.email && u.email.toLowerCase().trim() === email);
+        if (found && found.name) return found.name;
+    } catch {}
     if (typeof user === 'object' && user.displayName) {
         return user.displayName;
     }
@@ -61,6 +160,10 @@ function getUserDisplayName(user) {
 
 window.getUserDisplayName = getUserDisplayName;
 window.CAPASUITE_USERS = USER_DISPLAY_NAMES;
+window.getSystemUsers = getLocalSystemUsers;
+window.getSystemUsersAsync = getSystemUsersAsync;
+window.saveSystemUsers = saveSystemUsers;
+window.DEFAULT_SYSTEM_USERS = DEFAULT_SYSTEM_USERS;
 
 const AUTH_SESSION_KEY = 'capasuite_auth_session_v1';
 const AUTH_RECONNECT_KEY = 'capasuite_auth_reconnect_v1';
@@ -115,6 +218,9 @@ function saveAuthSession(user, reconnectCreds) {
     _writeStorage(AUTH_SESSION_KEY, JSON.stringify(session));
     _removeStorage(AUTH_LOGGED_OUT_KEY);
     _removeStorage('force_login_once');
+    if (session.email && _readStorage('capasuite_remember_user_disabled') !== '1') {
+        try { _writeStorage('capasuite_remembered_user', session.email); } catch {}
+    }
     if (reconnectCreds && reconnectCreds.email && reconnectCreds.pass) {
         try {
             _writeStorage(AUTH_RECONNECT_KEY, btoa(unescape(encodeURIComponent(JSON.stringify({
@@ -209,6 +315,9 @@ if (cloudAuth && typeof cloudAuth.signOut === 'function') {
                 if (mainContent) mainContent.style.display = 'none';
                 if (mainHeader) mainHeader.style.display = 'none';
                 if (mainNav) mainNav.style.display = 'none';
+                if (typeof window.initRememberedUser === 'function') {
+                    window.initRememberedUser();
+                }
             }
         }
     };

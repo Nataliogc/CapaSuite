@@ -1,0 +1,1245 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CapaSuite | Directorio de Usuarios y Credenciales</title>
+    <meta name="description" content="Panel de Administración y Gestión de Credenciales de CapaSuite.">
+    <link rel="icon" type="image/png" href="Imagen/Icono_CapaSuite.png">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Tokens y Navegación -->
+    <link rel="stylesheet" href="css/tokens.css">
+    <link rel="stylesheet" href="css/nav.css">
+
+    <script src="js/state.js"></script>
+    <script src="js/storage.js?v=20261013-1"></script>
+    <script src="js/version.js"></script>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="js/firebase-auth.js"></script>
+    <script src="js/theme-manager.js"></script>
+    <script src="js/nav.js"></script>
+
+    <style>
+        :root {
+            --primary: #10b981;
+            --primary-light: rgba(16, 185, 129, 0.15);
+            --bg-deep: #0b0f19;
+            --bg-surface: #111827;
+            --bg-card: rgba(17, 24, 39, 0.95);
+            --border: rgba(255, 255, 255, 0.08);
+            --text-main: #f9fafb;
+            --text-muted: #9ca3af;
+            --radius-lg: 24px;
+            --radius-md: 14px;
+            --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        [data-theme="light"] {
+            --bg-deep: #f8fafc;
+            --bg-surface: #ffffff;
+            --bg-card: #ffffff;
+            --border: #e2e8f0;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* HEADER */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 40px;
+            background: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .logo-main {
+            height: 38px;
+            cursor: pointer;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 32px 24px 60px 24px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* HERO BANNER - ESTILO NEXUS */
+        .nexus-hero {
+            background: linear-gradient(135deg, #09131f 0%, #0d1e2e 50%, #122b22 100%);
+            border-radius: 28px;
+            padding: 32px;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 24px;
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            position: relative;
+            overflow: hidden;
+        }
+
+        @media (min-width: 768px) {
+            .nexus-hero {
+                flex-direction: row;
+                align-items: center;
+            }
+        }
+
+        .nexus-hero::after {
+            content: '';
+            position: absolute;
+            right: -80px;
+            bottom: -80px;
+            width: 260px;
+            height: 260px;
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.18) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .hero-info {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .hero-tags {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 4px;
+        }
+
+        .tag-cloud {
+            background: rgba(16, 185, 129, 0.2);
+            color: #6ee7b7;
+            border: 1px solid rgba(16, 185, 129, 0.35);
+            font-size: 10px;
+            font-weight: 800;
+            padding: 3px 10px;
+            border-radius: 50px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .tag-admin {
+            color: #cbd5e1;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .hero-title {
+            font-size: 1.55rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: #ffffff;
+        }
+
+        .hero-sub {
+            font-size: 0.85rem;
+            color: #cbd5e1;
+            max-width: 620px;
+            line-height: 1.5;
+        }
+
+        .hero-stats {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 6px;
+        }
+
+        .stat-pill {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(8px);
+            padding: 6px 14px;
+            border-radius: 14px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .dot-green {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 10px #10b981;
+        }
+
+        .dot-red {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #f43f5e;
+            box-shadow: 0 0 10px #f43f5e;
+        }
+
+        .btn-new-user {
+            background: #059669;
+            color: #ffffff;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 16px;
+            font-size: 0.85rem;
+            font-weight: 800;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 10px 25px -5px rgba(5, 150, 105, 0.4);
+            transition: var(--transition);
+            white-space: nowrap;
+            position: relative;
+            z-index: 2;
+        }
+
+        .btn-new-user:hover {
+            background: #10b981;
+            transform: translateY(-2px);
+            box-shadow: 0 15px 30px -5px rgba(16, 185, 129, 0.5);
+        }
+
+        /* BUSCADOR Y TOTAL */
+        .search-bar-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            position: relative;
+            flex: 1;
+            max-width: 440px;
+        }
+
+        .search-box input {
+            width: 100%;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 12px 16px 12px 42px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-main);
+            outline: none;
+            transition: var(--transition);
+        }
+
+        .search-box input:focus {
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            pointer-events: none;
+            font-size: 0.95rem;
+        }
+
+        .users-counter {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--text-muted);
+        }
+
+        /* TABLA DE USUARIOS ESTILO CARDS */
+        .users-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .user-row {
+            padding: 20px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            border-bottom: 1px solid var(--border);
+            transition: var(--transition);
+        }
+
+        @media (min-width: 768px) {
+            .user-row {
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-between;
+            }
+        }
+
+        .user-row:last-child {
+            border-bottom: none;
+        }
+
+        .user-row:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .user-row.revoked {
+            background: rgba(244, 63, 94, 0.03);
+        }
+
+        .user-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            min-width: 0;
+        }
+
+        .user-avatar {
+            width: 46px;
+            height: 46px;
+            border-radius: 16px;
+            color: #ffffff;
+            font-size: 1.05rem;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+            user-select: none;
+        }
+
+        .avatar-admin {
+            background: linear-gradient(135deg, #7e22ce, #4f46e5);
+        }
+
+        .avatar-dir {
+            background: linear-gradient(135deg, #1e40af, #0d9488);
+        }
+
+        .avatar-com {
+            background: linear-gradient(135deg, #065f46, #10b981);
+        }
+
+        .avatar-recep {
+            background: linear-gradient(135deg, #b45309, #f59e0b);
+        }
+
+        .user-details {
+            min-width: 0;
+        }
+
+        .user-title-line {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 4px;
+        }
+
+        .user-name {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: var(--text-main);
+        }
+
+        .user-name.line-through {
+            text-decoration: line-through;
+            color: var(--text-muted);
+        }
+
+        .badge-role {
+            font-size: 10px;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 50px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .role-admin {
+            background: rgba(147, 51, 234, 0.15);
+            color: #c084fc;
+            border: 1px solid rgba(147, 51, 234, 0.35);
+        }
+
+        .role-dir {
+            background: rgba(99, 102, 241, 0.15);
+            color: #a5b4fc;
+            border: 1px solid rgba(99, 102, 241, 0.35);
+        }
+
+        .role-com {
+            background: rgba(16, 185, 129, 0.15);
+            color: #6ee7b7;
+            border: 1px solid rgba(16, 185, 129, 0.35);
+        }
+
+        .role-recep {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fcd34d;
+            border: 1px solid rgba(245, 158, 11, 0.35);
+        }
+
+        .badge-status {
+            font-size: 10px;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 50px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .status-active {
+            background: rgba(16, 185, 129, 0.12);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .status-revoked {
+            background: rgba(244, 63, 94, 0.12);
+            color: #f43f5e;
+            border: 1px solid rgba(244, 63, 94, 0.3);
+        }
+
+        .user-email {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .user-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            align-self: flex-end;
+        }
+
+        @media (min-width: 768px) {
+            .user-actions {
+                align-self: center;
+            }
+        }
+
+        .btn-action {
+            padding: 8px 14px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+        }
+
+        .btn-action:hover:not(:disabled) {
+            transform: translateY(-1px);
+        }
+
+        .btn-key:hover {
+            background: rgba(245, 158, 11, 0.12);
+            border-color: rgba(245, 158, 11, 0.4);
+            color: #f59e0b;
+        }
+
+        .btn-revoke {
+            color: #f43f5e;
+        }
+
+        .btn-revoke:hover:not(:disabled) {
+            background: rgba(244, 63, 94, 0.12);
+            border-color: rgba(244, 63, 94, 0.4);
+        }
+
+        .btn-reactivate {
+            color: #10b981;
+            background: rgba(16, 185, 129, 0.08);
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-reactivate:hover {
+            background: rgba(16, 185, 129, 0.18);
+        }
+
+        .btn-trash {
+            padding: 8px 10px;
+            color: var(--text-muted);
+        }
+
+        .btn-trash:hover:not(:disabled) {
+            color: #f43f5e;
+            background: rgba(244, 63, 94, 0.1);
+            border-color: rgba(244, 63, 94, 0.3);
+        }
+
+        .btn-action:disabled {
+            opacity: 0.25;
+            cursor: not-allowed;
+        }
+
+        /* AGENTES COMERCIALES SECTION */
+        .commercials-box {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 28px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .comm-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .comm-title {
+            font-size: 1.1rem;
+            font-weight: 800;
+        }
+
+        .comm-sub {
+            font-size: 0.68rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+        }
+
+        .comm-input-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+
+        .comm-input-row input {
+            flex: 1;
+            background: var(--bg-deep);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 12px 16px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-main);
+            outline: none;
+            transition: var(--transition);
+        }
+
+        .comm-input-row input:focus {
+            border-color: #10b981;
+        }
+
+        .comm-btn-add {
+            background: #10b981;
+            color: #ffffff;
+            border: none;
+            padding: 0 20px;
+            border-radius: 14px;
+            font-size: 0.85rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .comm-btn-add:hover {
+            background: #059669;
+        }
+
+        .chips-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .comm-chip {
+            background: var(--bg-deep);
+            border: 1px solid var(--border);
+            padding: 6px 14px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .comm-chip-del {
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: var(--transition);
+            font-size: 1rem;
+            line-height: 1;
+        }
+
+        .comm-chip-del:hover {
+            color: #f43f5e;
+        }
+
+        /* MODALES */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 99999;
+            padding: 20px;
+        }
+
+        .modal-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            width: 100%;
+            max-width: 480px;
+            padding: 32px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            animation: modalPop 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes modalPop {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 800;
+        }
+
+        .modal-sub {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-group label {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .form-group input, .form-group select {
+            background: var(--bg-deep);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px 14px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: var(--text-main);
+            outline: none;
+            transition: var(--transition);
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            border-color: #10b981;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .btn-cancel {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 10px 18px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        .btn-cancel:hover {
+            color: var(--text-main);
+            border-color: var(--text-muted);
+        }
+
+        .btn-submit {
+            background: #10b981;
+            color: #ffffff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 0.85rem;
+            cursor: pointer;
+            box-shadow: 0 8px 18px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-submit:hover {
+            background: #059669;
+        }
+
+        /* TOAST */
+        .toast-msg {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 14px 22px;
+            border-radius: 16px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            z-index: 999999;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            display: none;
+            animation: slideInToast 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .toast-success {
+            background: #065f46;
+            color: #a7f3d0;
+            border: 1px solid #10b981;
+        }
+
+        .toast-error {
+            background: #881337;
+            color: #fecdd3;
+            border: 1px solid #f43f5e;
+        }
+
+        @keyframes slideInToast {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header class="header" id="mainHeader">
+        <div class="brand">
+            <a href="index.html">
+                <img src="Imagen/logo, CapaSuite.png" alt="CapaSuite" class="logo-main">
+            </a>
+            <div class="app-version-badge" data-version-badge></div>
+        </div>
+        <div style="display:flex; align-items:center; gap:16px;">
+            <div id="userEmailNav" style="font-size:0.85rem; font-weight:700;"></div>
+            <span onclick="auth.signOut()" class="logout-btn" style="cursor:pointer;" title="Cerrar sesión"></span>
+        </div>
+    </header>
+
+    <nav class="top-nav" id="mainNav"></nav>
+
+    <main class="container">
+
+        <!-- 1. HERO BANNER ESTILO NEXUS -->
+        <div class="nexus-hero">
+            <div class="hero-info">
+                <div class="hero-tags">
+                    <span class="tag-cloud">Seguridad Cloud</span>
+                    <span class="tag-admin">• Panel de Administración</span>
+                </div>
+                <h1 class="hero-title">Directorio de Usuarios y Credenciales</h1>
+                <p class="hero-sub">
+                    Gestiona las altas de nuevos colaboradores, restablece contraseñas al instante o revoca temporalmente el acceso sin perder el historial.
+                </p>
+                <div class="hero-stats">
+                    <div class="stat-pill">
+                        <span class="dot-green"></span>
+                        <span id="count-actives">0 Activos</span>
+                    </div>
+                    <div class="stat-pill">
+                        <span class="dot-red"></span>
+                        <span id="count-revoked">0 Revocados</span>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <button type="button" class="btn-new-user" onclick="openAddUserModal()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="8.5" cy="7" r="4"></circle>
+                        <line x1="20" y1="8" x2="20" y2="14"></line>
+                        <line x1="23" y1="11" x2="17" y2="11"></line>
+                    </svg>
+                    <span>Nuevo Usuario</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 2. BARRA DE BÚSQUEDA Y TOTAL -->
+        <div class="search-bar-row">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="user-search-input" placeholder="Buscar por nombre, correo o rol..." oninput="filterUsers()">
+            </div>
+            <div class="users-counter" id="users-total-counter">
+                0 usuarios configurados en el sistema
+            </div>
+        </div>
+
+        <!-- 3. LISTADO DE USUARIOS -->
+        <div class="users-card" id="users-list-container">
+            <div style="padding: 40px; text-align: center; color: var(--text-muted); font-size: 0.9rem;">
+                Cargando directorio de usuarios...
+            </div>
+        </div>
+
+        <!-- 4. AGENTES COMERCIALES -->
+        <div class="commercials-box">
+            <div class="comm-header">
+                <div>
+                    <h3 class="comm-title">Agentes Comerciales</h3>
+                    <div class="comm-sub">Personal de Ventas</div>
+                </div>
+                <div style="font-size: 1.5rem; opacity: 0.3;">👥</div>
+            </div>
+            <div class="comm-input-row">
+                <input type="text" id="new-comm-input" placeholder="Añadir nuevo comercial..." onkeydown="if(event.key==='Enter') addCommercial()">
+                <button type="button" class="comm-btn-add" onclick="addCommercial()">Añadir</button>
+            </div>
+            <div class="chips-container" id="commercials-chips"></div>
+        </div>
+
+    </main>
+
+    <!-- MODAL NUEVO USUARIO -->
+    <div id="modal-add-user" class="modal-overlay">
+        <div class="modal-card">
+            <div>
+                <h3 class="modal-title">Añadir Nuevo Colaborador</h3>
+                <p class="modal-sub">Crea un nuevo usuario con acceso a CapaSuite.</p>
+            </div>
+            <form onsubmit="event.preventDefault(); submitNewUser();">
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label for="new-user-name">Nombre Completo</label>
+                    <input type="text" id="new-user-name" placeholder="Ej: Diana García" required autocomplete="off">
+                </div>
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label for="new-user-email">Correo Electrónico</label>
+                    <input type="email" id="new-user-email" placeholder="usuario@hotelguadiana.es" required autocomplete="off">
+                </div>
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label for="new-user-role">Rol en el Sistema</label>
+                    <select id="new-user-role" required>
+                        <option value="Comercial">Comercial</option>
+                        <option value="Dirección">Dirección</option>
+                        <option value="Administrador">Administrador</option>
+                        <option value="Recepción">Recepción</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label for="new-user-pass">Clave de Acceso Inicial</label>
+                    <input type="text" id="new-user-pass" value="1234" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeModal('modal-add-user')">Cancelar</button>
+                    <button type="submit" class="btn-submit">Crear Usuario</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL RESETEAR CLAVE -->
+    <div id="modal-reset-pass" class="modal-overlay">
+        <div class="modal-card">
+            <div>
+                <h3 class="modal-title">Resetear Clave de Acceso</h3>
+                <p class="modal-sub" id="reset-modal-sub">Establece una nueva clave para el usuario.</p>
+            </div>
+            <form onsubmit="event.preventDefault(); submitResetPass();">
+                <input type="hidden" id="reset-user-email">
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label for="reset-new-pass">Nueva Clave de Acceso</label>
+                    <input type="text" id="reset-new-pass" placeholder="Introduce la nueva clave..." required autocomplete="off">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeModal('modal-reset-pass')">Cancelar</button>
+                    <button type="submit" class="btn-submit" style="background:#f59e0b;">Guardar Clave</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast" class="toast-msg"></div>
+
+    <script>
+        let usersData = [];
+        let commercialsData = ['DIANA', 'SERGIO', 'OSCAR', 'NATALIO'];
+        const COMMERCIALS_KEY = 'capasuite_commercials_v1';
+
+        function showToast(text, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.innerText = text;
+            toast.className = `toast-msg toast-${type}`;
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 3500);
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        function openAddUserModal() {
+            document.getElementById('new-user-name').value = '';
+            document.getElementById('new-user-email').value = '';
+            document.getElementById('new-user-role').value = 'Comercial';
+            document.getElementById('new-user-pass').value = '1234';
+            document.getElementById('modal-add-user').style.display = 'flex';
+            setTimeout(() => document.getElementById('new-user-name').focus(), 100);
+        }
+
+        function openResetModal(email, name) {
+            document.getElementById('reset-user-email').value = email;
+            document.getElementById('reset-modal-sub').innerText = `Establece una nueva clave para ${name} (${email}):`;
+            document.getElementById('reset-new-pass').value = '';
+            document.getElementById('modal-reset-pass').style.display = 'flex';
+            setTimeout(() => document.getElementById('reset-new-pass').focus(), 100);
+        }
+
+        async function initDirectory() {
+            // Cargar usuarios
+            if (window.getSystemUsersAsync) {
+                usersData = await window.getSystemUsersAsync();
+            } else if (window.getSystemUsers) {
+                usersData = window.getSystemUsers();
+            }
+            renderUsers();
+
+            // Cargar comerciales
+            try {
+                const rawC = localStorage.getItem(COMMERCIALS_KEY);
+                if (rawC) commercialsData = JSON.parse(rawC);
+            } catch {}
+            renderCommercials();
+
+            // Suscribir en tiempo real a Firebase Realtime Database
+            if (window.db && typeof window.db.ref === 'function') {
+                window.db.ref('system_users').on('value', snap => {
+                    const val = snap.val();
+                    if (val) {
+                        usersData = Array.isArray(val) ? val : Object.values(val);
+                        localStorage.setItem('capasuite_system_users_v1', JSON.stringify(usersData));
+                        renderUsers();
+                    }
+                });
+                window.db.ref('system_commercials').on('value', snap => {
+                    const val = snap.val();
+                    if (val && Array.isArray(val)) {
+                        commercialsData = val;
+                        localStorage.setItem(COMMERCIALS_KEY, JSON.stringify(val));
+                        renderCommercials();
+                    }
+                });
+            }
+        }
+
+        function filterUsers() {
+            renderUsers();
+        }
+
+        function renderUsers() {
+            const container = document.getElementById('users-list-container');
+            const search = (document.getElementById('user-search-input')?.value || '').toLowerCase().trim();
+
+            const actives = usersData.filter(u => u.active !== false && !u.revoked).length;
+            const revokeds = usersData.filter(u => u.revoked === true || u.active === false).length;
+
+            document.getElementById('count-actives').innerText = `${actives} Activos`;
+            document.getElementById('count-revoked').innerText = `${revokeds} Revocados`;
+            document.getElementById('users-total-counter').innerText = `${usersData.length} usuarios configurados en el sistema`;
+
+            const filtered = usersData.filter(u => {
+                if (!search) return true;
+                const name = (u.name || '').toLowerCase();
+                const email = (u.email || '').toLowerCase();
+                const role = (u.role || '').toLowerCase();
+                return name.includes(search) || email.includes(search) || role.includes(search);
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div style="padding: 48px; text-align: center; color: var(--text-muted);">
+                        <div style="font-size: 2rem; margin-bottom: 8px;">👥</div>
+                        <p style="font-size: 0.9rem; font-weight: 700;">No se encontraron usuarios coincidentes.</p>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map((u, idx) => {
+                const isRevoked = u.revoked === true || u.active === false;
+                const isNatalio = (u.name && u.name.toLowerCase() === 'natalio') || 
+                                  (u.email && u.email.toLowerCase().includes('comunicaciones@hotelguadiana.es')) ||
+                                  (u.email && u.email.toLowerCase().includes('admin@capasuite.com'));
+
+                let avatarClass = 'avatar-com';
+                let roleClass = 'role-com';
+                const roleLower = (u.role || '').toLowerCase();
+                if (roleLower.includes('admin')) {
+                    avatarClass = 'avatar-admin';
+                    roleClass = 'role-admin';
+                } else if (roleLower.includes('direc')) {
+                    avatarClass = 'avatar-dir';
+                    roleClass = 'role-dir';
+                } else if (roleLower.includes('recep')) {
+                    avatarClass = 'avatar-recep';
+                    roleClass = 'role-recep';
+                }
+
+                const initial = (u.name || 'U').charAt(0).toUpperCase();
+
+                return `
+                <div class="user-row ${isRevoked ? 'revoked' : ''}">
+                    <div class="user-left">
+                        <div class="user-avatar ${avatarClass}">${initial}</div>
+                        <div class="user-details">
+                            <div class="user-title-line">
+                                <span class="user-name ${isRevoked ? 'line-through' : ''}">${escapeHtml(u.name || 'Usuario')}</span>
+                                <span class="badge-role ${roleClass}">${escapeHtml(u.role || 'Colaborador')}</span>
+                                ${isRevoked 
+                                    ? `<span class="badge-status status-revoked"><span class="dot-red"></span> Acceso Revocado</span>`
+                                    : `<span class="badge-status status-active"><span class="dot-green"></span> Activo</span>`
+                                }
+                            </div>
+                            <div class="user-email">${escapeHtml(u.email || '')}</div>
+                        </div>
+                    </div>
+                    <div class="user-actions">
+                        <button type="button" class="btn-action btn-key" onclick="openResetModal('${escapeHtml(u.email)}', '${escapeHtml(u.name)}')" title="Resetear clave de ${escapeHtml(u.name)}">
+                            <span style="color:#f59e0b;">🔑</span>
+                            <span>Resetear Clave</span>
+                        </button>
+                        <button type="button" class="btn-action ${isRevoked ? 'btn-reactivate' : 'btn-revoke'}" 
+                                onclick="toggleRevokeUser('${escapeHtml(u.email)}')" 
+                                ${isNatalio ? 'disabled title="La cuenta del Administrador principal no puede ser revocada"' : ''}>
+                            <span>${isRevoked ? '✅' : '🚫'}</span>
+                            <span>${isRevoked ? 'Reactivar Acceso' : 'Revocar Acceso'}</span>
+                        </button>
+                        <button type="button" class="btn-action btn-trash" 
+                                onclick="deleteUser('${escapeHtml(u.email)}')" 
+                                ${isNatalio ? 'disabled title="No es posible eliminar la cuenta principal de Administrador"' : `title="Eliminar a ${escapeHtml(u.name)}"`}>
+                            🗑️
+                        </button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        async function submitNewUser() {
+            const name = document.getElementById('new-user-name').value.trim();
+            const email = document.getElementById('new-user-email').value.trim().toLowerCase();
+            const role = document.getElementById('new-user-role').value;
+            const pass = document.getElementById('new-user-pass').value.trim();
+
+            if (!name || !email || !pass) {
+                alert("Por favor, completa todos los campos.");
+                return;
+            }
+
+            const exists = usersData.some(u => u.email && u.email.toLowerCase() === email);
+            if (exists) {
+                alert(`Ya existe un usuario registrado con el correo "${email}".`);
+                return;
+            }
+
+            const newUser = {
+                name,
+                email,
+                role,
+                pass,
+                active: true,
+                revoked: false
+            };
+
+            usersData.push(newUser);
+            if (window.saveSystemUsers) {
+                await window.saveSystemUsers(usersData);
+            }
+            renderUsers();
+            closeModal('modal-add-user');
+            showToast(`Usuario "${name}" creado correctamente en el sistema.`);
+        }
+
+        async function submitResetPass() {
+            const email = document.getElementById('reset-user-email').value;
+            const newPass = document.getElementById('reset-new-pass').value.trim();
+
+            if (!newPass) {
+                alert("La clave no puede estar vacía.");
+                return;
+            }
+
+            const user = usersData.find(u => u.email === email);
+            if (!user) return;
+
+            user.pass = newPass;
+            if (window.saveSystemUsers) {
+                await window.saveSystemUsers(usersData);
+            }
+            closeModal('modal-reset-pass');
+            showToast(`Clave de "${user.name}" actualizada con éxito a "${newPass}".`);
+        }
+
+        async function toggleRevokeUser(email) {
+            const user = usersData.find(u => u.email === email);
+            if (!user) return;
+
+            const isNatalio = (user.name && user.name.toLowerCase() === 'natalio') || 
+                              (user.email && user.email.toLowerCase().includes('comunicaciones@hotelguadiana.es'));
+            if (isNatalio) {
+                alert("Por seguridad, no es posible revocar el acceso a la cuenta principal del Administrador (Natalio).");
+                return;
+            }
+
+            const currentlyRevoked = user.revoked === true || user.active === false;
+            const nextRevoked = !currentlyRevoked;
+
+            if (nextRevoked) {
+                const ok = confirm(`¿Confirmas que deseas REVOCAR el acceso a "${user.name}"?\nEl usuario no podrá iniciar sesión en CapaSuite.`);
+                if (!ok) return;
+            }
+
+            user.revoked = nextRevoked;
+            user.active = !nextRevoked;
+
+            if (window.saveSystemUsers) {
+                await window.saveSystemUsers(usersData);
+            }
+            renderUsers();
+            showToast(nextRevoked ? `Acceso de "${user.name}" revocado correctamente.` : `Acceso de "${user.name}" reactivado.`);
+        }
+
+        async function deleteUser(email) {
+            const user = usersData.find(u => u.email === email);
+            if (!user) return;
+
+            const isNatalio = (user.name && user.name.toLowerCase() === 'natalio') || 
+                              (user.email && user.email.toLowerCase().includes('comunicaciones@hotelguadiana.es'));
+            if (isNatalio) {
+                alert("No es posible eliminar la cuenta principal de Administrador.");
+                return;
+            }
+
+            const ok = confirm(`¿Estás seguro de que deseas ELIMINAR permanentemente a "${user.name}" (${user.email})?\nEsta acción no se puede deshacer.`);
+            if (!ok) return;
+
+            usersData = usersData.filter(u => u.email !== email);
+            if (window.saveSystemUsers) {
+                await window.saveSystemUsers(usersData);
+            }
+            renderUsers();
+            showToast(`Usuario "${user.name}" eliminado del sistema.`);
+        }
+
+        function renderCommercials() {
+            const container = document.getElementById('commercials-chips');
+            container.innerHTML = commercialsData.map(c => `
+                <div class="comm-chip">
+                    <span>${escapeHtml(c)}</span>
+                    <span class="comm-chip-del" onclick="deleteCommercial('${escapeHtml(c)}')">&times;</span>
+                </div>
+            `).join('');
+        }
+
+        async function addCommercial() {
+            const input = document.getElementById('new-comm-input');
+            const val = input.value.trim().toUpperCase();
+            if (!val) return;
+            if (!commercialsData.includes(val)) {
+                commercialsData.push(val);
+                localStorage.setItem(COMMERCIALS_KEY, JSON.stringify(commercialsData));
+                if (window.db && typeof window.db.ref === 'function') {
+                    window.db.ref('system_commercials').set(commercialsData);
+                }
+                renderCommercials();
+                input.value = '';
+                showToast(`Agente comercial "${val}" añadido.`);
+            }
+        }
+
+        async function deleteCommercial(name) {
+            commercialsData = commercialsData.filter(c => c !== name);
+            localStorage.setItem(COMMERCIALS_KEY, JSON.stringify(commercialsData));
+            if (window.db && typeof window.db.ref === 'function') {
+                window.db.ref('system_commercials').set(commercialsData);
+            }
+            renderCommercials();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
+        }
+
+        window.addEventListener('load', () => {
+            initDirectory();
+        });
+    </script>
+
+</body>
+
+</html>
