@@ -345,25 +345,21 @@
         return setStoredItem(STORAGE_KEY_MASTER_TIERS, JSON.stringify(db));
     }
 
+    // Legacy fixed prices are converted relative to their first (base) tier.
+    function normalizeOccTiers(tiers) {
+        const reference = Number(tiers[0]?.price);
+        return tiers.map((t, i) => ({
+            minOcc: t.minOcc, maxOcc: t.maxOcc,
+            incPct: Number.isFinite(t.incPct) ? Math.max(0, t.incPct)
+                : reference > 0 && Number.isFinite(t.price)
+                    ? Math.max(0, Math.round((t.price / reference - 1) * 10000) / 100)
+                    : (DEFAULT_DYNAMIC_SCALE_TIERS[i]?.incPct || 0)
+        }));
+    }
+
     function getOccTiers(hotel = 'Guadiana', year = 2027, month = 'all') {
-        const hKey = normalizeHotel(hotel);
-        const yKey = String(year);
-        const mKey = String(month);
-
-        const master = getMasterTiersDB();
-        if (master[hKey] && master[hKey][yKey]) {
-            if (master[hKey][yKey][mKey]) return master[hKey][yKey][mKey];
-            if (master[hKey][yKey]['all']) return master[hKey][yKey]['all'];
-        }
-
-        // Factor según hotel: Cumbria tiene escalados de partida 3€ inferiores a Guadiana
-        if (hKey === 'Cumbria') {
-            return DEFAULT_OCC_TIERS.map(t => ({
-                ...t,
-                price: Math.max(45, t.price - 3)
-            }));
-        }
-        return DEFAULT_OCC_TIERS.map(t => ({ ...t }));
+        const saved = getMasterTiersDB()[normalizeHotel(hotel)]?.[String(year)];
+        return normalizeOccTiers(saved?.[String(month)] || saved?.all || DEFAULT_DYNAMIC_SCALE_TIERS);
     }
 
     function saveOccTiers(hotel = 'Guadiana', year = 2027, month = 'all', tiers) {
@@ -375,7 +371,7 @@
         const master = getMasterTiersDB();
         master[hKey] = master[hKey] || {};
         master[hKey][yKey] = master[hKey][yKey] || {};
-        master[hKey][yKey][mKey] = tiers;
+        master[hKey][yKey][mKey] = normalizeOccTiers(tiers);
 
         return saveMasterTiersDB(master);
     }
@@ -1606,6 +1602,10 @@
         const isException = baseInfo.isException || !!(customEvent && (customEvent.barBase > 0 || customEvent.name));
         const eventName = customEvent?.name || baseInfo.eventName || '';
 
+        const belowBase = currentPrice > 0 && currentPrice < baseBar;
+        const belowBaseAmount = belowBase ? Number((baseBar - currentPrice).toFixed(2)) : 0;
+        const baseWarning = belowBase ? `Tarifa por debajo de la base: ${currentPrice} € frente a ${baseBar} € (faltan ${belowBaseAmount} €).` : '';
+
         // BAR VIGENTE (precio publicado actualmente; fallback a base si no está cargado)
         const barVigente = (currentPrice > 0) ? Math.round(currentPrice) : baseBar;
 
@@ -1643,6 +1643,8 @@
                 year: yearNum,
                 action: 'REVISAR',
                 baseBar,
+
+                belowBase, belowBaseAmount, baseWarning,
                 barVigente,
                 barObjetivo: baseBar,
                 currentPrice: barVigente,
@@ -1698,6 +1700,8 @@
                 year: yearNum,
                 action: act,
                 baseBar,
+
+                belowBase, belowBaseAmount, baseWarning,
                 barVigente,
                 barObjetivo: baseBar,
                 currentPrice: barVigente,
@@ -1735,33 +1739,12 @@
 
         // === PASO 6: BAR OBJETIVO SEGÚN ESCALADO ===
         // Tramos comerciales acordados sobre la BAR base (no acumulativos):
-        // 0–50%: 0% | 51–60%: +5% | 61–70%: +13% | 71–80%: +21% | 81–90%: +37% | 91–95%: +53% | >95%: +77%
-        let incPct = 0;
-        let tierLabel = '0–50%';
+        // Porcentajes configurados por hotel, año y mes sobre la base de la fecha.
         const occTierCheck = Math.round(effectiveOcc);
-
-        if (occTierCheck > 95) {
-            incPct = 77;
-            tierLabel = '>95%';
-        } else if (occTierCheck >= 91) {
-            incPct = 53;
-            tierLabel = '91–95%';
-        } else if (occTierCheck >= 81) {
-            incPct = 37;
-            tierLabel = '81–90%';
-        } else if (occTierCheck >= 71) {
-            incPct = 21;
-            tierLabel = '71–80%';
-        } else if (occTierCheck >= 61) {
-            incPct = 13;
-            tierLabel = '61–70%';
-        } else if (occTierCheck >= 51) {
-            incPct = 5;
-            tierLabel = '51–60%';
-        } else {
-            incPct = 0;
-            tierLabel = '0–50%';
-        }
+        const configuredTiers = getOccTiers(hotelName, yearNum, monthNum);
+        const selectedTier = configuredTiers.find(t => occTierCheck >= t.minOcc && occTierCheck <= t.maxOcc) || configuredTiers[0];
+        const incPct = selectedTier.incPct;
+        const tierLabel = selectedTier.minOcc + '-' + selectedTier.maxOcc + '%';
 
         const barObjetivo = Math.round(baseBar * (1 + incPct / 100));
 
@@ -1875,10 +1858,10 @@
                 if (barVigente < barObjetivo) {
                     action = 'SUBIR';
                     proposedPrice = barObjetivo;
-                    triggerText = `📈 Evaluar +5% (${barObjetivo}€)`;
-                    demandStatus = 'SUBIDA CONDICIONADA +5%';
+                    triggerText = `📈 Evaluar +${incPct}% (${barObjetivo}€)`;
+                    demandStatus = `SUBIDA CONDICIONADA +${incPct}%`;
                     reasons.push(`Ocupación en ${effectiveOcc.toFixed(0)}% (tramo 51–60%).`);
-                    reasons.push(`Primera subida condicional (+5% sobre BAR base ${baseBar} € = ${barObjetivo} €) justificada por pick-up favorable (+${pickupMetrics.bestPickup} RN) y antelación de ${daysOut} días.`);
+                    reasons.push(`Primera subida condicional (+${incPct}% sobre BAR base ${baseBar} € = ${barObjetivo} €) justificada por pick-up favorable (+${pickupMetrics.bestPickup} RN) y antelación de ${daysOut} días.`);
                 } else {
                     action = 'MANTENER';
                     proposedPrice = barVigente;
@@ -1975,7 +1958,7 @@
         }
         // --- SUB-CASO F: OCUPACIÓN MÁS DEL 95 % Y MENOS DEL 100 % (Proteger últimas plazas) ---
         else {
-            // El escalado del +77% es una referencia comercial orientativa, no una instrucción obligatoria.
+            // El escalado configurado es una referencia comercial orientativa.
             // Evaluar antelación, pickup, tarifas vigentes, demanda pendiente y posibles eventos.
             const hasConfirmedPeakDemand = (pickupMetrics.isPositive && (pickupMetrics.isFavorable || pickupMetrics.pickupPressure >= 0.25) && !pickupMetrics.isNegative);
 
@@ -1983,18 +1966,18 @@
                 if (hasConfirmedPeakDemand) {
                     action = 'SUBIR';
                     proposedPrice = barObjetivo;
-                    triggerText = `🔥 Evaluar Pico +77% (${barObjetivo}€)`;
+                    triggerText = `🔥 Evaluar Pico +${incPct}% (${barObjetivo}€)`;
                     demandStatus = 'DEMANDA PICO CONFIRMADA';
                     reasons.push(`Ocupación crítica (${effectiveOcc.toFixed(0)}% · ${availableRooms} habs libres). Demanda activa confirmada (+${pickupMetrics.bestPickup} RN).`);
-                    reasons.push(`Escalado orientativo (+77% sobre BAR base ${baseBar} € = ${barObjetivo} €) aplicable por presión de absorción en las últimas plazas.`);
+                    reasons.push(`Escalado orientativo (+${incPct}% sobre BAR base ${baseBar} € = ${barObjetivo} €) aplicable por presión de absorción en las últimas plazas.`);
                 } else {
                     action = 'MANTENER';
                     proposedPrice = barVigente;
                     triggerText = `🔒 REVISAR PROMOCIONES (${effectiveOcc.toFixed(0)}%)`;
                     demandStatus = 'REVISAR PROMOCIONES Y CANALES';
                     isCommerciallyOptimal = true;
-                    reasons.push(`Ocupación muy alta (${effectiveOcc.toFixed(0)}% · ${availableRooms} habs libres). BAR base: ${baseBar} €. BAR objetivo orientativo: ${barObjetivo} € (+77%).`);
-                    reasons.push(`Tarifa vigente (${barVigente} €). El escalado del +77% es una referencia orientativa y no debe aplicarse automáticamente sin demanda activa contrastada.`);
+                    reasons.push(`Ocupación muy alta (${effectiveOcc.toFixed(0)}% · ${availableRooms} habs libres). BAR base: ${baseBar} €. BAR objetivo orientativo: ${barObjetivo} € (+${incPct}%).`);
+                    reasons.push(`Tarifa vigente (${barVigente} €). El escalado del +${incPct}% es una referencia orientativa y no debe aplicarse automáticamente sin demanda activa contrastada.`);
                     reasons.push(`Recomendación: MANTENER tarifa en ${barVigente} € y REVISAR PROMOCIONES Y CANALES DE BAJO RENDIMIENTO para proteger las últimas habitaciones sin cerrar la venta de inventario disponible.`);
                 }
             } else {
@@ -2007,6 +1990,8 @@
                 reasons.push('Revisar y limitar tarifas promocionales, descuentos y canales de menor rentabilidad sin cerrar inventario.');
             }
         }
+
+        if (baseWarning) reasons.unshift(baseWarning);
 
         // === PASO 9: RECOMENDACIÓN COMERCIAL FINAL ===
         // Si la acción es SUBIR pero el precio propuesto es menor o igual a la BAR vigente, MANTENER
@@ -2026,6 +2011,8 @@
             year: yearNum,
             action,
             baseBar,
+
+            belowBase, belowBaseAmount, baseWarning,
             barVigente,
             barObjetivo,
             currentPrice: roundedCurrent,

@@ -22,10 +22,10 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="js/nav.js"></script>
     <script src="js/theme-manager.js"></script>
-    <script src="js/firebase-auth.js?v=20261104-0033"></script>
-    <script src="js/version.js?v=20261104-0033"></script>
-    <script src="js/pricing-intelligence.js?v=20261104-0033"></script>
-    <script src="js/competencia-intelligence-ui.js?v=20261104-0033"></script>
+    <script src="js/firebase-auth.js?v=20261105-1731"></script>
+    <script src="js/version.js?v=20261105-1731"></script>
+    <script src="js/pricing-intelligence.js?v=20261105-1731"></script>
+    <script src="js/competencia-intelligence-ui.js?v=20261105-1731"></script>
 
     <link rel="stylesheet" href="css/tokens.css">
     <link rel="stylesheet" href="css/nav.css">
@@ -2388,7 +2388,8 @@
             const minFloor = getHotelMinPrice(hotel);
             const otbChange = (my.otbChange !== undefined) ? my.otbChange : (dynamic.pickup || 0);
 
-            const cacheSig = `${myP}|${mktPrice.toFixed(2)}|${currentOcc}|${minFloor}|${otbChange}|${d.activeSoldComps || 0}`;
+            const pricingConfigSig = window.PricingIntelligence ? JSON.stringify([PricingIntelligence.getBarMatrix(hotel, Number(d.dateISO.slice(0, 4))), PricingIntelligence.getOccTiers(hotel, Number(d.dateISO.slice(0, 4)), Number(d.dateISO.slice(5, 7)))]) : '';
+            const cacheSig = `${pricingConfigSig}|${myP}|${mktPrice.toFixed(2)}|${currentOcc}|${minFloor}|${otbChange}|${d.activeSoldComps || 0}`;
             if (d._yieldInfo[hotel] && d._yieldInfo[hotel]._sig === cacheSig && !d._yieldDirty) {
                 return d._yieldInfo[hotel];
             }
@@ -2454,6 +2455,11 @@
                 actionText = `En Rango (${targetPrice}€)`;
             }
 
+            if (rec.belowBase) {
+                actionColor = '#b91c1c';
+                cls = 'gap-critical';
+                actionText = `⚠ Bajo base: ${rec.barVigente} € < ${rec.baseBar} €`;
+            }
             const yieldResult = {
                 _sig: cacheSig,
                 targetPrice: targetPrice,
@@ -2472,6 +2478,8 @@
                 reasons: rec.reasons,
                 demandStatus: rec.demandStatus,
                 rangeCalculation: rec.rangeCalculation,
+                belowBase: rec.belowBase,
+                baseWarning: rec.baseWarning,
                 baseBar: rec.baseBar,
                 barObjetivo: rec.barObjetivo || rec.baseBar,
                 barVigente: rec.barVigente || Math.round(myP),
@@ -6405,7 +6413,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     </div>
                 </div>
                 <p style="font-size:0.76rem; color:var(--text-muted); margin:0 0 12px 0;">
-                    Tarifas orientativas de referencia según tramo de ocupación prevista. Se integran con el ritmo de pick-up y antelación.
+                    Incremento porcentual sobre la base del mes y día de la semana. Objetivo = base × (1 + porcentaje / 100), sin acumular tramos. Se integra con el pick-up y la antelación.
                 </p>
                 <div id="occTiersEditorContainer" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:8px;">
                     <!-- Injected JS -->

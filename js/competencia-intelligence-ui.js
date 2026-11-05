@@ -373,7 +373,7 @@
                                                         <td style="padding:9px 10px; white-space:nowrap;">
                                                             ${pickupDualHtml}
                                                         </td>
-                                                        <td style="font-weight:700; padding:9px 10px; white-space:nowrap;">${dItem.price} €</td>
+                                                        <td style="font-weight:700; padding:9px 10px; white-space:nowrap;">${dItem.price} €${r.belowBase ? `<div style="color:#b91c1c; font-size:0.72rem;" title="${r.baseWarning}">⚠ Bajo base (${r.baseBar} €)</div>` : ''}</td>
                                                         <td style="padding:9px 10px; color:var(--text-muted); white-space:nowrap;">${mktSingle}</td>
                                                         <td style="padding:9px 10px; font-size:0.75rem; color:var(--text-muted); font-weight:700; white-space:nowrap;" title="${r.rangeCalculation || ''}">${cleanRange}</td>
                                                         <td style="padding:9px 10px; white-space:nowrap;">
@@ -675,7 +675,7 @@
 
             kpiGrid.innerHTML = `
                 <div class="day-detail-box">
-                    <div class="box-lbl">Tarifa BAR Base ${stayYear}</div>
+                    <div class="box-lbl">Tarifa BAR Base ${stayYear}</div>${rec.belowBase ? `<div role="alert" style="color:#b91c1c; font-weight:700;">⚠ ${rec.baseWarning}</div>` : ''}
                     <div class="box-val">${rec.baseBar} €</div>
                     <div style="font-size:0.75rem; color:var(--text-muted); margin-top:3px;">
                         Publicado: <b>${currentPrice > 0 ? currentPrice + ' €' : 'Sin tarifa'}</b> · Objetivo: <b>${rec.barObjetivo} €</b>
@@ -1308,8 +1308,8 @@
                 <div style="background:var(--bg-card); padding:8px 10px; border-radius:10px; border:1px solid var(--border); text-align:center;">
                     <div style="font-size:0.7rem; color:var(--text-muted); font-weight:700;">${t.minOcc} - ${t.maxOcc}%</div>
                     <div style="display:flex; align-items:center; justify-content:center; gap:2px; margin-top:4px;">
-                        <input type="number" id="tier_input_${idx}" value="${t.price}" class="matrix-input" style="width:52px; font-weight:800; font-size:0.85rem;">
-                        <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">€</span>
+                        <input type="number" id="tier_input_${idx}" value="${t.incPct}" min="0" step="0.01" aria-label="Incremento porcentual sobre la base" class="matrix-input" style="width:52px; font-weight:800; font-size:0.85rem;">
+                        <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">%</span>
                     </div>
                 </div>
             `).join('');
@@ -1340,7 +1340,7 @@
             const inp = document.getElementById(`tier_input_${idx}`);
             return {
                 ...t,
-                price: inp ? (parseFloat(inp.value) || t.price) : t.price
+                incPct: inp && Number.isFinite(parseFloat(inp.value)) ? Math.max(0, parseFloat(inp.value)) : t.incPct
             };
         });
         PricingIntelligence.saveOccTiers(matrixModalActiveHotel, matrixModalActiveYear, matrixModalActiveMonth, updatedTiers);
@@ -1394,7 +1394,7 @@
             const inp = document.getElementById(`tier_input_${idx}`);
             return {
                 ...t,
-                price: inp ? (parseFloat(inp.value) || t.price) : t.price
+                incPct: inp && Number.isFinite(parseFloat(inp.value)) ? Math.max(0, parseFloat(inp.value)) : t.incPct
             };
         });
 
