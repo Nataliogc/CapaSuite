@@ -18,6 +18,38 @@
         console.error(`[CapaSuite ERROR - ${new Date().toISOString()}]`, msg, data || '');
     };
 
+    // Firebase RTDB writes this advisory transport flag outside CapaStorage.
+    // A full origin must not abort its connection. Only this disposable flag
+    // may fall back to memory; auth tokens and application data retain native errors.
+    if (typeof Storage !== 'undefined' && !Storage.prototype.__capaTransportGuard) {
+        const proto = Storage.prototype;
+        const nativeSet = proto.setItem;
+        const nativeGet = proto.getItem;
+        const nativeRemove = proto.removeItem;
+        const fallback = new WeakMap();
+        const transportKey = 'firebase:previous_websocket_failure';
+        proto.setItem = function (key, value) {
+            if (key !== transportKey) return nativeSet.call(this, key, value);
+            try {
+                nativeSet.call(this, key, value);
+                fallback.delete(this);
+            } catch (error) {
+                if (error?.name !== 'QuotaExceededError' && error?.name !== 'NS_ERROR_DOM_QUOTA_REACHED') throw error;
+                fallback.set(this, String(value));
+            }
+        };
+        proto.getItem = function (key) {
+            if (key === transportKey && fallback.has(this)) return fallback.get(this);
+            return nativeGet.call(this, key);
+        };
+        proto.removeItem = function (key) {
+            const result = nativeRemove.call(this, key);
+            if (key === transportKey) fallback.delete(this);
+            return result;
+        };
+        Object.defineProperty(proto, '__capaTransportGuard', { value: true });
+    }
+
     // Readability is independent of write quota. Never hide an existing database.
     function removeExactLegacyDuplicates() {
         for (let i = localStorage.length - 1; i >= 0; i--) {

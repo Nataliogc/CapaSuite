@@ -28,3 +28,37 @@ test('commissions use one managed write and remain available without native stor
  const s=c.module.exports;s.saveChannelCommissionConfig('Guadiana',{'Booking.com':{pct:17}});
  s.saveChannelCommissionConfig('Guadiana',{'Booking.com':{pct:17}});assert.equal(writes,1);assert.equal(s.getChannelCommissionConfig('Guadiana')['Booking.com'].pct,17);
 });
+
+test('Firebase transport flag survives full native storage without hiding other write failures',()=>{
+ class NativeStorage {
+  constructor(){this.data={};this.full=false;this.errorName='QuotaExceededError';}
+  get length(){return Object.keys(this.data).length;}
+  key(i){return Object.keys(this.data)[i];}
+  getItem(k){return this.data[k]??null;}
+  setItem(k,v){if(this.full)throw Object.assign(Error('blocked'),{name:this.errorName});this.data[k]=String(v);}
+  removeItem(k){delete this.data[k];}
+ }
+ const local=new NativeStorage(), session=new NativeStorage();
+ local.setItem('v3_db','preserved');local.setItem('firebase:previous_websocket_failure','false');local.full=true;
+ const c={Storage:NativeStorage,localStorage:local,sessionStorage:session,console,CustomEvent:function(){}};c.window=c;
+ vm.createContext(c);const source=fs.readFileSync('js/storage.js','utf8');vm.runInContext(source,c);
+ const key='firebase:previous_websocket_failure';
+ assert.doesNotThrow(()=>local.setItem(key,'true'));
+ assert.equal(local.getItem(key),'true');assert.equal(local.data[key],'false');
+ assert.equal(local.getItem('v3_db'),'preserved');
+ assert.throws(()=>local.setItem('firebase:authUser','token'),{name:'QuotaExceededError'});
+ assert.throws(()=>local.setItem('v3_db','new'),{name:'QuotaExceededError'});
+ assert.equal(session.getItem(key),null);
+ local.removeItem(key);assert.equal(local.getItem(key),null);
+ local.setItem(key,'true');local.full=false;local.setItem(key,'false');
+ assert.equal(local.getItem(key),'false');assert.equal(local.data[key],'false');
+ const set=NativeStorage.prototype.setItem;vm.runInContext(source,c);assert.equal(NativeStorage.prototype.setItem,set);
+ local.full=true;local.errorName='SecurityError';assert.throws(()=>local.setItem(key,'true'),{name:'SecurityError'});
+});
+
+test('all Firebase pages install the storage guard before loading the SDK',()=>{
+ for(const file of fs.readdirSync('.').filter(p=>p.endsWith('.html'))){
+  const html=fs.readFileSync(file,'utf8');const sdk=html.indexOf('firebase-database.js');if(sdk<0)continue;
+  const storage=html.indexOf('js/storage.js?v=20261105-1830');assert.ok(storage>=0&&storage<sdk,file);
+ }
+});
