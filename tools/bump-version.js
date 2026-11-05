@@ -103,7 +103,6 @@ function run() {
         let modified = false;
 
         // Reemplazar ?v=... en scripts clave
-        // scriptsToBust definido a nivel de función
         scriptsToBust.forEach(script => {
             const regex = new RegExp(`(src=["'][^"']*${script}\\?v=)[^"']+`, 'g');
             if (regex.test(content)) {
@@ -111,6 +110,12 @@ function run() {
                 modified = true;
             }
         });
+
+        const cssRegexHtml = /(['"][^'"]*css\/nav\.css)(?:\?v=[^'"]*)?(['"])/g;
+        if (cssRegexHtml.test(content)) {
+            content = content.replace(cssRegexHtml, `$1?v=${queryTimestamp}$2`);
+            modified = true;
+        }
 
         if (modified) {
             fs.writeFileSync(filePath, content, 'utf8');
@@ -127,6 +132,8 @@ function run() {
             const regex = new RegExp(`(['"][^'"]*${script}\\?v=)[^'"]+`, 'g');
             if (regex.test(swContent)) swContent = swContent.replace(regex, `$1${queryTimestamp}`);
         });
+        const cssRegexSw = /(['"][^'"]*css\/nav\.css)(?:\?v=[^'"]*)?(['"])/g;
+        if (cssRegexSw.test(swContent)) swContent = swContent.replace(cssRegexSw, `$1?v=${queryTimestamp}$2`);
         fs.writeFileSync(swPath, swContent, 'utf8');
         console.log(`📦 Service Worker actualizado con CACHE_NAME: 'capasuite-v${nextVersion}'`);
     }

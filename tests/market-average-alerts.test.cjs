@@ -1,0 +1,6 @@
+const test=require('node:test'),assert=require('node:assert/strict');
+const detect=require('../js/market-average-alerts.js');
+const make=(last=100)=>[2,9,16,23,30].map((day,i)=>({date:`2026-11-${String(day).padStart(2,'0')}`,hotels:{A:{price:i===4?last:100},B:{price:i===4?last:100},C:{price:i===4?last:100},Guadiana:{price:999},Cumbria:{price:999}}}));
+test('detects rises and falls using comparable dates without mutating input',()=>{for(const price of [150,60]){const rows=make(price),before=JSON.stringify(rows),a=detect(rows);assert.equal(a.length,1);assert.equal(a[0].average,price);assert.equal(a[0].baseline,100);assert.equal(a[0].count,3);assert.equal(JSON.stringify(rows),before);}});
+test('ignores normal variation, inadequate samples and unavailable rivals',()=>{assert.equal(detect(make(120)).length,0);assert.equal(detect(make(150),['C']).length,0);const rows=make(150);rows[0].hotels.A.sold=true;rows[1].hotels.A.sold=true;assert.equal(detect(rows).length,0);});
+test('does not compare different months, weekdays or duplicate dates',()=>{const rows=make(150);rows[0].date='2026-10-02';rows[1].date='2026-11-10';assert.equal(detect(rows).length,0);assert.equal(detect([make(150)[0],make(150)[0],make(150)[0],make(150)[4]]).length,0);});

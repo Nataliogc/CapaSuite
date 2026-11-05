@@ -20,10 +20,10 @@
         if (!emailEl) return;
 
         // Ocultar cualquier punto verde residual
-        document.querySelectorAll('.user-chip .dot').forEach(d => d.style.display = 'none');
+        document.querySelectorAll('.user-chip .dot').forEach(d => { if (d && d.style) d.style.display = 'none'; });
         // Ocultar botón logout residual exterior si existe
         const outerLogout = document.querySelector('.user-chip > .logout-btn');
-        if (outerLogout) outerLogout.style.display = 'none';
+        if (outerLogout && outerLogout.style) outerLogout.style.display = 'none';
 
         user = user || window.auth?.currentUser || (window.getSavedAuthSession && window.getSavedAuthSession());
 
@@ -189,7 +189,18 @@
                 `;
             }
         }
-        if (window.CAPASUITE_VERSION) {
+        if (typeof document !== 'undefined' && document.body && document.body.style) {
+            document.body.style.paddingTop = nav.style && nav.style.display === 'none' ? '0px' : '60px';
+        }
+        const userChip = nav.querySelector && (nav.querySelector('.user-chip') || nav.querySelector('.nav-user'));
+        if (userChip && !nav.querySelector('.app-version-badge, [data-version-badge]') && document.createElement) {
+            const badge = document.createElement('div');
+            badge.className = 'app-version-badge';
+            badge.style.cssText = 'padding:2px 8px; font-size:0.72rem;';
+            if (userChip.prepend) userChip.prepend(badge);
+            else if (userChip.insertBefore) userChip.insertBefore(badge, userChip.firstChild);
+        }
+        if (window.CAPASUITE_VERSION && nav.querySelectorAll) {
             nav.querySelectorAll('.app-version-badge, [data-version-badge]').forEach(el => {
                 el.innerHTML = `<span class="version-dot"></span><span>v${window.CAPASUITE_VERSION.version}</span>`;
                 el.title = `CapaSuite v${window.CAPASUITE_VERSION.version} · Compilación: ${window.CAPASUITE_VERSION.buildDate}`;

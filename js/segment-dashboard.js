@@ -1,3 +1,16 @@
+window.toggleGrtanteoAlert = function(bodyId, btnId) {
+    const b = document.getElementById(bodyId);
+    const btn = document.getElementById(btnId);
+    if (!b) return;
+    const isHidden = b.style.display === 'none' || !b.style.display;
+    b.style.display = isHidden ? 'flex' : 'none';
+    if (btn) {
+        btn.innerHTML = isHidden 
+            ? '<span>Ocultar detalles</span> <span style="font-size:0.85rem;">▲</span>' 
+            : '<span>Ver detalles</span> <span style="font-size:0.85rem;">▼</span>';
+    }
+};
+
 
 function getProtocolChannelsDescription(segName, hotel) {
     const activeHotel = String(hotel || currentHotel || (window.CapaState && window.CapaState.activeHotel) || 'Guadiana');
@@ -943,23 +956,36 @@ function renderDashboard() {
             globalAlertEl.style.display = 'block';
             globalAlertEl.innerHTML = `
                 <div class="grtanteo-alert-card">
-                    <div class="grtanteo-alert-header">
-                        <div>
-                            <h4 class="grtanteo-alert-title">
-                                <span>⚠️</span> AVISO CRÍTICO DE REVENUE · Reservas en GRTANTEO con menos de 15 días
-                            </h4>
-                            <p class="grtanteo-alert-desc">
-                                <strong>Política de Revenue:</strong> No debemos tener reservas en <strong>GRTANTEO</strong> con menos de 15 días de la llegada.
-                                Hay <strong>${grtanteoAlerts.totalRooms} habitaciones-noche</strong> (${fmt(grtanteoAlerts.totalRevenue)}) retenidas en tanteo que deben <strong>confirmarse a GRUPOS</strong> o <strong>liberarse al inventario</strong> inmediatamente para no retener inventario bloqueado.
-                            </p>
+                    <div class="grtanteo-alert-bar" onclick="window.toggleGrtanteoAlert('grtanteoGlobalAlertBody', 'grtanteoGlobalToggleBtn')">
+                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                            <span style="font-size: 1.15rem; line-height: 1;">⚠️</span>
+                            <span class="grtanteo-alert-title" style="margin: 0; font-size: 0.95rem;">
+                                AVISO CRÍTICO DE REVENUE · Reservas en GRTANTEO con menos de 15 días (${grtanteoAlerts.totalRooms} RN)
+                            </span>
+                            <span class="grtanteo-date-pill" style="font-size: 0.75rem; padding: 2px 8px;">
+                                ${fmt(grtanteoAlerts.totalRevenue)} · ${grtanteoAlerts.items.length} fecha(s)
+                            </span>
                         </div>
-                        <button class="btn" style="padding: 6px 14px; font-size: 0.8rem; background: #ef4444;" onclick="selectSegment('GRTANTEO')">
-                            🔍 Analizar GRTANTEO
+                        <button type="button" class="grtanteo-toggle-btn" id="grtanteoGlobalToggleBtn">
+                            <span>Ver detalles</span> <span style="font-size: 0.85rem;">▼</span>
                         </button>
                     </div>
-                    <div class="grtanteo-alert-dates">
-                        ${pillsHtml}
-                        ${moreHtml}
+                    <div id="grtanteoGlobalAlertBody" class="grtanteo-alert-body" style="display: none;">
+                        <div class="grtanteo-alert-header">
+                            <div>
+                                <p class="grtanteo-alert-desc" style="margin-top: 0;">
+                                    <strong>Política de Revenue:</strong> No debemos tener reservas en <strong>GRTANTEO</strong> con menos de 15 días de la llegada.
+                                    Hay <strong>${grtanteoAlerts.totalRooms} habitaciones-noche</strong> (${fmt(grtanteoAlerts.totalRevenue)}) retenidas en tanteo que deben <strong>confirmarse a GRUPOS</strong> o <strong>liberarse al inventario</strong> inmediatamente para no retener inventario bloqueado.
+                                </p>
+                            </div>
+                            <button class="btn" style="padding: 6px 14px; font-size: 0.8rem; background: #ef4444; color: white;" onclick="event.stopPropagation(); selectSegment('GRTANTEO')">
+                                🔍 Analizar GRTANTEO
+                            </button>
+                        </div>
+                        <div class="grtanteo-alert-dates">
+                            ${pillsHtml}
+                            ${moreHtml}
+                        </div>
                     </div>
                 </div>
             `;
@@ -1169,11 +1195,7 @@ function renderDashboard() {
     const mover = previous ? [...rows].sort((a, b) => Math.abs(b.accommodation - (b.oldAccommodation ?? 0)) - Math.abs(a.accommodation - (a.oldAccommodation ?? 0)))[0] : null;
     el('insights').replaceChildren();
     const notes = [];
-    if (grtanteoAlerts.hasAlert) {
-        const topSample = grtanteoAlerts.items.slice(0, 3).map(i => `${i.dateFormatted} (${i.rooms} RN)`).join(', ');
-        const extraText = grtanteoAlerts.items.length > 3 ? ` (+${grtanteoAlerts.items.length - 3} más)` : '';
-        notes.push(`🚨 AVISO CRÍTICO GRTANTEO: Detectadas ${grtanteoAlerts.totalRooms} habitaciones en Grupos Tanteo a menos de 15 días de la llegada [${topSample}${extraText}]. Por política comercial no se pueden mantener tanteos con menos de 15 días: deben confirmarse a GRUPOS o liberarse de inmediato.`);
-    }
+    // Nota: El aviso de GRTANTEO ya se muestra destacado en el banner desplegable superior para evitar duplicidad.
     if (currentSegment) {
         notes.push(`${scopeName}: ${pct(totalEffectiveAcc ? displayProd / totalEffectiveAcc : null)} de la producción de habitación ${isNetRevenueMode ? 'neta ' : ''}del hotel y ${pct(hotelTotals.rooms ? totals.rooms / hotelTotals.rooms : null)} de sus habitaciones-noche.`);
         if (prior) notes.push(`Frente a ${compareYear}: ${fmt(displayProd - displayPriorProd)} de producción ${isNetRevenueMode ? 'neta ' : ''}de habitación, ${fmt(totals.rooms - prior.rooms, 'rooms')} habitaciones-noche y ${fmt(displayAdr != null && displayPriorAdr != null ? displayAdr - displayPriorAdr : null, 'adr')} de diferencia en ADR.`);
@@ -1194,23 +1216,36 @@ function renderDashboard() {
                 mAlertEl.style.display = 'block';
                 mAlertEl.innerHTML = `
                     <div class="grtanteo-alert-card">
-                        <div class="grtanteo-alert-header">
-                            <div>
-                                <h4 class="grtanteo-alert-title">
-                                    <span>🚨</span> AVISO OPERATIVO: No debemos tener reservas en GRTANTEO con menos de 15 días de la llegada
-                                </h4>
-                                <p class="grtanteo-alert-desc">
-                                    Se han localizado <strong>${grtanteoAlerts.totalRooms} habitaciones-noche</strong> (${fmt(grtanteoAlerts.totalRevenue)}) a menos de 15 días de la fecha de llegada.
-                                    <br><strong>Acciones requeridas:</strong>
-                                    <br>1️⃣ <strong>Confirmar:</strong> Si el grupo está cerrado, cambiar el segmento en el PMS a <strong>GRUPOS</strong> (Grupos Confirmados).
-                                    <br>2️⃣ <strong>Liberar:</strong> Si no está cerrado, liberar inmediatamente el bloqueo para que las habitaciones vuelvan al inventario general y puedan venderse.
-                                </p>
+                        <div class="grtanteo-alert-bar" onclick="window.toggleGrtanteoAlert('grtanteoMonthlyAlertBody', 'grtanteoMonthlyToggleBtn')">
+                            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                <span style="font-size: 1.15rem; line-height: 1;">🚨</span>
+                                <span class="grtanteo-alert-title" style="margin: 0; font-size: 0.95rem;">
+                                    AVISO OPERATIVO: ${grtanteoAlerts.totalRooms} RN en GRTANTEO a menos de 15 días
+                                </span>
+                                <span class="grtanteo-date-pill" style="font-size: 0.75rem; padding: 2px 8px;">
+                                    ${fmt(grtanteoAlerts.totalRevenue)}
+                                </span>
                             </div>
+                            <button type="button" class="grtanteo-toggle-btn" id="grtanteoMonthlyToggleBtn">
+                                <span>Ver detalles</span> <span style="font-size: 0.85rem;">▼</span>
+                            </button>
                         </div>
-                        <div class="grtanteo-alert-dates">
-                            ${grtanteoAlerts.items.map(it => 
-                                `<span class="grtanteo-date-pill">📅 <strong>${it.dateFormatted}</strong>: ${it.rooms} RN · <em>${it.statusLabel}</em></span>`
-                            ).join('')}
+                        <div id="grtanteoMonthlyAlertBody" class="grtanteo-alert-body" style="display: none;">
+                            <div class="grtanteo-alert-header">
+                                <div>
+                                    <p class="grtanteo-alert-desc" style="margin-top: 0;">
+                                        Se han localizado <strong>${grtanteoAlerts.totalRooms} habitaciones-noche</strong> (${fmt(grtanteoAlerts.totalRevenue)}) a menos de 15 días de la fecha de llegada.
+                                        <br><strong>Acciones requeridas:</strong>
+                                        <br>1️⃣ <strong>Confirmar:</strong> Si el grupo está cerrado, cambiar el segmento en el PMS a <strong>GRUPOS</strong> (Grupos Confirmados).
+                                        <br>2️⃣ <strong>Liberar:</strong> Si no está cerrado, liberar inmediatamente el bloqueo para que las habitaciones vuelvan al inventario general y puedan venderse.
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="grtanteo-alert-dates">
+                                ${grtanteoAlerts.items.map(it => 
+                                    `<span class="grtanteo-date-pill">📅 <strong>${it.dateFormatted}</strong>: ${it.rooms} RN · <em>${it.statusLabel}</em></span>`
+                                ).join('')}
+                            </div>
                         </div>
                     </div>
                 `;

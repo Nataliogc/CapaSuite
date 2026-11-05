@@ -15,15 +15,15 @@
     <script src="js/xlsx.full.min.js"></script>
     <script src="js/chart.js"></script>
     <script src="js/state.js"></script>
-    <script src="js/storage.js?v=20261105-2140"></script>
+    <script src="js/storage.js?v=20261105-2206"></script>
     <script src="js/revenue-history.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="js/version.js?v=20261105-2140"></script>
+    <script src="js/version.js?v=20261105-2206"></script>
     <script src="js/nav.js"></script>
     <script src="js/pricing-intelligence.js"></script>
-    <script src="js/firebase-auth.js?v=20261105-2140"></script>
+    <script src="js/firebase-auth.js?v=20261105-2206"></script>
     <script src="js/theme-manager.js"></script>
 
     <style>
@@ -490,6 +490,11 @@
             from { transform: scale(0.95); opacity: 0; }
             to { transform: scale(1); opacity: 1; }
         }
+        .grtanteo-alert-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; user-select: none; }
+        .grtanteo-toggle-btn { padding: 5px 12px; font-size: 0.78rem; font-weight: 700; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); color: #ef4444; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease; white-space: nowrap; }
+        .grtanteo-alert-bar:hover .grtanteo-toggle-btn { background: rgba(239, 68, 68, 0.22); border-color: #ef4444; }
+        [data-theme="light"] .grtanteo-toggle-btn { color: #b91c1c; background: #fee2e2; border-color: #fca5a5; }
+        .grtanteo-alert-body { border-top: 1px dashed rgba(239, 68, 68, 0.25); padding-top: 12px; display: flex; flex-direction: column; gap: 12px; }
         .grtanteo-alert-card {
             background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(245, 158, 11, 0.08) 100%);
             border: 1px solid rgba(239, 68, 68, 0.35);
@@ -583,32 +588,35 @@
         }
 
     </style>
-    <link rel="stylesheet" href="css/nav.css">
+    <link rel="stylesheet" href="css/nav.css?v=20261105-2206">
 </head>
 
 <body style="padding: 0;">
-    <nav class="top-nav">
+        <nav class="top-nav" id="mainNav">
         <div class="nav-links">
             <a href="index.html">Inicio</a>
             <a href="AnalisisProduccion.html">Producción</a>
+            <a href="HistoricoAlojamiento.html">Histórico Alojamiento</a>
             <a href="AnalisisSegmentos.html" class="active">Segmentos</a>
             <a href="AnalisisCompetencia.html">Competencia</a>
             <a href="AnalisisCalendario.html">Calendario</a>
             <a href="CalculadoraPresupuesto.html">Presupuesto</a>
-            <a href="Analisis360.html">Vista 360º</a>
+            <a href="Analisis360.html">Vista 360°</a>
             <a href="AnalisisIA.html">Conclusiones IA</a>
             <a href="CargarDatos.html">Cargar Datos</a>
         </div>
         <div class="nav-user">
             <div class="user-chip">
+                <div class="app-version-badge" style="padding:2px 8px; font-size:0.72rem;" title="CapaSuite v2.7.68">
+                    <span class="version-dot" style="width:6px; height:6px;"></span>
+                    <span>v2.7.68</span>
+                </div>
                 <select id="hotelSelector" class="nav-hotel-select" onchange="switchHotel(this.value)">
                     <option value="Guadiana">Sercotel Guadiana</option>
                     <option value="Cumbria">Cumbria Spa & Hotel</option>
                 </select>
                 <div id="themeToggleBtn" onclick="toggleTheme()" title="Cambiar Modo">🌙</div>
-                <span class="dot"></span>
-                <span id="userEmailNav">Conectando...</span>
-                <span onclick="auth.signOut()" class="logout-btn" title="Cerrar sesiÃ³n" aria-label="Cerrar sesiÃ³n"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span>
+                <div id="userEmailNav" style="display:inline-flex; align-items:center;"></div>
             </div>
         </div>
     </nav>
@@ -828,7 +836,7 @@
     </div>
 
 
-    <script src="js/segment-analysis.js?v=20261105-2140"></script>
+    <script src="js/segment-analysis.js?v=20261105-2206"></script>
     <script src="js/segment-review.js?v=20261016-2"></script>
     <script src="js/production-groups.js?v=20261001-exclude-segments"></script>
     <script src="js/segment-dashboard.js?v=20261105-1830"></script>
