@@ -11,18 +11,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="js/theme-manager.js?v=20261001-ia-theme"></script>
     <script src="js/state.js"></script>
-    <script src="js/storage.js?v=20261105-2207"></script>
+    <script src="js/storage.js?v=20261105-2214"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="js/version.js?v=20261105-2207"></script>
+    <script src="js/version.js?v=20261105-2214"></script>
     <script src="js/nav.js"></script>
-    <script src="js/firebase-auth.js?v=20261105-2207"></script>
-    <script src="js/pricing-intelligence.js?v=20261105-2207"></script>
-    <script src="js/segment-analysis.js?v=20261105-2207"></script>
+    <script src="js/firebase-auth.js?v=20261105-2214"></script>
+    <script src="js/pricing-intelligence.js?v=20261105-2214"></script>
+    <script src="js/segment-analysis.js?v=20261105-2214"></script>
 
     <link rel="stylesheet" href="css/tokens.css">
-    <link rel="stylesheet" href="css/nav.css?v=20261105-2207">
+    <link rel="stylesheet" href="css/nav.css?v=20261105-2214">
     <style>
         :root {
             /* Page-specific variables not in tokens.css */
@@ -738,6 +738,10 @@
         }
 
         let currentFilterCategory = 'all';
+        try {
+            const savedFilter = sessionStorage.getItem('capasuite_ai_filter');
+            if (['all','priority','compliance','pricing','competitor','distribution','pickup','budget'].includes(savedFilter)) currentFilterCategory = savedFilter;
+        } catch (_) {}
         let allGeneratedInsights = [];
         let currentActiveInsightDates = [];
 
@@ -2328,28 +2332,28 @@
                 };
 
                 filterContainer.innerHTML = `
-                    <button class="filter-pill-btn active" data-cat="all" onclick="filterInsights('all')">
+                    <button type="button" class="filter-pill-btn ${currentFilterCategory === 'all' ? 'active' : ''}" data-cat="all" onclick="filterInsights('all')">
                         <span>📋</span> Todos (${counts.all})
                     </button>
-                    <button class="filter-pill-btn" data-cat="priority" onclick="filterInsights('priority')">
+                    <button type="button" class="filter-pill-btn" data-cat="priority" onclick="filterInsights('priority')">
                         <span>🔥</span> Alta Prioridad (${counts.priority})
                     </button>
-                    <button class="filter-pill-btn" data-cat="compliance" onclick="filterInsights('compliance')">
+                    <button type="button" class="filter-pill-btn" data-cat="compliance" onclick="filterInsights('compliance')">
                         <span>🎯</span> Cumplimiento Mes/Día (${counts.compliance})
                     </button>
-                    <button class="filter-pill-btn" data-cat="pricing" onclick="filterInsights('pricing')">
+                    <button type="button" class="filter-pill-btn" data-cat="pricing" onclick="filterInsights('pricing')">
                         <span>💰</span> Tarifas & Yield (${counts.pricing})
                     </button>
-                    <button class="filter-pill-btn" data-cat="competitor" onclick="filterInsights('competitor')">
+                    <button type="button" class="filter-pill-btn" data-cat="competitor" onclick="filterInsights('competitor')">
                         <span>🕵️</span> Competencia (${counts.competitor})
                     </button>
-                    <button class="filter-pill-btn" data-cat="distribution" onclick="filterInsights('distribution')">
+                    <button type="button" class="filter-pill-btn" data-cat="distribution" onclick="filterInsights('distribution')">
                         <span>👥</span> Canales & Mix (${counts.distribution})
                     </button>
-                    <button class="filter-pill-btn" data-cat="pickup" onclick="filterInsights('pickup')">
+                    <button type="button" class="filter-pill-btn" data-cat="pickup" onclick="filterInsights('pickup')">
                         <span>📅</span> Pick-up & Pace (${counts.pickup})
                     </button>
-                    <button class="filter-pill-btn" data-cat="budget" onclick="filterInsights('budget')">
+                    <button type="button" class="filter-pill-btn" data-cat="budget" onclick="filterInsights('budget')">
                         <span>📊</span> Metas Presupuesto (${counts.budget})
                     </button>
                 `;
@@ -2359,40 +2363,10 @@
                 countBadge.innerText = `${insights.length} Hallazgos`;
             }
 
-            const compDataRaw = CapaStorage.getItem('revenue_data_v2');
-            if (compDataRaw) {
-                try {
-                    const comp = (typeof compDataRaw === 'string') ? JSON.parse(compDataRaw) : compDataRaw;
-                    if (comp.data && comp.data.length > 0) {
-                        const lowDays = comp.data.filter(d => {
-                            const my = d.hotels?.[currentHotel];
-                            return my && !my.sold && my.price > 0 && my.price < d.compAvg * 0.85;
-                        });
-                        if (lowDays.length > 0 && typeof addInsight === 'function') {
-                            const avgRoomsDay = Math.max(10, Math.round(
-                                otbRN.reduce((a, b) => a + b, 0) / Math.max(1, otbRN.filter(r => r > 0).length) / 30
-                            ));
-                            const estLoss = lowDays.reduce((acc, d) => {
-                                const gap = (d.compAvg || 0) - (d.hotels[currentHotel]?.price || 0);
-                                return acc + gap * avgRoomsDay;
-                            }, 0);
-                            const topDays = lowDays.slice(0, 3)
-                                .map(d => {
-                                    const date = String(d.dateISO || d.date || d.checkIn || 'Fecha no disponible')
-                                        .replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
-                                    return `<b>${date}</b>`;
-                                }).join(', ');
-                            addInsight('warning', '💰 Fechas para revisar tarifa',
-                                `<b>${lowDays.length} días</b> con tarifa >15% inferior al mercado. Escenario orientativo: <b>${fmtEuro(estLoss)}</b>, calculado como diferencia de tarifa × ${avgRoomsDay} habitaciones por día. No representa una pérdida comprobada ni garantiza demanda a ese precio. Primeras fechas detectadas: ${topDays}.`,
-                                'AnalisisCompetencia.html');
-                        }
-                    }
-                } catch (e) {}
-            }
-
-            if (container.innerHTML === '') {
+            if (container) {
                 if (insights.length === 0) {
                     container.innerHTML = '<p style="text-align:center; padding:30px; color:var(--text-muted);">No he encontrado anomalías significativas. El hotel presenta un rendimiento muy equilibrado.</p>';
+                    filterInsights(currentFilterCategory);
                     return;
                 }
 
@@ -2433,6 +2407,7 @@
 
         function filterInsights(category) {
             currentFilterCategory = category;
+            try { sessionStorage.setItem('capasuite_ai_filter', category); } catch (_) {}
             document.querySelectorAll('.filter-pill-btn').forEach(btn => {
                 if (btn.getAttribute('data-cat') === category) btn.classList.add('active');
                 else btn.classList.remove('active');

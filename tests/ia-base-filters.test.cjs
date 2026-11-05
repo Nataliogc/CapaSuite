@@ -15,3 +15,14 @@ test('below-base alert uses date-specific hotel base and skips sold, equal and p
  vm.createContext(c);vm.runInContext(html.slice(html.indexOf('            const belowBaseDates ='),html.indexOf('            allGeneratedInsights = insights;')),c);
  assert.equal(c.insights.length,1);assert.equal(c.insights[0].dates.length,1);assert.equal(c.insights[0].dates[0].gap,20);assert.equal(c.insights[0].dates[0].gapPct,25);assert.equal(c.insights[0].priority,'critical');
 });
+
+test('pricing remains selected after cards regenerate, even with old content in the container',()=>{
+ let cards=[];const container={_html:'old legacy card',get innerHTML(){return this._html},set innerHTML(value){this._html=value;cards=[...value.matchAll(/class="insight-item ([^"]+)" data-category="([^"]+)"/g)].map(m=>({style:{},getAttribute:()=>m[2],classList:{contains:p=>p===m[1]}}));}};
+ const session={};const c={container,insights:[{id:'base',category:'pricing',priority:'critical',title:'Base'},{id:'rival',category:'competitor',priority:'warning',title:'Rival'}],currentFilterCategory:'pricing',sessionStorage:{setItem:(k,v)=>session[k]=v},document:{querySelectorAll:s=>s==='.insight-item'?cards:[]}};
+ vm.createContext(c);vm.runInContext(html.slice(html.indexOf('        function filterInsights('),html.indexOf('        function openDatesModal(')),c);
+ const start=html.indexOf('            if (container) {',html.indexOf('// Render Filter Buttons'));
+ const end=html.indexOf('            filterInsights(currentFilterCategory);\n        }',start)+'            filterInsights(currentFilterCategory);'.length;
+ const render='(function(){'+html.slice(start,end)+'})()';
+ vm.runInContext(render,c);assert.equal(cards.length,2);assert.equal(cards[0].style.display,'flex');assert.equal(cards[1].style.display,'none');
+ vm.runInContext(render,c);assert.equal(c.currentFilterCategory,'pricing');assert.equal(cards[0].style.display,'flex');assert.equal(cards[1].style.display,'none');assert.equal(session.capasuite_ai_filter,'pricing');
+});
