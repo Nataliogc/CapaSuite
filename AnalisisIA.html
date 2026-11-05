@@ -11,17 +11,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="js/theme-manager.js?v=20261001-ia-theme"></script>
     <script src="js/state.js"></script>
-    <script src="js/storage.js?v=20261105-2206"></script>
+    <script src="js/storage.js?v=20261105-2207"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="js/version.js?v=20261105-2206"></script>
+    <script src="js/version.js?v=20261105-2207"></script>
     <script src="js/nav.js"></script>
-    <script src="js/firebase-auth.js?v=20261105-2206"></script>
-    <script src="js/segment-analysis.js?v=20261105-2206"></script>
+    <script src="js/firebase-auth.js?v=20261105-2207"></script>
+    <script src="js/pricing-intelligence.js?v=20261105-2207"></script>
+    <script src="js/segment-analysis.js?v=20261105-2207"></script>
 
     <link rel="stylesheet" href="css/tokens.css">
-    <link rel="stylesheet" href="css/nav.css?v=20261105-2206">
+    <link rel="stylesheet" href="css/nav.css?v=20261105-2207">
     <style>
         :root {
             /* Page-specific variables not in tokens.css */
@@ -2210,6 +2211,33 @@
                 });
             }
 
+            const belowBaseDates = [];
+            const seenBaseDates = new Set();
+            const todayISO = new Date().toLocaleDateString('en-CA');
+            for (const row of compData?.data || []) {
+                const parsed = parseDateRobust(row.dateISO || row.date);
+                if (!parsed) continue;
+                const date = parsed.getFullYear() + '-' + String(parsed.getMonth() + 1).padStart(2, '0') + '-' + String(parsed.getDate()).padStart(2, '0');
+                if (date < todayISO || seenBaseDates.has(date)) continue;
+                const own = row.hotels?.[currentHotel];
+                const price = Number(own?.price);
+                if (own?.sold || !Number.isFinite(price) || price <= 0) continue;
+                const base = PricingIntelligence.getBaseBarForDate(date, currentHotel);
+                if (!(base.bar > 0) || price >= base.bar) continue;
+                seenBaseDates.add(date);
+                belowBaseDates.push({date, ...getDayInfo(date), price, base: base.bar, gap: base.bar - price,
+                    gapPct: (base.bar - price) / base.bar * 100, exception: base.isException});
+            }
+            if (belowBaseDates.length) insights.push({
+                id: 'ins_below_base', category: 'pricing', priority: 'critical', badge: 'TARIFA POR DEBAJO DE BASE',
+                title: belowBaseDates.length + ' fechas con tarifa publicada inferior a tu base',
+                diagnostic: 'Comparación de la tarifa propia cargada en Competencia con la base del hotel, año, mes y día de la semana, incluidas las excepciones de fecha.',
+                strategy: 'Revisar estas fechas y ajustar la tarifa publicada cuando corresponda. Son precios cargados, no el ADR de reservas ya vendidas; comprobar la vigencia de la captura antes de actuar.',
+                dates: belowBaseDates, datesTitle: 'Fechas por debajo de tu tarifa base',
+                datesSubtitle: 'Tarifa propia cargada frente a base configurada · Hoy y fechas futuras · Agrupado por mes',
+                datesBtnText: 'Ver fechas bajo base (' + belowBaseDates.length + ')', actionUrl: 'AnalisisCompetencia.html'
+            });
+
             allGeneratedInsights = insights;
 
             // Calculate Executive Revenue Health Score (0-100)
@@ -2400,6 +2428,7 @@
                     `;
                 }).join('');
             }
+            filterInsights(currentFilterCategory);
         }
 
         function filterInsights(category) {
@@ -2434,6 +2463,7 @@
             if (titleEl) titleEl.innerText = title;
             if (subEl) subEl.innerText = subtitle;
 
+            const isBelowBase = insightId === 'ins_below_base';
             const isSoldOut = (insightId === 'ins_soldout');
             const isCompAnomalies = (insightId === 'ins_comp_anomalies');
             const isCompChanges = (insightId === 'ins_comp_changes');
@@ -2444,7 +2474,9 @@
 
             if (tableContainer) {
                 let headerHtml = '';
-                if (isSoldOut) {
+                if (isBelowBase) {
+                    headerHtml = '<thead><tr><th>Fecha</th><th>Día</th><th>Tarifa publicada</th><th>Tarifa base</th><th>Por debajo</th><th>Desviación</th><th>Base aplicada</th></tr></thead>';
+                } else if (isSoldOut) {
                     headerHtml = `
                     <thead>
                         <tr style="background: rgba(0,0,0,0.03); border-bottom: 2px solid var(--border); font-size: 0.74rem; text-transform: uppercase; color: var(--text-muted);">
@@ -2554,7 +2586,7 @@
                     `;
                 }
 
-                const rowsHtml = targetInsight.dates.map(d => {
+                const renderDateRow = d => {
                     const displayDate = formatSpanishDate(d.dateISO || d.date);
                     const dayBadge = `
                         <span style="background: ${d.isWeekend ? '#fef3c7' : '#f1f5f9'}; color: ${d.isWeekend ? '#b45309' : '#475569'}; padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700; white-space: nowrap;">
@@ -2796,16 +2828,22 @@
                             </td>
                         </tr>
                     `;
-                }).join('');
-
-                tableContainer.innerHTML = `
-                    <table style="width: 100%; border-collapse: collapse; text-align: left;">
-                        ${headerHtml}
-                        <tbody>
-                            ${rowsHtml}
-                        </tbody>
-                    </table>
-                `;
+                };
+                const renderTable = dates => `<table style="width:100%; border-collapse:collapse; text-align:left;">${headerHtml}<tbody>${dates.map(renderDateRow).join('')}</tbody></table>`;
+                if (isBelowBase || isCompAnomalies) {
+                    const groups = new Map();
+                    for (const row of targetInsight.dates) {
+                        const date = parseDateRobust(row.dateISO || row.date);
+                        const key = date ? date.getFullYear() + '-' + String(date.getMonth()+1).padStart(2,'0') : 'unknown';
+                        if (!groups.has(key)) groups.set(key, []);
+                        groups.get(key).push(row);
+                    }
+                    tableContainer.innerHTML = [...groups].sort(([a],[b]) => a.localeCompare(b)).map(([key, rows]) => {
+                        const label = key === 'unknown' ? 'Sin fecha' : new Date(Number(key.slice(0,4)),Number(key.slice(5))-1,1).toLocaleDateString('es-ES',{month:'long',year:'numeric'});
+                        rows.sort((a,b)=>parseDateRobust(a.dateISO || a.date)-parseDateRobust(b.dateISO || b.date));
+                        return `<details style="border:1px solid var(--border); border-radius:10px; margin-bottom:12px;"><summary style="cursor:pointer; padding:16px; background:rgba(67,56,202,.06); font-weight:700;">${label} · ${rows.length} registros</summary><div style="overflow-x:auto;">${renderTable(rows)}</div></details>`;
+                    }).join('');
+                } else tableContainer.innerHTML = renderTable(targetInsight.dates);
             }
 
             if (modal) modal.style.display = 'flex';
@@ -2817,12 +2855,12 @@
         }
 
         function copyDatesModalData() {
-            const table = document.querySelector('#datesModalTableContent table');
-            if (!table) return;
-            const rows = Array.from(table.querySelectorAll('tr'));
+            const tables = Array.from(document.querySelectorAll('#datesModalTableContent table'));
+            if (!tables.length) return;
+            const rows = tables.flatMap((table, index) => Array.from(table.querySelectorAll('tr')).filter(row => !index || !row.querySelector('th')));
             const text = rows.map(r => {
                 const cells = Array.from(r.querySelectorAll('th, td'));
-                return cells.map(c => c.innerText.replace(/\s+/g, ' ').trim()).join('\t');
+                return cells.map(c => c.textContent.replace(/\s+/g, ' ').trim()).join('\t');
             }).join('\n');
 
             if (navigator.clipboard && navigator.clipboard.writeText) {
