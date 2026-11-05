@@ -395,10 +395,10 @@
     function getChannelCommissionConfig(hotel = '') {
         try {
             const h = (hotel && typeof hotel === 'string') ? hotel : 'Guadiana';
-            let raw = null;
+            let raw = inMemoryCommissionConfig[h] || null;
             if (typeof CapaStorage !== 'undefined' && CapaStorage.getItem) {
                 raw = CapaStorage.getItem('channel_commissions_' + h);
-            } else if (typeof window !== 'undefined' && window.localStorage) {
+            } else if (raw == null && typeof window !== 'undefined' && window.localStorage) {
                 raw = window.localStorage.getItem('channel_commissions_' + h);
             } else if (inMemoryCommissionConfig[h]) {
                 raw = inMemoryCommissionConfig[h];
@@ -424,14 +424,14 @@
                 if (!isSegment(k)) cleanConfig[k] = v;
             }
             const merged = { ...existing, ...cleanConfig };
+            if (JSON.stringify(existing) === JSON.stringify(merged)) return merged;
             const json = JSON.stringify(merged);
+            inMemoryCommissionConfig[h] = json;
             if (typeof CapaStorage !== 'undefined' && CapaStorage.setItem) {
                 CapaStorage.setItem('channel_commissions_' + h, json);
-            }
-            if (typeof window !== 'undefined' && window.localStorage) {
+            } else if (typeof window !== 'undefined' && window.localStorage) {
                 window.localStorage.setItem('channel_commissions_' + h, json);
             }
-            inMemoryCommissionConfig[h] = json;
             return merged;
         } catch (e) {
             console.error('Error guardando comisiones de canales:', e);

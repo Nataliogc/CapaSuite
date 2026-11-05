@@ -173,3 +173,8 @@ test('installed app persists user session across restarts unless user explicitly
     s.run("window.clearSavedAuthSession()");
     assert.equal(s.run("window.getSavedAuthSession()"), null);
 });
+test('simultaneous downloads share one request sequence',async()=>{
+ const s=setup({Guadiana:{2026:1}});
+ const a=s.run('downloadFromCloud()'), b=s.run('downloadFromCloud()');
+ assert.equal(a,b);assert.equal(await a,true);
+});

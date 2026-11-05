@@ -18,15 +18,34 @@
         console.error(`[CapaSuite ERROR - ${new Date().toISOString()}]`, msg, data || '');
     };
 
-    // 1. Probar localStorage
+    // Readability is independent of write quota. Never hide an existing database.
+    function removeExactLegacyDuplicates() {
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+            const key = localStorage.key(i);
+            if (key && !key.startsWith(VERSION + '_') && !key.startsWith('firebase:') &&
+                localStorage.getItem(VERSION + '_' + key) === localStorage.getItem(key)) {
+                localStorage.removeItem(key);
+            }
+        }
+    }
+
+    // Leave headroom for Firebase's small connection/auth metadata writes.
+    function writeWithHeadroom(key, value) {
+        const reserve = '__capasuite_headroom__';
+        try {
+            localStorage.setItem(reserve, ' '.repeat(32768));
+            localStorage.setItem(key, value);
+        } finally {
+            localStorage.removeItem(reserve);
+        }
+    }
+
     try {
-        const testKey = '__capasuite_test__';
-        localStorage.setItem(testKey, testKey);
-        localStorage.removeItem(testKey);
+        localStorage.getItem('__capasuite_test__');
         storageAvailable = true;
+        removeExactLegacyDuplicates();
     } catch (e) {
-        storageAvailable = false;
-        console.warn('CapaSuite: localStorage bloqueado. Usando modo de sesión avanzada.');
+        console.warn?.('CapaSuite: almacenamiento local no accesible.');
     }
 
     // 2. Fallback de sessionStorage (Persistencia entre páginas en la misma pestaña)
@@ -84,25 +103,16 @@
             let persisted = false;
             if (storageAvailable) {
                 try { 
-                    localStorage.setItem(`${VERSION}_${key}`, value);
+                    writeWithHeadroom(`${VERSION}_${key}`, value);
                     persisted = true;
                 } catch (e) { 
                     // Si se alcanza el límite de cuota (5MB), purgar SOLO copias legacy sin prefijo que ya
                     // están duplicadas con prefijo v3_ (getItem nunca las lee). Las claves sin duplicado
                     // (hotel activo, tema, ajustes, datos antiguos) siguen siendo necesarias y no se tocan.
                     try {
-                        let freed = false;
-                        for (let i = localStorage.length - 1; i >= 0; i--) {
-                            const k = localStorage.key(i);
-                            if (k && !k.startsWith(VERSION + '_') && !k.startsWith('firebase:') && localStorage.getItem(`${VERSION}_${k}`) !== null) {
-                                localStorage.removeItem(k);
-                                freed = true;
-                            }
-                        }
-                        if (freed) {
-                            localStorage.setItem(`${VERSION}_${key}`, value);
-                            persisted = true;
-                        }
+                        removeExactLegacyDuplicates();
+                        writeWithHeadroom(VERSION + '_' + key, value);
+                        persisted = true;
                     } catch (_) { }
 
                     if (!persisted) {

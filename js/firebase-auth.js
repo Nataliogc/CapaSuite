@@ -632,7 +632,7 @@ function withCloudTimeout(promise, opName) {
     let t;
     const timeout = new Promise((_, reject) => {
         t = setTimeout(() => {
-            const err = new Error('Tiempo de espera agotado al conectar con Firebase (' + opName + '). Es muy probable que se haya superado la cuota mensual del plan Spark.');
+            const err = new Error('Tiempo de espera agotado al conectar con Firebase (' + opName + '). No se ha podido confirmar la causa; revisa la conexión y el estado del servicio.');
             err.code = 'FIREBASE_TIMEOUT';
             reject(err);
         }, FIREBASE_OP_TIMEOUT_MS);
@@ -707,8 +707,8 @@ async function uploadToCloud() {
             console.log('☁️ CapaSuite: ' + changes.length + ' módulo(s) guardados correctamente.');
             return true;
         } catch (error) {
-            const isQuotaOrTimeout = error?.code === 'FIREBASE_TIMEOUT' || /quota|limit|bandwidth|exceeded/i.test(String(error?.message || ''));
-            syncStatus(isQuotaOrTimeout ? '⚠️ Cuota Firebase agotada. Guardado solo en esta sesión.' : 'Error al guardar en la nube. Cambios pendientes.', true);
+            const isCloudQuota = error?.code !== 'FIREBASE_TIMEOUT' && error?.name !== 'QuotaExceededError' && /quota|limit|bandwidth|exceeded/i.test(String(error?.message || ''));
+            syncStatus(isCloudQuota ? '⚠️ Límite de Firebase indicado por el servicio. Cambios pendientes.' : 'Error al guardar en la nube. Cambios pendientes.', true);
             const denied = /permission/i.test(String(error?.code || '') + ' ' + String(error?.message || ''));
             if (denied && !extendedSyncDisabled && changes.some(change => EXTENDED_SYNC_KEYS.has(change.key))) {
                 console.warn('CapaSuite: la nube rechazó los ajustes compartidos; se sincronizarán solo los datos principales.');
@@ -726,7 +726,20 @@ async function uploadToCloud() {
     return result;
 }
 
-async function downloadFromCloud() {
+let downloadInFlight = null;
+let downloadInFlightUid = null;
+function downloadFromCloud() {
+    const uid = cloudAuth.currentUser?.uid;
+    if (downloadInFlight && downloadInFlightUid === uid) return downloadInFlight;
+    downloadInFlightUid = uid;
+    const request = performCloudDownload();
+    downloadInFlight = request;
+    const clear = () => { if (downloadInFlight === request) downloadInFlight = null; };
+    request.then(clear, clear);
+    return request;
+}
+
+async function performCloudDownload() {
     const user = cloudAuth.currentUser;
     if (!user) return false;
     prepareCloudAccount(user.uid);
@@ -822,8 +835,8 @@ async function downloadFromCloud() {
         scheduleCloudUpload();
         return true;
     } catch (error) {
-        const isQuotaOrTimeout = error?.code === 'FIREBASE_TIMEOUT' || /quota|limit|bandwidth|exceeded/i.test(String(error?.message || ''));
-        syncStatus(isQuotaOrTimeout ? '⚠️ Cuota Firebase agotada. Usando copia local.' : 'No se pudo descargar la nube. Mostrando copia local.', true);
+        const isCloudQuota = error?.code !== 'FIREBASE_TIMEOUT' && error?.name !== 'QuotaExceededError' && /quota|limit|bandwidth|exceeded/i.test(String(error?.message || ''));
+        syncStatus(isCloudQuota ? '⚠️ Límite de Firebase indicado por el servicio. Usando copia local.' : 'No se pudo descargar la nube. Mostrando copia local.', true);
         console.error('Error recuperando datos de Firebase:', error);
         return false;
     }

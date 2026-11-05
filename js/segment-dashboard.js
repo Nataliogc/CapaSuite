@@ -349,11 +349,7 @@ function loadData() {
         if (cleaned) CapaStorage.setItem(STORAGE_KEY, JSON.stringify(historicalDB));
         if (cleanedForecast) CapaStorage.setItem('segment_forecast_v2', JSON.stringify(forecastDB));
 
-        if (!CapaStorage.getItem('channel_commissions_zero_v1')) {
-            CapaStorage.setItem('channel_commissions_zero_v1', '1');
-            SegmentAnalysis.saveChannelCommissionConfig('Guadiana', SegmentAnalysis.DEFAULT_CHANNEL_COMMISSIONS);
-            SegmentAnalysis.saveChannelCommissionConfig('Cumbria', SegmentAnalysis.DEFAULT_CHANNEL_COMMISSIONS);
-        }
+        // Defaults are supplied by getChannelCommissionConfig; loading never writes commissions.
 
         const config = JSON.parse(CapaStorage.getItem('upload_config_db_v2') || '{}');
         for (const h of Object.keys(HOTELS)) {
