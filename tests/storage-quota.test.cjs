@@ -59,6 +59,6 @@ test('Firebase transport flag survives full native storage without hiding other 
 test('all Firebase pages install the storage guard before loading the SDK',()=>{
  for(const file of fs.readdirSync('.').filter(p=>p.endsWith('.html'))){
   const html=fs.readFileSync(file,'utf8');const sdk=html.indexOf('firebase-database.js');if(sdk<0)continue;
-  const storage=html.indexOf('js/storage.js?v=20261105-1830');assert.ok(storage>=0&&storage<sdk,file);
+  const storage=html.indexOf('js/storage.js');assert.ok(storage>=0&&storage<sdk,file);
  }
 });

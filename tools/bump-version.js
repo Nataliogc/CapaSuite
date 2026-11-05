@@ -93,6 +93,7 @@ function run() {
     console.log(`📅 Fecha de Compilación: ${buildDate} (${buildTimestamp})`);
 
     // Actualizar query strings en ficheros HTML principales para forzar recarga de caché
+    const scriptsToBust = ['version.js', 'pricing-intelligence.js', 'competencia-intelligence-ui.js', 'nav.js', 'firebase-auth.js', 'storage.js', 'segment-analysis.js'];
     const htmlFiles = fs.readdirSync(ROOT_DIR).filter(f => f.endsWith('.html'));
     let updatedCount = 0;
 
@@ -102,7 +103,7 @@ function run() {
         let modified = false;
 
         // Reemplazar ?v=... en scripts clave
-        const scriptsToBust = ['version.js', 'pricing-intelligence.js', 'competencia-intelligence-ui.js', 'nav.js', 'firebase-auth.js'];
+        // scriptsToBust definido a nivel de función
         scriptsToBust.forEach(script => {
             const regex = new RegExp(`(src=["'][^"']*${script}\\?v=)[^"']+`, 'g');
             if (regex.test(content)) {
@@ -122,6 +123,10 @@ function run() {
     if (fs.existsSync(swPath)) {
         let swContent = fs.readFileSync(swPath, 'utf8');
         swContent = swContent.replace(/const\s+CACHE_NAME\s*=\s*['"][^'"]+['"]/, `const CACHE_NAME = 'capasuite-v${nextVersion}'`);
+        scriptsToBust.forEach(script => {
+            const regex = new RegExp(`(['"][^'"]*${script}\\?v=)[^'"]+`, 'g');
+            if (regex.test(swContent)) swContent = swContent.replace(regex, `$1${queryTimestamp}`);
+        });
         fs.writeFileSync(swPath, swContent, 'utf8');
         console.log(`📦 Service Worker actualizado con CACHE_NAME: 'capasuite-v${nextVersion}'`);
     }
