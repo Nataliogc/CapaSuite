@@ -15,20 +15,20 @@
     <script src="js/xlsx.full.min.js"></script>
     <script src="js/chart.js"></script>
     <script src="js/state.js"></script>
-    <script src="js/storage.js?v=20261106-2132"></script>
+    <script src="js/storage.js?v=20261106-2220"></script>
     <script src="js/revenue-history.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="js/nav.js"></script>
     <script src="js/theme-manager.js"></script>
-    <script src="js/firebase-auth.js?v=20261106-2132"></script>
-    <script src="js/version.js?v=20261106-2132"></script>
-    <script src="js/pricing-intelligence.js?v=20261106-2132"></script>
-    <script src="js/competencia-intelligence-ui.js?v=20261106-2132"></script>
+    <script src="js/firebase-auth.js?v=20261106-2220"></script>
+    <script src="js/version.js?v=20261106-2220"></script>
+    <script src="js/pricing-intelligence.js?v=20261106-2220"></script>
+    <script src="js/competencia-intelligence-ui.js?v=20261106-2220"></script>
 
     <link rel="stylesheet" href="css/tokens.css">
-    <link rel="stylesheet" href="css/nav.css?v=20261106-2132">
+    <link rel="stylesheet" href="css/nav.css?v=20261106-2220">
     <style>
         :root {
             /* Page-specific variables not in tokens.css */
@@ -1834,8 +1834,8 @@
         <div class="upload-section" id="dropZone">
             <div style="font-size: 4rem; margin-bottom: 20px;">📊</div>
             <h2 style="margin: 0 0 10px 0; color: var(--primary-dark);">Sube tu archivo Expedia</h2>
-            <p style="color: var(--text-light);">Arrastra aquí el archivo .xlsx diario</p>
-            <input type="file" id="fileInput" hidden accept=".xlsx">
+            <p style="color: var(--text-light);">Arrastra aquí el archivo .xlsx o .csv diario de Expedia</p>
+            <input type="file" id="fileInput" hidden accept=".xlsx, .csv">
             <div style="margin-top:16px;">
                 <button id="cancelUploadBtn" type="button" class="btn" onclick="restoreExistingDataView()" style="display:none; background:var(--bg-surface); border:1px solid var(--border); color:var(--primary); font-weight:700; padding:8px 16px; border-radius:8px; cursor:pointer;" title="Volver al análisis de los datos ya guardados">← Volver al Análisis Guardado</button>
             </div>
@@ -3360,19 +3360,51 @@
         function extractSnapshotsFromFileData(dataRows, fileDate) {
             if (!window.PricingIntelligence || typeof window.PricingIntelligence.captureBatchSnapshots !== 'function') return;
             try {
-                let guadianaR = -1, cumbriaR = -1;
+                let yourPropR = -1, explicitGuadR = -1, explicitCumbR = -1;
                 for (let r = 0; r < Math.min(dataRows.length, 100); r++) {
-                    const rowStr = (dataRows[r] || []).join(' ').toLowerCase();
-                    if (guadianaR === -1 && (rowStr.includes('guadiana') || rowStr.includes('your property')) && !rowStr.includes('tarifas') && (dataRows[r] || []).length > 2) {
-                        guadianaR = r;
+                    const row = dataRows[r] || [];
+                    if (row.length <= 2) continue;
+                    const rowStr = row.join(' ').toLowerCase();
+                    const firstCell = String(row[0] || '').toLowerCase().trim();
+                    if (rowStr.includes('tarifas medias') || rowStr.includes('search demand')) continue;
+
+                    if (yourPropR === -1 && (firstCell.includes('your property') || firstCell.includes('tu propiedad') || firstCell.includes('tu hotel') || rowStr.startsWith('your property'))) {
+                        yourPropR = r;
                     }
-                    if (cumbriaR === -1 && rowStr.includes('cumbria')) cumbriaR = r;
+                    if (explicitGuadR === -1 && (firstCell.includes('guadiana') || rowStr.includes('sercotel guadiana')) && !firstCell.includes('montes') && !rowStr.includes('montes') && r !== yourPropR) {
+                        explicitGuadR = r;
+                    }
+                    if (explicitCumbR === -1 && (firstCell.includes('cumbria') || rowStr.includes('cumbria')) && !rowStr.includes('montes') && r !== yourPropR) {
+                        explicitCumbR = r;
+                    }
                 }
-                if (guadianaR === -1) return;
+
+                let guadianaR = -1, cumbriaR = -1;
+                if (yourPropR !== -1) {
+                    if (explicitGuadR !== -1) {
+                        cumbriaR = yourPropR;
+                        guadianaR = explicitGuadR;
+                    } else if (explicitCumbR !== -1) {
+                        guadianaR = yourPropR;
+                        cumbriaR = explicitCumbR;
+                    } else {
+                        if (activeHotel === 'Cumbria') {
+                            cumbriaR = yourPropR;
+                        } else {
+                            guadianaR = yourPropR;
+                        }
+                    }
+                } else {
+                    guadianaR = explicitGuadR;
+                    cumbriaR = explicitCumbR;
+                }
+
+                const mainAnchorR = yourPropR !== -1 ? yourPropR : (guadianaR !== -1 ? guadianaR : cumbriaR);
+                if (mainAnchorR === -1) return;
 
                 // Buscar fila de días
                 let dRow = -1;
-                for (let r = guadianaR - 1; r >= Math.max(0, guadianaR - 10); r--) {
+                for (let r = mainAnchorR - 1; r >= Math.max(0, mainAnchorR - 10); r--) {
                     const row = dataRows[r] || [];
                     let nums = 0;
                     for (let c = 1; c < Math.min(row.length, 50); c++) {
@@ -3523,48 +3555,97 @@
 
             processedData = []; // RESET DATA
 
-            let guadianaRow = -1;
-            let cumbriaRow = -1;
+            let yourPropertyRow = -1;
+            let explicitGuadianaRow = -1;
+            let explicitCumbriaRow = -1;
 
-            // Find Anchors - FIRST VALID MATCH STRATEGY
-            // We search for the first occurrence that looks like the main header row
+            // Find Anchors - Intelligent Multi-Hotel Discovery
             for (let r = 0; r < Math.min(rawData.length, 100); r++) {
                 const row = rawData[r] || [];
+                if (row.length <= 2) continue;
                 const rowStr = row.join(" ").toLowerCase();
+                const firstCell = String(row[0] || "").toLowerCase().trim();
 
-                // Find Guadiana
-                if (guadianaRow === -1 && (rowStr.includes("guadiana") || rowStr.includes("your property")) && !rowStr.includes("tarifas")) {
-                    // Check if this row actually has data columns? 
-                    // The main row usually has values to the right.
-                    if (row.length > 2) {
-                        guadianaRow = r;
+                if (rowStr.includes("tarifas medias") || rowStr.includes("tarifas promedio") || rowStr.includes("search demand")) continue;
+
+                if (yourPropertyRow === -1 && (firstCell.includes("your property") || firstCell.includes("tu propiedad") || firstCell.includes("tu hotel") || rowStr.startsWith("your property"))) {
+                    yourPropertyRow = r;
+                }
+                if (explicitGuadianaRow === -1 && (firstCell.includes("guadiana") || rowStr.includes("sercotel guadiana")) && !firstCell.includes("montes") && !rowStr.includes("montes") && r !== yourPropertyRow) {
+                    explicitGuadianaRow = r;
+                }
+                if (explicitCumbriaRow === -1 && (firstCell.includes("cumbria") || rowStr.includes("cumbria")) && !rowStr.includes("montes") && r !== yourPropertyRow) {
+                    explicitCumbriaRow = r;
+                }
+            }
+
+            let guadianaRow = -1;
+            let cumbriaRow = -1;
+            let detectedHotel = activeHotel || "Guadiana";
+
+            if (yourPropertyRow !== -1) {
+                // Si existe Sercotel Guadiana explícito en el compset, 'Your Property' ES CUMBRIA
+                if (explicitGuadianaRow !== -1) {
+                    cumbriaRow = yourPropertyRow;
+                    guadianaRow = explicitGuadianaRow;
+                    detectedHotel = "Cumbria";
+                }
+                // Si existe Cumbria explícito en el compset, 'Your Property' ES GUADIANA
+                else if (explicitCumbriaRow !== -1) {
+                    guadianaRow = yourPropertyRow;
+                    cumbriaRow = explicitCumbriaRow;
+                    detectedHotel = "Guadiana";
+                }
+                // Si ninguno de los dos está en el compset, asignar al hotel activo
+                else {
+                    if (activeHotel === "Cumbria") {
+                        cumbriaRow = yourPropertyRow;
+                        guadianaRow = -1;
+                        detectedHotel = "Cumbria";
+                    } else {
+                        guadianaRow = yourPropertyRow;
+                        cumbriaRow = -1;
+                        detectedHotel = "Guadiana";
                     }
                 }
-
-                // Find Cumbria
-                if (cumbriaRow === -1 && rowStr.includes("cumbria")) {
-                    cumbriaRow = r;
-                }
-
-                if (guadianaRow !== -1 && cumbriaRow !== -1) break;
-            }
-
-            // Fallback: If we found Guadiana but it was short (length <=2), maybe it was the only one?
-            if (guadianaRow === -1) {
-                for (let r = 0; r < Math.min(rawData.length, 100); r++) {
-                    const rowStr = (rawData[r] || []).join(" ").toLowerCase();
-                    if ((rowStr.includes("guadiana") || rowStr.includes("your property")) && !rowStr.includes("tarifas")) { guadianaRow = r; break; }
+            } else {
+                guadianaRow = explicitGuadianaRow;
+                cumbriaRow = explicitCumbriaRow;
+                if (cumbriaRow !== -1 && guadianaRow === -1) {
+                    detectedHotel = "Cumbria";
+                } else if (guadianaRow !== -1 && cumbriaRow === -1) {
+                    detectedHotel = "Guadiana";
                 }
             }
 
-            if (guadianaRow === -1) { logD("❌ ERROR FATAL: 'Guadiana' no encontrado en el Excel."); alert("Error: No se encontró 'Sercotel Guadiana' en las primeras 100 filas."); return; }
-            logD(`✅ Guadiana encontrado en fila ${guadianaRow}. Analizando fechas...`);
+            const mainAnchorRow = yourPropertyRow !== -1 ? yourPropertyRow : (detectedHotel === "Cumbria" && cumbriaRow !== -1 ? cumbriaRow : (guadianaRow !== -1 ? guadianaRow : cumbriaRow));
+
+            if (guadianaRow === -1 && cumbriaRow === -1) {
+                logD("❌ ERROR FATAL: Ni 'Sercotel Guadiana' ni 'Cumbria' encontrados en el archivo.");
+                alert("Error: No se encontró 'Sercotel Guadiana' ni 'Cumbria' en las primeras 100 filas.");
+                return;
+            }
+
+            // Sincronizar activeHotel automáticamente si el archivo identifica con certeza el hotel
+            if (detectedHotel && (detectedHotel === 'Cumbria' || detectedHotel === 'Guadiana') && activeHotel !== detectedHotel) {
+                activeHotel = detectedHotel;
+                const hSel = document.getElementById('hotelSelector');
+                if (hSel) hSel.value = detectedHotel;
+                if (window.CapaState && typeof window.CapaState.setActiveHotel === 'function') {
+                    window.CapaState.setActiveHotel(detectedHotel);
+                } else {
+                    try { localStorage.setItem('active_hotel_suite', detectedHotel); } catch(e) {}
+                }
+                updateHotelLogo();
+            }
+
+            logD(`✅ Archivo identificado para: ${detectedHotel}. Cumbria fila ${cumbriaRow}, Guadiana fila ${guadianaRow}, Fila ancla: ${mainAnchorRow}. Analizando fechas...`);
 
             // Metadata Rows - Dynamic Search for Date Row (1..31)
             let dateNumRow = -1;
 
-            // Scan upwards from Guadiana to find the row with day numbers (e.g "lun. 26" or just "26")
-            for (let r = guadianaRow - 1; r >= Math.max(0, guadianaRow - 10); r--) {
+            // Scan upwards from main anchor to find the row with day numbers (e.g "lun. 26" or just "26")
+            for (let r = mainAnchorRow - 1; r >= Math.max(0, mainAnchorRow - 10); r--) {
                 const row = rawData[r] || [];
                 let validDayNums = 0;
 
@@ -3591,8 +3672,8 @@
 
             // Fallback
             if (dateNumRow === -1) {
-                logD("⚠️ No se encontró fila de fechas (1..31). Usando fila anterior a Guadiana por defecto.");
-                dateNumRow = guadianaRow - 1;
+                logD("⚠️ No se encontró fila de fechas (1..31). Usando fila anterior al ancla por defecto.");
+                dateNumRow = mainAnchorRow - 1;
             } else {
                 logD(`✅ Fila de fechas detectada en índice ${dateNumRow}`);
             }
@@ -3610,7 +3691,7 @@
             }
 
             // Start Column Logic
-            let gRowData = rawData[guadianaRow];
+            let gRowData = rawData[mainAnchorRow];
             let startCol = 1; // fallback seguro: columna B
 
             // Corrección obligatoria 1: detectar startCol desde la fila de fechas
@@ -3636,7 +3717,7 @@
 
             // Competitors List
             competitorsList = [];
-            const scanStart = (cumbriaRow !== -1 ? cumbriaRow : guadianaRow) + 1;
+            const scanStart = mainAnchorRow + 1;
             const totalCols = gRowData ? gRowData.length : 0;
             let consecutiveInvalid = 0;
 
@@ -3649,8 +3730,15 @@
                     continue;
                 }
 
+                // Jamás añadir Guadiana, Cumbria o Your Property a la lista de competidores externos
+                if (r === guadianaRow || r === cumbriaRow || r === yourPropertyRow) continue;
+
                 const name = String(row[0]).trim();
                 const nLow = name.toLowerCase();
+
+                if ((nLow.includes("guadiana") && !nLow.includes("montes")) || nLow.includes("cumbria") || nLow.includes("your property") || nLow.includes("tu propiedad")) {
+                    continue;
+                }
 
                 // Blacklist
                 if (name.length < 3) { consecutiveInvalid++; continue; }
@@ -4080,6 +4168,8 @@
             } else {
                 const debugInfo = `
 Guadiana Row: ${guadianaRow}
+Cumbria Row: ${cumbriaRow}
+Main Anchor Row: ${mainAnchorRow}
 Date Num Row: ${dateNumRow}
 Start Col: ${startCol}
 Max Cols: ${maxCols}

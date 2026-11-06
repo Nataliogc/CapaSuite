@@ -925,6 +925,9 @@
             }
             let roomRows = 0, lodgingRows = 0;
 
+            const isCumbria = detectedHotel.toLowerCase().includes('cumbria');
+            const isNoLodgingSegment = isCumbria && segment === 'EMPRESAS';
+
             for (let r = block.row - 1; r <= block.end; r++) {
                 const row = rows[r], metric = String(row?.[1] || '').toUpperCase();
                 if (!metric) continue;
@@ -944,9 +947,6 @@
                     
                     const dt = target.days[c.iso] ||= { revenue: 0, rooms: 0, accommodation: 0, totalRevenue: 0 };
                     const chDt = chTarget ? (chTarget.days[c.iso] ||= { revenue: 0, rooms: 0, accommodation: 0, totalRevenue: 0 }) : null;
-                    
-                    const isCumbria = detectedHotel.toLowerCase().includes('cumbria');
-                    const isNoLodgingSegment = isCumbria && segName === 'EMPRESAS';
 
                     if (isRooms) {
                         if (!isNoLodgingSegment) {

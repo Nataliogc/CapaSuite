@@ -453,3 +453,20 @@ test('Cumbria recognizes both BONO ONLINE and BONO SPA as official distinct segm
 
 
 
+
+test('Cumbria parseForecast parses daily segments correctly without segName reference error', () => {
+    const rows = [
+        ['Seg.', '', '01/01', '02/01'],
+        ['EMPRESAS', 'Hab', 5, 5],
+        ['', 'ALQUILER OFICINA', 500, 500],
+        ['TTOO DINAMICA', 'Hab', 10, 12],
+        ['', 'HABITACION DOBLE', 1000, 1200]
+    ];
+    const report = S.parseForecast(rows, 'Cumbria_Prevision_2026.xlsx', {}, '2026', 'Cumbria');
+    assert.ok(report);
+    assert.ok(report.segmentData);
+    assert.equal(report.segmentData.EMPRESAS.days['2026-01-01'].rooms, 0);
+    assert.equal(report.segmentData.EMPRESAS.days['2026-01-01'].revenue, 500);
+    assert.equal(report.segmentData['TTOO DINAMICA'].days['2026-01-01'].rooms, 10);
+    assert.equal(report.segmentData['TTOO DINAMICA'].days['2026-01-01'].revenue, 1000);
+});
