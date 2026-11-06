@@ -15,15 +15,15 @@
     <!-- Chart.js -->
     <script src="js/chart.js"></script>
     <script src="js/state.js"></script>
-    <script src="js/storage.js?v=20261105-2235"></script>
+    <script src="js/storage.js?v=20261106-2132"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="js/version.js?v=20261105-2235"></script>
+    <script src="js/version.js?v=20261106-2132"></script>
     <script src="js/nav.js"></script>
-    <script src="js/firebase-auth.js?v=20261105-2235"></script>
-    <script src="js/segment-analysis.js?v=20261105-2235"></script>
+    <script src="js/firebase-auth.js?v=20261106-2132"></script>
+    <script src="js/segment-analysis.js?v=20261106-2132"></script>
     <script src="js/theme-manager.js"></script>
 
     <style>
@@ -646,7 +646,7 @@
             to { opacity: 1; transform: scale(1) translateY(0); }
         }
     </style>
-    <link rel="stylesheet" href="css/nav.css?v=20261105-2235">
+    <link rel="stylesheet" href="css/nav.css?v=20261106-2132">
 </head>
 
 <body style="padding: 0;">
@@ -3314,6 +3314,9 @@
             if (upper === 'CORPORATIVO DINAMICO' || upper === 'CORPORATIVO DINÁMICO' || upper === 'CORP DINAMICO' || upper === 'CORPORATIVO DIN' || upper === 'HRS' || upper === 'KEYTEL' || upper === 'WORLD2MEET' || upper === 'W2M') {
                 return 'CORPORATIVO DINÁMICO';
             }
+            if (isCumbria && (upper === 'EMPRESAS' || upper === 'EMPRESA')) {
+                return 'EMPRESAS';
+            }
             if (upper === 'CORPORATIVO LINEAL' || upper === 'CORPORATI' || upper === 'CORPORATIVO' || upper === 'EMPRESAS' || upper === 'EMPRESA' || upper === 'TARIFAS NEGOCIADAS' || upper === 'TARIFAS N') {
                 return 'CORPORATIVO LINEAL';
             }
@@ -4479,7 +4482,7 @@
             let totalPositiveHistRev = 0;
             let totalPositiveHistRN = 0;
             segmentMap.forEach(s => {
-                if (hotel === 'Cumbria' && s.name === 'BONO SPA') return;
+                if (hotel === 'Cumbria' && (s.name === 'BONO SPA' || s.name === 'EMPRESAS')) return;
                 if (s.histRev > 0) totalPositiveHistRev += s.histRev;
                 if (s.histRN > 0) totalPositiveHistRN += s.histRN;
             });
@@ -4487,9 +4490,10 @@
             const segments = [];
             segmentMap.forEach(s => {
                 const isCumbriaBonoSpa = (hotel === 'Cumbria' && s.name === 'BONO SPA');
+                const isCumbriaEmpresas = (hotel === 'Cumbria' && s.name === 'EMPRESAS');
                 const histAdr = (s.histRN > 0 && s.histRev > 0) ? (s.histRev / s.histRN) : 0;
-                let shareHistRev = (!isCumbriaBonoSpa && totalPositiveHistRev > 0 && s.histRev > 0) ? (s.histRev / totalPositiveHistRev) : 0;
-                let shareHistRN = (!isCumbriaBonoSpa && totalPositiveHistRN > 0 && s.histRN > 0) ? (s.histRN / totalPositiveHistRN) : 0;
+                let shareHistRev = (!isCumbriaBonoSpa && !isCumbriaEmpresas && totalPositiveHistRev > 0 && s.histRev > 0) ? (s.histRev / totalPositiveHistRev) : 0;
+                let shareHistRN = (!isCumbriaBonoSpa && !isCumbriaEmpresas && totalPositiveHistRN > 0 && s.histRN > 0) ? (s.histRN / totalPositiveHistRN) : 0;
 
                 // Si la producción histórica fue 0 o negativa (abonos contables), aplicar cuota de referencia benchmark
                 if (!isCumbriaBonoSpa && shareHistRev === 0 && benchmarks) {
@@ -4503,7 +4507,11 @@
                 let segTargetRev = 0;
                 let segTargetRN = 0;
 
-                if (isCumbriaBonoSpa) {
+                if (isCumbriaEmpresas) {
+                    // En Cumbria, EMPRESAS son producciones de oficinas alquiladas (sin pernoctacion ni ocupacion hotelera)
+                    segTargetRev = s.histRev || 0;
+                    segTargetRN = 0;
+                } else if (isCumbriaBonoSpa) {
                     // En Cumbria, BONO SPA son gratuidades internas y nunca llevan objetivo comercial
                     segTargetRev = 0;
                     segTargetRN = 0;

@@ -15,19 +15,19 @@
     <!-- Libraries -->
     <script src="js/chart.js"></script>
     <script src="js/state.js"></script>
-    <script src="js/storage.js?v=20261105-2235"></script>
+    <script src="js/storage.js?v=20261106-2132"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="js/version.js?v=20261105-2235"></script>
+    <script src="js/version.js?v=20261106-2132"></script>
     <script src="js/nav.js"></script>
-    <script src="js/firebase-auth.js?v=20261105-2235"></script>
-    <script src="js/segment-analysis.js?v=20261105-2235"></script>
+    <script src="js/firebase-auth.js?v=20261106-2132"></script>
+    <script src="js/segment-analysis.js?v=20261106-2132"></script>
     <script src="js/theme-manager.js"></script>
     <script src="js/production-groups.js?v=20261001-exclude-segments"></script>
 
     <link rel="stylesheet" href="css/tokens.css">
-    <link rel="stylesheet" href="css/nav.css?v=20261105-2235">
+    <link rel="stylesheet" href="css/nav.css?v=20261106-2132">
     <style>
 
         * {
@@ -4015,7 +4015,8 @@
                 'GRUPOS',
                 'GRTANTEO',
                 'BONO ONLINE',
-                'BONO SPA'
+                'BONO SPA',
+                'EMPRESAS'
             ]
         };
 
@@ -4077,11 +4078,19 @@
             }
 
             // En Cumbria, OTROS tampoco existe (se divide en BONO ONLINE o BONO SPA)
+            // Cumbria cuenta ademas con el segmento exclusivo EMPRESAS (oficinas alquiladas sin pernoctacion)
             const isCumbria = String(hotel || currentHotel || '').toLowerCase().includes('cumbria');
             if (isCumbria) {
+                if (upper === 'EMPRESAS' || upper === 'EMPRESA') {
+                    return 'EMPRESAS';
+                }
                 if (upper === 'OTROS' || upper === 'OTRO') {
                     return 'BONO ONLINE';
                 }
+            }
+
+            if (!isCumbria && (upper === 'EMPRESAS' || upper === 'EMPRESA')) {
+                return 'CORPORATIVO LINEAL';
             }
 
             // 2. Variaciones directas
@@ -6512,7 +6521,7 @@
                 const isCumbria = String(currentHotel).toLowerCase().includes('cumbria');
                 const channelGroups = {
                     "Directo": ["DIRECTO ONLINE", "DIRONLINE", "DIRECTO OFFLINE"],
-                    "Corporativo": ["CORPORATIVO LINEAL", "CORPORATIVO DINAMICO"],
+                    "Corporativo": isCumbria ? ["CORPORATIVO LINEAL", "CORPORATIVO DINAMICO", "EMPRESAS"] : ["CORPORATIVO LINEAL", "CORPORATIVO DINAMICO"],
                     "OTA / AAVV": ["OTA/AAVV"],
                     "TTOO Dinámica": ["TTOO DINAMICA"],
                     "Grupos": ["GRUPOS", "GRTANTEO", "GRUPO TANTEO", "GRUPO"],

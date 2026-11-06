@@ -408,6 +408,37 @@ test('operational hotel channel-to-segment rules (Guadiana & Cumbria)', () => {
     assert.equal(S.canonical('GRUPO TANTEO'), 'GRTANTEO');
 });
 
+test('Cumbria and only Cumbria recognizes EMPRESAS as office rental production without lodging', () => {
+    assert.equal(S.canonical('EMPRESAS', 'Cumbria'), 'EMPRESAS');
+    assert.equal(S.canonical('EMPRESA', 'Cumbria'), 'EMPRESAS');
+    assert.equal(S.canonical('EMPRESAS', 'Guadiana'), 'CORPORATIVO LINEAL');
+    assert.equal(S.canonical('EMPRESA', 'Guadiana'), 'CORPORATIVO LINEAL');
+    assert.ok(S.validSegments.includes('EMPRESAS'));
+
+    const rows = [
+        ['Seg.', '', 'Ene.25'],
+        ['EMPRESAS', 'Hab', 10],
+        ['', 'ALQUILER OFICINA', 1500],
+        ['DIRECTO OFFLINE', 'Hab', 20],
+        ['', 'HABITACION DOBLE', 2000]
+    ];
+    const report = S.parse(rows, 'Cumbria_Seg_2025.xlsx', '2025', {}, 'Cumbria');
+    const db = {};
+    S.merge(db, 'Cumbria', report);
+
+    const empSeg = db.Cumbria[2025].segment.EMPRESAS;
+    assert.ok(empSeg, 'EMPRESAS segment exists in Cumbria');
+    assert.equal(empSeg.rooms[0], 0, 'EMPRESAS has 0 rooms because they do not lodge');
+    assert.equal(empSeg.revenue[0], 1500, 'EMPRESAS has 1500 office production revenue');
+    assert.equal(empSeg.accommodation[0], 0, 'EMPRESAS has 0 accommodation revenue');
+
+    const totalAgg = S.aggregate(db.Cumbria[2025], [0]);
+    assert.equal(totalAgg.rooms, 20, 'Total hotel rooms only count actual lodging (20 rooms)');
+    assert.equal(totalAgg.accommodation, 2000, 'Total accommodation only counts lodging');
+    assert.equal(totalAgg.revenue, 3500, 'Total hotel revenue includes office rentals (2000 + 1500)');
+    assert.equal(totalAgg.adr, 100, 'ADR is pure accommodation / rooms (2000 / 20 = 100€)');
+});
+
 test('Cumbria recognizes both BONO ONLINE and BONO SPA as official distinct segments', () => {
     assert.equal(S.canonical('BONO ONLINE'), 'BONO ONLINE');
     assert.equal(S.canonical('BONO LINE'), 'BONO ONLINE');

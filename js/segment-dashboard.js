@@ -62,6 +62,11 @@ function getProtocolChannelsDescription(segName, hotel) {
     }
 
     // 6. Corporativo Lineal
+    if (norm === 'EMPRESAS' || norm === 'EMPRESA') {
+        return isCumbria 
+            ? 'Producciones de oficinas alquiladas (sin pernoctación ni ocupación hotelera)'
+            : 'En Guadiana se consolida en Corporativo Lineal';
+    }
     if (norm.includes('CORP') && (norm.includes('LIN') || norm.includes('LINEAL'))) {
         return isCumbria
             ? 'Empresas con tarifa corporativa negociada fija (convenios directos Cumbria)'
@@ -1047,7 +1052,7 @@ function renderDashboard() {
         const yHint = otherYears.length ? ` (Tu previsión también incluye datos para ${otherYears.join(', ')}: selecciona ese año arriba para verlos).` : '';
         el('period-note').innerHTML = `🔮 Modo Previsión (OTB) · Viendo previsión del ejercicio ${currentYear}${yHint}. ` + el('period-note').innerHTML;
     }
-    const invalidStored = SegmentAnalysis.segments(data).filter(s => !SegmentAnalysis.validSegments.includes(SegmentAnalysis.canonical(s.name)) && months.some(m => ['rooms', 'revenue', 'accommodation', 'totalRevenue'].some(field => Number(s[field]?.[m]) !== 0 && s[field]?.[m] != null)));
+    const invalidStored = SegmentAnalysis.segments(data).filter(s => !SegmentAnalysis.validSegments.includes(SegmentAnalysis.canonical(s.name, currentHotel)) && months.some(m => ['rooms', 'revenue', 'accommodation', 'totalRevenue'].some(field => Number(s[field]?.[m]) !== 0 && s[field]?.[m] != null)));
     if (invalidStored.length) el('period-note').innerHTML += ` Atención: hay segmentos incorrectos guardados (${invalidStored.map(s => s.name).join(', ')}). Pulsa Importar Excel para revisarlos y asignar el segmento correcto antes de guardar.`;
     
     [['prod', displayProd, displayPriorProd, 'revenue'], ['rooms', totals.rooms, prior?.rooms, 'rooms'], ['adr', displayAdr, displayPriorAdr, 'adr'], ['revpar', revpar, priorRevpar, 'adr']].forEach(([id, value, before, metric]) => {

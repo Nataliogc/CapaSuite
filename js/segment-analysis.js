@@ -106,7 +106,8 @@
         'PARTICULARES',
         'AGENCIAS',
         'BONO ONLINE',
-        'BONO SPA'
+        'BONO SPA',
+        'EMPRESAS'
     ];
     const isRoomMetric = value => /^(HAB|HABI|RN|RMS|NOCHES|HABITACIONES|UNIDADES)$/.test(norm(value));
     function isTotalName(value) {
@@ -114,16 +115,21 @@
     }
     const canonical = (value, hotel = '') => {
         const n = norm(value);
+        const activeHotel = hotel || (typeof window !== 'undefined' && window.CapaState && window.CapaState.activeHotel) || '';
+        const isCumbria = String(activeHotel).toLowerCase().includes('cumbria');
         try {
             const rawStored = (typeof CapaStorage !== 'undefined' ? CapaStorage.getItem('custom_segment_mapping_v2') : (typeof localStorage !== 'undefined' ? localStorage.getItem('custom_segment_mapping_v2') : null));
             if (rawStored) {
                 const mapObj = JSON.parse(rawStored) || {};
-                const hotelKey = String(hotel || '').toLowerCase().includes('cumbria') ? 'Cumbria' : 'Guadiana';
+                const hotelKey = isCumbria ? 'Cumbria' : 'Guadiana';
                 if (mapObj[hotelKey] && mapObj[hotelKey][n]) {
                     return mapObj[hotelKey][n];
                 }
             }
         } catch(e) {}
+        if (n === 'EMPRESAS' || n === 'EMPRESA') {
+            return isCumbria ? 'EMPRESAS' : 'CORPORATIVO LINEAL';
+        }
         return aliases[n] || n;
     };
 
@@ -144,8 +150,10 @@
         'AGENCIAS',
         'BONO ONLINE',
         'BONO SPA',
+        'EMPRESAS',
 
         // Variaciones y códigos PMS habituales para segmentos
+        'EMPRESA',
         'BONO LINEAL',
         'BONO LINE',
         'CORPORATI',
@@ -274,7 +282,12 @@
         'EGOEXPERIENCIAS': 'Ego Experiencias',
         'EGO': 'Ego Experiencias',
         'DAKOTABOX': 'Ego Experiencias',
-        'BONO SPA': 'Bono Spa'
+        'BONO SPA': 'Bono Spa',
+
+        // Oficinas Alquiladas (Cumbria)
+        'OFICINAS ALQUILADAS': 'Oficinas Alquiladas',
+        'ALQUILER OFICINAS': 'Oficinas Alquiladas',
+        'OFICINAS': 'Oficinas Alquiladas'
     };
 
     function isKnownChannel(name) {
@@ -296,7 +309,8 @@
         'PARTICULARES': () => 'Particulares',
         'AGENCIAS': () => 'Agencias Tradicionales',
         'BONO ONLINE': () => 'Bono Online',
-        'BONO SPA': () => 'Bono Spa'
+        'BONO SPA': () => 'Bono Spa',
+        'EMPRESAS': () => 'Oficinas Alquiladas'
     };
 
     function getDefaultChannelForSegment(segmentName, hotel = '') {
@@ -371,7 +385,8 @@
         'Smartbox': { pct: 0, fixedPerRN: 0 },
         'Wonderbox': { pct: 0, fixedPerRN: 0 },
         'Ego Experiencias': { pct: 0, fixedPerRN: 0 },
-        'Bono Spa': { pct: 0, fixedPerRN: 0 }
+        'Bono Spa': { pct: 0, fixedPerRN: 0 },
+        'Oficinas Alquiladas': { pct: 0, fixedPerRN: 0 }
     };
 
     const DEFAULT_SEGMENT_COMMISSIONS = {
@@ -387,7 +402,8 @@
         'PARTICULARES': { pct: 0, fixedPerRN: 0 },
         'AGENCIAS': { pct: 0, fixedPerRN: 0 },
         'BONO ONLINE': { pct: 0, fixedPerRN: 0 },
-        'BONO SPA': { pct: 0, fixedPerRN: 0 }
+        'BONO SPA': { pct: 0, fixedPerRN: 0 },
+        'EMPRESAS': { pct: 0, fixedPerRN: 0 }
     };
 
     const inMemoryCommissionConfig = {};
@@ -542,6 +558,9 @@
 
     function reviewRows(rows, corrections = {}, hotel = '') {
         const hotelMappings = (typeof hotel === 'object' && hotel !== null) ? hotel : getStoredHotelMappings(hotel);
+        const detectedHotelName = (typeof hotel === 'string' && hotel) ? hotel : '';
+        const activeH = String(detectedHotelName || (typeof window !== 'undefined' && window.CapaState && window.CapaState.activeHotel) || '').toLowerCase();
+        const isCumbria = activeH.includes('cumbria');
         const habRows = [];
         rows.forEach((row, index) => {
             if (isRoomMetric(row?.[1])) {
@@ -574,6 +593,8 @@
                 value = 'TOTAL GENERAL';
             } else if (rawNorm && hotelMappings && hotelMappings[rawNorm]) {
                 value = hotelMappings[rawNorm];
+            } else if (isCumbria && (rawNorm === 'EMPRESAS' || rawNorm === 'EMPRESA')) {
+                value = 'EMPRESAS';
             } else if (aliases[rawNorm]) {
                 value = aliases[rawNorm];
             } else if (validSegments.includes(rawNorm)) {
@@ -585,9 +606,9 @@
             }
 
             // An explicit choice in this import takes precedence over remembered mappings.
-            let name = Object.hasOwn(corrections, cell) ? canonical(value)
+            let name = Object.hasOwn(corrections, cell) ? canonical(value, detectedHotelName)
                 : isTotalName(rawNorm) ? 'TOTAL GENERAL'
-                : (rawNorm && hotelMappings && hotelMappings[rawNorm]) ? hotelMappings[rawNorm] : canonical(value);
+                : (rawNorm && hotelMappings && hotelMappings[rawNorm]) ? hotelMappings[rawNorm] : canonical(value, detectedHotelName);
             const reason = !name ? 'Falta el segmento a la izquierda de Hab.' : !validSegments.includes(name) && !isTotalName(name) ? 'Segmento no válido. Debes asignarlo a un segmento correcto.' : '';
             return { cell, row: item.row, original: item.original, name, reason };
         });
@@ -712,9 +733,14 @@
                     });
                 }
 
+                const isCumbria = detectedHotel.toLowerCase().includes('cumbria');
+                const isNoLodgingSegment = isCumbria && segment === 'EMPRESAS';
+
                 if (isRooms) {
-                    target.rooms[c.month] += value;
-                    if (chTarget) chTarget.rooms[c.month] += value;
+                    if (!isNoLodgingSegment) {
+                        target.rooms[c.month] += value;
+                        if (chTarget) chTarget.rooms[c.month] += value;
+                    }
                 } else if (isTotal) {
                     target.totalRevenue[c.month] += value;
                     if (chTarget) chTarget.totalRevenue[c.month] += value;
@@ -722,7 +748,7 @@
                     const safeMetric = metric || 'DESCONOCIDO';
                     // Si la métrica/concepto coincide con el nombre de un segmento, es un desglose del bloque de totales.
                     // Lo ignoramos para no sumarlo como concepto ni duplicar la producción.
-                    if (validSegments.includes(canonical(safeMetric))) return;
+                    if (validSegments.includes(canonical(safeMetric, detectedHotel))) return;
 
                     target.concepts ||= {};
                     target.concepts[safeMetric] ||= Array(12).fill(0);
@@ -730,7 +756,7 @@
                     
                     target.revenue[c.month] += value;
                     if (chTarget) chTarget.revenue[c.month] += value;
-                    if (isLodging) {
+                    if (isLodging && !isNoLodgingSegment) {
                         target.accommodation[c.month] += value;
                         target.accommodationVerified[c.month] = true;
                         if (chTarget) chTarget.accommodation[c.month] += value;
@@ -919,17 +945,22 @@
                     const dt = target.days[c.iso] ||= { revenue: 0, rooms: 0, accommodation: 0, totalRevenue: 0 };
                     const chDt = chTarget ? (chTarget.days[c.iso] ||= { revenue: 0, rooms: 0, accommodation: 0, totalRevenue: 0 }) : null;
                     
+                    const isCumbria = detectedHotel.toLowerCase().includes('cumbria');
+                    const isNoLodgingSegment = isCumbria && segName === 'EMPRESAS';
+
                     if (isRooms) {
-                        dt.rooms += value;
-                        if (chDt) chDt.rooms += value;
+                        if (!isNoLodgingSegment) {
+                            dt.rooms += value;
+                            if (chDt) chDt.rooms += value;
+                        }
                     } else if (isTotal) {
                         dt.totalRevenue += value;
                         if (chDt) chDt.totalRevenue += value;
                     } else {
-                        if (validSegments.includes(canonical(metric))) return;
+                        if (validSegments.includes(canonical(metric, detectedHotel))) return;
                         dt.revenue += value;
                         if (chDt) chDt.revenue += value;
-                        if (isLodging) {
+                        if (isLodging && !isNoLodgingSegment) {
                             dt.accommodation += value;
                             if (chDt) chDt.accommodation += value;
                         }

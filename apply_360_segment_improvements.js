@@ -30,8 +30,9 @@ const replacementJs = `        function escapeHTML(str) {
                 'TTOO DINAMICA',
                 'GRUPOS',
                 'GRTANTEO',
+                'BONO ONLINE',
                 'BONO SPA',
-                'OTROS'
+                'EMPRESAS'
             ]
         };
 

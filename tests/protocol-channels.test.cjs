@@ -42,6 +42,10 @@ test('getProtocolChannelsDescription distinguishes Guadiana vs Cumbria channels 
     assert.ok(desc('AGENCIAS', 'Guadiana').includes('OTA / AAVV'));
     assert.ok(desc('AGENCIAS', 'Cumbria').includes('OTA / AAVV'));
     assert.ok(desc('OTROS', 'Cumbria').includes('no existe en Cumbria'));
+
+    // EMPRESAS differentiation (exclusive Cumbria office leases)
+    assert.ok(desc('EMPRESAS', 'Cumbria').includes('oficinas alquiladas'));
+    assert.ok(desc('EMPRESAS', 'Guadiana').includes('Corporativo Lineal'));
 });
 
 test('CalculadoraPresupuesto normalizeSegmentDisplayName consolidates legacy segments in both hotels', () => {
@@ -61,12 +65,17 @@ test('CalculadoraPresupuesto normalizeSegmentDisplayName consolidates legacy seg
     // Cumbria only: OTROS -> BONO ONLINE
     assert.equal(norm('OTROS', 'Cumbria'), 'BONO ONLINE');
     assert.equal(norm('OTROS', 'Guadiana'), 'OTROS');
+
+    // Cumbria only: EMPRESAS -> EMPRESAS; Guadiana: EMPRESAS -> CORPORATIVO LINEAL
+    assert.equal(norm('EMPRESAS', 'Cumbria'), 'EMPRESAS');
+    assert.equal(norm('EMPRESAS', 'Guadiana'), 'CORPORATIVO LINEAL');
 });
 
 test('CalculadoraPresupuesto Cumbria Bono Spa is treated as complimentary with zero targets', () => {
     const calcCode = fs.readFileSync('CalculadoraPresupuesto.html', 'utf8');
-    assert.ok(calcCode.includes("if (hotel === 'Cumbria' && s.name === 'BONO SPA') return;"));
+    assert.ok(calcCode.includes("if (hotel === 'Cumbria' && (s.name === 'BONO SPA' || s.name === 'EMPRESAS')) return;"));
     assert.ok(calcCode.includes("isCumbriaBonoSpa"));
+    assert.ok(calcCode.includes("isCumbriaEmpresas"));
     assert.ok(calcCode.includes("segTargetRev = 0;"));
     assert.ok(calcCode.includes("segTargetRN = 0;"));
 });
