@@ -109,10 +109,75 @@
             document.querySelectorAll('#hotelSelector, #hotelSelectorNav').forEach(sel => { sel.value = savedHotel(); });
         }
         const page = window.location.pathname.split('/').pop() || 'index.html';
+        function showNavUnsavedModal(targetHref) {
+            let existing = document.getElementById('navUnsavedModal');
+            if (existing) existing.remove();
+
+            const modal = document.createElement('div');
+            modal.id = 'navUnsavedModal';
+            modal.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15, 23, 42, 0.75); backdrop-filter:blur(4px); z-index:99999999; display:flex; align-items:center; justify-content:center; padding:20px; box-sizing:border-box;';
+
+            modal.innerHTML = `
+                <div style="background:var(--bg-surface, #ffffff); color:var(--text-main, #0f172a); max-width:440px; width:100%; border-radius:16px; padding:24px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.4); border:1px solid var(--border, #e2e8f0); font-family:system-ui, -apple-system, sans-serif; text-align:center;">
+                    <div style="width:54px; height:54px; border-radius:50%; background:rgba(79, 70, 229, 0.15); color:#6366f1; display:flex; align-items:center; justify-content:center; font-size:1.8rem; margin:0 auto 14px auto;">
+                        💾
+                    </div>
+                    <h3 style="margin:0 0 8px 0; font-size:1.15rem; font-weight:800; color:var(--text-main, #1e293b);">
+                        ¿Guardar cambios de tarifas?
+                    </h3>
+                    <p style="margin:0 0 20px 0; font-size:0.88rem; color:var(--text-muted, #64748b); line-height:1.5;">
+                        Tienes tarifas simuladas o modificadas sin guardar. ¿Deseas guardarlas antes de cambiar de sección?
+                    </p>
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+                        <button id="navModalSaveBtn" style="background:#4f46e5; color:#ffffff; font-weight:700; border:none; padding:12px 18px; border-radius:10px; cursor:pointer; font-size:0.9rem; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 4px 12px rgba(79,70,229,0.35);">
+                            <span>💾</span> Guardar y continuar
+                        </button>
+                        <button id="navModalDiscardBtn" style="background:rgba(239,68,68,0.1); color:#ef4444; font-weight:700; border:1px solid rgba(239,68,68,0.25); padding:10px 18px; border-radius:10px; cursor:pointer; font-size:0.86rem; display:flex; align-items:center; justify-content:center; gap:6px;">
+                            <span>⚠️</span> Salir sin guardar
+                        </button>
+                        <button id="navModalCancelBtn" style="background:transparent; color:var(--text-muted, #64748b); font-weight:600; border:none; padding:8px 18px; border-radius:10px; cursor:pointer; font-size:0.84rem;">
+                            Cancelar y permanecer aquí
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            modal.querySelector('#navModalSaveBtn').onclick = () => {
+                if (typeof window.saveManualPrices === 'function') {
+                    try {
+                        window.saveManualPrices(true);
+                    } catch (err) {
+                        console.error('Error guardando tarifas al navegar:', err);
+                    }
+                }
+                window.manualPricesPending = false;
+                modal.remove();
+                window.location.href = targetHref;
+            };
+
+            modal.querySelector('#navModalDiscardBtn').onclick = () => {
+                window.manualPricesPending = false;
+                modal.remove();
+                window.location.href = targetHref;
+            };
+
+            modal.querySelector('#navModalCancelBtn').onclick = () => {
+                modal.remove();
+            };
+        }
+
         nav.querySelectorAll('.nav-links a').forEach(a => {
             a.classList.toggle('active', a.getAttribute('href') === page);
-            a.addEventListener('click', () => {
-                if (window.manualPricesPending) return;
+            a.addEventListener('click', (e) => {
+                const targetHref = a.getAttribute('href');
+                if (!targetHref || targetHref === page || targetHref.startsWith('#')) return;
+                if (window.manualPricesPending) {
+                    e.preventDefault();
+                    showNavUnsavedModal(targetHref);
+                    return;
+                }
                 const heavyTable = document.getElementById('tableBody');
                 if (heavyTable) heavyTable.textContent = '';
             });

@@ -842,6 +842,7 @@
                 applyBtn.title = 'Requiere revisión comercial antes de cualquier modificación. No se aplican cambios automáticos.';
                 applyBtn.onclick = null;
             } else if (rec.diffAmount === 0 || rec.proposedPrice === currentPrice) {
+                const applyAndSaveBtn = document.getElementById('dayDetailApplyAndSaveBtn');
                 applyBtn.innerText = `✓ Tarifa vigente conservada (${currentPrice > 0 ? currentPrice + ' €' : rec.proposedPrice + ' €'})`;
                 applyBtn.disabled = true;
                 applyBtn.style.background = '#64748b';
@@ -849,8 +850,10 @@
                 applyBtn.style.opacity = '0.75';
                 applyBtn.title = 'La tarifa propuesta coincide con la vigente. No procede cambio de precio.';
                 applyBtn.onclick = null;
+                if (applyAndSaveBtn) applyAndSaveBtn.style.display = 'none';
             } else {
-                applyBtn.innerText = `Aplicar Precio Recomendado (${rec.proposedPrice} €)`;
+                const applyAndSaveBtn = document.getElementById('dayDetailApplyAndSaveBtn');
+                applyBtn.innerText = `Aplicar Precio (${rec.proposedPrice} €)`;
                 applyBtn.disabled = false;
                 applyBtn.style.background = 'var(--primary)';
                 applyBtn.style.cursor = 'pointer';
@@ -862,6 +865,18 @@
                     }
                     closeDayDetailModal();
                 };
+                if (applyAndSaveBtn) {
+                    applyAndSaveBtn.style.display = 'inline-flex';
+                    applyAndSaveBtn.onclick = function() {
+                        if (typeof setManualPrice === 'function') {
+                            setManualPrice(d.dayIndex, currentHotel, rec.proposedPrice);
+                        }
+                        if (typeof window.saveManualPrices === 'function') {
+                            window.saveManualPrices();
+                        }
+                        closeDayDetailModal();
+                    };
+                }
             }
         }
 

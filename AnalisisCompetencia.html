@@ -15,20 +15,20 @@
     <script src="js/xlsx.full.min.js"></script>
     <script src="js/chart.js"></script>
     <script src="js/state.js"></script>
-    <script src="js/storage.js?v=20261106-2220"></script>
+    <script src="js/storage.js?v=20261108-0038"></script>
     <script src="js/revenue-history.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="js/nav.js"></script>
     <script src="js/theme-manager.js"></script>
-    <script src="js/firebase-auth.js?v=20261106-2220"></script>
-    <script src="js/version.js?v=20261106-2220"></script>
-    <script src="js/pricing-intelligence.js?v=20261106-2220"></script>
-    <script src="js/competencia-intelligence-ui.js?v=20261106-2220"></script>
+    <script src="js/firebase-auth.js?v=20261108-0038"></script>
+    <script src="js/version.js?v=20261108-0038"></script>
+    <script src="js/pricing-intelligence.js?v=20261108-0038"></script>
+    <script src="js/competencia-intelligence-ui.js?v=20261108-0038"></script>
 
     <link rel="stylesheet" href="css/tokens.css">
-    <link rel="stylesheet" href="css/nav.css?v=20261106-2220">
+    <link rel="stylesheet" href="css/nav.css?v=20261108-0038">
     <style>
         :root {
             /* Page-specific variables not in tokens.css */
@@ -1821,6 +1821,9 @@
                     <option value="next_90" selected>📅 Próximos 90 días (3 meses)</option>
                     <option value="all">📅 Todo el Año (364 días)</option>
                 </select>
+                <button id="btnHeaderSaveManual" class="btn" onclick="saveManualPrices()" style="background:rgba(16, 185, 129, 0.15); color:#10b981; font-weight:700; border:1px solid rgba(16, 185, 129, 0.35); display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:8px; cursor:pointer; transition:all 0.2s;" title="Guardar manualmente las tarifas (Ctrl+S)">
+                    💾 Guardar Manual <span style="font-size:0.75rem; opacity:0.85;">(Ctrl+S)</span>
+                </button>
                 <button class="btn" onclick="openBarMatrixModal()" title="Gestor de Tarifas Base y Estrategia Yield por Hotel, Año y Mes">🏷️ Gestor de Tarifas y Yield</button>
                 <button class="btn" onclick="openMinPriceModal()" title="Configurar tarifas mínimas (suelo) para cada hotel">🏷️ Precios Mínimos</button>
                 <button class="btn"
@@ -2264,7 +2267,33 @@
         // --- ACTIONS & SIMULATION ENGINE ---
         let activeTableFilter = null;
         let manualPricesPending = false;
+        window.manualPricesPending = false;
         const pendingManualPrices = new Set();
+
+        function updateManualSaveState() {
+            const unsavedCount = typeof countModifiedPrices === 'function' ? countModifiedPrices() : pendingManualPrices.size;
+            manualPricesPending = (unsavedCount > 0 || pendingManualPrices.size > 0);
+            window.manualPricesPending = manualPricesPending;
+
+            const headerBtn = document.getElementById('btnHeaderSaveManual');
+            if (headerBtn) {
+                if (manualPricesPending) {
+                    headerBtn.style.background = '#4f46e5';
+                    headerBtn.style.color = '#ffffff';
+                    headerBtn.style.border = '1px solid #6366f1';
+                    headerBtn.style.boxShadow = '0 0 14px rgba(79, 70, 229, 0.6)';
+                    headerBtn.innerHTML = `💾 Guardar Cambios <span style="background:#ef4444; color:#fff; font-size:0.75rem; font-weight:800; padding:2px 7px; border-radius:10px; margin-left:4px; box-shadow:0 1px 3px rgba(0,0,0,0.3); font-family:sans-serif;">${unsavedCount}</span>`;
+                    headerBtn.title = `Guardar manualmente ${unsavedCount} tarifa(s) pendiente(s) (Ctrl+S)`;
+                } else {
+                    headerBtn.style.background = 'rgba(16, 185, 129, 0.15)';
+                    headerBtn.style.color = '#10b981';
+                    headerBtn.style.border = '1px solid rgba(16, 185, 129, 0.35)';
+                    headerBtn.style.boxShadow = 'none';
+                    headerBtn.innerHTML = `💾 Guardar Manual <span style="font-size:0.75rem; opacity:0.85; margin-left:2px;">(Ctrl+S)</span>`;
+                    headerBtn.title = 'Todas las tarifas están guardadas. Haz clic o pulsa Ctrl+S para forzar guardado manual.';
+                }
+            }
+        }
 
         function hotelOccupancyLabel(hotelName, rooms, hData, dateISO) {
             if (rooms === null || rooms === undefined || rooms === '' || !Number.isFinite(Number(rooms))) return '';
@@ -2295,7 +2324,7 @@
             return `<button class="sim-btn sim-apply-all" onclick="saveManualPrices()" ${manualPricesPending ? '' : 'disabled'} title="Guardar las tarifas de ambos hoteles, incluidas las fechas ocultas por filtros">${manualPricesPending ? '💾 Guardar cambios' : '✓ Cambios guardados'}</button>`;
         }
 
-        function saveManualPrices() {
+        function saveManualPrices(silent = false) {
             try {
                 const saved = CapaStorage.getItem('revenue_data_v2');
                 const previous = typeof saved === 'string' ? JSON.parse(saved) : saved;
@@ -2334,14 +2363,31 @@
                     return;
                 }
                 manualPricesPending = false;
+                window.manualPricesPending = false;
                 pendingManualPrices.clear();
+                if (typeof updateManualSaveState === 'function') updateManualSaveState();
                 refreshActiveView();
-                alert('Cambios de tarifas guardados. Se recuperarán al volver a abrir el análisis.');
+                if (!silent) {
+                    if (typeof showRevenueEmailToast === 'function') {
+                        showRevenueEmailToast('💾 Tarifas guardadas correctamente en la base de datos');
+                    } else {
+                        alert('Cambios de tarifas guardados. Se recuperarán al volver a abrir el análisis.');
+                    }
+                }
             } catch (error) {
                 console.error('Error guardando tarifas manuales', error);
-                alert('No se han podido guardar los cambios. Mantén esta página abierta e inténtalo de nuevo.');
+                if (!silent) alert('No se han podido guardar los cambios. Mantén esta página abierta e inténtalo de nuevo.');
             }
         }
+        window.saveManualPrices = saveManualPrices;
+
+        // Atajo de teclado: Ctrl+S para guardar tarifas manualmente
+        window.addEventListener('keydown', event => {
+            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+                event.preventDefault();
+                saveManualPrices();
+            }
+        });
 
         function syncBaselineFromProcessedData() {
             if (!Array.isArray(processedData)) return;
@@ -2361,6 +2407,8 @@
             });
             pendingManualPrices.clear();
             manualPricesPending = false;
+            window.manualPricesPending = false;
+            if (typeof updateManualSaveState === 'function') updateManualSaveState();
         }
 
         window.addEventListener('beforeunload', event => {
@@ -2522,6 +2570,8 @@
                 pendingManualPrices.delete(h);
             }
             manualPricesPending = (pendingManualPrices.size > 0);
+            window.manualPricesPending = manualPricesPending;
+            if (typeof updateManualSaveState === 'function') updateManualSaveState();
 
             refreshActiveView();
         }
@@ -2670,6 +2720,8 @@
             });
             pendingManualPrices.clear();
             manualPricesPending = false;
+            window.manualPricesPending = false;
+            if (typeof updateManualSaveState === 'function') updateManualSaveState();
             refreshActiveView();
         }
 
@@ -2749,6 +2801,8 @@
             });
 
             manualPricesPending = (pendingManualPrices.size > 0);
+            window.manualPricesPending = manualPricesPending;
+            if (typeof updateManualSaveState === 'function') updateManualSaveState();
             refreshActiveView();
         }
 
@@ -2800,6 +2854,7 @@
         }
 
         function refreshActiveView() {
+            if (typeof updateManualSaveState === 'function') updateManualSaveState();
             activeHotel = document.getElementById('hotelSelector')?.value || window.CapaState?.activeHotel || localStorage.getItem('active_hotel_suite') || activeHotel || "Guadiana";
             const selectedMonth = document.getElementById('monthSelector')?.value || 'next_90';
             
@@ -6555,6 +6610,9 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     </div>
                 </div>
                 <div style="display:flex; align-items:center; gap:10px;">
+                    <button type="button" id="dayDetailApplyAndSaveBtn" class="btn" style="background:#4f46e5; color:#fff; font-weight:700; font-size:0.8rem; padding:7px 14px; border-radius:8px; border:none; cursor:pointer; display:none; align-items:center; gap:5px;" title="Aplicar esta recomendación y guardar inmediatamente en base de datos">
+                        <span>💾</span> Aplicar y Guardar
+                    </button>
                     <button type="button" id="dayDetailApplyBtn" class="btn btn-primary" style="font-weight:700; font-size:0.8rem; padding:7px 14px; border-radius:8px;">
                         Aplicar Precio Recomendado
                     </button>
