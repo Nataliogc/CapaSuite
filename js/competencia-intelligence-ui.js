@@ -711,7 +711,7 @@
         }
 
         // 2. Gráfico de Evolución y Snapshots Reales
-        renderDayDetailChart(dateISO, rooms, currentHotel, { currentPrice, capacity, revenue: (my?.revenue || (rooms * (currentPrice || rec.baseBar))) });
+        renderDayDetailChart(dateISO, rooms, currentHotel, { currentPrice, capacity, compAvg: mktPrice, revenue: (my?.revenue || (rooms * (currentPrice || rec.baseBar))) });
 
         // 3. Recomendación y Explicación Estructurada
         const recCont = document.getElementById('dayDetailRecContainer');
@@ -1033,7 +1033,7 @@
                     </div>
                     ${!hasEconomicData ? `
                         <div style="margin-top:6px; font-size:0.7rem; color:var(--text-muted); border-top:1px dashed var(--border); padding-top:4px;">
-                            ℹ️ Datos económicos (Ingresos / ADR) no disponibles en estas capturas históricas; se registrarán en los próximos snapshots.
+                            ℹ️ <b>Métricas de Tarifas:</b> Se muestra la evolución del <b>Precio Medio de la Competencia</b> y de <b>Tu Tarifa BAR</b> registrada. El <b>ADR propio</b> requiere informe PMS con desglose de facturación (Revenue); en fechas con 0 habs vendidas no existe ADR.
                         </div>
                     ` : ''}
                 </div>
@@ -1056,6 +1056,55 @@
             yAxisID: 'y'
         }];
 
+        // Series complementarias de precios (Competencia, BAR Propia, ADR)
+        const hasCompData = snaps.some(s => (s.comp && s.comp > 0) || (s.compPrice && s.compPrice > 0)) || (extra.compAvg && extra.compAvg > 0);
+        const hasBarData = snaps.some(s => (s.bar && s.bar > 0) || (s.publishedBar && s.publishedBar > 0)) || (extra.currentPrice && extra.currentPrice > 0);
+
+        if (hasCompData) {
+            const dataComp = snaps.map((s, idx) => {
+                const c = s.compPrice || s.comp;
+                if (c && c > 0) return Math.round(c);
+                if (idx === snaps.length - 1 && extra.compAvg > 0) return Math.round(extra.compAvg);
+                return null;
+            });
+            datasets.push({
+                label: 'Precio Medio Competencia (€)',
+                data: dataComp,
+                borderColor: '#f59e0b',
+                backgroundColor: 'transparent',
+                borderWidth: 2,
+                tension: 0.15,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                pointBackgroundColor: '#f59e0b',
+                spanGaps: true,
+                yAxisID: 'y1'
+            });
+        }
+
+        if (hasBarData) {
+            const dataBar = snaps.map((s, idx) => {
+                const b = s.publishedBar || s.bar;
+                if (b && b > 0) return Math.round(b);
+                if (idx === snaps.length - 1 && extra.currentPrice > 0) return Math.round(extra.currentPrice);
+                return null;
+            });
+            datasets.push({
+                label: 'Tu Tarifa BAR (€)',
+                data: dataBar,
+                borderColor: '#38bdf8',
+                backgroundColor: 'transparent',
+                borderDash: [3, 3],
+                borderWidth: 2,
+                tension: 0.15,
+                pointRadius: 3,
+                pointHoverRadius: 5,
+                pointBackgroundColor: '#38bdf8',
+                spanGaps: true,
+                yAxisID: 'y1'
+            });
+        }
+
         if (hasEconomicData) {
             const dataAdr = snaps.map(s => s.adr || (s.revenue && s.rooms > 0 ? Math.round(s.revenue / s.rooms) : null));
             datasets.push({
@@ -1064,10 +1113,13 @@
                 borderColor: '#10b981',
                 backgroundColor: 'transparent',
                 borderDash: [4, 4],
+                borderWidth: 2,
                 fill: false,
                 tension: 0.15,
                 pointRadius: 4,
+                pointHoverRadius: 6,
                 pointBackgroundColor: '#10b981',
+                spanGaps: true,
                 yAxisID: 'y1'
             });
         }
@@ -1088,17 +1140,27 @@
                 },
                 plugins: {
                     legend: {
-                        display: hasEconomicData,
+                        display: (hasEconomicData || hasCompData || hasBarData),
                         position: 'top',
                         labels: { font: { size: 10 } }
                     },
                     tooltip: {
                         callbacks: {
                             label: (ctx) => {
-                                if (ctx.dataset.label.includes('Habitaciones')) {
+                                const lbl = ctx.dataset.label || '';
+                                if (lbl.includes('Habitaciones') || lbl.includes('OTB')) {
                                     return `OTB: ${ctx.parsed.y} habs (${capacity - ctx.parsed.y} libres)`;
                                 }
-                                return `ADR: ${ctx.parsed.y} €`;
+                                if (lbl.includes('Competencia')) {
+                                    return `Competencia: ${ctx.parsed.y} €`;
+                                }
+                                if (lbl.includes('BAR')) {
+                                    return `Tu BAR: ${ctx.parsed.y} €`;
+                                }
+                                if (lbl.includes('ADR')) {
+                                    return `ADR: ${ctx.parsed.y} €`;
+                                }
+                                return `${lbl}: ${ctx.parsed.y} €`;
                             }
                         }
                     }
@@ -1116,11 +1178,11 @@
                     },
                     y1: {
                         type: 'linear',
-                        display: hasEconomicData,
+                        display: (hasEconomicData || hasCompData || hasBarData),
                         position: 'right',
                         grid: { drawOnChartArea: false },
                         ticks: { font: { size: 10 } },
-                        title: { display: true, text: 'ADR (€)', font: { size: 10 } }
+                        title: { display: true, text: 'Tarifas / ADR (€)', font: { size: 10 } }
                     },
                     x: {
                         grid: { display: false },

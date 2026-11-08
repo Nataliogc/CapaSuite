@@ -626,6 +626,7 @@
             ? Number((revenue / rooms).toFixed(2))
             : (Number(entry.adr) || 0);
         const publishedBar = Number(entry.bar !== undefined ? entry.bar : (entry.publishedBar || entry.currentPrice)) || null;
+        const compPrice = Number(entry.comp !== undefined ? entry.comp : (entry.compPrice || entry.marketAvg || entry.compAvg)) || null;
         const occupancyPct = entry.occupancyPct !== undefined && !isNaN(entry.occupancyPct)
             ? Number(Number(entry.occupancyPct).toFixed(1))
             : Number(((rooms / hotelCapacity) * 100).toFixed(1));
@@ -648,7 +649,9 @@
             t: t,
             r: rooms,
             rev: revenue,
-            bar: publishedBar
+            bar: publishedBar,
+            compPrice: compPrice,
+            comp: compPrice
         };
     }
 
@@ -664,6 +667,8 @@
 
         const bar = Number(entry.bar !== undefined ? entry.bar : (entry.publishedBar || entry.currentPrice)) || 0;
         if (bar > 0) compact.bar = Math.round(bar);
+        const comp = Number(entry.comp !== undefined ? entry.comp : (entry.compPrice || entry.marketAvg || entry.compAvg)) || 0;
+        if (comp > 0) compact.comp = Number(comp.toFixed(1));
 
         const t = String(entry.t || entry.captureTime || '').trim();
         if (t) compact.t = t.slice(0, 8);
@@ -789,6 +794,7 @@
         const rooms = Math.round(Number(metrics.rooms) || 0);
         const revenue = Number(metrics.revenue) || 0;
         const pubBar = Number(metrics.publishedBar || metrics.currentPrice || 0) || null;
+        const compPrice = Number(metrics.compPrice || metrics.compAvg || metrics.marketAvg || metrics.comp || 0) || null;
 
         const list = db[hKey][dateISO];
         const existingIdx = list.findIndex(item => (item.d === captureDayKey || item.captureDate === captureDayKey));
@@ -805,6 +811,7 @@
             existing.adr = (rooms > 0 && revenue > 0) ? Number((revenue / rooms).toFixed(2)) : (Number(metrics.adr) || 0);
             existing.publishedBar = pubBar;
             existing.bar = pubBar;
+            if (compPrice > 0) { existing.compPrice = compPrice; existing.comp = compPrice; }
             existing.captureTime = captureTimeKey;
             existing.t = captureTimeKey;
             existing.captureDateTime = `${captureDayKey} ${captureTimeKey}`;
@@ -816,7 +823,8 @@
                 t: captureTimeKey,
                 r: rooms,
                 rev: revenue,
-                bar: pubBar
+                bar: pubBar,
+                comp: compPrice
             }, capacity);
             list.push(entry);
         }
@@ -850,6 +858,7 @@
             const rooms = Math.round(typeof val === 'object' ? (val.rooms ?? val.otbRooms ?? 0) : Number(val) || 0);
             const revenue = typeof val === 'object' ? (val.revenue ?? 0) : 0;
             const pubBar = typeof val === 'object' ? (val.price ?? val.bar ?? 0) : 0;
+            const compPrice = typeof val === 'object' ? (val.compPrice ?? val.compAvg ?? val.comp ?? val.marketAvg ?? 0) : 0;
 
             db[hKey][iso] = db[hKey][iso] || [];
             const list = db[hKey][iso];
@@ -861,14 +870,19 @@
                 const existingRev = existing.revenue !== undefined ? existing.revenue : (existing.rev || 0);
                 const existingBar = existing.publishedBar !== undefined ? existing.publishedBar : (existing.bar || 0);
 
-                if (existingRooms !== rooms || existingRev !== revenue || (existingBar || 0) !== (pubBar || 0)) {
+                const existingComp = existing.compPrice !== undefined ? existing.compPrice : (existing.comp || 0);
+                const finalRev = (revenue > 0) ? revenue : existingRev;
+                const finalBar = (pubBar > 0) ? pubBar : existingBar;
+                const finalComp = (compPrice > 0) ? compPrice : existingComp;
+                if (existingRooms !== rooms || existingRev !== finalRev || (existingBar || 0) !== (finalBar || 0) || (existingComp || 0) !== (finalComp || 0)) {
                     existing.rooms = rooms;
                     existing.r = rooms;
-                    existing.revenue = revenue;
-                    existing.rev = revenue;
-                    existing.adr = (rooms > 0 && revenue > 0) ? Number((revenue / rooms).toFixed(2)) : (typeof val === 'object' ? (val.adr || 0) : 0);
-                    existing.publishedBar = pubBar || null;
-                    existing.bar = pubBar || null;
+                    existing.revenue = finalRev;
+                    existing.rev = finalRev;
+                    existing.adr = (rooms > 0 && finalRev > 0) ? Number((finalRev / rooms).toFixed(2)) : (typeof val === 'object' && val.adr ? val.adr : (existing.adr || 0));
+                    existing.publishedBar = finalBar || null;
+                    existing.bar = finalBar || null;
+                    if (finalComp > 0) { existing.compPrice = finalComp; existing.comp = finalComp; }
                     existing.t = captureTimeKey;
                     existing.captureTime = captureTimeKey;
                     existing.captureDateTime = `${captureDayKey} ${captureTimeKey}`;
@@ -882,7 +896,8 @@
                     t: captureTimeKey,
                     r: rooms,
                     rev: revenue,
-                    bar: pubBar || null
+                    bar: pubBar || null,
+                    comp: compPrice || null
                 }, capacity);
                 list.push(entry);
                 hasAnyChange = true;
@@ -1824,11 +1839,19 @@
                 // Tarifa vigente superior a objetivo con ocupación baja: PROTEGER TARIFA VIGENTE
                 action = 'MANTENER';
                 proposedPrice = barVigente;
-                triggerText = (effectiveOcc >= 41) ? 'MANTENER / VIGILAR' : ((pickupMetrics.bestPickup > 0) ? `⚡ Vigilar (+${pickupMetrics.bestPickup})` : 'MANTENER');
-                demandStatus = 'TARIFA VIGENTE PROTEGIDA';
-                isCommerciallyOptimal = true;
-                reasons.push(`Ocupación en ${effectiveOcc.toFixed(0)}% (tramo 0–50%). BAR base: ${baseBar} €. BAR objetivo: ${barObjetivo} €. Tarifa vigente: ${barVigente} €.`);
-                reasons.push(`La BAR vigente (${barVigente} €) supera la BAR objetivo. Regla de protección: MANTENER la tarifa vigente (${barVigente} €) y no recomendar bajada automática.`);
+                if (!pickupMetrics.hasSufficientHistory && barVigente !== baseBar) {
+                    triggerText = '⚠️ Pend. Demanda';
+                    demandStatus = 'PENDIENTE DE EVALUACIÓN DE DEMANDA';
+                    isCommerciallyOptimal = false;
+                    reasons.push(`Ocupación en ${effectiveOcc.toFixed(0)}% (tramo 0–50%). BAR base: ${baseBar} €. BAR objetivo: ${barObjetivo} €. Tarifa vigente: ${barVigente} €.`);
+                    reasons.push(`PENDIENTE DE EVALUACIÓN DE DEMANDA: Al no contar con histórico de pickup suficiente y diferir la tarifa vigente (${barVigente} €) de la BAR base (${baseBar} €), se clasifica como MANTENER pendiente de validación.`);
+                } else {
+                    triggerText = (effectiveOcc >= 41) ? 'MANTENER / VIGILAR' : ((pickupMetrics.bestPickup > 0) ? `⚡ Vigilar (+${pickupMetrics.bestPickup})` : 'MANTENER');
+                    demandStatus = 'TARIFA VIGENTE PROTEGIDA';
+                    isCommerciallyOptimal = true;
+                    reasons.push(`Ocupación en ${effectiveOcc.toFixed(0)}% (tramo 0–50%). BAR base: ${baseBar} €. BAR objetivo: ${barObjetivo} €. Tarifa vigente: ${barVigente} €.`);
+                    reasons.push(`La BAR vigente (${barVigente} €) supera la BAR objetivo. Regla de protección: MANTENER la tarifa vigente (${barVigente} €) y no recomendar bajada automática.`);
+                }
                 if (pickupMetrics.bestPickup > 0) {
                     reasons.push(`Pick-up de +${pickupMetrics.bestPickup} RN actúa como indicador de vigilancia favorable sin provocar subida adicional con ocupación baja.`);
                 }
@@ -2037,7 +2060,7 @@
             pickupMetrics,
             occupancyData: occData,
             minRange: baseBar,
-            maxRange: Math.max(baseBar, barObjetivo, barVigente),
+            maxRange: (demandStatus === 'PENDIENTE DE EVALUACIÓN DE DEMANDA') ? Math.min(Math.round(baseBar * 1.10), Math.max(baseBar, barObjetivo)) : Math.max(baseBar, barObjetivo, barVigente),
             rangeText: `${baseBar} € – ${Math.max(baseBar, barObjetivo, barVigente)} €`,
             rangeCalculation: `Suelo (BAR base): ${baseBar} € · Objetivo: ${barObjetivo} € · Vigente: ${barVigente} €`,
             mathToleranceBand: {
