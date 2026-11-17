@@ -101,7 +101,7 @@ test('closing an idle tab never writes its snapshot',async()=>{
 });
 test('getUserDisplayName correctly maps all suite users and fallbacks', () => {
     const s = setup({});
-    assert.equal(s.run("window.getUserDisplayName('dianahotelguadiana@gmail.com')"), 'Diana');
+    assert.equal(s.run("window.getUserDisplayName('jrecepcion@hotelguadiana.es')"), 'Diana');
     assert.equal(s.run("window.getUserDisplayName({ email: 'ssanchez@hotelguadiana.es' })"), 'Sergio');
     assert.equal(s.run("window.getUserDisplayName({ email: 'osanchez@hotelguadiana.es' })"), 'Oscar');
     assert.equal(s.run("window.getUserDisplayName({ email: 'comunicaciones@hotelguadiana.es' })"), 'Natalio');

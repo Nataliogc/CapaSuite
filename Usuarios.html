@@ -814,6 +814,10 @@
                         <span class="dot-red"></span>
                         <span id="count-revoked">0 Revocados</span>
                     </div>
+                    <div class="stat-pill" style="background: rgba(251, 191, 36, 0.16); border: 1px solid rgba(251, 191, 36, 0.35); color: #fde68a;">
+                        <span>🔑</span>
+                        <span>Clave por defecto: <strong style="color:#fff; font-family:monospace;">1234</strong></span>
+                    </div>
                 </div>
             </div>
             <div>
@@ -918,6 +922,41 @@
                 <div class="modal-actions">
                     <button type="button" class="btn-cancel" onclick="closeModal('modal-reset-pass')">Cancelar</button>
                     <button type="submit" class="btn-submit" style="background:#f59e0b;">Guardar Clave</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR USUARIO -->
+    <div id="modal-edit-user" class="modal-backdrop">
+        <div class="modal-box">
+            <div class="modal-head">
+                <h3 class="modal-title">Editar Usuario</h3>
+                <button type="button" class="modal-close" onclick="closeModal('modal-edit-user')">×</button>
+            </div>
+            <p class="modal-sub" id="edit-modal-sub">Modifica el nombre, correo o rol de acceso</p>
+            <form id="form-edit-user" onsubmit="event.preventDefault(); submitEditUser();">
+                <input type="hidden" id="edit-user-original-email">
+                <div class="form-group">
+                    <label class="form-label">Nombre Completo</label>
+                    <input type="text" id="edit-user-name" class="form-control" required placeholder="Ej. Diana">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Correo Electrónico (Usuario)</label>
+                    <input type="email" id="edit-user-email" class="form-control" required placeholder="usuario@hotelguadiana.es">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Rol de Acceso</label>
+                    <select id="edit-user-role" class="form-control">
+                        <option value="Comercial">Comercial</option>
+                        <option value="Dirección">Dirección</option>
+                        <option value="Administrador">Administrador</option>
+                        <option value="Recepción">Recepción</option>
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="closeModal('modal-edit-user')">Cancelar</button>
+                    <button type="submit" class="btn-submit">Guardar Cambios</button>
                 </div>
             </form>
         </div>
@@ -1064,10 +1103,17 @@
                                     : `<span class="badge-status status-active"><span class="dot-green"></span> Activo</span>`
                                 }
                             </div>
-                            <div class="user-email">${escapeHtml(u.email || '')}</div>
+                            <div class="user-email" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                <span>${escapeHtml(u.email || '')}</span>
+                                ${(u.pass || '1234') === '1234' ? `<span style="font-size:0.68rem; font-weight:700; padding:2px 8px; border-radius:999px; background:#fffbeb; color:#b45309; border:1px solid #fde68a;">🔑 Clave por defecto: <span style="font-family:monospace;">1234</span></span>` : ''}
+                            </div>
                         </div>
                     </div>
                     <div class="user-actions">
+                        <button type="button" class="btn-action" onclick="openEditModal('${escapeHtml(u.email)}')" title="Editar datos de ${escapeHtml(u.name)}">
+                            <span>✏️</span>
+                            <span>Editar</span>
+                        </button>
                         <button type="button" class="btn-action btn-key" onclick="openResetModal('${escapeHtml(u.email)}', '${escapeHtml(u.name)}')" title="Resetear clave de ${escapeHtml(u.name)}">
                             <span style="color:#f59e0b;">🔑</span>
                             <span>Resetear Clave</span>
@@ -1140,7 +1186,55 @@
                 await window.saveSystemUsers(usersData);
             }
             closeModal('modal-reset-pass');
+            renderUsers();
             showToast(`Clave de "${user.name}" actualizada con éxito a "${newPass}".`);
+        }
+
+        function openEditModal(email) {
+            const user = usersData.find(u => (u.email || '').toLowerCase() === (email || '').toLowerCase());
+            if (!user) return;
+            document.getElementById('edit-user-original-email').value = user.email || '';
+            document.getElementById('edit-user-name').value = user.name || '';
+            document.getElementById('edit-user-email').value = user.email || '';
+            document.getElementById('edit-user-role').value = user.role || 'Comercial';
+            document.getElementById('edit-modal-sub').innerText = `Modifica los datos de ${user.name || user.email}:`;
+            document.getElementById('modal-edit-user').style.display = 'flex';
+            setTimeout(() => document.getElementById('edit-user-name').focus(), 100);
+        }
+
+        async function submitEditUser() {
+            const originalEmail = document.getElementById('edit-user-original-email').value.trim().toLowerCase();
+            const name = document.getElementById('edit-user-name').value.trim();
+            const email = document.getElementById('edit-user-email').value.trim().toLowerCase();
+            const role = document.getElementById('edit-user-role').value;
+
+            if (!name || !email) {
+                alert("El nombre y el correo electrónico son obligatorios.");
+                return;
+            }
+
+            const idx = usersData.findIndex(u => (u.email || '').toLowerCase() === originalEmail);
+            if (idx === -1) return;
+
+            const duplicate = usersData.some((u, i) => i !== idx && (u.email || '').toLowerCase() === email);
+            if (duplicate) {
+                alert(`Ya existe otro usuario registrado con el correo "${email}".`);
+                return;
+            }
+
+            usersData[idx] = {
+                ...usersData[idx],
+                name,
+                email,
+                role
+            };
+
+            if (window.saveSystemUsers) {
+                await window.saveSystemUsers(usersData);
+            }
+            closeModal('modal-edit-user');
+            renderUsers();
+            showToast(`Usuario "${name}" actualizado correctamente.`);
         }
 
         async function toggleRevokeUser(email) {

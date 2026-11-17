@@ -42,7 +42,7 @@ if (_isLocalBypass) {
 const DEFAULT_SYSTEM_USERS = [
     {
         name: 'Diana',
-        email: 'dianahotelguadiana@gmail.com',
+        email: 'jrecepcion@hotelguadiana.es',
         role: 'Comercial',
         pass: '1234',
         active: true,
@@ -84,12 +84,25 @@ const DEFAULT_SYSTEM_USERS = [
 
 const SYSTEM_USERS_STORAGE_KEY = 'capasuite_system_users_v1';
 
+function _migrateLegacyUserEmails(users) {
+    if (!Array.isArray(users)) return { users, changed: false };
+    let changed = false;
+    const migrated = users.map(u => {
+        if (u && (u.email || '').toLowerCase().trim() === 'dianahotelguadiana@gmail.com') {
+            changed = true;
+            return { ...u, email: 'jrecepcion@hotelguadiana.es' };
+        }
+        return u;
+    });
+    return { users: migrated, changed };
+}
+
 function getLocalSystemUsers() {
     try {
         const raw = _readStorage(SYSTEM_USERS_STORAGE_KEY);
         if (raw) {
             const parsed = JSON.parse(raw);
-            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+            if (Array.isArray(parsed) && parsed.length > 0) { const { users, changed } = _migrateLegacyUserEmails(parsed); if (changed) _writeStorage(SYSTEM_USERS_STORAGE_KEY, JSON.stringify(users)); return users; }
         }
     } catch {}
     return DEFAULT_SYSTEM_USERS.map(u => ({ ...u }));
@@ -104,7 +117,7 @@ async function getSystemUsersAsync() {
             if (val) {
                 const cloudList = Array.isArray(val) ? val : Object.values(val);
                 if (cloudList && cloudList.length > 0) {
-                    users = cloudList;
+                    const { users: migrated, changed } = _migrateLegacyUserEmails(cloudList); users = migrated; if (changed) cloudDb.ref('system_users').set(users).catch(() => {});
                     _writeStorage(SYSTEM_USERS_STORAGE_KEY, JSON.stringify(users));
                 }
             }
@@ -134,7 +147,7 @@ async function saveSystemUsers(usersList) {
 }
 
 const USER_DISPLAY_NAMES = {
-    'dianahotelguadiana@gmail.com': 'Diana',
+    'jrecepcion@hotelguadiana.es': 'Diana',
     'ssanchez@hotelguadiana.es': 'Sergio',
     'osanchez@hotelguadiana.es': 'Oscar',
     'comunicaciones@hotelguadiana.es': 'Natalio',
