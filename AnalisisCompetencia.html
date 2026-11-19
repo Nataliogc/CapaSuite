@@ -15,20 +15,20 @@
     <script src="js/xlsx.full.min.js"></script>
     <script src="js/chart.js"></script>
     <script src="js/state.js"></script>
-    <script src="js/storage.js?v=20261119-0542"></script>
+    <script src="js/storage.js?v=20261119-0550"></script>
     <script src="js/revenue-history.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="js/nav.js"></script>
     <script src="js/theme-manager.js"></script>
-    <script src="js/firebase-auth.js?v=20261119-0542"></script>
-    <script src="js/version.js?v=20261119-0542"></script>
-    <script src="js/pricing-intelligence.js?v=20261119-0542"></script>
-    <script src="js/competencia-intelligence-ui.js?v=20261119-0542"></script>
+    <script src="js/firebase-auth.js?v=20261119-0550"></script>
+    <script src="js/version.js?v=20261119-0550"></script>
+    <script src="js/pricing-intelligence.js?v=20261119-0550"></script>
+    <script src="js/competencia-intelligence-ui.js?v=20261119-0550"></script>
 
     <link rel="stylesheet" href="css/tokens.css">
-    <link rel="stylesheet" href="css/nav.css?v=20261119-0542">
+    <link rel="stylesheet" href="css/nav.css?v=20261119-0550">
     <style>
         :root {
             /* Page-specific variables not in tokens.css */
@@ -4475,39 +4475,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 const dbRaw = CapaStorage.getItem('hotel_manager_db_v2');
                 if (dbRaw) {
                     let pDb = (window._memDbRaw === dbRaw && window._memPDb) ? window._memPDb : ((typeof dbRaw === 'string') ? JSON.parse(dbRaw) : dbRaw);
-                    // Autocuración: reconciliar daily_otb duplicado frente a segment_forecast_v2 (fuente exacta)
-                    try {
-                        const segRaw = CapaStorage.getItem('segment_forecast_v2');
-                        if (segRaw) {
-                            const segDB = (typeof segRaw === 'string') ? JSON.parse(segRaw) : segRaw;
-                            let healedCount = 0;
-                            ['Guadiana', 'Cumbria'].forEach(hKey => {
-                                const segObj = segDB?.[hKey]?.segment;
-                                if (!segObj || !pDb?.[hKey]) return;
-                                const exactByIso = {};
-                                Object.values(segObj).forEach(seg => {
-                                    Object.entries(seg?.days || {}).forEach(([iso, dt]) => {
-                                        exactByIso[iso] = (exactByIso[iso] || 0) + (Number(dt?.rooms) || 0);
-                                    });
-                                });
-                                Object.entries(exactByIso).forEach(([iso, exactRooms]) => {
-                                    const yr = iso.slice(0, 4);
-                                    const dOtb = pDb[hKey]?.[yr]?.daily_otb?.[iso];
-                                    if (dOtb && typeof dOtb === 'object' && Math.round(dOtb.rooms || 0) > Math.round(exactRooms) && Math.round(exactRooms) > 0) {
-                                        dOtb.rooms = Math.round(exactRooms);
-                                        healedCount++;
-                                    }
-                                });
-                            });
-                            if (healedCount > 0) {
-                                const updatedRaw = JSON.stringify(pDb);
-                                CapaStorage.setItem('hotel_manager_db_v2', updatedRaw);
-                                window._memDbRaw = updatedRaw;
-                                console.log(`[AnalisisCompetencia] Autocurados ${healedCount} días de daily_otb desde segment_forecast_v2`);
-                            }
-                        }
-                    } catch (healErr) { console.warn('Error autocurando daily_otb:', healErr); }
-                    if (!window._memDbRaw) window._memDbRaw = dbRaw;
+                    window._memDbRaw = dbRaw;
                     window._memPDb = pDb;
                     const dbKeys = Object.keys(pDb);
                 

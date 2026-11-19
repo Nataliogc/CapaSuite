@@ -13,16 +13,16 @@
     <script src="js/chart.js"></script>
     <script src="js/theme-manager.js"></script>
     <script src="js/state.js"></script>
-    <script src="js/storage.js?v=20261119-0542"></script>
-    <script src="js/version.js?v=20261119-0542"></script>
+    <script src="js/storage.js?v=20261119-0550"></script>
+    <script src="js/version.js?v=20261119-0550"></script>
     <script src="js/nav.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="js/firebase-auth.js?v=20261119-0542"></script>
+    <script src="js/firebase-auth.js?v=20261119-0550"></script>
 
     <link rel="stylesheet" href="css/tokens.css">
-    <link rel="stylesheet" href="css/nav.css?v=20261119-0542">
+    <link rel="stylesheet" href="css/nav.css?v=20261119-0550">
     <style>
         #subMixModal {
             display: none;
@@ -2734,6 +2734,45 @@
                 adr: 0
             }));
 
+            const habRevByMonth = new Array(12).fill(0);
+            const totRevByMonth = new Array(12).fill(0);
+            if (data?.service && typeof getGroupID === 'function' && typeof normalizeStr === 'function') {
+                const subtotalsHm = {};
+                Object.values(data.service).forEach(sv => {
+                    const name = normalizeStr(sv.name);
+                    if (name === 'TOTAL' || name === 'TOTAL_MASTER') return;
+                    const gid = getGroupID(sv.name);
+                    if (gid && gid !== 'OMIT' && (name.includes('TOTAL') || name.includes('SUBTOTAL'))) {
+                        const catName = normalizeStr(PRODUCTION_GROUPS?.[gid]?.name || '');
+                        const catWord = (catName.split('.')[1] || '').trim();
+                        if ((catWord && name.includes(catWord)) || name.includes('ALOJAMIENTO') || name.includes('RESTAURANTE') || name.includes('DESAYUNO') || name.includes('EVENTO')) {
+                            subtotalsHm[gid] = sv;
+                        }
+                    }
+                });
+                Object.values(data.service).forEach(sv => {
+                    const name = normalizeStr(sv.name);
+                    if (name === 'TOTAL' || name === 'TOTAL_MASTER') return;
+                    const gid = getGroupID(sv.name);
+                    if (gid && gid !== 'OMIT') {
+                        const hasSub = !!subtotalsHm[gid];
+                        if (!hasSub || subtotalsHm[gid] === sv) {
+                            for (let i = 0; i < 12; i++) {
+                                const v = Number(sv.revenue?.[i] || 0);
+                                totRevByMonth[i] += v;
+                                if (gid === 'HABITACION') habRevByMonth[i] += v;
+                            }
+                        }
+                    }
+                });
+                if (data.service.TOTAL_MASTER?.revenue) {
+                    for (let i = 0; i < 12; i++) {
+                        const tm = Number(data.service.TOTAL_MASTER.revenue[i] || 0);
+                        if (tm > 0) totRevByMonth[i] = tm;
+                    }
+                }
+            }
+
             for (let m = startMonth; m <= endMonth; m++) {
                 const daysInM = new Date(yearNum, m + 1, 0).getDate();
                 for (let d = 1; d <= daysInM; d++) {
@@ -2756,9 +2795,8 @@
                             } else if (dayRecord.breakdown?.habitacion !== undefined) {
                                 rev = Number(dayRecord.breakdown.habitacion || 0);
                             } else {
-                                const groupedHm = (typeof groupServices === 'function' && data?.service) ? groupServices(data.service) : null;
-                                const habM = groupedHm?.HABITACION?.revenue?.[m] || 0;
-                                const totM = data?.service?.TOTAL_MASTER?.revenue?.[m] || Object.values(groupedHm || {}).reduce((acc, g) => acc + (g?.revenue?.[m] || 0), 0);
+                                const habM = habRevByMonth[m] || 0;
+                                const totM = totRevByMonth[m] || 0;
                                 const rawRev = Number(dayRecord.revenue || 0);
                                 rev = (totM > 0 && habM > 0) ? (rawRev * (habM / totM)) : rawRev;
                             }
