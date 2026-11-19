@@ -13,16 +13,16 @@
     <script src="js/chart.js"></script>
     <script src="js/theme-manager.js"></script>
     <script src="js/state.js"></script>
-    <script src="js/storage.js?v=20261119-0550"></script>
-    <script src="js/version.js?v=20261119-0550"></script>
+    <script src="js/storage.js?v=20261119-0635"></script>
+    <script src="js/version.js?v=20261119-0635"></script>
     <script src="js/nav.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="js/firebase-auth.js?v=20261119-0550"></script>
+    <script src="js/firebase-auth.js?v=20261119-0635"></script>
 
     <link rel="stylesheet" href="css/tokens.css">
-    <link rel="stylesheet" href="css/nav.css?v=20261119-0550">
+    <link rel="stylesheet" href="css/nav.css?v=20261119-0635">
     <style>
         #subMixModal {
             display: none;
@@ -169,7 +169,7 @@
             width: 100%;
             max-width: 100%;
             margin: 0;
-            padding: 20px 40px 60px;
+            padding: 10px 24px 48px;
             box-sizing: border-box;
         }
 
@@ -184,12 +184,13 @@
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: 10px 16px;
-            margin-bottom: 16px;
+            gap: 6px 14px;
+            margin-bottom: 12px;
+            min-height: 0 !important;
             background: var(--bg-glass) !important;
             backdrop-filter: blur(12px);
-            padding: 12px 20px;
-            border-radius: var(--radius);
+            padding: 8px 14px !important;
+            border-radius: 12px;
             border: 1px solid var(--border-glass);
             box-shadow: var(--shadow-premium);
         }
@@ -197,31 +198,36 @@
         .header-brand {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             min-width: 0;
-            flex: 1 1 360px;
+            flex: 1 1 340px;
         }
 
         .header-logos {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
             flex-shrink: 0;
         }
 
-        .header-logos img.brand-logo { height: 36px; width: auto; }
-        .header-logos img.hotel-logo { height: 34px; width: auto; max-width: 96px; object-fit: contain; }
+        .header-logos img.brand-logo { display: none; }
+        .header-logos img.hotel-logo { height: 28px; width: auto; max-width: 82px; object-fit: contain; }
 
         .title {
             min-width: 0;
             flex: 1 1 auto;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 2px 10px;
         }
 
         .title h1 {
-            font-size: clamp(1.1rem, 1.7vw, 1.5rem);
+            font-size: clamp(1rem, 1.4vw, 1.22rem);
             margin: 0;
             font-weight: 800;
             line-height: 1.15;
+            white-space: nowrap;
             background: linear-gradient(135deg, var(--text-main) 0%, var(--text-muted) 100%);
             -webkit-background-clip: text;
             background-clip: text;
@@ -232,24 +238,32 @@
             display: flex;
             align-items: center;
             flex-wrap: wrap;
-            gap: 4px 8px;
-            margin-top: 2px;
+            gap: 4px 6px;
+            margin-top: 0;
         }
 
         .header-subtitle-row p {
             margin: 0;
-            font-size: 0.82rem;
-            line-height: 1.3;
+            font-size: 0.74rem;
+            line-height: 1.2;
+            color: var(--text-muted);
         }
 
         #updateBadge {
-            font-size: 0.7rem !important;
-            padding: 2px 8px !important;
+            font-size: 0.68rem !important;
+            padding: 1px 7px !important;
+            line-height: 1.35;
+        }
+
+        .day-counter-badge {
+            font-size: 0.68rem !important;
+            padding: 1px 7px !important;
+            line-height: 1.35;
         }
 
         .header-actions {
             display: flex;
-            gap: 8px;
+            gap: 6px;
             align-items: center;
             flex-wrap: wrap;
             justify-content: flex-end;
@@ -257,42 +271,45 @@
         }
 
         .header-actions .btn-historico {
-            padding: 7px 12px;
-            border-radius: 8px;
+            padding: 5px 10px;
+            border-radius: 7px;
             background: var(--primary, #6366f1);
             color: white;
             text-decoration: none;
             font-weight: 700;
-            font-size: 0.78rem;
+            font-size: 0.74rem;
             display: inline-flex;
             align-items: center;
             gap: 5px;
-            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+            box-shadow: 0 1px 5px rgba(99, 102, 241, 0.25);
             white-space: nowrap;
+            height: 30px;
+            box-sizing: border-box;
         }
 
         .header-actions select {
-            padding: 7px 10px;
-            border-radius: 8px;
+            padding: 4px 8px;
+            border-radius: 7px;
             border: 1px solid #e2e8f0;
-            font-size: 0.8rem;
+            font-size: 0.76rem;
+            height: 30px;
+            box-sizing: border-box;
         }
 
         @media (max-width: 1100px) {
-            .header { padding: 10px 14px; gap: 8px 12px; }
+            .header { padding: 7px 12px !important; gap: 6px 10px; }
             .header-actions { width: 100%; justify-content: flex-start; }
         }
 
         @media (max-width: 640px) {
-            .header { padding: 10px 12px; margin-bottom: 12px; gap: 8px; }
+            .header { padding: 7px 10px !important; margin-bottom: 10px; gap: 6px; }
             .header-brand { flex-basis: 100%; gap: 8px; }
-            .header-logos img.brand-logo { display: none; }
-            .header-logos img.hotel-logo { height: 28px; max-width: 72px; }
-            .header-subtitle-row p { font-size: 0.75rem; }
-            #updateBadge { white-space: normal !important; font-size: 0.68rem !important; }
-            .header-actions { gap: 6px; }
-            .header-actions .btn-historico { padding: 6px 10px; font-size: 0.74rem; }
-            .header-actions select { padding: 6px 8px; font-size: 0.76rem; flex: 1 1 95px; }
+            .header-logos img.hotel-logo { height: 24px; max-width: 64px; }
+            .header-subtitle-row p { font-size: 0.7rem; }
+            #updateBadge { white-space: normal !important; font-size: 0.65rem !important; }
+            .header-actions { gap: 5px; }
+            .header-actions .btn-historico { padding: 4px 8px; font-size: 0.72rem; height: 28px; }
+            .header-actions select { padding: 3px 6px; font-size: 0.72rem; height: 28px; flex: 1 1 85px; }
         }
 
         .card {
