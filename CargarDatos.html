@@ -9,18 +9,18 @@
     <script src="js/chart.js"></script>
     <script src="js/xlsx.full.min.js"></script>
     <script src="js/state.js"></script>
-    <script src="js/storage.js?v=20261119-0528"></script>
+    <script src="js/storage.js?v=20261119-0532"></script>
     <script src="js/revenue-history.js?v=20261016-2"></script>
     <script src="js/daily-pickup.js"></script>
-    <script src="js/segment-analysis.js?v=20261119-0528"></script>
+    <script src="js/segment-analysis.js?v=20261119-0532"></script>
     <script src="js/segment-review.js?v=20261016-2"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="js/version.js?v=20261119-0528"></script>
+    <script src="js/version.js?v=20261119-0532"></script>
     <script src="js/nav.js"></script>
     <script src="js/pricing-intelligence.js"></script>
-    <script src="js/firebase-auth.js?v=20261119-0528"></script>
+    <script src="js/firebase-auth.js?v=20261119-0532"></script>
     <script src="js/theme-manager.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -662,7 +662,7 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="css/nav.css?v=20261119-0528">
+    <link rel="stylesheet" href="css/nav.css?v=20261119-0532">
 </head>
 
 <body style="padding: 0;">
@@ -2496,7 +2496,8 @@
 
                             // Only store if there's actual data to avoid counting empty Excel columns
                             if (rms > 0 || dailyRev > 0) {
-                                dbYear.daily[iso] = { rooms: rms, revenue: dailyRev };
+                                dbYear.daily[iso] = { rooms: rms, revenue: dailyRev, roomRevenue: 0 };
+                                specDate._iso = iso;
                             }
                         }
 
@@ -2544,7 +2545,11 @@
                             if (currentGroupLabel && (isHab || isPro || isPax)) {
                                 const type = isHab ? 'rms' : (isPax ? 'pax' : 'rev');
                                 const cellVal = (rowItem && rowItem[c] !== undefined) ? rowItem[c] : 0;
-                                applyVal(currentGroupLabel, parseVal(cellVal), mIdx, type);
+                                const parsedCellVal = parseVal(cellVal);
+                                applyVal(currentGroupLabel, parsedCellVal, mIdx, type);
+                                if (type === 'rev' && parsedDate && parsedDate._iso && dbYear.daily?.[parsedDate._iso] && getGroupID(currentGroupLabel) === 'HABITACION') {
+                                    dbYear.daily[parsedDate._iso].roomRevenue += parsedCellVal;
+                                }
                             }
                         }
                     }

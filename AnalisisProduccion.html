@@ -13,16 +13,16 @@
     <script src="js/chart.js"></script>
     <script src="js/theme-manager.js"></script>
     <script src="js/state.js"></script>
-    <script src="js/storage.js?v=20261119-0528"></script>
-    <script src="js/version.js?v=20261119-0528"></script>
+    <script src="js/storage.js?v=20261119-0532"></script>
+    <script src="js/version.js?v=20261119-0532"></script>
     <script src="js/nav.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="js/firebase-auth.js?v=20261119-0528"></script>
+    <script src="js/firebase-auth.js?v=20261119-0532"></script>
 
     <link rel="stylesheet" href="css/tokens.css">
-    <link rel="stylesheet" href="css/nav.css?v=20261119-0528">
+    <link rel="stylesheet" href="css/nav.css?v=20261119-0532">
     <style>
         #subMixModal {
             display: none;
@@ -183,23 +183,107 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 16px 24px;
             margin-bottom: 24px;
             background: var(--bg-glass) !important;
             backdrop-filter: blur(12px);
-            padding: 20px 30px;
+            padding: 18px 26px;
             border-radius: var(--radius);
             border: 1px solid var(--border-glass);
             box-shadow: var(--shadow-premium);
         }
 
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            min-width: 0;
+            flex: 1 1 420px;
+        }
+
+        .header-logos {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-shrink: 0;
+        }
+
+        .header-logos img.brand-logo { height: 46px; width: auto; }
+        .header-logos img.hotel-logo { height: 42px; width: auto; max-width: 110px; object-fit: contain; }
+
+        .title {
+            min-width: 0;
+            flex: 1 1 auto;
+        }
+
         .title h1 {
-            font-size: 1.8rem;
+            font-size: clamp(1.3rem, 2vw, 1.75rem);
             margin: 0;
             font-weight: 800;
+            line-height: 1.15;
             background: linear-gradient(135deg, var(--text-main) 0%, var(--text-muted) 100%);
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
+        }
+
+        .header-subtitle-row {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px 10px;
+            margin-top: 4px;
+        }
+
+        .header-subtitle-row p {
+            margin: 0;
+            font-size: 0.88rem;
+            line-height: 1.35;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            flex: 0 1 auto;
+        }
+
+        .header-actions .btn-historico {
+            padding: 9px 14px;
+            border-radius: 8px;
+            background: var(--primary, #6366f1);
+            color: white;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 0.82rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+            white-space: nowrap;
+        }
+
+        .header-actions select {
+            padding: 9px 12px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            font-size: 0.84rem;
+        }
+
+        @media (max-width: 1100px) {
+            .header { padding: 16px 20px; }
+            .header-actions { width: 100%; justify-content: flex-start; }
+        }
+
+        @media (max-width: 640px) {
+            .header-brand { flex-basis: 100%; flex-wrap: wrap; gap: 10px; }
+            .header-logos img.brand-logo { height: 36px; }
+            .header-logos img.hotel-logo { height: 34px; }
+            .header-actions .btn-historico { width: 100%; justify-content: center; }
+            .header-actions select { flex: 1 1 120px; }
         }
 
         .card {
@@ -544,27 +628,27 @@
     </nav>
     <div class="container">
         <header class="header">
-            <div style="display: flex; align-items: center; gap: 20px;">
-                <a href="index.html"><img src="Imagen/logo, CapaSuite.png" alt="CapaSuite" style="height: 50px;"></a>
-                <img id="hotelLogo" src="Imagen/logo-guadiana.svg" alt="Logo Hotel" style="height: 45px;">
+            <div class="header-brand">
+                <div class="header-logos">
+                    <a href="index.html"><img class="brand-logo" src="Imagen/logo, CapaSuite.png" alt="CapaSuite"></a>
+                    <img id="hotelLogo" class="hotel-logo" src="Imagen/logo-guadiana.svg" alt="Logo Hotel">
+                </div>
                 <div class="title">
                     <h1 id="mainTitle">Revenue Assistant</h1>
-                    <div style="display: flex; align-items: center; gap: 12px; margin-top: 2px;">
-                        <p id="mainSubtitle" style="margin:0;">Análisis Pace y Producción Detallada</p>
+                    <div class="header-subtitle-row">
+                        <p id="mainSubtitle">Análisis Pace y Producción Detallada</p>
                         <span id="updateBadge"
                             style="display:none; font-size: 0.75rem; background: #fee2e2; color: #b91c1c; padding: 3px 12px; border-radius: 20px; font-weight: 600; border: 1px solid #fecaca; white-space: nowrap;">📅
                             Actualizado: --</span>
                     </div>
                 </div>
             </div>
-            <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
-                <a href="HistoricoAlojamiento.html" class="btn" style="padding:9px 14px; border-radius:8px; background:var(--primary, #6366f1); color:white; text-decoration:none; font-weight:700; font-size:0.82rem; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 8px rgba(99,102,241,0.25);" title="Ver comparativa de todos los años disponibles (exclusivo habitaciones)">
+            <div class="header-actions">
+                <a href="HistoricoAlojamiento.html" class="btn btn-historico" title="Ver comparativa de todos los años disponibles (exclusivo habitaciones)">
                     <span>📈</span> Ver Histórico Anual (Alojamiento)
                 </a>
-                <select id="yearSelector" onchange="updateView()"
-                    style="padding:10px; border-radius:8px; border:1px solid #e2e8f0;"></select>
-                <select id="monthSelector" onchange="updateView()"
-                    style="padding:10px; border-radius:8px; border:1px solid #e2e8f0;"></select>
+                <select id="yearSelector" onchange="updateView()"></select>
+                <select id="monthSelector" onchange="updateView()"></select>
             </div>
         </header>
 
@@ -1539,8 +1623,10 @@
                 elapsedDays = (parseInt(currentYear) < currentRealYear) ? 365 : (dailyDaysYTD > 0 ? dailyDaysYTD : (updateDaysYTD > 0 ? updateDaysYTD : 1));
                 if (elapsedDays === 0) elapsedDays = 1;
 
-                const dayCounterHTML = `<div style="font-size: 0.73rem; color: var(--primary); font-weight: 800; margin-top: 4px; background: #eef2ff; display: inline-block; padding: 2px 10px; border-radius: 20px; border: 1px solid #c7d2fe;">🗓️ Día ${Math.floor(elapsedDays)} de 365</div>`;
-                document.getElementById('mainSubtitle').innerHTML += ` ${dayCounterHTML}`;
+                const subtitleEl = document.getElementById('mainSubtitle');
+                subtitleEl.querySelectorAll('.day-counter-badge').forEach(el => el.remove());
+                const dayCounterHTML = `<span class="day-counter-badge" style="font-size: 0.73rem; color: var(--primary); font-weight: 800; margin-left: 6px; background: #eef2ff; display: inline-block; padding: 2px 10px; border-radius: 20px; border: 1px solid #c7d2fe; white-space: nowrap;">🗓️ Día ${Math.floor(elapsedDays)} de 365</span>`;
+                subtitleEl.insertAdjacentHTML('beforeend', dayCounterHTML);
             } else {
                 let daysInM = monthDaysRecorded[midx];
                 let updateDaysInM = 0;
@@ -2654,7 +2740,19 @@
                     if (dayRecord !== undefined && dayRecord !== null) {
                         // Día CON datos reales (incluso si tiene 0 habitaciones vendidas)
                         const rn = (typeof dayRecord === 'object') ? Number(dayRecord.rooms ?? dayRecord.rn ?? 0) : Number(dayRecord || 0);
-                        const rev = (typeof dayRecord === 'object') ? Number(dayRecord.revenue || 0) : 0;
+                        let rev = 0;
+                        if (typeof dayRecord === 'object') {
+                            if (dayRecord.roomRevenue !== undefined) {
+                                rev = Number(dayRecord.roomRevenue || 0);
+                            } else if (dayRecord.breakdown?.habitacion !== undefined) {
+                                rev = Number(dayRecord.breakdown.habitacion || 0);
+                            } else {
+                                const habM = groupedTY?.HABITACION?.revenue?.[m] || 0;
+                                const totM = groupedTY?.TOTAL_MASTER?.revenue?.[m] || 0;
+                                const rawRev = Number(dayRecord.revenue || 0);
+                                rev = (totM > 0 && habM > 0) ? (rawRev * (habM / totM)) : rawRev;
+                            }
+                        }
                         
                         // Habitaciones fuera de servicio
                         let ooo = 0;
@@ -2836,8 +2934,8 @@
                             <th>Hab.-Noche Disponibles</th>
                             <th>Ocupación Media</th>
                             <th>Días sin Datos</th>
-                            <th>Producción (€)</th>
-                            <th>Prod. / Hab (ADR)</th>
+                            <th>Prod. Habitación (€)</th>
+                            <th>ADR Habitación</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -2888,7 +2986,7 @@
                         <div class="heatmap-cell" style="background: ${color}; border: 1px solid ${score > 0.8 ? 'rgba(255,255,255,0.3)' : 'transparent'};">
                             <div class="day-name">${s.name}</div>
                             <div class="day-value">${displayVal}</div>
-                            <div class="day-sub">${metric === 'rev' ? 'Media diaria' : (metric === 'rn' ? 'Hab. media' : (metric === 'adr' ? 'Prod. por Hab' : 'Ocupación media'))}</div>
+                            <div class="day-sub">${metric === 'rev' ? 'Media diaria' : (metric === 'rn' ? 'Hab. media' : (metric === 'adr' ? 'ADR Habitación' : 'Ocupación media'))}</div>
                         </div>
                     `;
                 }).join('');

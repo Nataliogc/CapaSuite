@@ -8,9 +8,9 @@
 (function () {
     'use strict';
 
-    const APP_VERSION = '2.7.82';
+    const APP_VERSION = '2.7.84';
     const BUILD_DATE = '19/11/2026';
-    const BUILD_TIMESTAMP = '2026-11-19 05:28';
+    const BUILD_TIMESTAMP = '2026-11-19 05:32';
 
     window.CAPASUITE_VERSION = {
         version: APP_VERSION,
