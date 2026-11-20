@@ -104,6 +104,174 @@
     }
     window.renderNexusUserWidget = renderNexusUserWidget;
 
+    function addModuleMenu(nav, links, page) {
+        // Ship the panel styles with its markup so cached page styles cannot leave it unstyled.
+        if (!document.getElementById('module-menu-styles')) {
+            const style = document.createElement('style');
+            style.id = 'module-menu-styles';
+            style.textContent = `#mainNav .module-trigger {
+    flex: none;
+    border: 0;
+    border-radius: 7px;
+    padding: 7px 10px;
+    background: #4f46e5;
+    color: white;
+    font: 700 13px system-ui;
+    cursor: pointer;
+}
+#mainNav .nav-links a[hidden] { display: none !important; }
+#module-panel {
+    position: fixed;
+    inset: auto;
+    left: 10px;
+    margin: 0;
+    box-sizing: border-box;
+    width: min(290px, calc(100vw - 20px));
+    max-height: calc(100dvh - 75px);
+    overflow: auto;
+    padding: 0;
+    border: 1px solid var(--menu-line, #39465d);
+    border-radius: 14px;
+    background: var(--menu-bg, #182235);
+    color: var(--menu-ink, #e5eaf3);
+    box-shadow: 0 14px 38px rgba(15,23,42,.21);
+    font: 14px/1.4 system-ui;
+    text-align: left;
+}
+[data-theme="light"] #module-panel {
+    --menu-bg: #fff;
+    --menu-ink: #263249;
+    --menu-line: #dce1eb;
+    --menu-accent: #4940b9;
+    --menu-strip: #f6f7fc;
+}
+#module-panel > strong {
+    display: block;
+    padding: 13px 16px 10px;
+    border-bottom: 1px solid var(--menu-line, #39465d);
+    font-size: 16px;
+}
+#module-panel .module-list, #module-panel .module-options { padding: 6px; }
+#module-panel a, #module-panel label, #module-panel summary {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 7px 10px;
+    border-radius: 7px;
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+}
+#module-panel a svg { flex: none; color: var(--menu-accent, #b4afff); }
+#module-panel a:hover, #module-panel label:hover { background: #818cf816; }
+#module-panel a.active {
+    color: var(--menu-accent, #ccc8ff);
+    background: #818cf826;
+    font-weight: 700;
+    box-shadow: inset 3px 0 #7066ef;
+}
+#module-panel details {
+    border-top: 1px solid var(--menu-line, #39465d);
+    background: var(--menu-strip, #202c40);
+}
+#module-panel summary {
+    padding: 12px 16px;
+    font-weight: 650;
+    justify-content: space-between;
+}
+#module-panel summary::after {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border: solid currentColor;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+#module-panel details[open] summary::after { transform: rotate(225deg); }
+#module-panel:has(details[open]) .module-list { display: none; }
+#module-panel input { width: 16px; height: 16px; margin: 0; accent-color: #554add; }
+#module-panel :focus-visible { outline: 2px solid #8178fa; outline-offset: -2px; }
+@media (max-width: 900px) {
+    #mainNav .nav-links { display: none !important; }
+    #mainNav .nav-user { width: auto !important; min-width: 0; flex: 1; overflow-x: auto; }
+    #mainNav { flex-wrap: nowrap !important; }
+}`;
+            document.head.append(style);
+        }
+        const tabs = Array.from(links.querySelectorAll('a[href]'));
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'module-trigger';
+        button.textContent = '☰ Menú';
+        button.setAttribute('popovertarget', 'module-panel');
+        links.before(button);
+
+        const panel = document.createElement('div');
+        panel.id = 'module-panel';
+        panel.setAttribute('popover', 'auto');
+        panel.innerHTML = `<strong>Módulos</strong><div class="module-list"></div>
+            <details><summary>Configurar pestañas</summary><div class="module-options"></div></details>`;
+        nav.append(panel);
+        const options = panel.querySelector('.module-options');
+        const list = panel.querySelector('.module-list');
+        const defaults = ['index.html', 'AnalisisProduccion.html', 'AnalisisCalendario.html'];
+        function preferenceKey() {
+            const user = window.auth?.currentUser || window.getSavedAuthSession?.();
+            return 'capasuite.tabs.' + (user?.email?.toLowerCase() || user?.uid || 'local');
+        }
+        function refresh() {
+            let selected = defaults;
+            try {
+                const saved = JSON.parse(localStorage.getItem(preferenceKey()));
+                if (Array.isArray(saved)) selected = saved;
+            } catch {}
+            tabs.forEach((tab, index) => {
+                const pinned = selected.includes(tab.getAttribute('href'));
+                options.children[index].firstChild.checked = pinned;
+                tab.hidden = !pinned;
+            });
+        }
+        const iconPaths = {
+            'index.html': 'M3 10 12 3l9 7 M5 9v12h5v-7h4v7h5V9',
+            'AnalisisProduccion.html': 'M4 20h16 M6 16v-4 M12 16V8 M18 16V4',
+            'HistoricoAlojamiento.html': 'M3 5v5h5 M3 10a9 9 0 1 1 1 8 M12 7v5l4 2',
+            'AnalisisSegmentos.html': 'M11 3a9 9 0 1 0 10 10H11z M14 3v7h7a8 8 0 0 0-7-7z',
+            'AnalisisCompetencia.html': 'M3 18l6-7 4 3 8-10 M15 4h6v6',
+            'AnalisisCalendario.html': 'M4 6h16v15H4z M4 10h16 M8 3v5 M16 3v5',
+            'CalculadoraPresupuesto.html': 'M5 3h14v18H5z M8 7h8 M8 12h2 M14 12h2 M8 16h2 M14 16h2',
+            'Analisis360.html': 'M2 12q10-15 20 0-10 15-20 0z M15 12a3 3 0 1 1-6 0 3 3 0 1 1 6 0',
+            'AnalisisIA.html': 'M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z',
+            'CargarDatos.html': 'M12 16V3 M7 8l5-5 5 5 M4 15v6h16v-6'
+        };
+        tabs.forEach(tab => {
+            const entry = tab.cloneNode(true);
+            if (tab.getAttribute('href') === page) entry.setAttribute('aria-current', 'page');
+            const path = iconPaths[tab.getAttribute('href')] || 'M4 4h16v16H4z';
+            entry.insertAdjacentHTML('afterbegin', `<svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${path}"/></svg>`);
+            list.append(entry);
+            const label = document.createElement('label');
+            const box = document.createElement('input');
+            box.type = 'checkbox';
+            box.value = tab.getAttribute('href');
+            label.append(box, tab.textContent.trim());
+            options.append(label);
+        });
+        options.addEventListener('change', () => {
+            const selected = Array.from(options.querySelectorAll('input:checked'), box => box.value);
+            tabs.forEach(tab => { tab.hidden = !selected.includes(tab.getAttribute('href')); });
+            try { localStorage.setItem(preferenceKey(), JSON.stringify(selected)); }
+            catch { window.alert('Se han aplicado las pestañas, pero el navegador no ha podido guardarlas.'); }
+        });
+        panel.addEventListener('beforetoggle', event => {
+            if (event.newState === 'open') {
+                refresh();
+                panel.style.top = button.getBoundingClientRect().bottom + 5 + 'px';
+            }
+        });
+        refresh();
+        window.auth?.onAuthStateChanged?.(refresh);
+    }
+
     function decorate(nav) {
         if (document.querySelectorAll) {
             document.querySelectorAll('#hotelSelector, #hotelSelectorNav').forEach(sel => { sel.value = savedHotel(); });
@@ -168,20 +336,6 @@
             };
         }
 
-        nav.querySelectorAll('.nav-links a').forEach(a => {
-            a.classList.toggle('active', a.getAttribute('href') === page);
-            a.addEventListener('click', (e) => {
-                const targetHref = a.getAttribute('href');
-                if (!targetHref || targetHref === page || targetHref.startsWith('#')) return;
-                if (window.manualPricesPending) {
-                    e.preventDefault();
-                    showNavUnsavedModal(targetHref);
-                    return;
-                }
-                const heavyTable = document.getElementById('tableBody');
-                if (heavyTable) heavyTable.textContent = '';
-            });
-        });
         const links = nav.querySelector('.nav-links');
         if (links && !links.querySelector('a[href="HistoricoAlojamiento.html"]')) {
             const prodLink = links.querySelector('a[href="AnalisisProduccion.html"]');
@@ -198,6 +352,21 @@
             link.classList.toggle('active', page === 'CargarDatos.html'); links.append(link);
         }
 
+        if (links) addModuleMenu(nav, links, page);
+        nav.querySelectorAll('.nav-links a, .module-list a').forEach(a => {
+            a.classList.toggle('active', a.getAttribute('href') === page);
+            a.addEventListener('click', (e) => {
+                const targetHref = a.getAttribute('href');
+                if (!targetHref || targetHref === page || targetHref.startsWith('#')) return;
+                if (window.manualPricesPending) {
+                    e.preventDefault();
+                    showNavUnsavedModal(targetHref);
+                    return;
+                }
+                const heavyTable = document.getElementById('tableBody');
+                if (heavyTable) heavyTable.textContent = '';
+            });
+        });
         renderNexusUserWidget();
         const user = window.auth?.currentUser || (window.getSavedAuthSession && window.getSavedAuthSession());
         const emailEl = nav.querySelector('#userEmailNav');

@@ -15,13 +15,13 @@
     <!-- Libraries -->
     <script src="js/xlsx.full.min.js"></script>
     <script src="js/state.js"></script>
-    <script src="js/storage.js?v=20261119-0650"></script>
+    <script src="js/storage.js?v=20261120-0818"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="js/version.js?v=20261119-0650"></script>
-    <script src="js/nav.js"></script>
-    <script src="js/firebase-auth.js?v=20261119-0650"></script>
+    <script src="js/version.js?v=20261120-0818"></script>
+    <script src="js/nav.js?v=20261120-0818"></script>
+    <script src="js/firebase-auth.js?v=20261120-0818"></script>
     <script src="js/theme-manager.js"></script>
 
     <style>
@@ -172,7 +172,9 @@
 
         /* HEADER */
         .page-header {
-            padding: 60px 40px 30px;
+            padding: 10px clamp(12px, 2vw, 32px) 6px;
+            gap: 6px 16px;
+            flex-wrap: wrap;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -181,7 +183,7 @@
         }
 
         .header-title h1 {
-            font-size: 2.8rem;
+            font-size: clamp(1.2rem, 2vw, 1.6rem);
             font-weight: 800;
             margin: 0;
             letter-spacing: -1px;
@@ -238,9 +240,11 @@
         /* CONTROLS */
         .controls-bar {
             display: flex;
-            gap: 12px;
+            max-width: 100%;
+            box-sizing: border-box;
+            gap: 6px;
             background: var(--bg-glass);
-            padding: 12px;
+            padding: 4px;
             border-radius: var(--radius-lg);
             border: 1px solid var(--border);
             backdrop-filter: blur(20px);
@@ -489,16 +493,21 @@
             background: linear-gradient(135deg, rgba(99, 102, 241, 0.06), rgba(16, 185, 129, 0.06));
             border: 1px solid rgba(99, 102, 241, 0.22);
             border-radius: 12px;
-            padding: 9px 18px;
-            margin: 0 auto 16px;
+            padding: 4px 10px;
+            margin: 0;
+            cursor: pointer;
             max-width: 1700px;
-            width: calc(100% - 80px);
+            width: 100%;
             font-size: 0.82rem;
             color: var(--text-main);
             box-sizing: border-box;
             font-family: 'Outfit', sans-serif;
         }
 
+        .controls-bar :is(select, .btn) { padding: 5px 10px; min-height: 32px; }
+        .calendar-summary .insights-cards-grid { margin-top: 6px; }
+        .calendar-summary summary b:first-child::before { content: "▸ "; }
+        .calendar-summary[open] summary b:first-child::before { content: "▾ "; }
         .insights-date-pill {
             background: var(--bg-surface);
             border: 1px solid var(--border);
@@ -768,8 +777,8 @@
         .insights-panel-container {
             width: 100%;
             max-width: 1700px;
-            margin: 0 auto 24px;
-            padding: 0 40px;
+            margin: 0 auto 4px;
+            padding: 0 clamp(12px, 2vw, 32px);
             box-sizing: border-box;
         }
         .insights-cards-grid {
@@ -1136,7 +1145,7 @@
             letter-spacing: 0.5px;
         }
     </style>
-    <link rel="stylesheet" href="css/nav.css?v=20261119-0650">
+    <link rel="stylesheet" href="css/nav.css?v=20261120-0818">
 </head>
 
 <body>
@@ -1197,7 +1206,7 @@
             <select id="yearSelector" onchange="onFilterChange()">
                 <!-- Rellenado dinámicamente con año actual y próximo -->
             </select>
-            <select id="metricSelector" onchange="renderCalendar()" style="min-width: 250px;">
+            <select id="metricSelector" onchange="renderCalendar()" style="min-width: 0; max-width: 100%;">
                 <option value="market_avg">🌐 Ver Media Mercado (Todos los Hoteles)</option>
                 <option value="price" selected>🏷️ Ver Precios Hotel</option>
                 <option value="comp_avg">🏢 Ver Media Competencia</option>
@@ -1263,6 +1272,7 @@
         let rawEvents = [];
         let db = {};
         let selectedMonth = null;
+        let insightsExpanded = false;
 
         window.onload = async () => {
             loadAllData();
@@ -1549,13 +1559,14 @@
             }
 
             // Referencia Temporal de Fechas de Pick-up
-            const datesBanner = document.createElement('div');
+            const summary = document.createElement('details');
+            summary.className = 'calendar-summary';
+            summary.open = insightsExpanded;
+            summary.addEventListener('toggle', () => { if (summary.isConnected) insightsExpanded = summary.open; });
+            const datesBanner = document.createElement('summary');
             datesBanner.className = 'insights-dates-banner';
             datesBanner.innerHTML = `
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <span style="font-size:1.15rem;">📊</span>
-                    <span><b>Referencia Temporal de Pick-up:</b> Variación calculada entre la carga actual y el corte comparado.</span>
-                </div>
+                <b>Indicadores del periodo</b>
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                     <span class="insights-date-pill current" title="Fecha en que se cargaron los datos activos de OTB">
                         <span>📥</span> <b>Fecha Carga Actual:</b> <span>${cleanCurrentDate}</span>
@@ -1565,7 +1576,8 @@
                     </span>
                 </div>
             `;
-            panel.appendChild(datesBanner);
+            summary.appendChild(datesBanner);
+            panel.appendChild(summary);
 
             const insightsContainer = document.createElement('div');
             insightsContainer.className = 'insights-cards-grid';
@@ -1732,7 +1744,7 @@
             `;
             insightsContainer.appendChild(freshCard);
 
-            panel.appendChild(insightsContainer);
+            summary.appendChild(insightsContainer);
         }
 
         function enrichRevenueData() {
