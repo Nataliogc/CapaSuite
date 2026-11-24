@@ -578,3 +578,80 @@ test('AnalisisCompetencia date column width is widened to prevent badge and text
     assert.match(html, /tbody td:first-child\s*\{[\s\S]*?width:\s*118px;[\s\S]*?min-width:\s*110px;/);
 });
 
+test('email HTML table uses table-layout:fixed, colgroup summing 100%, equal competitor widths, centered price paragraphs, and wrapping action cells', () => {
+    const { context } = setupEnvironment();
+
+    const comps = [
+        { name: 'Exe Doña Carlota', price: '62€' },
+        { name: 'Hotel Parque Ciudad Real', price: '89€' },
+        { name: 'Hotel Santa Cecilia', price: 'cerrado' },
+        { name: 'NH Ciudad Real', price: '67€' },
+        { name: 'Eurostars Rey', price: '67€' },
+        { name: 'Libere Ciudad Real', price: '115€' }
+    ];
+    const sampleReport = {
+        hotel: 'Cumbria',
+        count: 1,
+        avgOld: 60,
+        avgNew: 80,
+        avgDelta: 20,
+        avgDeltaPct: 33.3,
+        items: [
+            {
+                dateDisplay: '04/12/2026',
+                dayName: 'viernes',
+                rooms: 4,
+                capacity: 59,
+                occPct: 7,
+                oldPrice: 60,
+                newPrice: 80,
+                delta: 20,
+                marketAvg: 71,
+                eventText: 'Puente de la Constitución / Tarifa EBI',
+                actionText: 'En Rango (80€) (65€ - 80€)',
+                competitors: comps
+            }
+        ]
+    };
+
+    const htmlOutput = context.generateRevenueEmailHtml(sampleReport, '');
+
+    // 1. table-layout:fixed on main data table and KPI table
+    assert.match(htmlOutput, /border-collapse:collapse;\s*table-layout:fixed;/);
+
+    // 2. <colgroup> has 6 + comps.length <col> elements whose percentages sum ~100%
+    const colgroupMatch = htmlOutput.match(/<colgroup>([\s\S]*?)<\/colgroup>/);
+    assert.ok(colgroupMatch, 'Must include <colgroup> in email data table');
+    const colWidths = [...colgroupMatch[1].matchAll(/<col\s+width="([\d.]+)%"/g)].map(m => parseFloat(m[1]));
+    assert.equal(colWidths.length, 6 + comps.length, 'Col count must equal 6 base columns + competitors');
+    const pctSum = colWidths.reduce((a, b) => a + b, 0);
+    assert.ok(Math.abs(pctSum - 100) <= 0.2, `Col percentages must sum ~100%, got ${pctSum}`);
+
+    // 3. All competitor <th> headers and <td> cells share identical width
+    const compWidth = colWidths[5]; // first competitor column after Fecha, Ocup, Ant, Nueva, Mercado
+    for (let i = 0; i < comps.length; i++) {
+        assert.equal(colWidths[5 + i], compWidth, `Competitor col ${i} must have identical width`);
+    }
+    const theadMatch = htmlOutput.match(/<thead>([\s\S]*?)<\/thead>/);
+    assert.ok(theadMatch, 'thead found');
+    const thWidths = [...theadMatch[1].matchAll(/<th[^>]*\swidth="([\d.]+)%"/g)].map(m => parseFloat(m[1]));
+    assert.equal(thWidths.length, 6 + comps.length);
+    for (let i = 0; i < comps.length; i++) {
+        assert.equal(thWidths[5 + i], compWidth, `Competitor <th> ${i} must have uniform width ${compWidth}%`);
+    }
+    const tbodyMatch = htmlOutput.match(/<tbody>([\s\S]*?)<\/tbody>/);
+    assert.ok(tbodyMatch, 'tbody found');
+    const rowTdWidths = [...tbodyMatch[1].matchAll(/<td[^>]*\swidth="([\d.]+)%"/g)].map(m => parseFloat(m[1]));
+    assert.equal(rowTdWidths.length, 6 + comps.length);
+    for (let i = 0; i < comps.length; i++) {
+        assert.equal(rowTdWidths[5 + i], compWidth, `Competitor <td> ${i} must have uniform width ${compWidth}%`);
+    }
+
+    // 4. Centered <p align="center" style="margin:0; ..."> in price cells and wrapping Acción cell
+    assert.match(htmlOutput, /<p\s+align="center"\s+style="margin:0;\s*padding:0;\s*text-align:center;[^>]*>\s*<span[^>]*text-decoration:line-through;[^>]*>60&euro;<\/span>/);
+    assert.match(htmlOutput, /<p\s+align="center"\s+style="margin:0;\s*padding:0;\s*text-align:center;[^>]*color:#0f172a;[^>]*>62€<\/p>/);
+    assert.match(htmlOutput, /<td[^>]*white-space:normal;\s*word-wrap:break-word;[^>]*>[\s\S]*?En Rango \(80€\)/);
+    assert.doesNotMatch(htmlOutput, /Puente de la Constituci[\s\S]{0,120}white-space:nowrap/);
+    assert.doesNotMatch(htmlOutput, /En Rango \(80€\)<\/span>[\s\S]{0,5}$/);
+});
+

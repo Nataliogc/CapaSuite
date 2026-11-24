@@ -15,20 +15,20 @@
     <script src="js/xlsx.full.min.js"></script>
     <script src="js/chart.js"></script>
     <script src="js/state.js"></script>
-    <script src="js/storage.js?v=20261120-0818"></script>
+    <script src="js/storage.js?v=20261124-1718"></script>
     <script src="js/revenue-history.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="js/nav.js?v=20261120-0818"></script>
+    <script src="js/nav.js?v=20261124-1718"></script>
     <script src="js/theme-manager.js"></script>
-    <script src="js/firebase-auth.js?v=20261120-0818"></script>
-    <script src="js/version.js?v=20261120-0818"></script>
-    <script src="js/pricing-intelligence.js?v=20261120-0818"></script>
-    <script src="js/competencia-intelligence-ui.js?v=20261120-0818"></script>
+    <script src="js/firebase-auth.js?v=20261124-1718"></script>
+    <script src="js/version.js?v=20261124-1718"></script>
+    <script src="js/pricing-intelligence.js?v=20261124-1718"></script>
+    <script src="js/competencia-intelligence-ui.js?v=20261124-1718"></script>
 
     <link rel="stylesheet" href="css/tokens.css">
-    <link rel="stylesheet" href="css/nav.css?v=20261120-0818">
+    <link rel="stylesheet" href="css/nav.css?v=20261124-1718">
     <style>
         :root {
             /* Page-specific variables not in tokens.css */
@@ -1304,10 +1304,11 @@
         /* REVENUE EMAIL PREVIEW MODAL TABLE */
         #revenueEmailPreviewTable {
             width: 100%;
+            min-width: 980px;
             border-collapse: separate;
             border-spacing: 0;
             font-size: 0.8rem;
-            table-layout: auto;
+            table-layout: fixed;
         }
 
         #revenueEmailPreviewTable thead th {
@@ -2436,7 +2437,12 @@
             const minFloor = getHotelMinPrice(hotel);
             const otbChange = (my.otbChange !== undefined) ? my.otbChange : (dynamic.pickup || 0);
 
-            const pricingConfigSig = window.PricingIntelligence ? JSON.stringify([PricingIntelligence.getBarMatrix(hotel, Number(d.dateISO.slice(0, 4))), PricingIntelligence.getOccTiers(hotel, Number(d.dateISO.slice(0, 4)), Number(d.dateISO.slice(5, 7)))]) : '';
+            const dateExc = window.PricingIntelligence
+                ? (typeof PricingIntelligence.getDateException === 'function'
+                    ? PricingIntelligence.getDateException(d.dateISO, hotel)
+                    : (PricingIntelligence.getPricingExceptions ? PricingIntelligence.getPricingExceptions()[d.dateISO] : null))
+                : null;
+            const pricingConfigSig = window.PricingIntelligence ? JSON.stringify([PricingIntelligence.getBarMatrix(hotel, Number(d.dateISO.slice(0, 4))), PricingIntelligence.getOccTiers(hotel, Number(d.dateISO.slice(0, 4)), Number(d.dateISO.slice(5, 7))), dateExc]) : '';
             const cacheSig = `${pricingConfigSig}|${myP}|${mktPrice.toFixed(2)}|${currentOcc}|${minFloor}|${otbChange}|${d.activeSoldComps || 0}`;
             if (d._yieldInfo[hotel] && d._yieldInfo[hotel]._sig === cacheSig && !d._yieldDirty) {
                 return d._yieldInfo[hotel];
@@ -2528,6 +2534,8 @@
                 rangeCalculation: rec.rangeCalculation,
                 belowBase: rec.belowBase,
                 baseWarning: rec.baseWarning,
+                isException: !!rec.isException,
+                eventName: rec.eventName || '',
                 baseBar: rec.baseBar,
                 barObjetivo: rec.barObjetivo || rec.baseBar,
                 barVigente: rec.barVigente || Math.round(myP),
@@ -3226,10 +3234,15 @@
                             processedData.forEach(d => {
                                 if (!d.dateISO) return;
                                 const hData = d.hotels ? d.hotels[hName] : null;
-                                const rooms = hData?.otbRooms ?? (hName === activeHotel ? d.otbRooms : null) ?? hData?.occupancy ?? 0;
+                                const rawRooms = hData?.otbRooms ?? (hName === activeHotel ? d.otbRooms : undefined) ?? hData?.occupancy;
+                                const hasRooms = (rawRooms !== undefined && rawRooms !== null && !isNaN(rawRooms));
                                 const price = hData?.price ?? 0;
                                 const compPrice = Number(d.compAvg) || 0;
-                                dailyMap[d.dateISO] = { rooms, price, compPrice };
+                                if (hasRooms) {
+                                    dailyMap[d.dateISO] = { rooms: Math.round(Number(rawRooms)), price, compPrice };
+                                } else if (price > 0 || compPrice > 0) {
+                                    dailyMap[d.dateISO] = { price, compPrice, priceOnly: true };
+                                }
                             });
                             if (Object.keys(dailyMap).length > 0) {
                                 window.PricingIntelligence.captureBatchSnapshots(hName, dailyMap, new Date());
@@ -3504,12 +3517,12 @@
                         
                         // Tarifa Guadiana
                         const gPrice = parseFloat(String(dataRows[guadianaR]?.[c] || '').replace(/[^0-9.,]/g, '').replace(',', '.')) || 0;
-                        if (gPrice > 0) guadianaMap[iso] = { rooms: 0, price: gPrice };
+                        if (gPrice > 0) guadianaMap[iso] = { price: gPrice, priceOnly: true };
 
                         // Tarifa Cumbria
                         if (cumbriaR !== -1) {
                             const cPrice = parseFloat(String(dataRows[cumbriaR]?.[c] || '').replace(/[^0-9.,]/g, '').replace(',', '.')) || 0;
-                            if (cPrice > 0) cumbriaMap[iso] = { rooms: 0, price: cPrice };
+                            if (cPrice > 0) cumbriaMap[iso] = { price: cPrice, priceOnly: true };
                         }
                     }
                 }
@@ -5229,7 +5242,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
                         const calcSummaryHtml = (yieldInfo.baseBar !== undefined && yieldInfo.baseBar !== null)
                             ? `<div class="yield-pill-calc" title="Rango Comercial Recomendado: ${yieldInfo.rangeText} · ${yieldInfo.rangeCalculation || ''}">
-                                   <span>Suelo: <b>${yieldInfo.baseBar}€</b></span>
+                                   <span>${yieldInfo.isException ? 'Excep.' : 'Suelo'}: <b>${yieldInfo.baseBar}€</b></span>
                                    <span>Obj: <b>${yieldInfo.barObjetivo ?? yieldInfo.baseBar}€</b></span>
                                    <span>Vig: <b>${yieldInfo.barVigente ?? Math.round(myP)}€</b></span>
                                </div>`
@@ -5780,6 +5793,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 window.PricingIntelligence.invalidatePricingCache();
             }
         }
+        window.invalidateLocalYieldCache = invalidateLocalYieldCache;
 
         window.addEventListener('capasuite-data-synced', () => {
             invalidateLocalYieldCache();
@@ -6671,9 +6685,12 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                                 <label style="display:block; font-size:0.7rem; font-weight:700; color:var(--text-muted); margin-bottom:3px;">Evento / Motivo</label>
                                 <input type="text" id="dayDetailCustomEvent" placeholder="Ej: Congreso Nacional Médicos" style="width:100%; padding:7px 9px; border-radius:8px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border); box-sizing:border-box;">
                             </div>
-                            <div>
+                            <div style="display:flex; gap:8px; align-items:center;">
                                 <button type="button" class="btn" onclick="saveDayCustomException()" style="background:var(--primary); color:#fff; font-weight:700; padding:7px 14px; border:none; border-radius:8px; white-space:nowrap; cursor:pointer;">
                                     Guardar Excepción
+                                </button>
+                                <button type="button" id="dayDetailRemoveExcBtn" class="btn" onclick="removeDayCustomException()" style="display:none; background:rgba(239,68,68,0.12); color:#dc2626; font-weight:700; padding:7px 11px; border:1px solid rgba(239,68,68,0.3); border-radius:8px; white-space:nowrap; cursor:pointer;" title="Eliminar excepción fijada para esta fecha">
+                                    Quitar
                                 </button>
                             </div>
                         </div>
@@ -7479,25 +7496,37 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 `;
             }
 
-            // Encabezados de tabla — fondo claro y tipografía legible
+            // Encabezados de tabla — fondo claro y tipografía legible con anchos uniformes
+            const previewComps = (report.items[0]?.competitors || competitorsList);
+            const pCompCount = previewComps.length;
+            const pBase = { fecha: 130, ocup: 106, ant: 58, nueva: 112, mercado: 72, comp: 76, accion: 170 };
+            const pTotalW = pBase.fecha + pBase.ocup + pBase.ant + pBase.nueva + pBase.mercado + (pCompCount * pBase.comp) + pBase.accion;
+            const pToPct = (w) => Number(((w / pTotalW) * 100).toFixed(1));
+            const pwFecha = pToPct(pBase.fecha);
+            const pwOcup = pToPct(pBase.ocup);
+            const pwAnt = pToPct(pBase.ant);
+            const pwNueva = pToPct(pBase.nueva);
+            const pwMercado = pToPct(pBase.mercado);
+            const pwComp = pToPct(pBase.comp);
+            const pwAccion = Number((100 - (pwFecha + pwOcup + pwAnt + pwNueva + pwMercado + (pCompCount * pwComp))).toFixed(1));
+
             const theadEl = document.getElementById('revenueEmailPreviewThead');
             if (theadEl) {
-                const sampleComps = (report.items[0]?.competitors || competitorsList);
-                const thBaseStyle = 'padding:10px 8px; font-size:0.74rem; font-weight:800; text-transform:uppercase; letter-spacing:0.3px; white-space:nowrap; border-bottom:2px solid var(--border); text-align:center; vertical-align:middle;';
+                const thBaseStyle = 'padding:10px 6px; font-size:0.74rem; font-weight:800; text-transform:uppercase; letter-spacing:0.3px; border-bottom:2px solid var(--border); text-align:center; vertical-align:middle;';
                 let thHtml = `
                     <tr style="color:var(--text-main); text-align:center;">
-                        <th style="${thBaseStyle} color:var(--primary); min-width:130px;">Fecha</th>
-                        <th style="${thBaseStyle} min-width:110px;">Ocup. / Libres</th>
-                        <th style="${thBaseStyle} min-width:65px; color:var(--text-muted);">Ant.</th>
-                        <th style="${thBaseStyle} min-width:85px; color:#4f46e5; background:rgba(99,102,241,0.12); font-weight:900; font-size:0.8rem;">▶ NUEVA</th>
-                        <th style="${thBaseStyle} min-width:70px;">Mercado</th>
+                        <th style="${thBaseStyle} width:${pwFecha}%; color:var(--primary); white-space:nowrap;">Fecha</th>
+                        <th style="${thBaseStyle} width:${pwOcup}%; white-space:nowrap;">Ocup. / Libres</th>
+                        <th style="${thBaseStyle} width:${pwAnt}%; color:var(--text-muted); white-space:nowrap;">Ant.</th>
+                        <th style="${thBaseStyle} width:${pwNueva}%; color:#4f46e5; background:rgba(99,102,241,0.12); font-weight:900; font-size:0.8rem; white-space:nowrap;">▶ NUEVA</th>
+                        <th style="${thBaseStyle} width:${pwMercado}%; white-space:nowrap;">Mercado</th>
                 `;
-                sampleComps.forEach(c => {
+                previewComps.forEach(c => {
                     const words = c.name.split(' ');
                     const short = words.length > 1 ? words.slice(0,2).join(' ') : (c.name.length > 14 ? c.name.substring(0,12) + '..' : c.name);
-                    thHtml += `<th style="${thBaseStyle} min-width:68px; font-size:0.72rem;" title="${c.name}">${short}</th>`;
+                    thHtml += `<th style="${thBaseStyle} width:${pwComp}%; font-size:0.72rem; white-space:normal; word-break:break-word; line-height:1.15;" title="${c.name}">${short}</th>`;
                 });
-                thHtml += `<th style="${thBaseStyle} min-width:110px;">Acción / Criterio</th></tr>`;
+                thHtml += `<th style="${thBaseStyle} width:${pwAccion}%;">Acción / Criterio</th></tr>`;
                 theadEl.innerHTML = thHtml;
             }
 
@@ -7507,7 +7536,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 if (report.items.length === 0) {
                     tbodyEl.innerHTML = `
                         <tr>
-                            <td colspan="15" style="text-align:center; padding:40px 15px; color:var(--text-muted); font-size:0.9rem; background:var(--bg-deep);">
+                            <td colspan="${6 + pCompCount}" style="text-align:center; padding:40px 15px; color:var(--text-muted); font-size:0.9rem; background:var(--bg-deep);">
                                 <div style="font-size:2rem; margin-bottom:8px;">📭</div>
                                 <div style="font-weight:700; margin-bottom:4px;">Sin tarifas modificadas para ${config.displayName}</div>
                                 <span style="font-size:0.8rem; color:var(--text-light);">
@@ -7558,7 +7587,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                             } else {
                                 cellContent = `<span style="color:var(--text-light); opacity:0.5; font-size:0.85rem;">—</span>`;
                             }
-                            return `<td style="padding:8px 6px; text-align:center; vertical-align:middle; border-bottom:1px solid var(--border);">${cellContent}</td>`;
+                            return `<td style="width:${pwComp}%; padding:8px 6px; text-align:center; vertical-align:middle; border-bottom:1px solid var(--border);">${cellContent}</td>`;
                         }).join('');
 
                         // Pill de acción con color según tipo
@@ -7579,33 +7608,33 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
                         tbodyEl.innerHTML += `
                             <tr style="border-bottom:1px solid var(--border); background:${idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)'}; transition:background 0.15s;">
-                                <td style="padding:9px 8px; text-align:center; vertical-align:middle; white-space:nowrap; min-width:130px;">
+                                <td style="width:${pwFecha}%; padding:9px 8px; text-align:center; vertical-align:middle; white-space:nowrap;">
                                     <div style="display:inline-flex; align-items:center; justify-content:center; gap:6px; white-space:nowrap;">
                                         <span style="font-weight:800; color:var(--text-main); font-size:0.92rem;">${item.dateDisplay}</span>
                                         <span style="background:${dowBg}; color:${dowColor}; border:1px solid ${dowBorder}; font-size:0.68rem; font-weight:800; padding:1px 6px; border-radius:6px; text-transform:uppercase;">${dNameShort}</span>
                                     </div>
                                 </td>
-                                <td style="padding:9px 8px; text-align:center; vertical-align:middle; min-width:110px; white-space:nowrap;">
+                                <td style="width:${pwOcup}%; padding:9px 8px; text-align:center; vertical-align:middle; white-space:nowrap;">
                                     <div style="display:inline-flex; align-items:center; justify-content:center; gap:5px; font-size:0.8rem; color:var(--text-muted); font-weight:700;">
                                         <span>${item.rooms}/${item.capacity}</span>
                                         <span style="background:${occBg}; color:${occColor}; border:1px solid ${occBorder}; font-size:0.74rem; font-weight:800; padding:1px 5px; border-radius:4px;">${item.occPct}%</span>
                                     </div>
                                     <div style="font-size:1.15rem; font-weight:900; color:var(--text-main); margin-top:2px; line-height:1.2;">${available} <span style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">libres</span></div>
                                 </td>
-                                <td style="padding:9px 8px; text-align:center; vertical-align:middle; color:var(--text-muted); font-size:0.88rem; text-decoration:line-through; opacity:0.75; font-weight:600;">
+                                <td style="width:${pwAnt}%; padding:9px 8px; text-align:center; vertical-align:middle; color:var(--text-muted); font-size:0.88rem; text-decoration:line-through; opacity:0.75; font-weight:600;">
                                     ${Math.round(item.oldPrice)} €
                                 </td>
-                                <td style="padding:9px 8px; text-align:center; vertical-align:middle; background:rgba(99,102,241,0.07);">
+                                <td style="width:${pwNueva}%; padding:9px 8px; text-align:center; vertical-align:middle; background:rgba(99,102,241,0.07);">
                                     <div style="font-weight:900; color:var(--text-main); font-size:1.05rem;">${Math.round(item.newPrice)} €</div>
                                     <span style="display:inline-block; margin-top:2px; background:${dBg}; color:${dColor}; font-size:0.72rem; font-weight:800; padding:2px 6px; border-radius:8px;">${dArrow} ${dSign}${Math.round(item.delta)}€${(typeof item.deltaPct === 'number' ? ` (${dSign}${item.deltaPct.toFixed(1)}%)` : (item.oldPrice > 0 ? ` (${dSign}${((item.delta/item.oldPrice)*100).toFixed(1)}%)` : ''))}</span>
                                 </td>
-                                <td style="padding:9px 8px; text-align:center; vertical-align:middle; font-weight:800; color:var(--primary); font-size:0.92rem;">
+                                <td style="width:${pwMercado}%; padding:9px 8px; text-align:center; vertical-align:middle; font-weight:800; color:var(--primary); font-size:0.92rem;">
                                     ${Math.round(item.marketAvg)} €
                                 </td>
                                 ${compTds}
-                                <td style="padding:7px 6px; font-size:0.82rem; text-align:center; vertical-align:middle; max-width:180px;">
-                                    ${item.eventText ? `<div style="margin-bottom:3px;"><span style="background:rgba(245,158,11,0.18); color:#f59e0b; border:1px solid rgba(245,158,11,0.35); padding:1px 6px; border-radius:4px; font-weight:800; font-size:0.7rem; display:inline-block; white-space:nowrap;">🎉 ${item.eventText}</span></div>` : ''}
-                                    <span style="background:${pillBg}; color:${pillColor}; border:1px solid ${pillBorder}; padding:3px 8px; border-radius:6px; font-weight:700; display:inline-block; line-height:1.4; word-break:break-word;">${item.actionText}</span>
+                                <td style="width:${pwAccion}%; padding:7px 6px; font-size:0.82rem; text-align:center; vertical-align:middle;">
+                                    ${item.eventText ? `<div style="margin-bottom:3px;"><span style="background:rgba(245,158,11,0.18); color:#f59e0b; border:1px solid rgba(245,158,11,0.35); padding:2px 6px; border-radius:4px; font-weight:800; font-size:0.7rem; display:inline-block; white-space:normal; word-break:break-word; line-height:1.25;">🎉 ${item.eventText}</span></div>` : ''}
+                                    <span style="background:${pillBg}; color:${pillColor}; border:1px solid ${pillBorder}; padding:3px 8px; border-radius:6px; font-weight:700; display:inline-block; line-height:1.3; white-space:normal; word-break:break-word;">${item.actionText}</span>
                                 </td>
                             </tr>
                         `;
@@ -7639,10 +7668,34 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             const varBorder = dPos ? '#86efac' : '#fca5a5';
             const varArrow = dPos ? '▲' : '▼';
 
-            const compsHeaders = (report.items[0]?.competitors || []).map(c => {
+            const sampleComps = (report.items[0]?.competitors || []);
+            const compCount = sampleComps.length;
+            const wBase = { fecha: 130, ocup: 106, ant: 58, nueva: 112, mercado: 72, comp: 76, accion: 170 };
+            const totalWeight = wBase.fecha + wBase.ocup + wBase.ant + wBase.nueva + wBase.mercado + (compCount * wBase.comp) + wBase.accion;
+            const toPct = (w) => Number(((w / totalWeight) * 100).toFixed(1));
+            const wFecha = toPct(wBase.fecha);
+            const wOcup = toPct(wBase.ocup);
+            const wAnt = toPct(wBase.ant);
+            const wNueva = toPct(wBase.nueva);
+            const wMercado = toPct(wBase.mercado);
+            const wComp = toPct(wBase.comp);
+            const usedPct = wFecha + wOcup + wAnt + wNueva + wMercado + (compCount * wComp);
+            const wAccion = Number((100 - usedPct).toFixed(1));
+
+            const colgroupHtml = `<colgroup>
+                <col width="${wFecha}%" style="width:${wFecha}%; mso-width-source:userset;">
+                <col width="${wOcup}%" style="width:${wOcup}%; mso-width-source:userset;">
+                <col width="${wAnt}%" style="width:${wAnt}%; mso-width-source:userset;">
+                <col width="${wNueva}%" style="width:${wNueva}%; mso-width-source:userset;">
+                <col width="${wMercado}%" style="width:${wMercado}%; mso-width-source:userset;">
+                ${sampleComps.map(() => `<col width="${wComp}%" style="width:${wComp}%; mso-width-source:userset;">`).join('')}
+                <col width="${wAccion}%" style="width:${wAccion}%; mso-width-source:userset;">
+            </colgroup>`;
+
+            const compsHeaders = sampleComps.map(c => {
                 const words = c.name.split(' ');
                 const short = words.length >= 2 ? words[0] + ' ' + words[1] : c.name;
-                return `<th align="center" valign="middle" bgcolor="#f1f5f9" style="padding:4px 3px; border:1px solid #cbd5e1; background-color:#f1f5f9; color:#334155; font-size:11px; text-align:center; vertical-align:middle; font-family:Calibri,Arial,sans-serif; font-weight:800; white-space:nowrap;"><table width="100%" cellpadding="0" cellspacing="0" border="0" align="center"><tr><td align="center" valign="middle" style="text-align:center; font-size:11px; font-weight:800; color:#334155; font-family:Calibri,Arial,sans-serif;">${short}</td></tr></table></th>`;
+                return `<th align="center" valign="middle" width="${wComp}%" bgcolor="#f1f5f9" style="width:${wComp}%; padding:6px 4px; border:1px solid #cbd5e1; background-color:#f1f5f9; color:#334155; font-size:11px; text-align:center; vertical-align:middle; font-family:Calibri,Arial,sans-serif; font-weight:800; text-transform:uppercase; white-space:normal; word-wrap:break-word; line-height:1.15; mso-line-height-rule:exactly;"><p align="center" style="margin:0; padding:0; text-align:center; font-size:11px; font-weight:800; color:#334155; font-family:Calibri,Arial,sans-serif; line-height:1.15; mso-line-height-rule:exactly;">${short}</p></th>`;
             }).join('');
 
             let rowsHtml = '';
@@ -7693,15 +7746,15 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     const v = String(c.price || '').trim().toLowerCase();
                     let cellContent = '';
                     if (v === 'cerrado' || v === 'closed' || v === '—' || v === '-') {
-                        cellContent = `<table cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;"><tr><td align="center" valign="middle" bgcolor="#fee2e2" style="background-color:#fee2e2; border:1px solid #fca5a5; border-radius:4px; padding:1px 5px; font-size:9px; font-weight:800; color:#dc2626; text-align:center; font-family:Calibri,Arial,sans-serif; white-space:nowrap;"><center><span style="color:#dc2626; font-size:9px; font-weight:800;">CERRADO</span></center></td></tr></table>`;
+                        cellContent = `<table cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto; border-collapse:collapse;"><tr><td align="center" valign="middle" bgcolor="#fee2e2" style="background-color:#fee2e2; border:1px solid #fca5a5; border-radius:4px; padding:2px 5px; font-size:9px; font-weight:800; color:#dc2626; text-align:center; font-family:Calibri,Arial,sans-serif; white-space:nowrap; line-height:1.1; mso-line-height-rule:exactly;"><p align="center" style="margin:0; padding:0; text-align:center; line-height:1.1;"><span style="color:#dc2626; font-size:9px; font-weight:800;">CERRADO</span></p></td></tr></table>`;
                     } else if (v.includes('min') || v.includes('2n') || v.includes('noche')) {
-                        cellContent = `<table cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;"><tr><td align="center" valign="middle" bgcolor="#fffbeb" style="background-color:#fffbeb; border:1px solid #fde68a; border-radius:4px; padding:1px 5px; font-size:9px; font-weight:800; color:#d97706; text-align:center; font-family:Calibri,Arial,sans-serif; white-space:nowrap;"><center><span style="color:#d97706; font-size:9px; font-weight:800;">MIN 2N</span></center></td></tr></table>`;
+                        cellContent = `<table cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto; border-collapse:collapse;"><tr><td align="center" valign="middle" bgcolor="#fffbeb" style="background-color:#fffbeb; border:1px solid #fde68a; border-radius:4px; padding:2px 5px; font-size:9px; font-weight:800; color:#d97706; text-align:center; font-family:Calibri,Arial,sans-serif; white-space:nowrap; line-height:1.1; mso-line-height-rule:exactly;"><p align="center" style="margin:0; padding:0; text-align:center; line-height:1.1;"><span style="color:#d97706; font-size:9px; font-weight:800;">MIN 2N</span></p></td></tr></table>`;
                     } else if (v && v !== 'n/d' && v !== 'nd') {
-                        cellContent = `<table width="100%" cellpadding="0" cellspacing="0" border="0" align="center"><tr><td align="center" valign="middle" style="text-align:center; color:#0f172a; font-weight:700; font-size:12px; font-family:Calibri,Arial,sans-serif;">${c.price}</td></tr></table>`;
+                        cellContent = `<p align="center" style="margin:0; padding:0; text-align:center; color:#0f172a; font-weight:700; font-size:12px; font-family:Calibri,Arial,sans-serif; line-height:1.2; mso-line-height-rule:exactly;">${c.price}</p>`;
                     } else {
-                        cellContent = `<table width="100%" cellpadding="0" cellspacing="0" border="0" align="center"><tr><td align="center" valign="middle" style="text-align:center; color:#94a3b8; font-size:12px; font-family:Calibri,Arial,sans-serif;">&mdash;</td></tr></table>`;
+                        cellContent = `<p align="center" style="margin:0; padding:0; text-align:center; color:#94a3b8; font-size:12px; font-family:Calibri,Arial,sans-serif; line-height:1.2; mso-line-height-rule:exactly;">&mdash;</p>`;
                     }
-                    return `<td align="center" valign="middle" bgcolor="${bg}" style="padding:4px 3px; border:1px solid #cbd5e1; background-color:${bg}; text-align:center; vertical-align:middle; font-family:Calibri,Arial,sans-serif; white-space:nowrap;">${cellContent}</td>`;
+                    return `<td align="center" valign="middle" width="${wComp}%" bgcolor="${bg}" style="width:${wComp}%; padding:6px 4px; border:1px solid #cbd5e1; background-color:${bg}; text-align:center; vertical-align:middle; font-family:Calibri,Arial,sans-serif; white-space:nowrap; line-height:1.2; mso-line-height-rule:exactly;">${cellContent}</td>`;
                 }).join('');
 
                 const act = (item.actionText || '').toLowerCase();
@@ -7718,97 +7771,47 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
                 rowsHtml += `
                     <tr bgcolor="${bg}" style="background-color:${bg};">
-                        <td align="center" valign="middle" bgcolor="${bg}" style="padding:5px 6px; border:1px solid #cbd5e1; text-align:center; vertical-align:middle; white-space:nowrap; min-width:130px; font-family:Calibri,Arial,sans-serif; background-color:${bg};">
-                            <table cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;">
-                                <tr>
-                                    <td align="center" valign="middle" style="text-align:center; font-weight:800; color:#0f172a; font-size:12px; font-family:Calibri,Arial,sans-serif; white-space:nowrap; padding-right:5px;">
-                                        <font color="#0f172a"><strong>${item.dateDisplay}</strong></font>
-                                    </td>
-                                    ${dNameShort ? `
-                                    <td align="center" valign="middle" bgcolor="${dowBg}" style="background-color:${dowBg}; border:1px solid ${dowBorder}; border-radius:5px; font-size:9.5px; font-weight:800; color:${dowColor}; padding:1px 5px; text-transform:uppercase; text-align:center; font-family:Calibri,Arial,sans-serif; white-space:nowrap;">
-                                        <font color="${dowColor}"><strong>${dNameShort}</strong></font>
-                                    </td>` : ''}
-                                </tr>
-                            </table>
+                        <td align="center" valign="middle" width="${wFecha}%" bgcolor="${bg}" style="width:${wFecha}%; min-width:130px; padding:6px 6px; border:1px solid #cbd5e1; text-align:center; vertical-align:middle; white-space:nowrap; font-family:Calibri,Arial,sans-serif; background-color:${bg}; line-height:1.2; mso-line-height-rule:exactly;">
+                            <p align="center" style="margin:0; padding:0; text-align:center; font-size:12px; font-family:Calibri,Arial,sans-serif; white-space:nowrap; line-height:1.2; mso-line-height-rule:exactly;">
+                                <font color="#0f172a"><strong>${item.dateDisplay}</strong></font>${dNameShort ? `&nbsp;<span bgcolor="${dowBg}" style="display:inline-block; background-color:${dowBg}; border:1px solid ${dowBorder}; border-radius:4px; font-size:9.5px; font-weight:800; color:${dowColor}; padding:1px 5px; text-transform:uppercase; line-height:1.1;"><font color="${dowColor}"><strong>${dNameShort}</strong></font></span>` : ''}
+                            </p>
                         </td>
-                        <td align="center" valign="middle" bgcolor="${bg}" style="padding:5px 5px; border:1px solid #cbd5e1; text-align:center; vertical-align:middle; font-family:Calibri,Arial,sans-serif; background-color:${bg}; white-space:nowrap; min-width:110px;">
+                        <td align="center" valign="middle" width="${wOcup}%" bgcolor="${bg}" style="width:${wOcup}%; min-width:110px; padding:5px 4px; border:1px solid #cbd5e1; text-align:center; vertical-align:middle; font-family:Calibri,Arial,sans-serif; background-color:${bg}; white-space:nowrap;">
                             <table width="100%" cellpadding="0" cellspacing="0" border="0" align="center">
                                 <tr>
-                                    <td align="center" valign="middle" style="text-align:center; font-family:Calibri,Arial,sans-serif;">
-                                        <table cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;">
-                                            <tr>
-                                                <td align="center" valign="middle" style="font-size:10.5px; color:#475569; font-weight:700; font-family:Calibri,Arial,sans-serif; padding-right:4px; white-space:nowrap;">
-                                                    <font color="#475569">${item.rooms}/${item.capacity}</font>
-                                                </td>
-                                                <td align="center" valign="middle" bgcolor="${occBg}" style="background-color:${occBg}; border:1px solid ${occBorder}; border-radius:4px; font-size:10px; font-weight:800; color:${occColor}; padding:1px 5px; font-family:Calibri,Arial,sans-serif; white-space:nowrap;">
-                                                    <font color="${occColor}"><strong>${item.occPct}%</strong></font>
-                                                </td>
-                                            </tr>
-                                        </table>
+                                    <td align="center" valign="middle" style="text-align:center; padding:0; font-family:Calibri,Arial,sans-serif; line-height:1.15; mso-line-height-rule:exactly;">
+                                        <p align="center" style="margin:0; padding:0; text-align:center; line-height:1.15; mso-line-height-rule:exactly;">
+                                            <font color="#475569" style="font-size:10.5px; font-weight:700;">${item.rooms}/${item.capacity}</font>&nbsp;<span bgcolor="${occBg}" style="display:inline-block; background-color:${occBg}; border:1px solid ${occBorder}; border-radius:4px; font-size:10px; font-weight:800; color:${occColor}; padding:1px 4px; line-height:1.1;"><font color="${occColor}"><strong>${item.occPct}%</strong></font></span>
+                                        </p>
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td align="center" valign="middle" style="padding-top:2px; text-align:center; font-size:12px; font-weight:900; color:#0f172a; line-height:1.2; font-family:Calibri,Arial,sans-serif;">
-                                        ${available} <span style="font-size:9.5px; font-weight:800; color:#475569; text-transform:uppercase;">libres</span>
+                                    <td align="center" valign="middle" style="padding:2px 0 0 0; text-align:center; font-size:12px; font-weight:900; color:#0f172a; line-height:1.15; mso-line-height-rule:exactly; font-family:Calibri,Arial,sans-serif;">
+                                        <p align="center" style="margin:0; padding:0; text-align:center; font-size:12px; font-weight:900; color:#0f172a; line-height:1.15; mso-line-height-rule:exactly;">${available} <span style="font-size:9.5px; font-weight:800; color:#475569; text-transform:uppercase;">libres</span></p>
                                     </td>
                                 </tr>
                             </table>
                         </td>
-                        <td align="center" valign="middle" bgcolor="${bg}" style="padding:4px 3px; border:1px solid #cbd5e1; text-align:center; vertical-align:middle; color:#64748b; font-size:12px; font-family:Calibri,Arial,sans-serif; background-color:${bg}; white-space:nowrap;">
-                            <table width="100%" cellpadding="0" cellspacing="0" border="0" align="center"><tr>
-                                <td align="center" valign="middle" style="text-align:center; color:#64748b; font-size:12px; font-family:Calibri,Arial,sans-serif;">
-                                    <span style="text-decoration:line-through; font-weight:600; opacity:0.85;">${Math.round(item.oldPrice)}&euro;</span>
-                                </td>
-                            </tr></table>
+                        <td align="center" valign="middle" width="${wAnt}%" bgcolor="${bg}" style="width:${wAnt}%; padding:6px 4px; border:1px solid #cbd5e1; text-align:center; vertical-align:middle; color:#64748b; font-size:12px; font-family:Calibri,Arial,sans-serif; background-color:${bg}; white-space:nowrap; line-height:1.2; mso-line-height-rule:exactly;">
+                            <p align="center" style="margin:0; padding:0; text-align:center; line-height:1.2; mso-line-height-rule:exactly;">
+                                <span style="text-decoration:line-through; font-weight:600; color:#64748b;">${Math.round(item.oldPrice)}&euro;</span>
+                            </p>
                         </td>
-                        <td align="center" valign="middle" bgcolor="#eef2ff" style="padding:4px 3px; border:1.5px solid #818cf8; background-color:#eef2ff; text-align:center; vertical-align:middle; font-family:Calibri,Arial,sans-serif; white-space:nowrap;">
-                            <table width="100%" cellpadding="0" cellspacing="0" border="0" align="center">
-                                <tr>
-                                    <td align="center" valign="middle" style="text-align:center; font-weight:900; color:#1e1b4b; font-size:13.5px; line-height:1.2; font-family:Calibri,Arial,sans-serif;">
-                                        ${Math.round(item.newPrice)}&euro;
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td align="center" valign="middle" style="padding-top:2px; text-align:center;">
-                                        <table cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;"><tr>
-                                            <td align="center" valign="middle" bgcolor="${dPillBg}" style="background-color:${dPillBg}; border:1px solid ${dPillBorder}; border-radius:5px; font-size:9.5px; font-weight:800; color:${dc}; padding:1px 5px; text-align:center; font-family:Calibri,Arial,sans-serif; white-space:nowrap;">
-                                                ${dArr} ${ds}${Math.round(item.delta)}&euro;${dPctStr}
-                                            </td>
-                                        </tr></table>
-                                    </td>
-                                </tr>
-                            </table>
+                        <td align="center" valign="middle" width="${wNueva}%" bgcolor="#eef2ff" style="width:${wNueva}%; padding:6px 4px; border:1.5px solid #818cf8; background-color:#eef2ff; text-align:center; vertical-align:middle; font-family:Calibri,Arial,sans-serif; white-space:nowrap; line-height:1.2; mso-line-height-rule:exactly;">
+                            <p align="center" style="margin:0; padding:0; text-align:center; font-weight:900; color:#1e1b4b; font-size:13.5px; line-height:1.2; mso-line-height-rule:exactly;">${Math.round(item.newPrice)}&euro;</p>
+                            <p align="center" style="margin:3px 0 0 0; padding:0; text-align:center; line-height:1.15; mso-line-height-rule:exactly;">
+                                <span bgcolor="${dPillBg}" style="display:inline-block; background-color:${dPillBg}; border:1px solid ${dPillBorder}; border-radius:5px; font-size:9.5px; font-weight:800; color:${dc}; padding:1px 5px; line-height:1.1; white-space:nowrap;">${dArr} ${ds}${Math.round(item.delta)}&euro;${dPctStr}</span>
+                            </p>
                         </td>
-                        <td align="center" valign="middle" bgcolor="${bg}" style="padding:4px 3px; border:1px solid #cbd5e1; text-align:center; vertical-align:middle; font-weight:800; color:#4f46e5; font-size:13px; font-family:Calibri,Arial,sans-serif; background-color:${bg}; white-space:nowrap;">
-                            <table width="100%" cellpadding="0" cellspacing="0" border="0" align="center"><tr>
-                                <td align="center" valign="middle" style="text-align:center; color:#4f46e5; font-size:13px; font-weight:800; font-family:Calibri,Arial,sans-serif;">
-                                    <strong style="color:#4f46e5; font-size:13px;">${Math.round(item.marketAvg)}&euro;</strong>
-                                </td>
-                            </tr></table>
+                        <td align="center" valign="middle" width="${wMercado}%" bgcolor="${bg}" style="width:${wMercado}%; padding:6px 4px; border:1px solid #cbd5e1; text-align:center; vertical-align:middle; font-weight:800; color:#4f46e5; font-size:13px; font-family:Calibri,Arial,sans-serif; background-color:${bg}; white-space:nowrap; line-height:1.2; mso-line-height-rule:exactly;">
+                            <p align="center" style="margin:0; padding:0; text-align:center; line-height:1.2; mso-line-height-rule:exactly;">
+                                <strong style="color:#4f46e5; font-size:13px;">${Math.round(item.marketAvg)}&euro;</strong>
+                            </p>
                         </td>
                         ${compCells}
-                        <td align="center" valign="middle" bgcolor="${bg}" style="padding:4px 6px; border:1px solid #cbd5e1; background-color:${bg}; font-family:Calibri,Arial,sans-serif; text-align:center; vertical-align:middle;">
-                            <table width="100%" cellpadding="0" cellspacing="0" border="0" align="center">
-                                ${item.eventText ? `
-                                <tr>
-                                    <td align="center" valign="middle" style="padding-bottom:3px; text-align:center;">
-                                        <table cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;"><tr>
-                                            <td align="center" valign="middle" bgcolor="#fef3c7" style="background-color:#fef3c7; border:1px solid #fde68a; border-radius:4px; padding:1px 6px; font-size:9.5px; font-weight:800; color:#b45309; text-align:center; font-family:Calibri,Arial,sans-serif; white-space:nowrap;">
-                                                &#127881; ${item.eventText}
-                                            </td>
-                                        </tr></table>
-                                    </td>
-                                </tr>` : ''}
-                                <tr>
-                                    <td align="center" valign="middle" style="text-align:center;">
-                                        <table cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;"><tr>
-                                            <td align="center" valign="middle" bgcolor="${actBg}" style="background-color:${actBg}; border:1px solid ${actBorder}; border-radius:5px; padding:2px 6px; font-size:10px; font-weight:700; color:${actColor}; text-align:center; font-family:Calibri,Arial,sans-serif; line-height:1.25; white-space:nowrap;">
-                                                ${item.actionText}
-                                            </td>
-                                        </tr></table>
-                                    </td>
-                                </tr>
-                            </table>
+                        <td align="center" valign="middle" width="${wAccion}%" bgcolor="${bg}" style="width:${wAccion}%; padding:5px 6px; border:1px solid #cbd5e1; background-color:${bg}; font-family:Calibri,Arial,sans-serif; text-align:center; vertical-align:middle; white-space:normal; word-wrap:break-word; line-height:1.25; mso-line-height-rule:exactly;">
+                            ${item.eventText ? `<p align="center" style="margin:0 0 3px 0; padding:0; text-align:center; line-height:1.25; mso-line-height-rule:exactly;"><span bgcolor="#fef3c7" style="display:inline-block; background-color:#fef3c7; border:1px solid #fde68a; border-radius:4px; padding:2px 6px; font-size:9.5px; font-weight:800; color:#b45309; text-align:center; font-family:Calibri,Arial,sans-serif; white-space:normal; word-wrap:break-word; line-height:1.25;">&#127881; ${item.eventText}</span></p>` : ''}
+                            <p align="center" style="margin:0; padding:0; text-align:center; line-height:1.25; mso-line-height-rule:exactly;"><span bgcolor="${actBg}" style="display:inline-block; background-color:${actBg}; border:1px solid ${actBorder}; border-radius:5px; padding:2px 6px; font-size:10px; font-weight:700; color:${actColor}; text-align:center; font-family:Calibri,Arial,sans-serif; white-space:normal; word-wrap:break-word; line-height:1.25;">${item.actionText}</span></p>
                         </td>
                     </tr>
                 `;
@@ -7827,7 +7830,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             return `
                 <table width="100%" cellpadding="0" cellspacing="0" border="0" align="left" style="font-family:Calibri,Arial,sans-serif; color:#0f172a; width:100%; border-collapse:collapse; margin:0;">
                 <tr><td align="left" valign="top" style="padding:0; width:100%;">
-                <table width="100%" cellpadding="0" cellspacing="0" border="0" align="left" style="max-width:1050px; width:100%; font-family:Calibri,Arial,sans-serif; border-collapse:collapse; margin:0 0 12px 0;">
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" align="left" style="max-width:1120px; width:100%; font-family:Calibri,Arial,sans-serif; border-collapse:collapse; margin:0 0 12px 0;">
 
                     <!-- HEADER COMPACTO -->
                     <tr><td bgcolor="#1e293b" style="background-color:#1e293b; padding:12px 16px;">
@@ -7851,7 +7854,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
                         <!-- KPI COMPACTOS EN 1 LÍNEA (5 TARJETAS) -->
                         <tr><td colspan="2" style="padding:0 0 10px 0;">
-                            <table width="100%" cellpadding="0" cellspacing="4" border="0"><tr>
+                            <table width="100%" cellpadding="0" cellspacing="4" border="0" style="table-layout:fixed; width:100%; border-collapse:separate;"><tr>
                                 <td width="20%" bgcolor="#eef2ff" style="background-color:#eef2ff; padding:7px 9px; border:1px solid #c7d2fe; vertical-align:top; border-radius:6px;">
                                     <div style="font-size:9px; color:#4f46e5; font-weight:800; text-transform:uppercase; letter-spacing:0.4px;">&#127976; HOTEL</div>
                                     <div style="font-size:13px; font-weight:900; color:#1e1b4b; line-height:1.2; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${config.displayName}</div>
@@ -7877,16 +7880,17 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
 
                         <!-- TABLA DE TARIFAS COMPACTA -->
                         <tr><td colspan="2" style="padding:0;">
-                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; font-size:11.5px; font-family:Calibri,Arial,sans-serif; width:100%;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; table-layout:fixed; font-size:11.5px; font-family:Calibri,Arial,sans-serif; width:100%; mso-table-lspace:0pt; mso-table-rspace:0pt;">
+                                ${colgroupHtml}
                                 <thead>
                                     <tr bgcolor="#f1f5f9" style="background-color:#f1f5f9; background:#f1f5f9;">
-                                        <th align="center" valign="middle" bgcolor="#f1f5f9" style="padding:6px 6px; border:1px solid #cbd5e1; background:#f1f5f9; color:#1e293b; background-color:#f1f5f9; text-align:center; vertical-align:middle; font-size:11px; font-weight:800; white-space:nowrap; min-width:130px; font-family:Calibri,Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" border="0" align="center"><tr><td align="center" valign="middle" style="text-align:center; font-size:11px; font-weight:800; color:#1e293b; font-family:Calibri,Arial,sans-serif; white-space:nowrap;">Fecha</td></tr></table></th>
-                                        <th align="center" valign="middle" bgcolor="#f1f5f9" style="padding:6px 4px; border:1px solid #cbd5e1; background:#f1f5f9; color:#1e293b; background-color:#f1f5f9; text-align:center; vertical-align:middle; font-size:11px; font-weight:800; min-width:110px; font-family:Calibri,Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" border="0" align="center"><tr><td align="center" valign="middle" style="text-align:center; font-size:11px; font-weight:800; color:#1e293b; font-family:Calibri,Arial,sans-serif; white-space:nowrap;">Ocup. / Libres</td></tr></table></th>
-                                        <th align="center" valign="middle" bgcolor="#f1f5f9" style="padding:6px 4px; border:1px solid #cbd5e1; background:#f1f5f9; background-color:#f1f5f9; color:#475569; text-align:center; vertical-align:middle; font-size:11px; font-weight:800; font-family:Calibri,Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" border="0" align="center"><tr><td align="center" valign="middle" style="text-align:center; font-size:11px; font-weight:800; color:#475569; font-family:Calibri,Arial,sans-serif;">Ant.</td></tr></table></th>
-                                        <th align="center" valign="middle" bgcolor="#e0e7ff" style="padding:6px 4px; border:1.5px solid #6366f1; background:#e0e7ff; background-color:#e0e7ff; color:#312e81; text-align:center; vertical-align:middle; font-size:11.5px; font-weight:900; font-family:Calibri,Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" border="0" align="center"><tr><td align="center" valign="middle" style="text-align:center; font-size:11.5px; font-weight:900; color:#312e81; font-family:Calibri,Arial,sans-serif;">&#9654; NUEVA</td></tr></table></th>
-                                        <th align="center" valign="middle" bgcolor="#f1f5f9" style="padding:6px 4px; border:1px solid #cbd5e1; background:#f1f5f9; background-color:#f1f5f9; color:#475569; text-align:center; vertical-align:middle; font-size:11px; font-weight:800; font-family:Calibri,Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" border="0" align="center"><tr><td align="center" valign="middle" style="text-align:center; font-size:11px; font-weight:800; color:#475569; font-family:Calibri,Arial,sans-serif;">Mercado</td></tr></table></th>
+                                        <th align="center" valign="middle" width="${wFecha}%" bgcolor="#f1f5f9" style="width:${wFecha}%; min-width:130px; padding:6px 6px; border:1px solid #cbd5e1; background:#f1f5f9; color:#1e293b; background-color:#f1f5f9; text-align:center; vertical-align:middle; font-size:11px; font-weight:800; text-transform:uppercase; white-space:nowrap; font-family:Calibri,Arial,sans-serif; line-height:1.2; mso-line-height-rule:exactly;"><p align="center" style="margin:0; padding:0; text-align:center; font-size:11px; font-weight:800; color:#1e293b; font-family:Calibri,Arial,sans-serif; white-space:nowrap; line-height:1.2; mso-line-height-rule:exactly;">Fecha</p></th>
+                                        <th align="center" valign="middle" width="${wOcup}%" bgcolor="#f1f5f9" style="width:${wOcup}%; min-width:110px; padding:6px 4px; border:1px solid #cbd5e1; background:#f1f5f9; color:#1e293b; background-color:#f1f5f9; text-align:center; vertical-align:middle; font-size:11px; font-weight:800; text-transform:uppercase; font-family:Calibri,Arial,sans-serif; line-height:1.2; mso-line-height-rule:exactly;"><p align="center" style="margin:0; padding:0; text-align:center; font-size:11px; font-weight:800; color:#1e293b; font-family:Calibri,Arial,sans-serif; white-space:nowrap; line-height:1.2; mso-line-height-rule:exactly;">Ocup. / Libres</p></th>
+                                        <th align="center" valign="middle" width="${wAnt}%" bgcolor="#f1f5f9" style="width:${wAnt}%; padding:6px 4px; border:1px solid #cbd5e1; background:#f1f5f9; background-color:#f1f5f9; color:#475569; text-align:center; vertical-align:middle; font-size:11px; font-weight:800; text-transform:uppercase; font-family:Calibri,Arial,sans-serif; line-height:1.2; mso-line-height-rule:exactly;"><p align="center" style="margin:0; padding:0; text-align:center; font-size:11px; font-weight:800; color:#475569; font-family:Calibri,Arial,sans-serif; line-height:1.2; mso-line-height-rule:exactly;">Ant.</p></th>
+                                        <th align="center" valign="middle" width="${wNueva}%" bgcolor="#e0e7ff" style="width:${wNueva}%; padding:6px 4px; border:1.5px solid #6366f1; background:#e0e7ff; background-color:#e0e7ff; color:#312e81; text-align:center; vertical-align:middle; font-size:11.5px; font-weight:900; text-transform:uppercase; font-family:Calibri,Arial,sans-serif; line-height:1.2; mso-line-height-rule:exactly;"><p align="center" style="margin:0; padding:0; text-align:center; font-size:11.5px; font-weight:900; color:#312e81; font-family:Calibri,Arial,sans-serif; line-height:1.2; mso-line-height-rule:exactly;">&#9654; NUEVA</p></th>
+                                        <th align="center" valign="middle" width="${wMercado}%" bgcolor="#f1f5f9" style="width:${wMercado}%; padding:6px 4px; border:1px solid #cbd5e1; background:#f1f5f9; background-color:#f1f5f9; color:#475569; text-align:center; vertical-align:middle; font-size:11px; font-weight:800; text-transform:uppercase; font-family:Calibri,Arial,sans-serif; line-height:1.2; mso-line-height-rule:exactly;"><p align="center" style="margin:0; padding:0; text-align:center; font-size:11px; font-weight:800; color:#475569; font-family:Calibri,Arial,sans-serif; line-height:1.2; mso-line-height-rule:exactly;">Mercado</p></th>
                                         ${compsHeaders}
-                                        <th align="center" valign="middle" bgcolor="#f1f5f9" style="padding:6px 6px; border:1px solid #cbd5e1; background-color:#f1f5f9; color:#1e293b; text-align:center; vertical-align:middle; font-size:11px; font-weight:800; font-family:Calibri,Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" border="0" align="center"><tr><td align="center" valign="middle" style="text-align:center; font-size:11px; font-weight:800; color:#1e293b; font-family:Calibri,Arial,sans-serif;">Acci&oacute;n</td></tr></table></th>
+                                        <th align="center" valign="middle" width="${wAccion}%" bgcolor="#f1f5f9" style="width:${wAccion}%; padding:6px 6px; border:1px solid #cbd5e1; background-color:#f1f5f9; color:#1e293b; text-align:center; vertical-align:middle; font-size:11px; font-weight:800; text-transform:uppercase; font-family:Calibri,Arial,sans-serif; line-height:1.2; mso-line-height-rule:exactly;"><p align="center" style="margin:0; padding:0; text-align:center; font-size:11px; font-weight:800; color:#1e293b; font-family:Calibri,Arial,sans-serif; line-height:1.2; mso-line-height-rule:exactly;">Acci&oacute;n / Criterio</p></th>
                                     </tr>
                                 </thead>
                                 <tbody>

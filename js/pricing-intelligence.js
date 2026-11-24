@@ -414,18 +414,56 @@
         return setStoredItem(STORAGE_KEY_EXCEPTIONS, JSON.stringify(exceptions));
     }
 
-    function setDateException(dateISO, data) {
+    function getDateException(dateISO, hotelName) {
+        if (!dateISO || typeof dateISO !== 'string') return null;
         const all = getPricingExceptions();
-        if (!data) {
-            delete all[dateISO];
+        if (hotelName) {
+            const hKey = normalizeHotel(hotelName);
+            const scoped = all[`${hKey}|${dateISO}`];
+            if (scoped && (scoped.barBase > 0 || scoped.eventName)) {
+                return scoped;
+            }
+        }
+        const legacy = all[dateISO];
+        if (legacy && (legacy.barBase > 0 || legacy.eventName)) {
+            return legacy;
+        }
+        return null;
+    }
+
+    function setDateException(dateISO, data, hotelName) {
+        const all = getPricingExceptions();
+        if (hotelName) {
+            const hKey = normalizeHotel(hotelName);
+            const scopedKey = `${hKey}|${dateISO}`;
+            if (!data) {
+                delete all[scopedKey];
+                if (all[dateISO]) delete all[dateISO];
+            } else {
+                all[scopedKey] = {
+                    barBase: Number(data.barBase) || 0,
+                    minPrice: Number(data.minPrice) || null,
+                    notes: String(data.notes || ''),
+                    eventName: String(data.eventName || ''),
+                    hotel: hKey,
+                    updatedAt: new Date().toISOString()
+                };
+                if (all[dateISO]) delete all[dateISO];
+            }
         } else {
-            all[dateISO] = {
-                barBase: Number(data.barBase) || 0,
-                minPrice: Number(data.minPrice) || null,
-                notes: String(data.notes || ''),
-                eventName: String(data.eventName || ''),
-                updatedAt: new Date().toISOString()
-            };
+            if (!data) {
+                delete all[dateISO];
+                delete all[`Guadiana|${dateISO}`];
+                delete all[`Cumbria|${dateISO}`];
+            } else {
+                all[dateISO] = {
+                    barBase: Number(data.barBase) || 0,
+                    minPrice: Number(data.minPrice) || null,
+                    notes: String(data.notes || ''),
+                    eventName: String(data.eventName || ''),
+                    updatedAt: new Date().toISOString()
+                };
+            }
         }
         return savePricingExceptions(all);
     }
@@ -434,14 +472,14 @@
     function getBaseBarForDate(dateISO, hotelName = 'Guadiana') {
         if (!dateISO || typeof dateISO !== 'string') return { bar: 64, isException: false };
         
-        // 1. Excepción específica de fecha
-        const exceptions = getPricingExceptions();
-        if (exceptions[dateISO] && exceptions[dateISO].barBase > 0) {
+        // 1. Excepción específica de fecha (por hotel con fallback legacy)
+        const exc = getDateException(dateISO, hotelName);
+        if (exc && exc.barBase > 0) {
             return {
-                bar: exceptions[dateISO].barBase,
+                bar: exc.barBase,
                 isException: true,
-                eventName: exceptions[dateISO].eventName || '',
-                notes: exceptions[dateISO].notes || ''
+                eventName: exc.eventName || '',
+                notes: exc.notes || ''
             };
         }
 
@@ -620,19 +658,25 @@
             }
         }
 
-        const rooms = Math.round(Number(entry.r !== undefined ? entry.r : entry.rooms) || 0);
+        const rawRooms = (entry.r !== undefined) ? entry.r : entry.rooms;
+        const isPriceOnly = (rawRooms === null || rawRooms === undefined);
+        const rooms = isPriceOnly ? null : Math.round(Number(rawRooms) || 0);
         const revenue = Number(entry.rev !== undefined ? entry.rev : entry.revenue) || 0;
-        const adr = (rooms > 0 && revenue > 0)
+        const adr = (rooms !== null && rooms > 0 && revenue > 0)
             ? Number((revenue / rooms).toFixed(2))
             : (Number(entry.adr) || 0);
         const publishedBar = Number(entry.bar !== undefined ? entry.bar : (entry.publishedBar || entry.currentPrice)) || null;
         const compPrice = Number(entry.comp !== undefined ? entry.comp : (entry.compPrice || entry.marketAvg || entry.compAvg)) || null;
-        const occupancyPct = entry.occupancyPct !== undefined && !isNaN(entry.occupancyPct)
-            ? Number(Number(entry.occupancyPct).toFixed(1))
-            : Number(((rooms / hotelCapacity) * 100).toFixed(1));
-        const availableRooms = entry.availableRooms !== undefined
-            ? Number(entry.availableRooms)
-            : Math.max(0, hotelCapacity - rooms);
+        const occupancyPct = isPriceOnly
+            ? null
+            : (entry.occupancyPct !== undefined && entry.occupancyPct !== null && !isNaN(entry.occupancyPct)
+                ? Number(Number(entry.occupancyPct).toFixed(1))
+                : Number(((rooms / hotelCapacity) * 100).toFixed(1)));
+        const availableRooms = isPriceOnly
+            ? null
+            : (entry.availableRooms !== undefined && entry.availableRooms !== null
+                ? Number(entry.availableRooms)
+                : Math.max(0, hotelCapacity - rooms));
 
         return {
             captureDate: d,
@@ -659,15 +703,19 @@
         if (!entry || typeof entry !== 'object') return null;
         const d = String(entry.d || entry.captureDate || '').trim();
         if (!d) return null;
-        const r = Math.round(Number(entry.r !== undefined ? entry.r : entry.rooms) || 0);
-        const compact = { d, r };
+        const rawR = (entry.r !== undefined) ? entry.r : entry.rooms;
+        const isPriceOnly = (rawR === null || rawR === undefined);
+        const r = isPriceOnly ? null : Math.round(Number(rawR) || 0);
 
         const rev = Number(entry.rev !== undefined ? entry.rev : entry.revenue) || 0;
-        if (rev > 0) compact.rev = Number(rev.toFixed(2));
-
         const bar = Number(entry.bar !== undefined ? entry.bar : (entry.publishedBar || entry.currentPrice)) || 0;
-        if (bar > 0) compact.bar = Math.round(bar);
         const comp = Number(entry.comp !== undefined ? entry.comp : (entry.compPrice || entry.marketAvg || entry.compAvg)) || 0;
+
+        if (isPriceOnly && !(bar > 0) && !(comp > 0)) return null;
+
+        const compact = { d, r };
+        if (rev > 0) compact.rev = Number(rev.toFixed(2));
+        if (bar > 0) compact.bar = Math.round(bar);
         if (comp > 0) compact.comp = Number(comp.toFixed(1));
 
         const t = String(entry.t || entry.captureTime || '').trim();
@@ -855,10 +903,14 @@
 
         Object.entries(dailyMap).forEach(([iso, val]) => {
             if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return;
-            const rooms = Math.round(typeof val === 'object' ? (val.rooms ?? val.otbRooms ?? 0) : Number(val) || 0);
-            const revenue = typeof val === 'object' ? (val.revenue ?? 0) : 0;
-            const pubBar = typeof val === 'object' ? (val.price ?? val.bar ?? 0) : 0;
-            const compPrice = typeof val === 'object' ? (val.compPrice ?? val.compAvg ?? val.comp ?? val.marketAvg ?? 0) : 0;
+            const isObj = (typeof val === 'object' && val !== null);
+            const isPriceOnly = isObj && (val.priceOnly === true || (val.rooms === undefined && val.otbRooms === undefined));
+            const rooms = isPriceOnly ? null : Math.round(isObj ? (val.rooms ?? val.otbRooms ?? 0) : (Number(val) || 0));
+            const revenue = isObj ? (val.revenue ?? 0) : 0;
+            const pubBar = isObj ? (val.price ?? val.bar ?? 0) : 0;
+            const compPrice = isObj ? (val.compPrice ?? val.compAvg ?? val.comp ?? val.marketAvg ?? 0) : 0;
+
+            if (isPriceOnly && !(pubBar > 0) && !(compPrice > 0)) return;
 
             db[hKey][iso] = db[hKey][iso] || [];
             const list = db[hKey][iso];
@@ -871,24 +923,37 @@
                 const existingBar = existing.publishedBar !== undefined ? existing.publishedBar : (existing.bar || 0);
 
                 const existingComp = existing.compPrice !== undefined ? existing.compPrice : (existing.comp || 0);
-                const finalRev = (revenue > 0) ? revenue : existingRev;
                 const finalBar = (pubBar > 0) ? pubBar : existingBar;
                 const finalComp = (compPrice > 0) ? compPrice : existingComp;
-                if (existingRooms !== rooms || existingRev !== finalRev || (existingBar || 0) !== (finalBar || 0) || (existingComp || 0) !== (finalComp || 0)) {
-                    existing.rooms = rooms;
-                    existing.r = rooms;
-                    existing.revenue = finalRev;
-                    existing.rev = finalRev;
-                    existing.adr = (rooms > 0 && finalRev > 0) ? Number((finalRev / rooms).toFixed(2)) : (typeof val === 'object' && val.adr ? val.adr : (existing.adr || 0));
-                    existing.publishedBar = finalBar || null;
-                    existing.bar = finalBar || null;
-                    if (finalComp > 0) { existing.compPrice = finalComp; existing.comp = finalComp; }
-                    existing.t = captureTimeKey;
-                    existing.captureTime = captureTimeKey;
-                    existing.captureDateTime = `${captureDayKey} ${captureTimeKey}`;
-                    existing.occupancyPct = Number(((rooms / capacity) * 100).toFixed(1));
-                    existing.availableRooms = Math.max(0, capacity - rooms);
-                    hasAnyChange = true;
+
+                if (isPriceOnly) {
+                    if ((existingBar || 0) !== (finalBar || 0) || (existingComp || 0) !== (finalComp || 0)) {
+                        existing.publishedBar = finalBar || null;
+                        existing.bar = finalBar || null;
+                        if (finalComp > 0) { existing.compPrice = finalComp; existing.comp = finalComp; }
+                        existing.t = captureTimeKey;
+                        existing.captureTime = captureTimeKey;
+                        existing.captureDateTime = `${captureDayKey} ${captureTimeKey}`;
+                        hasAnyChange = true;
+                    }
+                } else {
+                    const finalRev = (revenue > 0) ? revenue : existingRev;
+                    if (existingRooms !== rooms || existingRev !== finalRev || (existingBar || 0) !== (finalBar || 0) || (existingComp || 0) !== (finalComp || 0)) {
+                        existing.rooms = rooms;
+                        existing.r = rooms;
+                        existing.revenue = finalRev;
+                        existing.rev = finalRev;
+                        existing.adr = (rooms > 0 && finalRev > 0) ? Number((finalRev / rooms).toFixed(2)) : (isObj && val.adr ? val.adr : (existing.adr || 0));
+                        existing.publishedBar = finalBar || null;
+                        existing.bar = finalBar || null;
+                        if (finalComp > 0) { existing.compPrice = finalComp; existing.comp = finalComp; }
+                        existing.t = captureTimeKey;
+                        existing.captureTime = captureTimeKey;
+                        existing.captureDateTime = `${captureDayKey} ${captureTimeKey}`;
+                        existing.occupancyPct = Number(((rooms / capacity) * 100).toFixed(1));
+                        existing.availableRooms = Math.max(0, capacity - rooms);
+                        hasAnyChange = true;
+                    }
                 }
             } else {
                 const entry = normalizeSnapshotEntry({
@@ -899,8 +964,10 @@
                     bar: pubBar || null,
                     comp: compPrice || null
                 }, capacity);
-                list.push(entry);
-                hasAnyChange = true;
+                if (entry) {
+                    list.push(entry);
+                    hasAnyChange = true;
+                }
             }
             count++;
         });
@@ -1244,7 +1311,8 @@
 
         const db = getSnapshotsDB();
         const list = (db[hKey] && db[hKey][dateISO]) ? db[hKey][dateISO] : [];
-        result.snapshotsCount = list.length;
+        const otbList = list.filter(s => s && s.rooms !== null && s.rooms !== undefined);
+        result.snapshotsCount = otbList.length;
 
         let current = null;
         if (currentMetrics && currentMetrics.rooms !== undefined) {
@@ -1256,8 +1324,8 @@
                     : (Number(currentMetrics.adr) || 0),
                 occupancyPct: Number(currentMetrics.occupancyPct) || 0
             };
-        } else if (list.length > 0) {
-            current = list[list.length - 1];
+        } else if (otbList.length > 0) {
+            current = otbList[otbList.length - 1];
         }
 
         if (!current) { _memPickupCache.set(cacheKey, result); return result; }
@@ -1268,7 +1336,7 @@
             ? Math.round(Number(currentMetrics.otbChange) || 0)
             : null;
 
-        if (list.length === 0) {
+        if (otbList.length === 0) {
             if (instantPickup !== null) {
                 const status = instantPickup > 0 ? 'GROWTH' : (instantPickup < 0 ? 'CANCELLATION' : 'STABLE');
                 const label = instantPickup === 0 
@@ -1303,7 +1371,7 @@
             let bestMatch = null;
             let bestDeltaMs = Infinity;
 
-            list.forEach(snap => {
+            otbList.forEach(snap => {
                 const ageDays = (refTime - snap.timestamp) / MS_PER_DAY;
                 if (ageDays >= h.minDays && ageDays <= h.maxDays) {
                     const delta = Math.abs(ageDays - h.targetDays);
@@ -1314,8 +1382,8 @@
                 }
             });
 
-            if (!bestMatch && h.key === 'h24h' && list.length >= 2) {
-                const prev = list[list.length - 2];
+            if (!bestMatch && h.key === 'h24h' && otbList.length >= 2) {
+                const prev = otbList[otbList.length - 2];
                 const ageDays = (refTime - prev.timestamp) / MS_PER_DAY;
                 if (ageDays <= 2.5) bestMatch = prev;
             }
@@ -1619,7 +1687,11 @@
 
         const belowBase = currentPrice > 0 && currentPrice < baseBar;
         const belowBaseAmount = belowBase ? Number((baseBar - currentPrice).toFixed(2)) : 0;
-        const baseWarning = belowBase ? `Tarifa por debajo de la base: ${currentPrice} € frente a ${baseBar} € (faltan ${belowBaseAmount} €).` : '';
+        const baseWarning = belowBase
+            ? (isException
+                ? `Tarifa por debajo de la excepción fijada: ${currentPrice} € frente a ${baseBar} € (faltan ${belowBaseAmount} €).`
+                : `Tarifa por debajo de la base: ${currentPrice} € frente a ${baseBar} € (faltan ${belowBaseAmount} €).`)
+            : '';
 
         // BAR VIGENTE (precio publicado actualmente; fallback a base si no está cargado)
         const barVigente = (currentPrice > 0) ? Math.round(currentPrice) : baseBar;
@@ -1731,8 +1803,8 @@
                 riskAssessment: 'Riesgo bajo (evento controlado)',
                 isException: true,
                 eventName,
-                triggerText: act === 'SUBIR' ? `🎪 Alinear a Evento (${baseBar}€)` : '🎪 Evento Especial',
-                demandStatus: 'FECHA CON EVENTO',
+                triggerText: act === 'SUBIR' ? `🎪 Alinear a Evento (${baseBar}€)` : (eventName ? `📌 ${eventName}` : '📌 Excepción BAR'),
+                demandStatus: 'EXCEPCIÓN COMERCIAL',
                 isCommerciallyOptimal: true,
                 hasSufficientPickupHistory: pickupMetrics.hasSufficientHistory,
                 pickupMetrics,
@@ -1740,7 +1812,7 @@
                 minRange: baseBar,
                 maxRange: Math.max(baseBar, prop),
                 rangeText: `${baseBar} € – ${Math.max(baseBar, prop)} €`,
-                rangeCalculation: `Tarifa de evento fijada: ${baseBar} €`,
+                rangeCalculation: `Tarifa excepcional fijada: ${baseBar} €${eventName ? ' (' + eventName + ')' : ''}`,
                 mathToleranceBand: {
                     min: Math.round(barVigente * 0.95),
                     max: Math.round(barVigente * 1.05),
@@ -2412,6 +2484,7 @@
         saveOccTiersJanFeb,
         getPricingExceptions,
         savePricingExceptions,
+        getDateException,
         setDateException,
         getBaseBarForDate,
         normalizeSnapshotEntry,
