@@ -578,7 +578,7 @@ test('AnalisisCompetencia date column width is widened to prevent badge and text
     assert.match(html, /tbody td:first-child\s*\{[\s\S]*?width:\s*118px;[\s\S]*?min-width:\s*110px;/);
 });
 
-test('email HTML table uses table-layout:fixed, colgroup summing 100%, equal competitor widths, centered price paragraphs, and wrapping action cells', () => {
+test('email HTML table uses table-layout:fixed, fixed integer pixel widths (80px uniform for competitors, >=200px for Acción), no nested table in CERRADO, native <center> and <s>', () => {
     const { context } = setupEnvironment();
 
     const comps = [
@@ -619,39 +619,47 @@ test('email HTML table uses table-layout:fixed, colgroup summing 100%, equal com
     // 1. table-layout:fixed on main data table and KPI table
     assert.match(htmlOutput, /border-collapse:collapse;\s*table-layout:fixed;/);
 
-    // 2. <colgroup> has 6 + comps.length <col> elements whose percentages sum ~100%
+    // 2. <colgroup> has 6 + comps.length <col> elements with fixed integer px widths (80px uniform for competitors, >=200px for Acción)
     const colgroupMatch = htmlOutput.match(/<colgroup>([\s\S]*?)<\/colgroup>/);
     assert.ok(colgroupMatch, 'Must include <colgroup> in email data table');
-    const colWidths = [...colgroupMatch[1].matchAll(/<col\s+width="([\d.]+)%"/g)].map(m => parseFloat(m[1]));
+    const colWidths = [...colgroupMatch[1].matchAll(/<col\s+width="(\d+)"\s+style="width:(\d+)px;/g)].map(m => {
+        assert.equal(m[1], m[2], 'width attr and style px must match');
+        return parseInt(m[1], 10);
+    });
     assert.equal(colWidths.length, 6 + comps.length, 'Col count must equal 6 base columns + competitors');
-    const pctSum = colWidths.reduce((a, b) => a + b, 0);
-    assert.ok(Math.abs(pctSum - 100) <= 0.2, `Col percentages must sum ~100%, got ${pctSum}`);
-
-    // 3. All competitor <th> headers and <td> cells share identical width
-    const compWidth = colWidths[5]; // first competitor column after Fecha, Ocup, Ant, Nueva, Mercado
     for (let i = 0; i < comps.length; i++) {
-        assert.equal(colWidths[5 + i], compWidth, `Competitor col ${i} must have identical width`);
+        assert.equal(colWidths[5 + i], 80, `Competitor <col> ${i} must be exactly 80px`);
     }
+    const accionWidth = colWidths[colWidths.length - 1];
+    assert.ok(accionWidth >= 200, `Acción/Criterio width must be >= 200px, got ${accionWidth}`);
+
+    // 3. All competitor <th> headers and <td> cells share identical width="80"
     const theadMatch = htmlOutput.match(/<thead>([\s\S]*?)<\/thead>/);
     assert.ok(theadMatch, 'thead found');
-    const thWidths = [...theadMatch[1].matchAll(/<th[^>]*\swidth="([\d.]+)%"/g)].map(m => parseFloat(m[1]));
+    const thWidths = [...theadMatch[1].matchAll(/<th[^>]*\swidth="(\d+)"/g)].map(m => parseInt(m[1], 10));
     assert.equal(thWidths.length, 6 + comps.length);
     for (let i = 0; i < comps.length; i++) {
-        assert.equal(thWidths[5 + i], compWidth, `Competitor <th> ${i} must have uniform width ${compWidth}%`);
-    }
-    const tbodyMatch = htmlOutput.match(/<tbody>([\s\S]*?)<\/tbody>/);
-    assert.ok(tbodyMatch, 'tbody found');
-    const rowTdWidths = [...tbodyMatch[1].matchAll(/<td[^>]*\swidth="([\d.]+)%"/g)].map(m => parseFloat(m[1]));
-    assert.equal(rowTdWidths.length, 6 + comps.length);
-    for (let i = 0; i < comps.length; i++) {
-        assert.equal(rowTdWidths[5 + i], compWidth, `Competitor <td> ${i} must have uniform width ${compWidth}%`);
+        assert.equal(thWidths[5 + i], 80, `Competitor <th> ${i} must have width="80"`);
     }
 
-    // 4. Centered <p align="center" style="margin:0; ..."> in price cells and wrapping Acción cell
-    assert.match(htmlOutput, /<p\s+align="center"\s+style="margin:0;\s*padding:0;\s*text-align:center;[^>]*>\s*<span[^>]*text-decoration:line-through;[^>]*>60&euro;<\/span>/);
-    assert.match(htmlOutput, /<p\s+align="center"\s+style="margin:0;\s*padding:0;\s*text-align:center;[^>]*color:#0f172a;[^>]*>62€<\/p>/);
+    const tbodyMatch = htmlOutput.match(/<tbody>([\s\S]*?)<\/tbody>/);
+    assert.ok(tbodyMatch, 'tbody found');
+    const rowTdWidths = [...tbodyMatch[1].matchAll(/<td[^>]*\swidth="(\d+)"/g)].map(m => parseInt(m[1], 10));
+    assert.equal(rowTdWidths.length, 6 + comps.length);
+    for (let i = 0; i < comps.length; i++) {
+        assert.equal(rowTdWidths[5 + i], 80, `Competitor <td> ${i} must have width="80"`);
+    }
+
+    // 4. Competitor CERRADO cell has bgcolor="#fee2e2" directly on <td> and NO nested <table>
+    const cerradoTdMatch = tbodyMatch[1].match(/<td[^>]*width="80"[^>]*bgcolor="#fee2e2"[^>]*>([\s\S]*?)<\/td>/);
+    assert.ok(cerradoTdMatch, 'CERRADO must apply bgcolor="#fee2e2" directly on competitor <td>');
+    assert.doesNotMatch(cerradoTdMatch[1], /<table\b/i, 'CERRADO <td> must NOT contain a nested <table>');
+    assert.match(cerradoTdMatch[1], /<center>[\s\S]*?CERRADO[\s\S]*?<\/center>/);
+
+    // 5. Price cells use <center>, Ant. uses <s> strikethrough, and Acción wraps via white-space:normal
+    assert.match(htmlOutput, /<center><s style="text-decoration:line-through;[^>]*><span[^>]*text-decoration:line-through;[^>]*>60&euro;<\/span><\/s><\/center>/);
+    assert.match(htmlOutput, /<center><span[^>]*color:#0f172a;[^>]*>62€<\/span><\/center>/);
     assert.match(htmlOutput, /<td[^>]*white-space:normal;\s*word-wrap:break-word;[^>]*>[\s\S]*?En Rango \(80€\)/);
     assert.doesNotMatch(htmlOutput, /Puente de la Constituci[\s\S]{0,120}white-space:nowrap/);
-    assert.doesNotMatch(htmlOutput, /En Rango \(80€\)<\/span>[\s\S]{0,5}$/);
 });
 
