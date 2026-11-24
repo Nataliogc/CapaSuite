@@ -647,68 +647,64 @@
         const baseLabelText = rec.isException
             ? `BAR Excepción (${rec.eventName || 'Manual'}): ${rec.baseBar} €`
             : `BAR Base Oficial (${stayYear}): ${rec.baseBar} €`;
-        document.getElementById('dayDetailTitle').innerText = `Ficha de Análisis: ${d.label || dateISO}`;
+        document.getElementById('dayDetailTitle').innerText = `${d.label || dateISO}`;
         document.getElementById('dayDetailDowBadge').innerText = dowName;
         document.getElementById('dayDetailSubtitle').innerText = `${currentHotel} · Antelación: ${rec.daysOut} días para la llegada · ${baseLabelText}`;
 
         // Status badge
         const statusBadge = document.getElementById('dayDetailStatusBadge');
         if (my && my.sold) {
-            statusBadge.innerText = 'Ventas Cerradas';
-            statusBadge.style.background = 'rgba(239, 68, 68, 0.15)';
-            statusBadge.style.color = '#ef4444';
+            statusBadge.innerText = 'Ventas cerradas';
+            statusBadge.style.background = 'rgba(239, 68, 68, 0.12)';
+            statusBadge.style.color = '#dc2626';
         } else {
-            statusBadge.innerText = 'Ventas Abiertas';
-            statusBadge.style.background = 'rgba(16, 185, 129, 0.15)';
-            statusBadge.style.color = '#10b981';
+            statusBadge.innerText = 'Ventas abiertas';
+            statusBadge.style.background = 'rgba(16, 185, 129, 0.14)';
+            statusBadge.style.color = '#059669';
         }
 
         // 1. Grid de Situación Actual
         const kpiGrid = document.getElementById('dayDetailKpiGrid');
         if (kpiGrid) {
-            const formatP = (horizon) => {
+            const formatP = (horizon, big) => {
                 if (!horizon || !horizon.available || horizon.diffRooms === null) {
-                    return '<span style="color:var(--text-muted); font-size:0.75rem;">Sin datos</span>';
+                    return big ? '<span style="color:var(--text-muted); font-size:1rem; font-weight:600;">Sin datos</span>' : 'sin datos';
                 }
                 const diff = horizon.diffRooms;
-                if (diff > 0) return `<strong style="color:#10b981;">+${diff} RN</strong>`;
-                if (diff < 0) return `<strong style="color:#ef4444;">${diff} RN</strong>`;
-                return `<strong style="color:var(--text-main);">0 RN</strong>`;
+                const txt = (diff > 0 ? '+' : '') + diff + (big ? ' RN' : '');
+                if (!big) return txt;
+                const col = diff > 0 ? '#059669' : (diff < 0 ? '#dc2626' : 'var(--text-main)');
+                return `<span style="color:${col};">${txt}</span>`;
             };
+            const gapPct = (currentPrice > 0 && mktPrice > 0) ? Math.round(((currentPrice - mktPrice) / mktPrice) * 100) : null;
+            const gapText = gapPct === null ? 'Sin comparativa'
+                : (gapPct === 0 ? 'En línea con el mercado' : `Estamos un ${Math.abs(gapPct)} % ${gapPct < 0 ? 'por debajo' : 'por encima'}`);
+            const baseNote = rec.belowBase
+                ? `<div role="alert" style="color:#dc2626; font-size:0.74rem; font-weight:600;">⚠ ${rec.baseWarning}</div>`
+                : (rec.isException ? `<div style="color:var(--primary); font-size:0.74rem; font-weight:600;">Excepción activa: ${rec.eventName || 'Tarifa especial'}</div>` : '');
 
             kpiGrid.innerHTML = `
                 <div class="day-detail-box">
-                    <div class="box-lbl">${rec.isException ? `Tarifa BAR Excepción ${stayYear}` : `Tarifa BAR Base ${stayYear}`}</div>${rec.belowBase ? `<div role="alert" style="color:#b91c1c; font-weight:700;">⚠ ${rec.baseWarning}</div>` : (rec.isException ? `<div style="color:#4f46e5; font-size:0.72rem; font-weight:700; margin-top:2px;">📌 Excepción activa: ${rec.eventName || 'Tarifa especial'}</div>` : '')}
-                    <div class="box-val">${rec.baseBar} €</div>
-                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:3px;">
-                        Publicado: <b>${currentPrice > 0 ? currentPrice + ' €' : 'Sin tarifa'}</b> · Objetivo: <b>${rec.barObjetivo} €</b>
-                    </div>
+                    <div class="box-lbl">Tarifa publicada</div>
+                    <div class="box-val">${currentPrice > 0 ? currentPrice + ' €' : 'Sin tarifa'}</div>
+                    <div class="box-sub">${rec.isException ? 'BAR excepción' : 'Base'} ${rec.baseBar} € · Objetivo ${rec.barObjetivo} €</div>
+                    ${baseNote}
                 </div>
                 <div class="day-detail-box">
-                    <div class="box-lbl">Ocupación / Disponibilidad</div>
-                    <div class="box-val">${occPct.toFixed(1)}%</div>
-                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:3px;">
-                        <b>${rooms}</b> vendidas / <b>${availableRooms}</b> libres (${capacity} habs)
-                    </div>
+                    <div class="box-lbl">Ocupación</div>
+                    <div style="display:flex; align-items:baseline; gap:8px;"><span class="box-val">${occPct.toFixed(1).replace('.', ',')} %</span><span class="box-sub">${rooms} / ${capacity} habs</span></div>
+                    <div class="dd-meter"><div style="width:${Math.min(100, occPct).toFixed(1)}%;"></div></div>
+                    <div class="box-sub">${availableRooms} libres</div>
                 </div>
                 <div class="day-detail-box">
-                    <div class="box-lbl">Pick-up Multi-Horizonte</div>
-                    <div class="box-val" style="font-size:1.05rem;">
-                        7d: ${formatP(pData.d7)}
-                    </div>
-                    <div style="font-size:0.73rem; color:var(--text-muted); margin-top:3px; display:flex; flex-wrap:wrap; gap:6px;">
-                        <span>24h: ${formatP(pData.h24h)}</span>
-                        <span>3d: ${formatP(pData.d3)}</span>
-                        <span>14d: ${formatP(pData.d14)}</span>
-                        <span>30d: ${formatP(pData.d30)}</span>
-                    </div>
+                    <div class="box-lbl">Pick-up últimos 7 días</div>
+                    <div class="box-val">${formatP(pData.d7, true)}</div>
+                    <div class="box-sub">24h ${formatP(pData.h24h)} · 3d ${formatP(pData.d3)} · 14d ${formatP(pData.d14)} · 30d ${formatP(pData.d30)}</div>
                 </div>
                 <div class="day-detail-box">
-                    <div class="box-lbl">Mercado y Competencia</div>
+                    <div class="box-lbl">Competencia (media)</div>
                     <div class="box-val">${mktPrice > 0 ? mktPrice.toFixed(0) + ' €' : 'Sin datos'}</div>
-                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:3px;">
-                        Gap: <b>${currentPrice > 0 && mktPrice > 0 ? (((currentPrice - mktPrice) / mktPrice) * 100).toFixed(0) + '%' : '-'}</b> · Expedia: ${d.activeSoldComps ? d.activeSoldComps + ' sin tarifa' : 'Observables'}
-                    </div>
+                    <div class="box-sub">${gapText}${d.activeSoldComps ? ` · Expedia: ${d.activeSoldComps} sin tarifa` : ''}</div>
                 </div>
             `;
         }
@@ -722,37 +718,89 @@
             const isPendingDem = (rec.demandStatus === 'PENDIENTE DE EVALUACIÓN DE DEMANDA' || rec.triggerText?.includes('Pend. Demanda'));
             const isRevisar = (rec.action === 'REVISAR' || rec.action === 'REVISIÓN MANUAL' || rec.action === 'REVISAR BAJADA');
             const actCls = isPendingDem ? 'alerta' : (rec.action === 'SUBIR' ? 'subir' : (isRevisar ? 'manual' : 'mantener'));
-            const actLabel = isPendingDem ? '⚠️ PENDIENTE DE EVALUACIÓN DE DEMANDA' : (isRevisar ? 'REVISAR' : rec.action);
-            const diffBadge = (rec.diffAmount !== 0) 
-                ? `<span style="font-size:0.95rem; font-weight:700; color:${rec.diffAmount > 0 ? '#10b981' : '#f59e0b'};">(${rec.diffAmount > 0 ? '+' : ''}${rec.diffAmount} € / ${rec.diffPct.toFixed(1)}%)</span>` 
+            const actLabel = isPendingDem ? 'Pendiente de evaluar demanda' : (isRevisar ? 'Revisar' : rec.action.charAt(0) + rec.action.slice(1).toLowerCase());
+            const fmtPct = (n) => Math.abs(n).toFixed(1).replace('.', ',').replace(',0', '');
+            const deltaHtml = (rec.diffAmount !== 0)
+                ? `<span class="dd-delta ${rec.diffAmount > 0 ? 'up' : 'down'} dd-num">${rec.diffAmount > 0 ? '▲ +' : '▼ '}${rec.diffAmount} € · ${rec.diffAmount > 0 ? '+' : '−'}${fmtPct(rec.diffPct)} %</span>`
                 : '';
+            const showOld = rec.diffAmount !== 0 && currentPrice > 0;
 
             const confDetails = rec.confidenceDetails || {
                 pms: 'Alta (100% certificado)',
                 expedia: 'Media (muestra observable)',
                 revenue: rec.confidenceScore || 'Media'
             };
+            const splitConf = (txt) => {
+                const t = String(txt || '-');
+                const m = t.match(/^([^(]+?)\s*\((.+)\)\s*$/);
+                const level = (m ? m[1] : t).trim();
+                const detail = m ? m[2].trim() : '';
+                const lvl = level.toLowerCase();
+                const cls = lvl.startsWith('alta') ? 'ok' : ((lvl.startsWith('media') || lvl.startsWith('baja')) ? 'warn' : '');
+                return { level, detail, cls };
+            };
+            const signal = (label, txt, plain) => {
+                if (plain) return `<div class="dd-signal"><span>${label}</span><strong class="dd-num">${txt}</strong></div>`;
+                const c = splitConf(txt);
+                return `<div class="dd-signal"><span>${label}</span><strong class="${c.cls}">${c.cls ? '● ' : ''}${c.level}</strong>${c.detail ? `<span>${c.detail}</span>` : ''}</div>`;
+            };
+
+            // Escala visual de precios: suelo, rango comercial, banda ±5 %, vigente, mercado y propuesta
+            const band = rec.mathToleranceBand || null;
+            const rMin = Number(rec.minRange) || Number(rec.baseBar) || 0;
+            const rMax = Number(rec.maxRange) || Number(rec.barObjetivo) || 0;
+            const scaleVals = [rMin, rMax, band && band.min, band && band.max, currentPrice, mktPrice, rec.proposedPrice, rec.barObjetivo]
+                .map(Number).filter(v => v > 0);
+            let scaleHtml = '';
+            if (scaleVals.length >= 2) {
+                const lo = Math.max(0, Math.floor(Math.min(...scaleVals) * 0.88 / 5) * 5);
+                const hi = Math.ceil(Math.max(...scaleVals) * 1.06 / 5) * 5;
+                const pos = (v) => Math.max(0, Math.min(100, ((v - lo) / Math.max(1, hi - lo)) * 100)).toFixed(1);
+                const labels = [];
+                const addLbl = (v, title, strong) => {
+                    if (!(v > 0)) return;
+                    const near = labels.find(l => Math.abs(l.v - v) / Math.max(1, hi - lo) < 0.09);
+                    if (near) { near.title += ' · ' + title; if (strong) near.strong = true; return; }
+                    labels.push({ v, title, strong });
+                };
+                addLbl(rMin, 'Suelo');
+                addLbl(currentPrice, 'Vigente');
+                addLbl(rec.proposedPrice, rec.proposedPrice === rec.barObjetivo ? 'Objetivo' : 'Propuesta', true);
+                if (rec.barObjetivo !== rec.proposedPrice) addLbl(rec.barObjetivo, 'Objetivo');
+                scaleHtml = `
+                    <div class="dd-scale" aria-hidden="true">
+                        <div class="dd-scale-track"></div>
+                        ${rMax > rMin ? `<div class="dd-scale-range" style="left:${pos(rMin)}%; width:${(pos(rMax) - pos(rMin)).toFixed(1)}%;"></div>` : ''}
+                        ${band && band.max > band.min ? `<div class="dd-scale-band" style="left:${pos(band.min)}%; width:${(pos(band.max) - pos(band.min)).toFixed(1)}%;"></div>` : ''}
+                        ${rMin > 0 ? `<div class="dd-scale-tick" style="left:${pos(rMin)}%;"></div>` : ''}
+                        ${mktPrice > 0 ? `<div class="dd-scale-comp dd-num" style="left:${pos(mktPrice)}%;">◆ Comp. ${Math.round(mktPrice)} €</div>` : ''}
+                        ${currentPrice > 0 ? `<div class="dd-scale-cur" style="left:${pos(currentPrice)}%;"></div>` : ''}
+                        <div class="dd-scale-rec" style="left:${pos(rec.proposedPrice)}%;"></div>
+                    </div>
+                    <div class="dd-scale-labels dd-num">
+                        ${labels.map(l => `<div style="left:${pos(l.v)}%;"><b style="${l.strong ? 'color:var(--primary);' : ''}">${Math.round(l.v)} €</b><br>${l.title}</div>`).join('')}
+                    </div>
+                    <p class="dd-legend">
+                        <span class="dd-sw" style="background:rgba(99,102,241,.30);"></span>Rango comercial ${rec.rangeText}
+                        ${band ? ` &nbsp;·&nbsp; <span class="dd-sw" style="background:rgba(99,102,241,.12); border:1px dashed var(--primary);"></span>Banda ±5 % sobre publicada (${band.text}), solo aritmética` : ''}
+                    </p>`;
+            }
 
             const bgtHtml = bgt ? `
-                <div style="background:var(--bg-deep); border:1px solid var(--border); border-radius:14px; padding:12px 14px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                        <span style="font-weight:800; font-size:0.75rem; color:var(--primary); text-transform:uppercase;">
-                            🎯 Contexto Presupuestario Mensual (${bgt.monthName} ${stayYear} · ${currentHotel})
-                        </span>
-                        <span style="font-size:0.7rem; color:var(--text-muted); font-weight:600;">Escenario: ${bgt.scenario}</span>
-                    </div>
-                    <div style="display:grid; grid-template-columns:1fr 1.2fr; gap:8px;">
-                        <div style="background:var(--bg-surface); padding:8px 10px; border-radius:6px; border-left:3px solid var(--primary);">
-                            <div style="font-size:0.68rem; color:var(--text-muted); font-weight:700;">OBJETIVO MENSUAL</div>
-                            <div style="font-size:1.05rem; font-weight:800; color:var(--text-main); margin:1px 0;">${bgt.targetRev.toLocaleString('es-ES')} €</div>
-                            <div style="font-size:0.7rem; color:var(--text-muted);">${bgt.targetRN} RN · ADR: ${bgt.targetAdr} € · Occ: ${bgt.targetOccPct}%</div>
+                <div class="dd-card">
+                    <div class="dd-budget">
+                        <div style="display:flex; flex-direction:column; gap:4px;">
+                            <span class="dd-mini-lbl" style="font-size:0.75rem;">Objetivo ${String(bgt.monthName || '').toLowerCase()} ${stayYear} · ${currentHotel}</span>
+                            <span class="dd-num" style="font-size:1.5rem; font-weight:700; letter-spacing:-0.02em; color:var(--text-main);">${bgt.targetRev.toLocaleString('es-ES')} €</span>
                         </div>
-                        <div style="background:var(--bg-surface); padding:8px 10px; border-radius:6px; border-left:3px solid #10b981;">
-                            <div style="font-size:0.68rem; color:var(--text-muted); font-weight:700;">CRITERIO COMERCIAL</div>
-                            <div style="font-size:0.72rem; color:var(--text-main); line-height:1.35; margin-top:2px;">
-                                Referencia complementaria de seguimiento. No impone subidas ni bajadas automáticas sobre la BAR base.
-                            </div>
+                        <div class="dd-budget-stats">
+                            <div><span>RN</span><b>${Number(bgt.targetRN).toLocaleString('es-ES')}</b></div>
+                            <div><span>ADR</span><b>${Number(bgt.targetAdr).toLocaleString('es-ES')} €</b></div>
+                            <div><span>Ocupación</span><b>${Number(bgt.targetOccPct).toLocaleString('es-ES')} %</b></div>
                         </div>
+                        <p style="margin:0; flex-basis:100%; font-size:0.75rem; color:var(--text-muted); line-height:1.5;">
+                            Escenario ${String(bgt.scenario || '').toLowerCase()}. Referencia de seguimiento: no aplica subidas ni bajadas automáticas sobre la BAR base.
+                        </p>
                     </div>
                 </div>
             ` : '';
@@ -760,70 +808,34 @@
             if (bgtCont) bgtCont.innerHTML = bgtHtml;
 
             recCont.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <span class="action-pill ${actCls}" style="font-size:0.82rem; padding:4px 10px; font-weight:800;">${actLabel}</span>
-                        <span style="font-size:1.3rem; font-weight:800; color:var(--text-main);">
-                            ${rec.proposedPrice} € ${diffBadge}
-                        </span>
+                <section class="dd-card">
+                    <div class="dd-rec-head">
+                        <div>
+                            <span class="dd-eyebrow">Recomendación</span><span class="dd-action ${actCls}">${actLabel}</span>
+                            <div class="dd-rec-price">
+                                ${showOld ? `<span class="dd-rec-old dd-num">${currentPrice} €</span><span style="color:var(--text-muted);" aria-hidden="true">→</span>` : ''}
+                                <span class="dd-rec-new">${rec.proposedPrice} €</span>
+                                ${deltaHtml}
+                            </div>
+                        </div>
+                        <div class="dd-diag">${rec.demandStatus || 'Evaluado'}</div>
                     </div>
-                    <div style="display:flex; gap:8px; font-size:0.75rem;">
-                        <span style="background:var(--bg-deep); padding:3px 8px; border-radius:6px; border:1px solid var(--border);">Diagnóstico: <b>${rec.demandStatus || 'Evaluado'}</b></span>
+                    ${scaleHtml}
+                    <div class="dd-signals">
+                        ${signal('Previsión demanda', rec.forecastStatus || 'No disponible', true)}
+                        ${signal('Confianza revenue', confDetails.revenue)}
+                        ${signal('Fiabilidad PMS', confDetails.pms)}
+                        ${signal('Competencia Expedia', confDetails.expedia)}
                     </div>
-                </div>
-
-                <!-- 4 PILARES DE CONFIANZA Y PREVISIÓN -->
-                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:8px; margin-bottom:12px; font-size:0.75rem;">
-                    <div style="background:var(--bg-deep); padding:6px 10px; border-radius:6px; border:1px solid var(--border);">
-                        <span style="color:var(--text-muted); display:block; font-size:0.68rem; font-weight:700;">FIABILIDAD PMS</span>
-                        <strong style="color:#10b981;">${confDetails.pms}</strong>
-                    </div>
-                    <div style="background:var(--bg-deep); padding:6px 10px; border-radius:6px; border:1px solid var(--border);">
-                        <span style="color:var(--text-muted); display:block; font-size:0.68rem; font-weight:700;">COMPETENCIA EXPEDIA</span>
-                        <strong>${confDetails.expedia}</strong>
-                    </div>
-                    <div style="background:var(--bg-deep); padding:6px 10px; border-radius:6px; border:1px solid var(--border);">
-                        <span style="color:var(--text-muted); display:block; font-size:0.68rem; font-weight:700;">CONFIANZA REVENUE</span>
-                        <strong style="color:${rec.confidenceScore === 'Alta' ? '#10b981' : '#f59e0b'};">${confDetails.revenue}</strong>
-                    </div>
-                    <div style="background:var(--bg-deep); padding:6px 10px; border-radius:6px; border:1px solid var(--border);">
-                        <span style="color:var(--text-muted); display:block; font-size:0.68rem; font-weight:700;">PREVISIÓN DEMANDA</span>
-                        <strong>${rec.forecastStatus || 'Previsión no disponible'}</strong>
-                    </div>
-                </div>
-
+                </section>
                 ${document.getElementById('dayDetailBudgetContainer') ? '' : bgtHtml}
-
-                <!-- DESGLOSE: RANGO COMERCIAL vs BANDA MATEMÁTICA -->
-                <div style="background:var(--bg-deep); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:12px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                        <span style="font-weight:800; font-size:0.75rem; color:var(--primary); text-transform:uppercase;">📐 Cálculo y Justificación del Rango de Precios</span>
-                        <span style="font-size:0.72rem; color:var(--text-muted); font-weight:600;">Diferenciación entre Banda Matemática y Rango Comercial</span>
-                    </div>
-                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px;">
-                        <div style="background:var(--bg-surface); padding:10px; border-radius:8px; border-left:4px solid #10b981;">
-                            <div style="font-size:0.7rem; font-weight:700; color:var(--text-muted);">RANGO COMERCIAL RECOMENDADO</div>
-                            <div style="font-size:1.1rem; font-weight:800; color:#10b981; margin:2px 0;">${rec.rangeText}</div>
-                            <div style="font-size:0.72rem; color:var(--text-main); line-height:1.3;">
-                                ${rec.rangeCalculation || 'Basado en BAR base y set competitivo.'}
-                            </div>
-                        </div>
-                        <div style="background:var(--bg-surface); padding:10px; border-radius:8px; border-left:4px solid #94a3b8;">
-                            <div style="font-size:0.7rem; font-weight:700; color:var(--text-muted);">BANDA MATEMÁTICA DE TOLERANCIA (±5%)</div>
-                            <div style="font-size:1.1rem; font-weight:800; color:var(--text-muted); margin:2px 0;">${rec.mathToleranceBand ? rec.mathToleranceBand.text : '-'}</div>
-                            <div style="font-size:0.72rem; color:var(--text-muted); line-height:1.3;">
-                                Rango meramente aritmético sobre tarifa publicada; no convalida idoneidad comercial.
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div style="font-size:0.83rem; line-height:1.5; color:var(--text-main); margin-bottom:10px;">
-                    <b>Justificación detallada de Revenue:</b>
-                    <ul style="margin:6px 0 0 18px; padding:0;">
-                        ${rec.reasons.map(r => `<li style="margin-bottom:3px;">${r}</li>`).join('')}
-                    </ul>
-                </div>
+                <section class="dd-card">
+                    <h4 class="dd-card-title">${rec.action === 'SUBIR' ? 'Por qué subir' : (rec.action === 'BAJAR' ? 'Por qué bajar' : 'Justificación')}</h4>
+                    <ol class="dd-reasons">
+                        ${rec.reasons.map((r, i) => `<li><span class="n">${i + 1}</span><span>${r}</span></li>`).join('')}
+                    </ol>
+                    ${rec.rangeCalculation ? `<p style="margin:14px 0 0; font-size:0.75rem; color:var(--text-muted);">${rec.rangeCalculation}</p>` : ''}
+                </section>
             `;
         }
 
@@ -838,37 +850,25 @@
             removeExcBtn.style.display = curExc ? 'inline-flex' : 'none';
         }
 
-        // Configurar botón de aplicar recomendación (Acciones sin efecto corregidas)
+        // Configurar botones de aplicar recomendación
         const applyBtn = document.getElementById('dayDetailApplyBtn');
+        const applyAndSaveBtn = document.getElementById('dayDetailApplyAndSaveBtn');
         if (applyBtn) {
+            const setStatus = (text, title) => {
+                applyBtn.innerText = text;
+                applyBtn.disabled = true;
+                applyBtn.title = title;
+                applyBtn.onclick = null;
+                if (applyAndSaveBtn) applyAndSaveBtn.style.display = 'none';
+            };
             if (rec.action === 'REVISAR' || rec.action === 'REVISIÓN MANUAL') {
-                const applyAndSaveBtn = document.getElementById('dayDetailApplyAndSaveBtn');
-                applyBtn.innerText = `⚠️ Requiere Revisión Comercial`;
-                applyBtn.disabled = true;
-                applyBtn.style.background = '#64748b';
-                applyBtn.style.cursor = 'default';
-                applyBtn.style.opacity = '0.75';
-                applyBtn.title = 'Requiere revisión comercial antes de cualquier modificación. No se aplican cambios automáticos.';
-                applyBtn.onclick = null;
-                if (applyAndSaveBtn) applyAndSaveBtn.style.display = 'none';
+                setStatus('⚠ Requiere revisión comercial', 'Requiere revisión comercial antes de cualquier modificación. No se aplican cambios automáticos.');
             } else if (rec.diffAmount === 0 || rec.proposedPrice === currentPrice) {
-                const applyAndSaveBtn = document.getElementById('dayDetailApplyAndSaveBtn');
-                applyBtn.innerText = `✓ Tarifa vigente conservada (${currentPrice > 0 ? currentPrice + ' €' : rec.proposedPrice + ' €'})`;
-                applyBtn.disabled = true;
-                applyBtn.style.background = '#64748b';
-                applyBtn.style.cursor = 'default';
-                applyBtn.style.opacity = '0.75';
-                applyBtn.title = 'La tarifa propuesta coincide con la vigente. No procede cambio de precio.';
-                applyBtn.onclick = null;
-                if (applyAndSaveBtn) applyAndSaveBtn.style.display = 'none';
+                setStatus(`✓ Tarifa vigente conservada (${currentPrice > 0 ? currentPrice + ' €' : rec.proposedPrice + ' €'})`, 'La tarifa propuesta coincide con la vigente. No procede cambio de precio.');
             } else {
-                const applyAndSaveBtn = document.getElementById('dayDetailApplyAndSaveBtn');
-                applyBtn.innerText = `Aplicar Precio (${rec.proposedPrice} €)`;
+                applyBtn.innerText = 'Aplicar sin guardar';
                 applyBtn.disabled = false;
-                applyBtn.style.background = 'var(--primary)';
-                applyBtn.style.cursor = 'pointer';
-                applyBtn.style.opacity = '1';
-                applyBtn.title = `Aplicar cambio de tarifa a ${rec.proposedPrice} € (${rec.diffAmount > 0 ? '+' : ''}${rec.diffAmount} €)`;
+                applyBtn.title = `Aplicar cambio de tarifa a ${rec.proposedPrice} € (${rec.diffAmount > 0 ? '+' : ''}${rec.diffAmount} €) sin guardar todavía`;
                 applyBtn.onclick = function() {
                     if (typeof setManualPrice === 'function') {
                         setManualPrice(d.dayIndex, currentHotel, rec.proposedPrice);
@@ -876,6 +876,7 @@
                     closeDayDetailModal();
                 };
                 if (applyAndSaveBtn) {
+                    applyAndSaveBtn.innerText = `Aplicar ${rec.proposedPrice} € y guardar`;
                     applyAndSaveBtn.style.display = 'inline-flex';
                     applyAndSaveBtn.onclick = function() {
                         if (typeof setManualPrice === 'function') {
@@ -1238,25 +1239,25 @@
                     const bg = isPos ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)';
                     const bd = isPos ? 'rgba(16, 185, 129, 0.35)' : 'rgba(239, 68, 68, 0.35)';
                     const roomsRange = (item.prevRooms !== undefined && item.currRooms !== undefined)
-                        ? `<span style="color:var(--text-muted); font-size:0.68rem; margin-left:4px;">(${item.prevRooms}→${item.currRooms} habs)</span>`
+                        ? `<span style="color:var(--text-muted); font-size:0.75rem; margin-left:6px;">(${item.prevRooms}→${item.currRooms} habs)</span>`
                         : '';
-                    moveCellHtml = `<span style="display:inline-block; background:${bg}; border:1px solid ${bd}; color:${dColor}; font-weight:800; padding:1px 6px; border-radius:4px; font-size:0.7rem;">${dSign}${item.diffRooms} RN</span>${roomsRange}`;
+                    moveCellHtml = `<span style="font-weight:700; color:${dColor};">${dSign}${item.diffRooms} RN</span>${roomsRange}`;
                 } else {
-                    moveCellHtml = `<span style="display:inline-block; background:rgba(56, 189, 248, 0.12); border:1px solid rgba(56, 189, 248, 0.35); color:#0284c7; font-weight:700; padding:1px 6px; border-radius:4px; font-size:0.69rem;">Cambio tarifa</span>`;
+                    moveCellHtml = `<span style="font-weight:600; color:var(--primary);">Cambio de tarifa</span>`;
                 }
-                const priceColor = item.priceLabel === 'sin precio' ? 'var(--text-muted)' : '#0284c7';
+                const priceColor = item.priceLabel === 'sin precio' ? 'var(--text-muted)' : 'var(--text-main)';
                 return `
                     <tr title="${safeTip}" style="border-bottom:1px solid rgba(148,163,184,0.16);">
-                        <td style="padding:4px 8px 4px 2px; font-weight:800; color:var(--text-main); white-space:nowrap; width:74px;">${dLabel}</td>
-                        <td style="padding:4px 8px; white-space:nowrap;">${moveCellHtml}</td>
-                        <td style="padding:4px 2px 4px 8px; text-align:right; font-weight:700; color:${priceColor}; white-space:nowrap;">${item.priceLabel || '—'}</td>
+                        <td style="padding:9px 8px 9px 2px; font-weight:600; color:var(--text-main); white-space:nowrap; width:74px;">${dLabel}</td>
+                        <td style="padding:9px 8px; white-space:nowrap;">${moveCellHtml}</td>
+                        <td style="padding:9px 2px 9px 8px; text-align:right; font-weight:500; color:${priceColor}; white-space:nowrap;">${item.priceLabel || '—'}</td>
                     </tr>
                 `;
             }).join('');
 
             movementsHtml = `
-                <div style="max-height:155px; overflow-y:auto; border:1px solid var(--border); border-radius:6px; background:var(--bg-deep); padding:2px 6px;">
-                    <table style="width:100%; border-collapse:collapse; font-size:0.72rem;">
+                <div style="max-height:230px; overflow-y:auto;">
+                    <table style="width:100%; border-collapse:collapse; font-size:0.8rem; font-variant-numeric:tabular-nums;">
                         <tbody>${rowsHtml}</tbody>
                     </table>
                 </div>
@@ -1274,7 +1275,7 @@
             }).join('');
             zeroSummaryHtml = `
                 <div style="margin-top:6px;">
-                    <button type="button" onclick="CompetenciaIntelUI.toggleZeroVariations(this)" data-count="${zeroItems.length}" style="background:transparent; border:none; padding:0; font-size:0.7rem; font-weight:700; color:var(--text-muted); cursor:pointer; text-decoration:underline;">
+                    <button type="button" onclick="CompetenciaIntelUI.toggleZeroVariations(this)" data-count="${zeroItems.length}" style="background:transparent; border:none; padding:6px 0; font-size:0.78rem; font-weight:600; color:var(--primary); cursor:pointer;">
                         ▸ Ver ${zeroItems.length} día${zeroItems.length !== 1 ? 's' : ''} sin cambios (+0 RN)
                     </button>
                     <div id="dayDetailZeroVariationsList" style="display:none; flex-wrap:wrap; gap:4px; margin-top:5px;">
@@ -1287,14 +1288,14 @@
         if (statsBox) {
             const availDisplay = Math.max(0, capacity - effectiveCurrentRooms);
             statsBox.innerHTML = `
-                <div style="margin-top:10px; background:var(--bg-surface); padding:10px 12px; border-radius:8px; border:1px solid var(--border); font-size:0.73rem;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px; padding-bottom:6px; border-bottom:1px solid var(--border);">
+                <div style="margin-top:14px; font-size:0.78rem; font-variant-numeric:tabular-nums;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px; padding:12px 0; border-top:1px solid var(--border); border-bottom:1px solid var(--border);">
                         <span>Evolución${firstDateES ? ` (${firstDateES} → Hoy)` : ''}: <b style="color:${netGrowth >= 0 ? '#10b981' : '#ef4444'}; font-size:0.84rem;">${netGrowth >= 0 ? '+' : ''}${netGrowth} RN</b>${firstOtbSnap ? ` <span style="color:var(--text-muted); font-size:0.7rem;">(${firstOtbSnap.rooms}→${effectiveCurrentRooms} habs)</span>` : ''}</span>
                         <span>Disponibles: <b>${availDisplay} libres</b> <span style="color:var(--text-muted); font-size:0.7rem;">(${effectiveCurrentRooms}/${capacity})</span></span>
                         <span>Última captura: <b>${lastUpdateStr}</b></span>
                     </div>
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-                        <span style="color:var(--text-muted); font-size:0.7rem; font-weight:800; text-transform:uppercase; letter-spacing:0.3px;">Movimientos de reservas y tarifa</span>
+                        <span style="color:var(--text-main); font-size:0.82rem; font-weight:700;">Movimientos de reservas y tarifa</span>
                         <span style="font-size:0.68rem; color:var(--text-muted);">${activeItems.length} cambio${activeItems.length !== 1 ? 's' : ''} detectado${activeItems.length !== 1 ? 's' : ''}</span>
                     </div>
                     ${movementsHtml}
@@ -1312,14 +1313,15 @@
         const dataRooms = snaps.map(s => (s.rooms !== null && s.rooms !== undefined) ? s.rooms : null);
 
         const datasets = [{
-            label: 'Habitaciones Vendidas (OTB)',
+            label: 'Habitaciones vendidas',
             data: dataRooms,
             borderColor: '#6366f1',
             backgroundColor: 'rgba(99, 102, 241, 0.12)',
             fill: true,
             tension: 0.15,
-            pointRadius: 4,
-            pointHoverRadius: 6,
+            borderWidth: 2,
+            pointRadius: 0,
+            pointHoverRadius: 5,
             pointBackgroundColor: '#6366f1',
             spanGaps: true,
             yAxisID: 'y'
@@ -1337,15 +1339,16 @@
                 return null;
             });
             datasets.push({
-                label: 'Precio Medio Competencia (€)',
+                label: 'Competencia',
                 data: dataComp,
-                borderColor: '#f59e0b',
+                borderColor: '#d97706',
                 backgroundColor: 'transparent',
                 borderWidth: 2,
+                borderDash: [5, 4],
                 tension: 0.15,
-                pointRadius: 4,
+                pointRadius: 0,
                 pointHoverRadius: 6,
-                pointBackgroundColor: '#f59e0b',
+                pointBackgroundColor: '#d97706',
                 spanGaps: true,
                 yAxisID: 'y1'
             });
@@ -1359,16 +1362,15 @@
                 return null;
             });
             datasets.push({
-                label: 'Tu Tarifa BAR (€)',
+                label: 'Tu BAR',
                 data: dataBar,
-                borderColor: '#38bdf8',
+                borderColor: '#0ea5e9',
                 backgroundColor: 'transparent',
-                borderDash: [3, 3],
                 borderWidth: 2,
-                tension: 0.15,
-                pointRadius: 3,
+                stepped: 'before',
+                pointRadius: 0,
                 pointHoverRadius: 5,
-                pointBackgroundColor: '#38bdf8',
+                pointBackgroundColor: '#0ea5e9',
                 spanGaps: true,
                 yAxisID: 'y1'
             });
@@ -1381,11 +1383,11 @@
                 data: dataAdr,
                 borderColor: '#10b981',
                 backgroundColor: 'transparent',
-                borderDash: [4, 4],
-                borderWidth: 2,
+                borderDash: [2, 3],
+                borderWidth: 1.5,
                 fill: false,
                 tension: 0.15,
-                pointRadius: 4,
+                pointRadius: 0,
                 pointHoverRadius: 6,
                 pointBackgroundColor: '#10b981',
                 spanGaps: true,
@@ -1411,7 +1413,8 @@
                     legend: {
                         display: (hasEconomicData || hasCompData || hasBarData),
                         position: 'top',
-                        labels: { font: { size: 10 } }
+                        align: 'start',
+                        labels: { font: { size: 11 }, usePointStyle: true, pointStyle: 'line', boxWidth: 18, padding: 14 }
                     },
                     tooltip: {
                         callbacks: {
@@ -1458,21 +1461,23 @@
                         position: 'left',
                         beginAtZero: true,
                         max: capacity,
-                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                        ticks: { font: { size: 10 } },
-                        title: { display: true, text: 'Habitaciones', font: { size: 10 } }
+                        grid: { color: 'rgba(148, 163, 184, 0.15)' },
+                        border: { display: false },
+                        ticks: { font: { size: 10 }, maxTicksLimit: 4 },
+                        title: { display: false }
                     },
                     y1: {
                         type: 'linear',
                         display: (hasEconomicData || hasCompData || hasBarData),
                         position: 'right',
                         grid: { drawOnChartArea: false },
-                        ticks: { font: { size: 10 } },
-                        title: { display: true, text: 'Tarifas / ADR (€)', font: { size: 10 } }
+                        border: { display: false },
+                        ticks: { font: { size: 10 }, maxTicksLimit: 4, callback: (v) => v + ' €' },
+                        title: { display: false }
                     },
                     x: {
                         grid: { display: false },
-                        ticks: { font: { size: 9 }, maxRotation: 45 }
+                        ticks: { font: { size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 6, callback: function (v) { const l = this.getLabelForValue(v) || ''; return l.slice(0, 5); } }
                     }
                 }
             }
