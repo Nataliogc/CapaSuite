@@ -842,6 +842,7 @@
         const applyBtn = document.getElementById('dayDetailApplyBtn');
         if (applyBtn) {
             if (rec.action === 'REVISAR' || rec.action === 'REVISIÓN MANUAL') {
+                const applyAndSaveBtn = document.getElementById('dayDetailApplyAndSaveBtn');
                 applyBtn.innerText = `⚠️ Requiere Revisión Comercial`;
                 applyBtn.disabled = true;
                 applyBtn.style.background = '#64748b';
@@ -849,6 +850,7 @@
                 applyBtn.style.opacity = '0.75';
                 applyBtn.title = 'Requiere revisión comercial antes de cualquier modificación. No se aplican cambios automáticos.';
                 applyBtn.onclick = null;
+                if (applyAndSaveBtn) applyAndSaveBtn.style.display = 'none';
             } else if (rec.diffAmount === 0 || rec.proposedPrice === currentPrice) {
                 const applyAndSaveBtn = document.getElementById('dayDetailApplyAndSaveBtn');
                 applyBtn.innerText = `✓ Tarifa vigente conservada (${currentPrice > 0 ? currentPrice + ' €' : rec.proposedPrice + ' €'})`;
@@ -896,6 +898,47 @@
         if (modal) modal.style.display = 'none';
     }
 
+    function formatDateShortES(val) {
+        if (!val) return '';
+        const str = String(val).trim();
+        const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (isoMatch) {
+            return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1].slice(-2)}`;
+        }
+        const esMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+        if (esMatch) {
+            const dd = esMatch[1].padStart(2, '0');
+            const mm = esMatch[2].padStart(2, '0');
+            const yy = esMatch[3].length === 4 ? esMatch[3].slice(-2) : esMatch[3].padStart(2, '0');
+            return `${dd}/${mm}/${yy}`;
+        }
+        return str;
+    }
+
+    function formatDateTimeShortES(val) {
+        if (!val) return '';
+        const str = String(val).trim();
+        const m = str.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s]+(\d{1,2}:\d{2})(?::\d{2})?)?/);
+        if (m) {
+            const dPart = `${m[3]}/${m[2]}/${m[1].slice(-2)}`;
+            return m[4] ? `${dPart} ${m[4].padStart(5, '0')}` : dPart;
+        }
+        return formatDateShortES(str);
+    }
+
+    function toggleZeroVariations(btnEl) {
+        const box = document.getElementById('dayDetailZeroVariationsList');
+        if (!box) return;
+        const isHidden = (box.style.display === 'none' || !box.style.display);
+        box.style.display = isHidden ? 'flex' : 'none';
+        if (btnEl) {
+            const count = btnEl.getAttribute('data-count') || '';
+            btnEl.innerText = isHidden
+                ? `▾ Ocultar ${count} días sin cambios`
+                : `▸ Ver ${count} días sin cambios (+0 RN)`;
+        }
+    }
+
     function buildVariationChipsData(snaps, extra = {}) {
         const list = Array.isArray(snaps) ? snaps : [];
         const ext = extra || {};
@@ -908,6 +951,7 @@
             if (!s) continue;
 
             const sDate = s.captureDate || s.d || '';
+            const sDateDisplay = formatDateShortES(sDate);
             const rawRooms = (s.rooms !== undefined) ? s.rooms : s.r;
             const hasRooms = (rawRooms !== null && rawRooms !== undefined);
             const sRooms = hasRooms ? Math.round(Number(rawRooms) || 0) : null;
@@ -931,13 +975,14 @@
             if (!hasRooms) {
                 if (sBar && lastKnownBar && sBar !== lastKnownBar) {
                     const tipParts = [
-                        `${sDate}`,
+                        `${sDateDisplay}`,
                         `Cambio de tarifa sin lectura OTB`,
                         `BAR publicada: ${lastKnownBar} € → ${sBar} €`
                     ];
                     if (sComp) tipParts.push(`Competencia: ${sComp} €`);
                     items.push({
                         date: sDate,
+                        dateDisplay: sDateDisplay,
                         diffRooms: 0,
                         isPriceOnly: true,
                         hasBarChange: true,
@@ -1002,7 +1047,7 @@
 
                 const dSign = dDiff >= 0 ? '+' : '';
                 const tipParts = [
-                    `${sDate}`,
+                    `${sDateDisplay}`,
                     `OTB: ${prevRooms} → ${sRooms} habs (${dSign}${dDiff} RN)`
                 ];
                 if (hasBarChange) {
@@ -1016,6 +1061,7 @@
 
                 items.push({
                     date: sDate,
+                    dateDisplay: sDateDisplay,
                     diffRooms: dDiff,
                     prevRooms,
                     currRooms: sRooms,
@@ -1088,7 +1134,9 @@
                     rooms: (snaps[0].rooms !== null && snaps[0].rooms !== undefined) ? snaps[0].rooms : effectiveCurrentRooms
                 }
                 : { captureDate: 'Hoy', rooms: effectiveCurrentRooms, revenue: extra.revenue || 0, adr: extra.adr || 0 };
-            const obsDate = singleSnap.captureDateTime || singleSnap.captureDate || 'Hoy';
+            const obsDateRaw = singleSnap.captureDateTime || singleSnap.captureDate || 'Hoy';
+            const obsDate = formatDateTimeShortES(obsDateRaw);
+            const stayDateES = formatDateShortES(dateISO);
 
             if (note) {
                 note.innerText = hasSingle ? '1 observación registrada (sin histórico previo)' : 'Fotografía actual PMS (sin capturas previas)';
@@ -1097,7 +1145,7 @@
             if (alertBox) {
                 alertBox.innerHTML = `
                     <div style="margin-top:10px; background:rgba(245, 158, 11, 0.08); border:1px solid rgba(245, 158, 11, 0.25); border-radius:8px; padding:10px 12px; font-size:0.76rem; color:#d97706; line-height:1.4;">
-                        ⚠️ <b>Histórico insuficiente para trazar curva de evolución:</b> ${hasSingle ? `Solo se dispone de 1 captura registrada (${obsDate}).` : `No constan capturas previas para el ${dateISO}.`} 
+                        ⚠️ <b>Histórico insuficiente para trazar curva de evolución:</b> ${hasSingle ? `Solo se dispone de 1 captura registrada (${obsDate}).` : `No constan capturas previas para el ${stayDateES}.`} 
                         Se muestra la observación puntual de ocupación actual confirmada (${singleSnap.rooms} habs vendidas / ${Math.max(0, capacity - singleSnap.rooms)} libres). 
                         No se traza una curva artificial; la evolución temporal se generará automáticamente cuando se registren nuevos snapshots en fechas distintas.
                     </div>
@@ -1160,51 +1208,97 @@
 
         const lastSnap = snaps[snaps.length - 1];
         const firstOtbSnap = otbSnaps.length > 0 ? otbSnaps[0] : null;
-        const netGrowth = (otbSnaps.length >= 2 && firstOtbSnap && lastOtbSnap) ? (lastOtbSnap.rooms - firstOtbSnap.rooms) : 0;
-        const lastUpdateStr = lastSnap.captureDateTime || `${lastSnap.captureDate} ${lastSnap.captureTime || ''}`;
+        const netGrowth = firstOtbSnap ? (effectiveCurrentRooms - firstOtbSnap.rooms) : 0;
+        const lastUpdateRaw = lastSnap.captureDateTime || `${lastSnap.captureDate} ${lastSnap.captureTime || ''}`;
+        const lastUpdateStr = formatDateTimeShortES(lastUpdateRaw);
+        const firstDateES = firstOtbSnap ? formatDateShortES(firstOtbSnap.captureDate) : '';
 
         if (note) {
-            note.innerText = `${snaps.length} capturas reales registradas · Última: ${lastUpdateStr}`;
+            note.innerText = `${snaps.length} capturas · Última: ${lastUpdateStr}`;
         }
 
         // Comprobar si hay datos económicos disponibles en los snapshots
         const hasEconomicData = snaps.some(s => (s.revenue && s.revenue > 0) || (s.adr && s.adr > 0));
 
-        // Calcular deltas entre observaciones consecutivas con precio de venta
+        // Calcular deltas entre observaciones consecutivas con precio de venta (separando cambios reales vs días sin cambios)
         const chipsData = buildVariationChipsData(snaps, extra);
-        let deltaHtml = '';
-        chipsData.forEach(item => {
-            const safeTip = String(item.tooltip || '').replace(/"/g, '&quot;');
-            if (item.diffRooms !== 0) {
-                const isPos = item.diffRooms > 0;
-                const dSign = isPos ? '+' : '';
-                const dColor = isPos ? '#10b981' : '#ef4444';
-                const bg = isPos ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)';
-                const bd = isPos ? 'rgba(16, 185, 129, 0.35)' : 'rgba(239, 68, 68, 0.35)';
+        const activeItems = chipsData.filter(item => item.diffRooms !== 0 || item.hasBarChange);
+        const zeroItems = chipsData.filter(item => item.diffRooms === 0 && !item.hasBarChange);
+
+        let movementsHtml = '';
+        if (activeItems.length > 0) {
+            const rowsHtml = activeItems.map(item => {
+                const safeTip = String(item.tooltip || '').replace(/"/g, '&quot;');
+                const dLabel = item.dateDisplay || formatDateShortES(item.date);
+                let moveCellHtml = '';
+                if (item.diffRooms !== 0) {
+                    const isPos = item.diffRooms > 0;
+                    const dSign = isPos ? '+' : '';
+                    const dColor = isPos ? '#059669' : '#dc2626';
+                    const bg = isPos ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)';
+                    const bd = isPos ? 'rgba(16, 185, 129, 0.35)' : 'rgba(239, 68, 68, 0.35)';
+                    const roomsRange = (item.prevRooms !== undefined && item.currRooms !== undefined)
+                        ? `<span style="color:var(--text-muted); font-size:0.68rem; margin-left:4px;">(${item.prevRooms}→${item.currRooms} habs)</span>`
+                        : '';
+                    moveCellHtml = `<span style="display:inline-block; background:${bg}; border:1px solid ${bd}; color:${dColor}; font-weight:800; padding:1px 6px; border-radius:4px; font-size:0.7rem;">${dSign}${item.diffRooms} RN</span>${roomsRange}`;
+                } else {
+                    moveCellHtml = `<span style="display:inline-block; background:rgba(56, 189, 248, 0.12); border:1px solid rgba(56, 189, 248, 0.35); color:#0284c7; font-weight:700; padding:1px 6px; border-radius:4px; font-size:0.69rem;">Cambio tarifa</span>`;
+                }
                 const priceColor = item.priceLabel === 'sin precio' ? 'var(--text-muted)' : '#0284c7';
-                deltaHtml += `<span title="${safeTip}" style="font-size:0.7rem; background:${bg}; padding:2px 7px; border-radius:4px; border:1px solid ${bd}; margin-right:4px; display:inline-flex; align-items:center; gap:3px;">${item.date}: <b style="color:${dColor};">${dSign}${item.diffRooms} RN</b> <span style="color:${priceColor}; font-weight:700;">· ${item.priceLabel}</span></span>`;
-            } else if (item.hasBarChange) {
-                deltaHtml += `<span title="${safeTip}" style="font-size:0.7rem; background:rgba(56, 189, 248, 0.08); padding:2px 7px; border-radius:4px; border:1px solid rgba(56, 189, 248, 0.35); margin-right:4px; display:inline-flex; align-items:center; gap:3px;">${item.date}: <b style="color:var(--text-muted);">+0 RN</b> <span style="color:#0284c7; font-weight:700;">· ${item.priceLabel}</span></span>`;
-            } else {
-                deltaHtml += `<span title="${safeTip}" style="font-size:0.7rem; background:var(--bg-deep); padding:2px 6px; border-radius:4px; border:1px solid var(--border); margin-right:4px;">${item.date}: <b style="color:var(--text-muted);">+0 RN</b></span>`;
-            }
-        });
-        if (!deltaHtml) {
-            deltaHtml = `<span style="color:var(--text-muted); font-size:0.7rem;">Sin variaciones registradas</span>`;
+                return `
+                    <tr title="${safeTip}" style="border-bottom:1px solid rgba(148,163,184,0.16);">
+                        <td style="padding:4px 8px 4px 2px; font-weight:800; color:var(--text-main); white-space:nowrap; width:74px;">${dLabel}</td>
+                        <td style="padding:4px 8px; white-space:nowrap;">${moveCellHtml}</td>
+                        <td style="padding:4px 2px 4px 8px; text-align:right; font-weight:700; color:${priceColor}; white-space:nowrap;">${item.priceLabel || '—'}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            movementsHtml = `
+                <div style="max-height:155px; overflow-y:auto; border:1px solid var(--border); border-radius:6px; background:var(--bg-deep); padding:2px 6px;">
+                    <table style="width:100%; border-collapse:collapse; font-size:0.72rem;">
+                        <tbody>${rowsHtml}</tbody>
+                    </table>
+                </div>
+            `;
+        } else {
+            movementsHtml = `<div style="font-size:0.71rem; color:var(--text-muted); padding:4px 2px;">Sin variaciones de habitaciones ni de tarifa BAR registradas.</div>`;
+        }
+
+        let zeroSummaryHtml = '';
+        if (zeroItems.length > 0) {
+            const zeroPills = zeroItems.map(z => {
+                const safeTip = String(z.tooltip || '').replace(/"/g, '&quot;');
+                const dLabel = z.dateDisplay || formatDateShortES(z.date);
+                return `<span title="${safeTip}" style="font-size:0.68rem; background:var(--bg-deep); padding:1px 6px; border-radius:4px; border:1px solid var(--border); color:var(--text-muted);">${dLabel}: <b>0 RN</b></span>`;
+            }).join('');
+            zeroSummaryHtml = `
+                <div style="margin-top:6px;">
+                    <button type="button" onclick="CompetenciaIntelUI.toggleZeroVariations(this)" data-count="${zeroItems.length}" style="background:transparent; border:none; padding:0; font-size:0.7rem; font-weight:700; color:var(--text-muted); cursor:pointer; text-decoration:underline;">
+                        ▸ Ver ${zeroItems.length} día${zeroItems.length !== 1 ? 's' : ''} sin cambios (+0 RN)
+                    </button>
+                    <div id="dayDetailZeroVariationsList" style="display:none; flex-wrap:wrap; gap:4px; margin-top:5px;">
+                        ${zeroPills}
+                    </div>
+                </div>
+            `;
         }
 
         if (statsBox) {
+            const availDisplay = Math.max(0, capacity - effectiveCurrentRooms);
             statsBox.innerHTML = `
                 <div style="margin-top:10px; background:var(--bg-surface); padding:10px 12px; border-radius:8px; border:1px solid var(--border); font-size:0.73rem;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
-                        <span>Evolución total acumulada: <b style="color:${netGrowth >= 0 ? '#10b981' : '#ef4444'}; font-size:0.85rem;">${netGrowth >= 0 ? '+' : ''}${netGrowth} RN</b></span>
-                        <span>Disponibilidad actual: <b>${Math.max(0, capacity - effectiveCurrentRooms)} habs libres</b></span>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px; padding-bottom:6px; border-bottom:1px solid var(--border);">
+                        <span>Evolución${firstDateES ? ` (${firstDateES} → Hoy)` : ''}: <b style="color:${netGrowth >= 0 ? '#10b981' : '#ef4444'}; font-size:0.84rem;">${netGrowth >= 0 ? '+' : ''}${netGrowth} RN</b>${firstOtbSnap ? ` <span style="color:var(--text-muted); font-size:0.7rem;">(${firstOtbSnap.rooms}→${effectiveCurrentRooms} habs)</span>` : ''}</span>
+                        <span>Disponibles: <b>${availDisplay} libres</b> <span style="color:var(--text-muted); font-size:0.7rem;">(${effectiveCurrentRooms}/${capacity})</span></span>
                         <span>Última captura: <b>${lastUpdateStr}</b></span>
                     </div>
-                    <div style="display:flex; align-items:center; flex-wrap:wrap; gap:4px; margin-top:4px;">
-                        <span style="color:var(--text-muted); font-size:0.7rem; font-weight:700;">Variaciones observadas:</span>
-                        ${deltaHtml}
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                        <span style="color:var(--text-muted); font-size:0.7rem; font-weight:800; text-transform:uppercase; letter-spacing:0.3px;">Movimientos de reservas y tarifa</span>
+                        <span style="font-size:0.68rem; color:var(--text-muted);">${activeItems.length} cambio${activeItems.length !== 1 ? 's' : ''} detectado${activeItems.length !== 1 ? 's' : ''}</span>
                     </div>
+                    ${movementsHtml}
+                    ${zeroSummaryHtml}
                     ${!hasEconomicData ? `
                         <div style="margin-top:6px; font-size:0.7rem; color:var(--text-muted); border-top:1px dashed var(--border); padding-top:4px;">
                             ℹ️ <b>Métricas de Tarifas:</b> Se muestra la evolución del <b>Precio Medio de la Competencia</b> y de <b>Tu Tarifa BAR</b> registrada. El <b>ADR propio</b> requiere informe PMS con desglose de facturación (Revenue); en fechas con 0 habs vendidas no existe ADR.
@@ -1214,7 +1308,7 @@
             `;
         }
 
-        const labels = snaps.map(s => s.captureDate + (s.captureTime ? ' ' + s.captureTime.slice(0, 5) : ''));
+        const labels = snaps.map(s => formatDateShortES(s.captureDate) + (s.captureTime ? ' ' + s.captureTime.slice(0, 5) : ''));
         const dataRooms = snaps.map(s => (s.rooms !== null && s.rooms !== undefined) ? s.rooms : null);
 
         const datasets = [{
@@ -1737,7 +1831,11 @@
         closeDayDetailModal,
         saveDayCustomException,
         removeDayCustomException,
+        toggleZeroVariations,
         _buildVariationChipsData: buildVariationChipsData,
+        _renderDayDetailChart: renderDayDetailChart,
+        _formatDateShortES: formatDateShortES,
+        _formatDateTimeShortES: formatDateTimeShortES,
         openBarMatrixModal,
         closeBarMatrixModal,
         switchMatrixHotel,

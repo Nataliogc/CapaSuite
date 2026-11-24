@@ -217,30 +217,99 @@ test('_buildVariationChipsData muestra precio de venta en cambios de RN, cambios
     assert.equal(chips.length, 6);
 
     assert.equal(chips[0].date, '2026-11-06');
+    assert.equal(chips[0].dateDisplay, '06/11/26');
     assert.equal(chips[0].diffRooms, 4);
     assert.ok(chips[0].priceLabel.includes('BAR 65€'));
+    assert.ok(chips[0].tooltip.startsWith('06/11/26'));
     assert.ok(chips[0].tooltip.includes('BAR publicada: 65 €'));
 
     assert.equal(chips[1].date, '2026-11-08');
+    assert.equal(chips[1].dateDisplay, '08/11/26');
     assert.equal(chips[1].diffRooms, 0);
     assert.equal(chips[1].hasBarChange, true);
     assert.equal(chips[1].priceLabel, 'BAR 65→63€');
 
     assert.equal(chips[2].date, '2026-11-10');
+    assert.equal(chips[2].dateDisplay, '10/11/26');
     assert.equal(chips[2].isPriceOnly, true);
     assert.equal(chips[2].diffRooms, 0);
     assert.equal(chips[2].hasBarChange, true);
     assert.equal(chips[2].priceLabel, 'BAR 63→61€');
 
     assert.equal(chips[3].date, '2026-11-17');
+    assert.equal(chips[3].dateDisplay, '17/11/26');
     assert.equal(chips[3].diffRooms, 4, 'Debe comparar contra 2026-11-08 (16 habs), no contra r:null');
     assert.ok(chips[3].priceLabel.includes('BAR 61€'));
 
     assert.equal(chips[4].date, '2026-11-19');
+    assert.equal(chips[4].dateDisplay, '19/11/26');
     assert.equal(chips[4].diffRooms, 1);
     assert.ok(chips[4].priceLabel.includes('BAR 61→60€'));
 
     assert.equal(chips[5].date, '2026-11-20');
+    assert.equal(chips[5].dateDisplay, '20/11/26');
     assert.equal(chips[5].diffRooms, -9);
     assert.ok(chips[5].priceLabel.includes('BAR 60€'));
+});
+
+test('renderDayDetailChart formatea fechas en dd/mm/aa, oculta +0 RN sin cambios en toggle y muestra evolución real', () => {
+    const { PI, UI } = loadModules();
+    const stayDate = '2026-11-24';
+
+    PI.recordDailySnapshot('Cumbria', stayDate, { rooms: 41, revenue: 3608, publishedBar: 110 }, new Date('2026-10-31T10:00:00Z'));
+    PI.recordDailySnapshot('Cumbria', stayDate, { rooms: 41, revenue: 3608, publishedBar: 110 }, new Date('2026-11-01T10:00:00Z'));
+    PI.recordDailySnapshot('Cumbria', stayDate, { rooms: 40, revenue: 3520, publishedBar: 110 }, new Date('2026-11-03T10:00:00Z'));
+    PI.recordDailySnapshot('Cumbria', stayDate, { rooms: 40, revenue: 3520, publishedBar: 110 }, new Date('2026-11-04T10:00:00Z'));
+    PI.recordDailySnapshot('Cumbria', stayDate, { rooms: 42, revenue: 3644, publishedBar: 105 }, new Date('2026-11-13T10:00:00Z'));
+    PI.recordDailySnapshot('Cumbria', stayDate, { rooms: 43, revenue: 3709, publishedBar: 65 }, new Date('2026-11-24T14:15:23+01:00'));
+
+    const statsEl = { innerHTML: '' };
+    const alertEl = { innerHTML: '' };
+    const noteEl = { innerText: '' };
+    const chartEl = { getContext: () => ({}), parentElement: { parentNode: { insertBefore: () => {} } } };
+    let capturedLabels = [];
+
+    global.document = {
+        getElementById: (id) => {
+            if (id === 'dayDetailChart') return chartEl;
+            if (id === 'dayDetailChartStats') return statsEl;
+            if (id === 'dayDetailChartAlert') return alertEl;
+            if (id === 'dayDetailHistoryNote') return noteEl;
+            return null;
+        }
+    };
+    global.Chart = function (_ctx, cfg) {
+        capturedLabels = cfg.data.labels;
+        this.destroy = () => {};
+    };
+
+    assert.equal(UI._formatDateShortES('2026-11-24'), '24/11/26');
+    assert.equal(UI._formatDateTimeShortES('2026-11-24 14:15:23'), '24/11/26 14:15');
+
+    UI._renderDayDetailChart(stayDate, 43, 'Cumbria', { currentPrice: 65, compAvg: 69 });
+
+    // Fechas en formato español dd/mm/aa en nota, gráfico y resumen
+    assert.ok(noteEl.innerText.includes('24/11/26 14:15'));
+    assert.ok(capturedLabels.every(l => /^\d{2}\/\d{2}\/\d{2}/.test(l)), 'Todas las etiquetas del eje X en dd/mm/aa');
+    assert.ok(statsEl.innerHTML.includes('31/10/26 → Hoy'));
+    assert.ok(statsEl.innerHTML.includes('+2 RN'));
+    assert.ok(statsEl.innerHTML.includes('(41→43 habs)'));
+    assert.ok(statsEl.innerHTML.includes('16 libres'));
+    assert.ok(statsEl.innerHTML.includes('24/11/26 14:15'));
+
+    // Tabla clara de cambios reales (03/11/26, 13/11/26, 24/11/26) y días +0 RN colapsados en botón
+    assert.ok(statsEl.innerHTML.includes('03/11/26'));
+    assert.ok(statsEl.innerHTML.includes('13/11/26'));
+    assert.ok(statsEl.innerHTML.includes('Ver 2 días sin cambios (+0 RN)'));
+    assert.doesNotMatch(statsEl.innerHTML, /2026-11-/);
+});
+
+test('hacer clic en la píldora de recomendación yield abre siempre la Ficha de Análisis sin cambiar el precio automáticamente', () => {
+    const html = fs.readFileSync('AnalisisCompetencia.html', 'utf8');
+    const startIdx = html.indexOf('const applyClick =');
+    const endIdx = html.indexOf('<div class="yield-unified-pill', startIdx);
+    assert.ok(startIdx > -1 && endIdx > startIdx, 'Debe localizar la asignación de applyClick junto a yield-unified-pill');
+    const block = html.slice(startIdx, endIdx + 60);
+    assert.ok(block.includes("CompetenciaIntelUI.openDayDetailModal('${d.dateISO}')"));
+    assert.doesNotMatch(block, /setManualPrice\(/);
 });
