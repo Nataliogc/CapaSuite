@@ -706,7 +706,14 @@
                     <div class="box-val">${mktPrice > 0 ? mktPrice.toFixed(0) + ' €' : 'Sin datos'}</div>
                     <div class="box-sub">${gapText}${d.activeSoldComps ? ` · Expedia: ${d.activeSoldComps} sin tarifa` : ''}</div>
                 </div>
+                ${bgt ? `
+                <div class="day-detail-box" title="Escenario ${String(bgt.scenario || '').toLowerCase()}. Referencia de seguimiento: no aplica subidas ni bajadas automáticas sobre la BAR base.">
+                    <div class="box-lbl">Objetivo ${String(bgt.monthName || '').toLowerCase()} ${stayYear}</div>
+                    <div class="box-val">${bgt.targetRev.toLocaleString('es-ES')} €</div>
+                    <div class="box-sub">${Number(bgt.targetRN).toLocaleString('es-ES')} RN · ADR ${Number(bgt.targetAdr).toLocaleString('es-ES')} € · Occ. ${Number(bgt.targetOccPct).toLocaleString('es-ES')} %</div>
+                </div>` : ''}
             `;
+            kpiGrid.style.gridTemplateColumns = bgt ? '' : 'repeat(4, minmax(0,1fr))';
         }
 
         // 2. Gráfico de Evolución y Snapshots Reales
@@ -786,26 +793,6 @@
                     </p>`;
             }
 
-            const bgtHtml = bgt ? `
-                <div class="dd-card">
-                    <div class="dd-budget">
-                        <div style="display:flex; flex-direction:column; gap:4px;">
-                            <span class="dd-mini-lbl" style="font-size:0.75rem;">Objetivo ${String(bgt.monthName || '').toLowerCase()} ${stayYear} · ${currentHotel}</span>
-                            <span class="dd-num" style="font-size:1.5rem; font-weight:700; letter-spacing:-0.02em; color:var(--text-main);">${bgt.targetRev.toLocaleString('es-ES')} €</span>
-                        </div>
-                        <div class="dd-budget-stats">
-                            <div><span>RN</span><b>${Number(bgt.targetRN).toLocaleString('es-ES')}</b></div>
-                            <div><span>ADR</span><b>${Number(bgt.targetAdr).toLocaleString('es-ES')} €</b></div>
-                            <div><span>Ocupación</span><b>${Number(bgt.targetOccPct).toLocaleString('es-ES')} %</b></div>
-                        </div>
-                        <p style="margin:0; flex-basis:100%; font-size:0.75rem; color:var(--text-muted); line-height:1.5;">
-                            Escenario ${String(bgt.scenario || '').toLowerCase()}. Referencia de seguimiento: no aplica subidas ni bajadas automáticas sobre la BAR base.
-                        </p>
-                    </div>
-                </div>
-            ` : '';
-            const bgtCont = document.getElementById('dayDetailBudgetContainer');
-            if (bgtCont) bgtCont.innerHTML = bgtHtml;
 
             recCont.innerHTML = `
                 <section class="dd-card">
@@ -828,8 +815,7 @@
                         ${signal('Competencia Expedia', confDetails.expedia)}
                     </div>
                 </section>
-                ${document.getElementById('dayDetailBudgetContainer') ? '' : bgtHtml}
-                <section class="dd-card">
+                <section class="dd-card dd-grow">
                     <h4 class="dd-card-title">${rec.action === 'SUBIR' ? 'Por qué subir' : (rec.action === 'BAJAR' ? 'Por qué bajar' : 'Justificación')}</h4>
                     <ol class="dd-reasons">
                         ${rec.reasons.map((r, i) => `<li><span class="n">${i + 1}</span><span>${r}</span></li>`).join('')}
@@ -1256,7 +1242,7 @@
             }).join('');
 
             movementsHtml = `
-                <div style="max-height:230px; overflow-y:auto;">
+                <div class="dd-moves" style="max-height:230px; overflow-y:auto;">
                     <table style="width:100%; border-collapse:collapse; font-size:0.8rem; font-variant-numeric:tabular-nums;">
                         <tbody>${rowsHtml}</tbody>
                     </table>

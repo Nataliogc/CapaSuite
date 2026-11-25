@@ -15,20 +15,20 @@
     <script src="js/xlsx.full.min.js"></script>
     <script src="js/chart.js"></script>
     <script src="js/state.js"></script>
-    <script src="js/storage.js?v=20261124-2358"></script>
+    <script src="js/storage.js?v=20261125-0008"></script>
     <script src="js/revenue-history.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="js/nav.js?v=20261124-2358"></script>
+    <script src="js/nav.js?v=20261125-0008"></script>
     <script src="js/theme-manager.js"></script>
-    <script src="js/firebase-auth.js?v=20261124-2358"></script>
-    <script src="js/version.js?v=20261124-2358"></script>
-    <script src="js/pricing-intelligence.js?v=20261124-2358"></script>
-    <script src="js/competencia-intelligence-ui.js?v=20261124-2358"></script>
+    <script src="js/firebase-auth.js?v=20261125-0008"></script>
+    <script src="js/version.js?v=20261125-0008"></script>
+    <script src="js/pricing-intelligence.js?v=20261125-0008"></script>
+    <script src="js/competencia-intelligence-ui.js?v=20261125-0008"></script>
 
     <link rel="stylesheet" href="css/tokens.css">
-    <link rel="stylesheet" href="css/nav.css?v=20261124-2358">
+    <link rel="stylesheet" href="css/nav.css?v=20261125-0008">
     <style>
         :root {
             /* Page-specific variables not in tokens.css */
@@ -1769,6 +1769,28 @@
         .dd-form label { display:flex; flex-direction:column; gap:6px; font-size:0.75rem; font-weight:500; color:var(--text-muted); }
         .dd-form input { height:42px; padding:0 12px; border-radius:10px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border); font:inherit; font-size:0.88rem; box-sizing:border-box; width:100%; }
         .dd-form input:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(99,102,241,.18); }
+        /* Modo "todo a la vista": en pantallas de escritorio la ficha ocupa el alto disponible sin scroll general */
+        @media (min-width: 1100px) and (min-height: 680px) {
+            .dd-modal { display:flex; flex-direction:column; height:94vh; overflow:hidden; }
+            .dd-header { position:static; padding:12px 22px; }
+            .dd-body { flex:1; min-height:0; overflow:hidden; padding:14px 22px 16px; }
+            .day-detail-main-layout { height:100%; align-items:stretch; }
+            .dd-left-col, .day-detail-right-col { min-height:0; gap:14px; }
+            .dd-left-col .dd-card, .day-detail-right-col .dd-card { flex-shrink:0; }
+            .dd-left-col .dd-grow { flex:1 1 auto; flex-shrink:1; min-height:0; overflow-y:auto; }
+            .day-detail-right-col > .dd-chart-card { flex:1; min-height:0; display:flex; flex-direction:column; }
+            #dayDetailChartStats { flex:1; min-height:0; display:flex; flex-direction:column; }
+            #dayDetailChartStats > div { flex:1; min-height:0; display:flex; flex-direction:column; }
+            #dayDetailChartStats .dd-moves { flex:1; min-height:60px; max-height:none !important; }
+        }
+        .dd-card { padding:16px 20px; }
+        .day-detail-box { padding:12px 22px; }
+        .day-detail-box .box-val { font-size:1.45rem; }
+        .dd-rec-new { font-size:2.4rem; }
+        .dd-scale { margin-top:16px; }
+        .dd-signals { margin-top:12px; }
+        .day-detail-grid { grid-template-columns:repeat(5, minmax(0,1fr)); }
+        @media (max-width: 1300px) { .day-detail-grid { grid-template-columns:repeat(3, minmax(0,1fr)); } }
         @media (max-width: 1100px) {
             .day-detail-grid { grid-template-columns:repeat(2, minmax(0,1fr)); }
             .day-detail-main-layout { grid-template-columns:1fr; }
@@ -6663,30 +6685,11 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
             <div class="dd-body">
                 <div class="day-detail-main-layout">
                     <!-- COLUMNA IZQUIERDA: RECOMENDACIÓN, ESCALA DE PRECIOS Y JUSTIFICACIÓN -->
-                    <div class="dd-left-col" id="dayDetailRecContainer">
-                        <!-- Injected JS -->
-                    </div>
-
-                    <!-- COLUMNA DERECHA: EVOLUCIÓN + PRESUPUESTO + EXCEPCIÓN -->
-                    <div class="day-detail-right-col">
-                        <div class="dd-card">
-                            <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:10px;">
-                                <h4 class="dd-card-title" style="margin:0;">Evolución de cartera y tarifas</h4>
-                                <span id="dayDetailHistoryNote" style="font-size:0.74rem; color:var(--text-muted);">Capturas periódicas inmutables</span>
-                            </div>
-                            <div style="position:relative; height:200px; width:100%;">
-                                <canvas id="dayDetailChart"></canvas>
-                            </div>
-                            <div id="dayDetailChartAlert"></div>
-                            <div id="dayDetailChartStats"></div>
-                        </div>
-
-                        <!-- CONTEXTO PRESUPUESTARIO MENSUAL -->
-                        <div id="dayDetailBudgetContainer"></div>
-
+                    <div class="dd-left-col">
+                        <div id="dayDetailRecContainer" style="display:contents;"><!-- Injected JS --></div>
                         <!-- EXCEPCIONES -->
-                        <div class="dd-card">
-                            <h4 class="dd-card-title">Tarifa especial para esta fecha</h4>
+                        <div class="dd-card" style="padding:12px 20px;">
+                            <h4 class="dd-card-title" style="margin-bottom:8px;">Tarifa especial para esta fecha</h4>
                             <div class="dd-form">
                                 <label style="flex:0 1 140px;">BAR especial (€)
                                     <input type="number" id="dayDetailCustomBar" placeholder="Ej: 95">
@@ -6700,6 +6703,22 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- COLUMNA DERECHA: EVOLUCIÓN + PRESUPUESTO + EXCEPCIÓN -->
+                    <div class="day-detail-right-col">
+                        <div class="dd-card dd-chart-card">
+                            <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:10px;">
+                                <h4 class="dd-card-title" style="margin:0;">Evolución de cartera y tarifas</h4>
+                                <span id="dayDetailHistoryNote" style="font-size:0.74rem; color:var(--text-muted);">Capturas periódicas inmutables</span>
+                            </div>
+                            <div style="position:relative; height:clamp(150px, 22vh, 210px); width:100%; flex:0 0 auto;">
+                                <canvas id="dayDetailChart"></canvas>
+                            </div>
+                            <div id="dayDetailChartAlert"></div>
+                            <div id="dayDetailChartStats"></div>
+                        </div>
+
                     </div>
                 </div>
             </div>
