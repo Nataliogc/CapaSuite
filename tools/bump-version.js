@@ -111,7 +111,7 @@ function run() {
             }
         });
 
-        const cssRegexHtml = /(['"][^'"]*css\/nav\.css)(?:\?v=[^'"]*)?(['"])/g;
+        const cssRegexHtml = /(['"][^'"]*css\/(?:nav|daily-table)\.css)(?:\?v=[^'"]*)?(['"])/g;
         if (cssRegexHtml.test(content)) {
             content = content.replace(cssRegexHtml, `$1?v=${queryTimestamp}$2`);
             modified = true;

@@ -15,20 +15,20 @@
     <script src="js/xlsx.full.min.js"></script>
     <script src="js/chart.js"></script>
     <script src="js/state.js"></script>
-    <script src="js/storage.js?v=20261125-0008"></script>
+    <script src="js/storage.js?v=20261125-1504"></script>
     <script src="js/revenue-history.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="js/nav.js?v=20261125-0008"></script>
+    <script src="js/nav.js?v=20261125-1504"></script>
     <script src="js/theme-manager.js"></script>
-    <script src="js/firebase-auth.js?v=20261125-0008"></script>
-    <script src="js/version.js?v=20261125-0008"></script>
-    <script src="js/pricing-intelligence.js?v=20261125-0008"></script>
-    <script src="js/competencia-intelligence-ui.js?v=20261125-0008"></script>
+    <script src="js/firebase-auth.js?v=20261125-1504"></script>
+    <script src="js/version.js?v=20261125-1504"></script>
+    <script src="js/pricing-intelligence.js?v=20261125-1504"></script>
+    <script src="js/competencia-intelligence-ui.js?v=20261125-1504"></script>
 
     <link rel="stylesheet" href="css/tokens.css">
-    <link rel="stylesheet" href="css/nav.css?v=20261125-0008">
+    <link rel="stylesheet" href="css/nav.css?v=20261125-1504">
     <style>
         :root {
             /* Page-specific variables not in tokens.css */
@@ -1847,6 +1847,7 @@
         }
 
     </style>
+    <link rel="stylesheet" href="css/daily-table.css?v=20261125-1504">
 </head>
 
 <body style="padding: 0;">
@@ -5312,7 +5313,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                                 : `Tarifa actual (${yieldInfo.targetPrice}€).\n\nRango Comercial Recomendado: ${yieldInfo.rangeText}\n${yieldInfo.rangeCalculation ? yieldInfo.rangeCalculation + '\n\n' : ''}Motivo:\n${yieldInfo.fullReasonText}\n\nClick para abrir la Ficha de Análisis.`);
 
                         actionHtml = `
-                            <div class="yield-unified-pill ${yieldInfo.cls}" ${applyClick} title="${applyTitle}">
+                            <div class="yield-unified-pill ${yieldInfo.cls} act-${actCls}" ${applyClick} title="${applyTitle}">
                                 <div class="yield-pill-top">
                                     <span class="yield-pill-price">${yieldInfo.targetPrice} €</span>
                                     ${diffBadge}
@@ -5380,7 +5381,14 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     }
                 }
 
-                let html = `<tr id="row-${d.dayIndex}" data-date="${d.dateISO}" class="${selectedTableDate === d.dateISO ? 'row-selected' : ''}">`;
+                const _rowDt = new Date(d.dateISO + 'T00:00:00');
+                const _rowDow = isNaN(_rowDt.getTime()) ? -1 : _rowDt.getDay();
+                const _rowCls = ['daily-row'];
+                if (selectedTableDate === d.dateISO) _rowCls.push('row-selected');
+                if (_rowDow === 5 || _rowDow === 6) _rowCls.push('row-weekend');
+                if (d.dateISO && /-01$/.test(d.dateISO)) _rowCls.push('row-month-start');
+                { const _t = new Date(); _t.setHours(0,0,0,0); if (_rowDt.getTime() === _t.getTime()) _rowCls.push('row-today'); }
+                let html = `<tr id="row-${d.dayIndex}" data-date="${d.dateISO}" class="${_rowCls.join(' ')}">`;
                 html += `<td class="th-date" onclick="CompetenciaIntelUI.openDayDetailModal('${d.dateISO}')" style="cursor:pointer;" title="Click para abrir Ficha de Análisis Diaria">${cellContent}</td>`;
 
                 // My Price (Active Hotel)
@@ -5477,7 +5485,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                         const dir = my.change.dir;
                         const color = dir === 'up' ? 'var(--success)' : 'var(--danger)';
                         const arrow = dir === 'up' ? '▲' : '▼';
-                        changeTag = `<span style="display:inline-block; font-size:0.65rem; color:${color}; background:var(--bg-surface); border:1px solid ${color}; padding:0px 2px; border-radius:3px; margin-left:3px; line-height:1.2; vertical-align:middle; font-weight:700;">${arrow}${my.change.prev}</span>`;
+                        changeTag = `<span class="chg-tag ${dir}" title="Precio anterior: ${my.change.prev}€">${arrow}${my.change.prev}</span>`;
                     }
 
                     const isBelowMin = (activeMinP > 0 && myP > 0 && myP < activeMinP);
@@ -5519,45 +5527,38 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                 if (cfg.occPct) {
                     // Barra de datos estilo Excel (relleno proporcional al % de ocupación)
                     const occBarPct = Math.max(0, Math.min(100, occPct2 || 0));
-                    // Intensidad progresiva: cuanto más cerca del 100%, más oscuro/saturado el azul
-                    const occT = occBarPct / 100;
-                    const occL = Math.round(82 - occT * 40);   // luminosidad 82% → 42%
-                    const occS = Math.round(55 + occT * 20);   // saturación 55% → 75%
-                    const occBarStrong = `hsl(213, ${occS}%, ${occL}%)`;
-                    const occBarMid = `hsl(213, ${occS}%, ${Math.round(occL + (92 - occL) * 0.5)}%)`;
-                    html += `<td style="padding:3px 6px; min-width:78px;" title="${occPct2.toFixed(0)}% · ${currentOcc}/${capacityVal} habs">
-                        <div style="position:relative; height:20px; border-radius:2px; overflow:hidden;">
-                            <div style="position:absolute; left:0; top:2px; bottom:2px; width:${occBarPct}%; background:linear-gradient(90deg, ${occBarStrong} 0%, ${occBarMid} 60%, #e3edf9 100%); border:1px solid ${occBarStrong}; box-sizing:border-box;"></div>
-                            <div style="position:relative; display:flex; justify-content:flex-end; align-items:center; height:100%; padding-right:4px; white-space:nowrap;">
-                                <span style="font-weight:800; font-size:0.8rem; color:#0f172a; text-shadow:0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff;">${occPct2.toFixed(0)}%</span>
-                            </div>
+                    const occLvl = occBarPct >= 85 ? 'hi' : (occBarPct >= 60 ? 'mid' : (occBarPct >= 30 ? 'lo' : 'min'));
+                    html += `<td class="occ-cell" title="${occPct2.toFixed(0)}% · ${currentOcc}/${capacityVal} habs">
+                        <div class="occ-meter occ-${occLvl}">
+                            <span class="occ-val">${occPct2.toFixed(0)}<small>%</small></span>
+                            <span class="occ-track"><span class="occ-fill" style="width:${occBarPct}%"></span></span>
                         </div>
                     </td>`;
                 }
                 if (cfg.pickup24h) {
                     const p24Val = (pData?.h24h?.available) ? pData.h24h.diffRooms : ((activeOtbChange !== undefined && activeOtbChange !== null) ? activeOtbChange : null);
-                    const p24 = (p24Val !== null) ? `<span class="pickup-chip ${p24Val >= 0 ? 'pos' : 'neg'}">${p24Val >= 0 ? '+' : ''}${p24Val} RN</span>` : '<span class="pickup-chip neutral">-</span>';
+                    const p24 = (p24Val !== null) ? `<span class="pickup-chip ${p24Val > 0 ? 'pos' : (p24Val < 0 ? 'neg' : 'zero')}">${p24Val >= 0 ? '+' : ''}${p24Val} RN</span>` : '<span class="pickup-chip neutral">-</span>';
                     html += `<td style="text-align:center;">${p24}</td>`;
                 }
                 if (cfg.pickup3d) {
-                    const p3 = pData?.d3?.available ? `<span class="pickup-chip ${pData.d3.diffRooms >= 0 ? 'pos' : 'neg'}">${pData.d3.diffRooms >= 0 ? '+' : ''}${pData.d3.diffRooms} RN</span>` : '<span class="pickup-chip neutral">-</span>';
+                    const p3 = pData?.d3?.available ? `<span class="pickup-chip ${pData.d3.diffRooms > 0 ? 'pos' : (pData.d3.diffRooms < 0 ? 'neg' : 'zero')}">${pData.d3.diffRooms >= 0 ? '+' : ''}${pData.d3.diffRooms} RN</span>` : '<span class="pickup-chip neutral">-</span>';
                     html += `<td style="text-align:center;">${p3}</td>`;
                 }
                 if (cfg.pickup7d) {
-                    const p7 = pData?.d7?.available ? `<span class="pickup-chip ${pData.d7.diffRooms >= 0 ? 'pos' : 'neg'}">${pData.d7.diffRooms >= 0 ? '+' : ''}${pData.d7.diffRooms} RN</span>` : '<span class="pickup-chip neutral">-</span>';
+                    const p7 = pData?.d7?.available ? `<span class="pickup-chip ${pData.d7.diffRooms > 0 ? 'pos' : (pData.d7.diffRooms < 0 ? 'neg' : 'zero')}">${pData.d7.diffRooms >= 0 ? '+' : ''}${pData.d7.diffRooms} RN</span>` : '<span class="pickup-chip neutral">-</span>';
                     html += `<td style="text-align:center;">${p7}</td>`;
                 }
                 if (cfg.pickup14d) {
-                    const p14 = pData?.d14?.available ? `<span class="pickup-chip ${pData.d14.diffRooms >= 0 ? 'pos' : 'neg'}">${pData.d14.diffRooms >= 0 ? '+' : ''}${pData.d14.diffRooms} RN</span>` : '<span class="pickup-chip neutral">-</span>';
+                    const p14 = pData?.d14?.available ? `<span class="pickup-chip ${pData.d14.diffRooms > 0 ? 'pos' : (pData.d14.diffRooms < 0 ? 'neg' : 'zero')}">${pData.d14.diffRooms >= 0 ? '+' : ''}${pData.d14.diffRooms} RN</span>` : '<span class="pickup-chip neutral">-</span>';
                     html += `<td style="text-align:center;">${p14}</td>`;
                 }
                 if (cfg.daysOut) {
                     html += `<td style="text-align:center; font-size:0.78rem; color:var(--text-muted);">${daysOutVal > 0 ? daysOutVal + 'd' : 'Hoy'}</td>`;
                 }
 
-                html += `<td style="color:var(--primary); font-weight:600;">${d.compAvg.toFixed(0)} €</td>`;
-                html += `<td>${gapHtml}</td>`;
-                html += `<td style="text-align:center; padding:4px 6px; vertical-align:middle;">${actionHtml}</td>`;
+                html += `<td class="market-cell">${d.compAvg.toFixed(0)} €</td>`;
+                html += `<td class="gap-cell">${gapHtml}</td>`;
+                html += `<td class="action-cell">${actionHtml}</td>`;
 
                 // SIBLING (Cross-hotel comparison and simulation)
                 if (siblingName) {
@@ -5613,7 +5614,7 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                             const dir = hData.change.dir;
                             const color = dir === 'up' ? 'var(--success)' : 'var(--danger)';
                             const arrow = dir === 'up' ? '▲' : '▼';
-                            sChangeTag = `<span style="display:inline-block; font-size:0.65rem; color:${color}; background:var(--bg-surface); border:1px solid ${color}; padding:0px 2px; border-radius:3px; margin-left:3px; line-height:1.2; vertical-align:middle; font-weight:700;">${arrow}${hData.change.prev}</span>`;
+                            sChangeTag = `<span class="chg-tag ${dir}" title="Precio anterior: ${hData.change.prev}€">${arrow}${hData.change.prev}</span>`;
                         }
                         
                         // Show OTB/Occ also for Sibling
@@ -5666,23 +5667,24 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                     const isCompBelowMin = (compMinP > 0 && hData.price > 0 && hData.price < compMinP);
                     const compBelowAlert = isCompBelowMin ? ` <span class="below-min-badge" title="⚠️ Tarifa (${hData.price.toFixed(0)}€) por debajo del mínimo (${compMinP}€)">⚠️</span>` : '';
 
-                    const style = (!sold && hData.price < myP) ? "color:#ef4444; font-weight:600;" : "color:var(--text-light);";
+                    const style = '';
+                    const compCls = (!sold && hData.price < myP) ? 'comp-cell is-cheaper' : 'comp-cell';
                         let priceContent = `${hData.price.toFixed(0)}€${compBelowAlert}`;
                         if (hData.change) {
                             const dir = hData.change.dir;
                             const color = dir === 'up' ? 'var(--success)' : 'var(--danger)';
                             const arrow = dir === 'up' ? '▲' : '▼';
-                            priceContent += `<span style="display:inline-block; font-size:0.65rem; color:${color}; background:var(--bg-surface); border:1px solid ${color}; padding:0px 2px; border-radius:3px; margin-left:3px; line-height:1.2; vertical-align:middle; font-weight:700;">${arrow}${hData.change.prev}</span>`;
+                            priceContent += `<span class="chg-tag ${dir}" title="Precio anterior: ${hData.change.prev}€">${arrow}${hData.change.prev}</span>`;
                         }
 
                         // NEW: Show OTB/Occ for all managed hotels in competition list
                         if (hData.otbRooms > 0) {
-                            priceContent += `<div style="font-size:0.6rem; color:#8b5cf6; font-weight:800; margin-top:1px;">Hab: ${hData.otbRooms}</div>`;
+                            priceContent += `<div class="comp-rooms">Hab: ${hData.otbRooms}</div>`;
                         } else if (hData.occupancy > 0) {
-                            priceContent += `<div style="font-size:0.6rem; color:#4f46e5; font-weight:700; margin-top:1px;">Hab: ${hData.occupancy}</div>`;
+                            priceContent += `<div class="comp-rooms">Hab: ${hData.occupancy}</div>`;
                         }
 
-                        return `<td style="${style} ${opacityStyle}">${priceContent}</td>`;
+                        return `<td class="${compCls}" style="${opacityStyle}">${priceContent}</td>`;
                     }).join('');
 
                 html += compCols;

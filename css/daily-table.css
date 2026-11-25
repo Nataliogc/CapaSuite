@@ -1,0 +1,300 @@
+/* ==========================================================================
+   CapaSuite · Detalle Diario (AnalisisCompetencia.html)
+   Refresco visual de la tabla diaria. Todo va acotado a #viewContainerDaily
+   para no afectar al resto de vistas.
+   ========================================================================== */
+
+#viewContainerDaily {
+    --dt-row-bg: var(--bg-surface);
+    --dt-row-alt: color-mix(in srgb, var(--bg-surface) 96%, var(--primary));
+    --dt-row-hover: color-mix(in srgb, var(--bg-surface) 90%, var(--primary));
+    --dt-weekend: color-mix(in srgb, var(--bg-surface) 93%, var(--primary));
+    --dt-line: color-mix(in srgb, var(--border) 70%, transparent);
+    --dt-head: color-mix(in srgb, var(--bg-surface) 95%, var(--primary));
+}
+
+#viewContainerDaily .card {
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+#viewContainerDaily .table-wrap {
+    max-height: calc(100vh - 250px);
+    min-height: 320px;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--text-muted) 40%, transparent) transparent;
+}
+
+#viewContainerDaily #dataTable {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+/* ---------- CABECERA ---------- */
+#viewContainerDaily #dataTable thead th {
+    background: var(--dt-head);
+    color: var(--text-muted);
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: 10px 4px;
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 6px 10px -8px rgba(15, 23, 42, 0.25);
+}
+
+#viewContainerDaily #dataTable thead th.th-date {
+    padding-left: 12px;
+}
+
+#viewContainerDaily #dataTable thead th.th-active-hotel {
+    color: var(--text-main);
+    font-weight: 800;
+}
+
+#viewContainerDaily #dataTable thead th.th-sibling-hotel {
+    border-left: 2px solid var(--border);
+}
+
+#viewContainerDaily #dataTable thead th.th-comp {
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: normal !important; /* el <style> de la página fuerza nowrap */
+    overflow: visible;
+    line-height: 1.25;
+    padding: 8px 3px !important;
+}
+
+#viewContainerDaily #dataTable thead th.th-comp:nth-of-type(odd),
+#viewContainerDaily #dataTable tbody td.comp-cell:nth-of-type(odd) {
+    /* bandas verticales suaves para leer la competencia en columna */
+    background-image: linear-gradient(color-mix(in srgb, var(--text-muted) 4%, transparent), color-mix(in srgb, var(--text-muted) 4%, transparent));
+}
+
+/* ---------- FILAS ---------- */
+#viewContainerDaily #dataTable tbody td {
+    background-color: var(--dt-row-bg);
+    border-bottom: 1px solid var(--dt-line);
+    padding: 7px 4px;
+    vertical-align: middle;
+    transition: background-color 0.12s ease;
+}
+
+#viewContainerDaily #dataTable tbody td:first-child {
+    padding-left: 10px;
+}
+
+/* Fin de semana (noches de viernes y sábado) */
+#viewContainerDaily #dataTable tbody tr.row-weekend > td {
+    background-color: var(--dt-weekend);
+}
+#viewContainerDaily #dataTable tbody tr.row-weekend > td:first-child {
+    box-shadow: inset 3px 0 0 color-mix(in srgb, var(--primary) 60%, transparent);
+}
+
+/* Hoy */
+#viewContainerDaily #dataTable tbody tr.row-today > td:first-child {
+    box-shadow: inset 4px 0 0 var(--success);
+}
+
+/* Separador de mes */
+#viewContainerDaily #dataTable tbody tr.row-month-start > td {
+    border-top: 2px solid color-mix(in srgb, var(--primary) 45%, var(--border));
+}
+
+/* Hover */
+#viewContainerDaily #dataTable tbody tr:hover > td {
+    background-color: var(--dt-row-hover);
+}
+
+/* Fila seleccionada: amarillo más suave que el original (modo claro) */
+[data-theme="light"] #viewContainerDaily #tableBody tr.row-selected > td,
+[data-theme="light"] #viewContainerDaily #tableBody tr.row-selected:hover > td {
+    background: color-mix(in srgb, #ffffff 72%, #fde047) !important;
+    background-color: color-mix(in srgb, #ffffff 72%, #fde047) !important;
+    border-top: 1px solid #facc15 !important;
+    border-bottom: 1px solid #facc15 !important;
+}
+
+/* ---------- PRECIO PROPIO ---------- */
+#viewContainerDaily #dataTable .price-editable {
+    font-size: 1rem;
+    font-weight: 800;
+    letter-spacing: -0.2px;
+}
+
+/* Etiqueta de precio anterior (▲/▼ + precio previo) */
+#viewContainerDaily .chg-tag {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 4px;
+    padding: 0 4px;
+    border-radius: 4px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    line-height: 1.55;
+    vertical-align: middle;
+    white-space: nowrap;
+    cursor: help;
+}
+#viewContainerDaily .chg-tag.up {
+    color: var(--success);
+    background: color-mix(in srgb, var(--success) 13%, transparent);
+}
+#viewContainerDaily .chg-tag.down {
+    color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 11%, transparent);
+}
+
+/* ---------- OCUPACIÓN ---------- */
+#viewContainerDaily #dataTable td.occ-cell {
+    padding: 6px 10px;
+}
+#viewContainerDaily .occ-meter {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+#viewContainerDaily .occ-val {
+    font-size: 0.88rem;
+    font-weight: 800;
+    color: var(--text-main);
+    line-height: 1;
+    text-align: left;
+}
+#viewContainerDaily .occ-val small {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-left: 1px;
+}
+#viewContainerDaily .occ-track {
+    display: block;
+    height: 5px;
+    border-radius: 99px;
+    background: color-mix(in srgb, var(--text-muted) 18%, transparent);
+    overflow: hidden;
+}
+#viewContainerDaily .occ-fill {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--occ-c);
+    transition: width 0.3s ease;
+}
+#viewContainerDaily .occ-min { --occ-c: #94a3b8; }
+#viewContainerDaily .occ-lo  { --occ-c: #60a5fa; }
+#viewContainerDaily .occ-mid { --occ-c: #3b82f6; }
+#viewContainerDaily .occ-hi  { --occ-c: #1d4ed8; }
+
+/* ---------- PICKUP ---------- */
+#viewContainerDaily .pickup-chip {
+    display: inline-block;
+    min-width: 46px;
+    padding: 3px 7px;
+    border-radius: 99px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+#viewContainerDaily .pickup-chip.pos {
+    color: var(--success);
+    background: color-mix(in srgb, var(--success) 12%, transparent);
+}
+#viewContainerDaily .pickup-chip.neg {
+    color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 11%, transparent);
+}
+#viewContainerDaily .pickup-chip.zero {
+    color: var(--text-muted);
+    background: transparent;
+    opacity: 0.6;
+}
+#viewContainerDaily .pickup-chip.neutral {
+    font-style: normal;
+    opacity: 0.5;
+}
+
+/* ---------- MERCADO / GAP ---------- */
+#viewContainerDaily #dataTable td.market-cell {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--text-main);
+}
+#viewContainerDaily #dataTable .gap-badge {
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 3px 8px;
+    min-width: 44px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------- RECOMENDACIÓN Y YIELD ---------- */
+#viewContainerDaily #dataTable td.action-cell {
+    padding: 5px 8px;
+    text-align: center;
+}
+#viewContainerDaily .yield-unified-pill {
+    max-width: 230px;
+    padding: 6px 10px 6px 11px;
+    border-radius: 10px;
+    border-left-width: 3px;
+    box-shadow: none;
+    gap: 3px;
+}
+#viewContainerDaily .yield-unified-pill:hover {
+    box-shadow: 0 4px 12px -4px rgba(15, 23, 42, 0.18);
+}
+#viewContainerDaily .yield-unified-pill.act-mantener  { border-left-color: #94a3b8; }
+#viewContainerDaily .yield-unified-pill.act-subir     { border-left-color: var(--success); }
+#viewContainerDaily .yield-unified-pill.act-bajar,
+#viewContainerDaily .yield-unified-pill.act-pendiente { border-left-color: #f59e0b; }
+#viewContainerDaily .yield-unified-pill.act-manual    { border-left-color: var(--danger); }
+
+#viewContainerDaily .yield-pill-price {
+    font-size: 1rem;
+}
+#viewContainerDaily .yield-pill-badge {
+    font-size: 0.6rem;
+    letter-spacing: 0.06em;
+    padding: 3px 7px;
+    border-radius: 99px;
+}
+#viewContainerDaily .yield-pill-sub {
+    font-size: 0.66rem;
+}
+#viewContainerDaily .yield-pill-trigger {
+    font-weight: 600;
+    color: var(--text-muted);
+}
+#viewContainerDaily .yield-pill-calc {
+    font-size: 0.58rem;
+    opacity: 0.85;
+    border-top-style: solid;
+    border-top-color: color-mix(in srgb, var(--text-muted) 18%, transparent);
+}
+
+/* ---------- COMPETENCIA ---------- */
+#viewContainerDaily #dataTable td.comp-cell {
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+#viewContainerDaily #dataTable td.comp-cell.is-cheaper {
+    color: var(--danger);
+    font-weight: 700;
+}
+#viewContainerDaily .comp-rooms {
+    font-size: 0.58rem;
+    font-weight: 700;
+    color: var(--purple);
+    margin-top: 2px;
+    opacity: 0.85;
+}
+#viewContainerDaily #dataTable .price-sold {
+    font-size: 0.68rem;
+    padding: 2px 7px;
+    border-radius: 99px;
+}
