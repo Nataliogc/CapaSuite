@@ -15,20 +15,20 @@
     <script src="js/xlsx.full.min.js"></script>
     <script src="js/chart.js"></script>
     <script src="js/state.js"></script>
-    <script src="js/storage.js?v=20261125-1504"></script>
+    <script src="js/storage.js?v=20261125-1524"></script>
     <script src="js/revenue-history.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="js/nav.js?v=20261125-1504"></script>
+    <script src="js/nav.js?v=20261125-1524"></script>
     <script src="js/theme-manager.js"></script>
-    <script src="js/firebase-auth.js?v=20261125-1504"></script>
-    <script src="js/version.js?v=20261125-1504"></script>
-    <script src="js/pricing-intelligence.js?v=20261125-1504"></script>
-    <script src="js/competencia-intelligence-ui.js?v=20261125-1504"></script>
+    <script src="js/firebase-auth.js?v=20261125-1524"></script>
+    <script src="js/version.js?v=20261125-1524"></script>
+    <script src="js/pricing-intelligence.js?v=20261125-1524"></script>
+    <script src="js/competencia-intelligence-ui.js?v=20261125-1524"></script>
 
     <link rel="stylesheet" href="css/tokens.css">
-    <link rel="stylesheet" href="css/nav.css?v=20261125-1504">
+    <link rel="stylesheet" href="css/nav.css?v=20261125-1524">
     <style>
         :root {
             /* Page-specific variables not in tokens.css */
@@ -1847,7 +1847,7 @@
         }
 
     </style>
-    <link rel="stylesheet" href="css/daily-table.css?v=20261125-1504">
+    <link rel="stylesheet" href="css/daily-table.css?v=20261125-1524">
 </head>
 
 <body style="padding: 0;">
@@ -2439,6 +2439,27 @@
         }
         window.saveManualPrices = saveManualPrices;
 
+        // Teclado numérico con Bloq Num desactivado: sus teclas llegan como flechas/Inicio/Fin
+        // (e.code = "Numpad8", e.key = "ArrowUp"). Las convertimos en el dígito correspondiente
+        // dentro de cualquier campo de texto o numérico de la página.
+        document.addEventListener('keydown', event => {
+            const m = /^Numpad(\d|Decimal)$/.exec(event.code || '');
+            if (!m || event.ctrlKey || event.metaKey || event.altKey) return;
+            if (/^[\d.,]$/.test(event.key)) return; // Bloq Num activado: comportamiento normal
+            const el = event.target;
+            if (!el || el.tagName !== 'INPUT' || el.readOnly || el.disabled) return;
+            const ch = m[1] === 'Decimal' ? (el.type === 'number' ? '.' : ',') : m[1];
+            event.preventDefault();
+            if (el.type === 'number') {
+                el.value = String(el.value || '') + ch;
+            } else {
+                const start = el.selectionStart ?? el.value.length;
+                const end = el.selectionEnd ?? el.value.length;
+                el.setRangeText(ch, start, end, 'end');
+            }
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+        }, true);
+
         // Atajo de teclado: Ctrl+S para guardar tarifas manualmente
         window.addEventListener('keydown', event => {
             if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
@@ -2671,11 +2692,13 @@
             const currentVal = (h && !h.sold && h.price > 0) ? h.price : '';
 
             const input = document.createElement('input');
-            input.type = 'number';
+            // type="text" + inputmode numérico: permite escribir con el teclado numérico
+            // aunque Bloq Num esté desactivado (en type="number" sus teclas actúan como flechas).
+            input.type = 'text';
+            input.inputMode = 'decimal';
+            input.autocomplete = 'off';
             input.className = 'inline-price-input';
             input.value = currentVal;
-            input.min = '0';
-            input.max = '999';
 
             elem.innerHTML = '';
             elem.appendChild(input);
@@ -2686,8 +2709,8 @@
             const finish = () => {
                 if (finished) return;
                 finished = true;
-                const val = input.value.trim();
-                if (val !== '' && !isNaN(val)) {
+                const val = input.value.trim().replace(',', '.');
+                if (val !== '' && !isNaN(val) && Number(val) >= 0 && Number(val) <= 999) {
                     setManualPrice(dayIndex, hotelName, val);
                 } else {
                     refreshActiveView();
@@ -6698,6 +6721,9 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
                                 </label>
                                 <label style="flex:1 1 220px;">Evento o motivo
                                     <input type="text" id="dayDetailCustomEvent" placeholder="Ej: Congreso Nacional Médicos">
+                                </label>
+                                <label style="flex:0 1 150px;" title="Si las habitaciones ocupadas bajan de esta cifra, la excepción se suspende y vuelve el aviso de revisión. Déjalo vacío para no controlar la ocupación.">Mantener si ocupadas ≥
+                                    <input type="number" id="dayDetailExcRefRooms" min="0" step="1" placeholder="Ej: 83">
                                 </label>
                                 <div style="display:flex; gap:8px; align-items:center;">
                                     <button type="button" class="dd-btn dd-btn-secondary" onclick="saveDayCustomException()" style="color:var(--primary); border-color:var(--primary);">Guardar excepción</button>

@@ -831,6 +831,12 @@
             : PricingIntelligence.getPricingExceptions()[dateISO];
         document.getElementById('dayDetailCustomBar').value = curExc ? curExc.barBase : '';
         document.getElementById('dayDetailCustomEvent').value = curExc ? curExc.eventName : '';
+        const refRoomsInput = document.getElementById('dayDetailExcRefRooms');
+        if (refRoomsInput) {
+            // Por defecto, las habitaciones ocupadas ahora mismo (editable; vacío = sin control de ocupación)
+            refRoomsInput.value = (curExc && Number(curExc.refRooms) > 0) ? curExc.refRooms : (rooms > 0 ? rooms : '');
+            refRoomsInput.placeholder = `Ahora: ${rooms}`;
+        }
         const removeExcBtn = document.getElementById('dayDetailRemoveExcBtn');
         if (removeExcBtn) {
             removeExcBtn.style.display = curExc ? 'inline-flex' : 'none';
@@ -1495,6 +1501,7 @@
         const currentHotel = window.activeHotel || (window.CapaState && window.CapaState.activeHotel) || 'Guadiana';
         let barVal = parseFloat(document.getElementById('dayDetailCustomBar')?.value);
         const eventVal = String(document.getElementById('dayDetailCustomEvent')?.value || '').trim();
+        const refRoomsVal = parseInt(document.getElementById('dayDetailExcRefRooms')?.value, 10);
 
         const prevExc = (typeof PricingIntelligence.getDateException === 'function')
             ? PricingIntelligence.getDateException(currentDetailDateISO, currentHotel)
@@ -1514,9 +1521,10 @@
             PricingIntelligence.setDateException(currentDetailDateISO, {
                 barBase: barVal,
                 eventName: eventVal,
+                refRooms: (refRoomsVal > 0) ? refRoomsVal : null,
                 notes: 'Excepción fijada manualmente'
             }, currentHotel);
-            alert(`✅ Excepción guardada para ${currentHotel} (${currentDetailDateISO}): BAR ${barVal} €`);
+            alert(`✅ Excepción guardada para ${currentHotel} (${currentDetailDateISO}): BAR ${barVal} €` + ((refRoomsVal > 0) ? `\nSe suspenderá y volverá el aviso si la ocupación baja de ${refRoomsVal} habitaciones.` : ''));
         } else {
             PricingIntelligence.setDateException(currentDetailDateISO, null, currentHotel);
             alert(`✅ Excepción eliminada para ${currentHotel} (${currentDetailDateISO})`);

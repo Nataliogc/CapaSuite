@@ -3,7 +3,7 @@
  * Gestiona el caché offline y las actualizaciones de la PWA.
  */
 
-const CACHE_NAME = 'capasuite-v2.7.105';
+const CACHE_NAME = 'capasuite-v2.7.107';
 
 // Recursos que se cachean en la instalación (shell de la app)
 const STATIC_ASSETS = [
@@ -20,9 +20,9 @@ const STATIC_ASSETS = [
   './Imagen/icon-192.png',
   './Imagen/icon-512.png',
   './css/tokens.css',
-  './css/nav.css?v=20261125-1504',
+  './css/nav.css?v=20261125-1524',
   './partials/nav.html',
-  './js/nav.js?v=20261125-1504',
+  './js/nav.js?v=20261125-1524',
   './js/xlsx.full.min.js',
   './Analisis360.html',
   './AnalisisCalendario.html',
@@ -31,13 +31,13 @@ const STATIC_ASSETS = [
   './js/revenue-review.js',
   './js/revenue-dashboard.js',
   './css/revenue-dashboard.css',
-  './js/storage.js?v=20261125-1504',
+  './js/storage.js?v=20261125-1524',
   './js/theme-manager.js',
   './js/state.js',
   './js/chart.js',
   './js/daily-pickup.js',
-  './js/firebase-auth.js?v=20261125-1504',
-  './js/segment-analysis.js?v=20261125-1504',
+  './js/firebase-auth.js?v=20261125-1524',
+  './js/segment-analysis.js?v=20261125-1524',
   './js/segment-dashboard.js',
   './js/segment-review.js',
   './js/market-average-alerts.js?v=2.7.71',

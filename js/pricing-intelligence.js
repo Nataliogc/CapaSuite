@@ -445,6 +445,7 @@
                     minPrice: Number(data.minPrice) || null,
                     notes: String(data.notes || ''),
                     eventName: String(data.eventName || ''),
+                    refRooms: (Number(data.refRooms) > 0) ? Math.round(Number(data.refRooms)) : null,
                     hotel: hKey,
                     updatedAt: new Date().toISOString()
                 };
@@ -461,6 +462,7 @@
                     minPrice: Number(data.minPrice) || null,
                     notes: String(data.notes || ''),
                     eventName: String(data.eventName || ''),
+                    refRooms: (Number(data.refRooms) > 0) ? Math.round(Number(data.refRooms)) : null,
                     updatedAt: new Date().toISOString()
                 };
             }
@@ -469,11 +471,12 @@
     }
 
     // Obtener la BAR base para una fecha específica considerando Hotel y Año
-    function getBaseBarForDate(dateISO, hotelName = 'Guadiana') {
+    function getBaseBarForDate(dateISO, hotelName = 'Guadiana', opts = {}) {
         if (!dateISO || typeof dateISO !== 'string') return { bar: 64, isException: false };
         
         // 1. Excepción específica de fecha (por hotel con fallback legacy)
-        const exc = getDateException(dateISO, hotelName);
+        //    opts.ignoreException: se usa cuando la excepción está suspendida (ocupación bajo bloqueo)
+        const exc = (opts && opts.ignoreException) ? null : getDateException(dateISO, hotelName);
         if (exc && exc.barBase > 0) {
             return {
                 bar: exc.barBase,
@@ -1636,7 +1639,42 @@
         };
     }
 
+    // ---------------------------------------------------------------------
+    // Excepciones con ocupación de referencia (p. ej. "Bloq Grupos"):
+    // si al fijar la excepción se guardó refRooms (habitaciones ocupadas en
+    // ese momento) y la ocupación actual baja de esa cifra, la excepción se
+    // suspende y se reactiva el análisis normal con aviso de revisión.
+    // ---------------------------------------------------------------------
+    function getExceptionBreach(dateISO, hotelName, otbRooms) {
+        if (!dateISO) return null;
+        const exc = getDateException(dateISO, hotelName);
+        const ref = exc ? (Number(exc.refRooms) || 0) : 0;
+        if (!exc || ref <= 0) return null;
+        const rooms = Math.max(0, Math.round(Number(otbRooms) || 0));
+        if (rooms >= ref) return null;
+        return { exception: exc, eventName: exc.eventName || 'Excepción', refRooms: ref, rooms, lost: ref - rooms };
+    }
+
     function evaluateDailyRecommendation(params) {
+        if (!params || typeof params !== 'object' || params.customEvent) {
+            return evaluateDailyRecommendationCore(params);
+        }
+        const breach = getExceptionBreach(params.dateISO, params.hotelName || 'Guadiana', params.otbRooms);
+        if (!breach) return evaluateDailyRecommendationCore(params);
+
+        const rec = evaluateDailyRecommendationCore(Object.assign({}, params, { _ignoreException: true }));
+        const msg = `Excepción «${breach.eventName}» suspendida: hay ${breach.rooms} habitaciones ocupadas, por debajo de las ${breach.refRooms} que había al fijarla (−${breach.lost}). Se reactiva el análisis normal.`;
+        rec.reasons = [msg].concat(rec.reasons || []);
+        rec.fullReasonText = `${msg} ${rec.fullReasonText || ''}`.trim();
+        rec.exceptionSuspended = true;
+        rec.exceptionBreach = breach;
+        rec.triggerText = `⚠️ ${breach.eventName}: ${breach.rooms}/${breach.refRooms} hab`;
+        if (rec.action === 'MANTENER') rec.action = 'REVISAR';
+        rec.demandStatus = 'EXCEPCIÓN SUSPENDIDA — OCUPACIÓN BAJO REFERENCIA';
+        return rec;
+    }
+
+    function evaluateDailyRecommendationCore(params) {
         // === PASO 1: VALIDEZ Y ACTUALIZACIÓN DE LOS DATOS ===
         if (!params || typeof params !== 'object') {
             return {
@@ -1680,7 +1718,7 @@
         }
 
         // Selección rigurosa de BAR base según Hotel, Año, Mes y DOW (o excepción aprobada)
-        const baseInfo = getBaseBarForDate(dateISO, hotelName);
+        const baseInfo = getBaseBarForDate(dateISO, hotelName, { ignoreException: !!params._ignoreException });
         let baseBar = (customEvent && customEvent.barBase > 0) ? customEvent.barBase : baseInfo.bar;
         const isException = baseInfo.isException || !!(customEvent && (customEvent.barBase > 0 || customEvent.name));
         const eventName = customEvent?.name || baseInfo.eventName || '';
@@ -2486,6 +2524,7 @@
         savePricingExceptions,
         getDateException,
         setDateException,
+        getExceptionBreach,
         getBaseBarForDate,
         normalizeSnapshotEntry,
         compactSnapshotEntry,
