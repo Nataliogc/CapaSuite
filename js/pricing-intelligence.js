@@ -433,6 +433,21 @@
 
     function setDateException(dateISO, data, hotelName) {
         const all = getPricingExceptions();
+        // Ahorro de escrituras en la nube: si se vuelve a guardar la misma excepción sin cambios,
+        // no se reescribe (solo cambiaría updatedAt y provocaría una subida a Firebase innecesaria).
+        if (data && hotelName) {
+            const prev = all[`${normalizeHotel(hotelName)}|${dateISO}`];
+            const nextRef = (Number(data.refRooms) > 0) ? Math.round(Number(data.refRooms)) : null;
+            if (prev
+                && Number(prev.barBase) === (Number(data.barBase) || 0)
+                && (prev.minPrice ?? null) === (Number(data.minPrice) || null)
+                && String(prev.notes || '') === String(data.notes || '')
+                && String(prev.eventName || '') === String(data.eventName || '')
+                && (prev.refRooms ?? null) === nextRef
+                && !all[dateISO]) {
+                return true;
+            }
+        }
         if (hotelName) {
             const hKey = normalizeHotel(hotelName);
             const scopedKey = `${hKey}|${dateISO}`;

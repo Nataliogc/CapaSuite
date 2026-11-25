@@ -15,20 +15,20 @@
     <script src="js/xlsx.full.min.js"></script>
     <script src="js/chart.js"></script>
     <script src="js/state.js"></script>
-    <script src="js/storage.js?v=20261125-1524"></script>
+    <script src="js/storage.js?v=20261125-1541"></script>
     <script src="js/revenue-history.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="js/nav.js?v=20261125-1524"></script>
+    <script src="js/nav.js?v=20261125-1541"></script>
     <script src="js/theme-manager.js"></script>
-    <script src="js/firebase-auth.js?v=20261125-1524"></script>
-    <script src="js/version.js?v=20261125-1524"></script>
-    <script src="js/pricing-intelligence.js?v=20261125-1524"></script>
-    <script src="js/competencia-intelligence-ui.js?v=20261125-1524"></script>
+    <script src="js/firebase-auth.js?v=20261125-1541"></script>
+    <script src="js/version.js?v=20261125-1541"></script>
+    <script src="js/pricing-intelligence.js?v=20261125-1541"></script>
+    <script src="js/competencia-intelligence-ui.js?v=20261125-1541"></script>
 
     <link rel="stylesheet" href="css/tokens.css">
-    <link rel="stylesheet" href="css/nav.css?v=20261125-1524">
+    <link rel="stylesheet" href="css/nav.css?v=20261125-1541">
     <style>
         :root {
             /* Page-specific variables not in tokens.css */
@@ -1202,7 +1202,7 @@
         }
 
         .highlight-row {
-            animation: highlightFade 3s ease-out;
+            animation: highlightFade 1.6s ease-out;
         }
 
         /* MODAL STYLES */
@@ -1847,7 +1847,7 @@
         }
 
     </style>
-    <link rel="stylesheet" href="css/daily-table.css?v=20261125-1524">
+    <link rel="stylesheet" href="css/daily-table.css?v=20261125-1541">
 </head>
 
 <body style="padding: 0;">
@@ -2994,16 +2994,29 @@
                     refreshActiveView();
                 }
             }
-            setTimeout(() => {
+            const goToRow = () => {
                 row = document.getElementById(`row-${idx}`);
-                if (row) {
-                    selectTableRow(row);
-                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    row.classList.remove('highlight-row');
-                    void row.offsetWidth; // trigger reflow
-                    row.classList.add('highlight-row');
+                if (!row) return;
+                selectTableRow(row);
+                // Salto directo: el desplazamiento 'smooth' sobre 364 filas tardaba 2 s o más
+                const wrap = row.closest('.table-wrap');
+                if (wrap) {
+                    const wrapRect = wrap.getBoundingClientRect();
+                    const rowRect = row.getBoundingClientRect();
+                    wrap.scrollTop += (rowRect.top - wrapRect.top) - (wrap.clientHeight / 2) + (rowRect.height / 2);
+                    if (wrapRect.top < 0 || wrapRect.bottom > window.innerHeight) {
+                        wrap.scrollIntoView({ block: 'nearest' });
+                    }
+                } else {
+                    row.scrollIntoView({ block: 'center' });
                 }
-            }, 80);
+                row.classList.remove('highlight-row');
+                void row.offsetWidth; // reinicia la animación
+                row.classList.add('highlight-row');
+            };
+            // Si la fila ya está en la tabla se va al instante; si hubo que re-renderizar, en el siguiente frame
+            if (document.getElementById(`row-${idx}`)) goToRow();
+            else requestAnimationFrame(goToRow);
         }
 
         function clearTableFilter() {
@@ -5203,12 +5216,15 @@ Sample Guad Cell: "${gRowData ? gRowData[startCol] : 'Undefined'}"
         function selectTableRow(row) {
             if (!row) return;
             selectedTableDate = row.dataset.date;
-            document.querySelectorAll('#tableBody tr').forEach(tableRow => {
-                tableRow.classList.toggle('row-selected', tableRow === row);
+            // Solo se tocan las filas/chips que cambian (antes se recorrían las 364 filas)
+            document.querySelectorAll('#tableBody tr.row-selected').forEach(tableRow => {
+                if (tableRow !== row) tableRow.classList.remove('row-selected');
             });
-            document.querySelectorAll('.date-chip').forEach(chip => {
-                chip.classList.toggle('active-chip', chip.dataset.date === selectedTableDate);
+            row.classList.add('row-selected');
+            document.querySelectorAll('.date-chip.active-chip').forEach(chip => {
+                if (chip.dataset.date !== selectedTableDate) chip.classList.remove('active-chip');
             });
+            document.querySelectorAll(`.date-chip[data-date="${selectedTableDate}"]`).forEach(chip => chip.classList.add('active-chip'));
         }
 
         function renderTable(data) {
